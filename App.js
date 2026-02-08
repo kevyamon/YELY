@@ -1,8 +1,10 @@
+// App.js
+
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import 'react-native-gesture-handler';
-import { Provider as PaperProvider } from 'react-native-paper';
+import { Provider as PaperProvider, Portal } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
 
@@ -19,14 +21,16 @@ const GlobalToast = () => {
   const toast = useSelector(selectToast);
 
   return (
-    <AppToast
-      visible={toast.visible}
-      type={toast.type}
-      title={toast.title}
-      message={toast.message}
-      duration={toast.duration}
-      onHide={() => dispatch(hideToast())}
-    />
+    <Portal>
+      <AppToast
+        visible={toast.visible}
+        type={toast.type}
+        title={toast.title}
+        message={toast.message}
+        duration={toast.duration}
+        onHide={() => dispatch(hideToast())}
+      />
+    </Portal>
   );
 };
 
@@ -37,16 +41,16 @@ export default function App() {
         <SafeAreaProvider>
           <NavigationContainer>
             <View style={styles.container}>
-              <StatusBar 
-                style="light" 
-                backgroundColor={YelyTheme.colors.background} 
-                translucent 
+              <StatusBar
+                style="light"
+                backgroundColor={YelyTheme.colors.background}
+                translucent
               />
               <AppNavigator />
-              {/* Le Toast est ici pour être visible sur tous les écrans */}
-              <GlobalToast />
             </View>
           </NavigationContainer>
+          {/* Le Toast est ICI, en dehors du NavigationContainer, rendu via Portal au-dessus de tout */}
+          <GlobalToast />
         </SafeAreaProvider>
       </PaperProvider>
     </ReduxProvider>

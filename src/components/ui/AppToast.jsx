@@ -1,21 +1,11 @@
 // src/components/ui/AppToast.jsx
-// Système de notifications Toast
+// Système de notifications Toast — Compatible Web + Mobile
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
-import Animated, {
-    runOnJS,
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSpring,
-    withTiming,
-} from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ANIMATIONS, BORDERS, COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
-
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
 const TOAST_CONFIG = {
   success: {
@@ -53,48 +43,81 @@ const AppToast = ({
   onHide,
 }) => {
   const insets = useSafeAreaInsets();
-  const translateY = useSharedValue(-100);
-  const opacity = useSharedValue(0);
+  const translateY = useRef(new Animated.Value(-100)).current;
+  const opacity = useRef(new Animated.Value(0)).current;
+  const hideTimerRef = useRef(null);
   const config = TOAST_CONFIG[type] || TOAST_CONFIG.info;
 
   useEffect(() => {
     if (visible) {
-      translateY.value = withSpring(0, ANIMATIONS.spring.bouncy);
-      opacity.value = withTiming(1, { duration: ANIMATIONS.duration.fast });
+      // Nettoyer tout timer précédent
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
 
-      // Auto-hide
-      translateY.value = withDelay(
-        duration,
-        withTiming(-100, { duration: ANIMATIONS.duration.normal }, (finished) => {
+      // Reset à la position initiale
+      translateY.setValue(-100);
+      opacity.setValue(0);
+
+      // Animation d'entrée : slide down + fade in
+      Animated.parallel([
+        Animated.spring(translateY, {
+          toValue: 0,
+          tension: 80,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacity, {
+          toValue: 1,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+      ]).start();
+
+      // Programmer la disparition automatique
+      hideTimerRef.current = setTimeout(() => {
+        Animated.parallel([
+          Animated.timing(translateY, {
+            toValue: -100,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacity, {
+            toValue: 0,
+            duration: 300,
+            useNativeDriver: true,
+          }),
+        ]).start(({ finished }) => {
           if (finished && onHide) {
-            runOnJS(onHide)();
+            onHide();
           }
-        })
-      );
-      opacity.value = withDelay(
-        duration,
-        withTiming(0, { duration: ANIMATIONS.duration.normal })
-      );
+        });
+      }, duration);
     }
-  }, [visible]);
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-    opacity: opacity.value,
-  }));
+    return () => {
+      if (hideTimerRef.current) {
+        clearTimeout(hideTimerRef.current);
+        hideTimerRef.current = null;
+      }
+    };
+  }, [visible]);
 
   if (!visible) return null;
 
   return (
     <Animated.View
+      pointerEvents="none"
       style={[
         styles.container,
         {
           top: insets.top + SPACING.sm,
           backgroundColor: config.bgColor,
           borderColor: config.borderColor,
+          transform: [{ translateY }],
+          opacity,
         },
-        animatedStyle,
       ]}
     >
       <Ionicons name={config.icon} size={24} color={config.color} />
@@ -116,8 +139,8 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderRadius: BORDERS.radius.lg,
     borderWidth: BORDERS.width.thin,
-    zIndex: 9999,
-    ...SHADOWS.medium,
+    zIndex: 99999,
+    elevation: 99999,
   },
   textContainer: {
     flex: 1,
