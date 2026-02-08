@@ -1,5 +1,3 @@
-// src/screens/auth/LandingPage.jsx
-
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
@@ -19,17 +17,20 @@ import Animated, {
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import GlassModal from '../../components/ui/GlassModal';
-import GoldButton from '../../components/ui/GoldButton';
-import { closeModal, openModal } from '../../store/slices/uiSlice';
-import { COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
+
+// CORRECTION DES CHEMINS D'IMPORT (../ au lieu de ../../)
+import GlassModal from '../components/ui/GlassModal';
+import GoldButton from '../components/ui/GoldButton';
+import { closeModal, openModal } from '../store/slices/uiSlice';
+import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
 
-const LandingPage = () => {
+const LandingScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  const { isModalOpen, modalType } = useSelector((state) => state.ui);
+  // Sécurité : on initialise avec des valeurs par défaut si state.ui est undefined
+  const { isModalOpen, modalType } = useSelector((state) => state.ui || { isModalOpen: false, modalType: null });
 
   // Animations d'entrée
   const titleOpacity = useSharedValue(0);
@@ -115,6 +116,7 @@ const LandingPage = () => {
           title="COMMANDER UN TAXI"
           onPress={handleOrderPress}
           size="large"
+          // Assure-toi que Ionicons est bien installé, sinon retire l'icône temporairement
           icon={<Ionicons name="car-sport" size={22} color={COLORS.deepAsphalt} />}
         />
 
@@ -279,4 +281,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default LandingPage;
+export default LandingScreen;

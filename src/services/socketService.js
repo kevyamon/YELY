@@ -7,6 +7,7 @@ import { setCurrentRide, setRideStatus, updateDriverLocation } from '../store/sl
 import { showToast } from '../store/slices/uiSlice';
 import store from '../store/store';
 
+// Récupération sécurisée de l'URL API
 const SOCKET_URL = Constants.expoConfig?.extra?.SOCKET_URL || 'https://your-backend.onrender.com';
 
 class SocketService {
@@ -18,28 +19,37 @@ class SocketService {
     this.locationInterval = null;
   }
 
+  /**
+   * Initialise la connexion Socket.io
+   * @param {string} token - Token d'authentification JWT
+   */
   connect(token) {
     if (this.socket?.connected) {
       console.log('[Socket] Déjà connecté');
       return;
     }
 
+    console.log('[Socket] Tentative de connexion vers:', SOCKET_URL);
+
     this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'],
+      transports: ['websocket'], // Force websocket pour éviter le long-polling (mieux pour React Native)
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
       timeout: 20000,
+      autoConnect: true,
     });
 
     this._setupListeners();
   }
 
   _setupListeners() {
+    if (!this.socket) return;
+
     this.socket.on('connect', () => {
-      console.log('[Socket] ✅ Connecté:', this.socket.id);
+      console.log('[Socket] ✅ Connecté avec ID:', this.socket.id);
       this.isConnected = true;
       this.reconnectAttempts = 0;
     });
@@ -47,6 +57,10 @@ class SocketService {
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] ❌ Déconnecté:', reason);
       this.isConnected = false;
+      if (reason === 'io server disconnect') {
+        // La déconnexion a été initiée par le serveur, on ne reconnecte pas automatiquement
+        this.socket.connect();
+      }
     });
 
     this.socket.on('connect_error', (error) => {
@@ -56,7 +70,7 @@ class SocketService {
 
     // ═══ ÉVÉNEMENTS COURSE ═══
     this.socket.on('new_ride_request', (data) => {
-      console.log('[Socket] 🚕 Nouvelle demande de course:', data);
+      console.log('[Socket] 🚕 Nouvelle demande de course reçue:', data);
       store.dispatch({
         type: 'ui/openModal',
         payload: { type: 'rideRequest', data },
@@ -65,8 +79,10 @@ class SocketService {
 
     this.socket.on('ride_accepted', (data) => {
       console.log('[Socket] ✅ Course acceptée:', data);
+      // Mise à jour du store Redux
       store.dispatch(setCurrentRide(data.ride));
       store.dispatch(setRideStatus('accepted'));
+      
       store.dispatch(showToast({
         type: 'success',
         title: 'Course acceptée !',
@@ -84,7 +100,7 @@ class SocketService {
       }));
     });
 
-    this.socket.on('ride_started', (data) => {
+    this.socket.on('ride_started', () => {
       console.log('[Socket] 🚗 Course démarrée');
       store.dispatch(setRideStatus('ongoing'));
     });
@@ -92,28 +108,33 @@ class SocketService {
     this.socket.on('ride_completed', (data) => {
       console.log('[Socket] 🏁 Course terminée');
       store.dispatch(setRideStatus('completed'));
-      store.dispatch(setCurrentRide(data.ride));
+      if (data?.ride) {
+        store.dispatch(setCurrentRide(data.ride));
+      }
     });
 
     // ═══ TRACKING GPS DU CHAUFFEUR ═══
     this.socket.on('driver_location_update', (data) => {
-      store.dispatch(updateDriverLocation({
-        latitude: data.latitude,
-        longitude: data.longitude,
-        heading: data.heading,
-      }));
+      // Optimisation : ne dispatcher que si les données sont valides
+      if (data && data.latitude && data.longitude) {
+        store.dispatch(updateDriverLocation({
+          latitude: data.latitude,
+          longitude: data.longitude,
+          heading: data.heading || 0,
+        }));
+      }
     });
 
-    // ═══ NOTIFICATIONS ═══
+    // ═══ NOTIFICATIONS GÉNÉRALES ═══
     this.socket.on('notification', (data) => {
       store.dispatch(showToast({
         type: data.type || 'info',
-        title: data.title,
-        message: data.message,
+        title: data.title || 'Notification',
+        message: data.message || '',
       }));
     });
 
-    // ═══ ABONNEMENT ═══
+    // ═══ ABONNEMENT CHAUFFEUR ═══
     this.socket.on('subscription_validated', (data) => {
       store.dispatch(showToast({
         type: 'success',
@@ -122,19 +143,22 @@ class SocketService {
       }));
     });
 
-    // ═══ ADMIN - Nouvelle preuve soumise ═══
+    // ═══ ADMIN - Alertes ═══
     this.socket.on('new_proof_submitted', (data) => {
       store.dispatch(showToast({
         type: 'info',
         title: 'Nouvelle preuve reçue',
-        message: `${data.driverName} a soumis une preuve de paiement.`,
+        message: `${data.driverName || 'Un chauffeur'} a soumis une preuve de paiement.`,
       }));
     });
   }
 
-  // Envoyer la position GPS
+  /**
+   * Émet la position actuelle vers le serveur
+   * @param {Object} coords - { latitude, longitude, heading, speed }
+   */
   emitLocation(coords) {
-    if (this.socket?.connected) {
+    if (this.socket?.connected && coords) {
       this.socket.emit('update_location', {
         latitude: coords.latitude,
         longitude: coords.longitude,
@@ -145,9 +169,15 @@ class SocketService {
     }
   }
 
-  // Démarrer l'envoi périodique de position
+  /**
+   * Démarre le suivi GPS périodique
+   * @param {Function} getLocationFn - Fonction async retournant la position
+   * @param {number} intervalMs - Intervalle en ms (défaut 5000)
+   */
   startLocationTracking(getLocationFn, intervalMs = 5000) {
     this.stopLocationTracking();
+    console.log('[Socket] Démarrage du tracking GPS...');
+    
     this.locationInterval = setInterval(async () => {
       try {
         const coords = await getLocationFn();
@@ -155,7 +185,7 @@ class SocketService {
           this.emitLocation(coords);
         }
       } catch (error) {
-        console.error('[Socket] Erreur GPS:', error);
+        console.error('[Socket] Erreur récupération GPS:', error);
       }
     }, intervalMs);
   }
@@ -164,21 +194,27 @@ class SocketService {
     if (this.locationInterval) {
       clearInterval(this.locationInterval);
       this.locationInterval = null;
+      console.log('[Socket] Arrêt du tracking GPS');
     }
   }
 
-  // Rejoindre une room spécifique (pour le suivi d'une course)
+  // Rejoindre une "room" spécifique (ex: ride_12345)
   joinRoom(roomId) {
-    this.socket?.emit('join_room', roomId);
+    if (this.socket?.connected && roomId) {
+      this.socket.emit('join_room', roomId);
+    }
   }
 
   leaveRoom(roomId) {
-    this.socket?.emit('leave_room', roomId);
+    if (this.socket?.connected && roomId) {
+      this.socket.emit('leave_room', roomId);
+    }
   }
 
   disconnect() {
     this.stopLocationTracking();
     if (this.socket) {
+      console.log('[Socket] Déconnexion manuelle');
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
@@ -186,6 +222,6 @@ class SocketService {
   }
 }
 
-// Singleton
+// Instance unique (Singleton)
 const socketService = new SocketService();
 export default socketService;

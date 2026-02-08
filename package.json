@@ -34,6 +34,7 @@
     "expo-web-browser": "~15.0.10",
     "lucide-react-native": "^0.563.0",
     "react": "19.1.0",
+    "react-async-hook": "^4.0.0",
     "react-dom": "19.1.0",
     "react-native": "0.81.5",
     "react-native-country-picker-modal": "^2.0.0",
@@ -46,7 +47,8 @@
     "react-native-vector-icons": "^10.3.0",
     "react-native-web": "~0.21.0",
     "react-native-worklets": "0.5.1",
-    "react-redux": "^9.2.0"
+    "react-redux": "^9.2.0",
+    "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
     "@types/react": "~19.1.0",
