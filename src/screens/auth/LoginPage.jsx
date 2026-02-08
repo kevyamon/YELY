@@ -18,12 +18,12 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
-import AppToast from '../../components/ui/AppToast';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import socketService from '../../services/socketService';
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
+import { showErrorToast, showSuccessToast, showToast } from '../../store/slices/uiSlice';
 import { COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
 
 const LoginPage = () => {
@@ -32,18 +32,16 @@ const LoginPage = () => {
 
   const [identifier, setIdentifier] = useState(''); // Email ou Téléphone
   const [password, setPassword] = useState('');
-  const [toast, setToast] = useState({ visible: false, type: 'info', title: '', message: '' });
 
   const [login, { isLoading }] = useLoginMutation();
 
   const handleLogin = async () => {
     if (!identifier.trim() || !password.trim()) {
-      setToast({
-        visible: true,
+      dispatch(showToast({
         type: 'warning',
         title: 'Champs requis',
         message: 'Veuillez remplir tous les champs.',
-      });
+      }));
       return;
     }
 
@@ -58,22 +56,18 @@ const LoginPage = () => {
       // Connecter le socket
       socketService.connect(res.token);
 
-      setToast({
-        visible: true,
-        type: 'success',
+      dispatch(showSuccessToast({
         title: `Bienvenue ${res.user.name} !`,
         message: 'Connexion réussie.',
-      });
+      }));
 
       // La navigation est gérée automatiquement par AppNavigator
     } catch (err) {
       const errorMsg = err?.data?.message || 'Erreur de connexion. Vérifiez vos identifiants.';
-      setToast({
-        visible: true,
-        type: 'error',
+      dispatch(showErrorToast({
         title: 'Échec de connexion',
         message: errorMsg,
-      });
+      }));
     }
   };
 
@@ -139,7 +133,7 @@ const LoginPage = () => {
               title="SE CONNECTER"
               onPress={handleLogin}
               loading={isLoading}
-              icon={<Ionicons name="log-in-outline" size={20} color={COLORS.deepAsphalt} />}
+              icon="log-in-outline"
             />
 
             <View style={styles.registerLink}>
@@ -151,14 +145,6 @@ const LoginPage = () => {
           </Animated.View>
         </ScrollView>
       </KeyboardAvoidingView>
-
-      <AppToast
-        visible={toast.visible}
-        type={toast.type}
-        title={toast.title}
-        message={toast.message}
-        onHide={() => setToast((prev) => ({ ...prev, visible: false }))}
-      />
     </SafeAreaView>
   );
 };

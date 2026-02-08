@@ -1,23 +1,53 @@
+import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { StyleSheet, View } from 'react-native';
 import 'react-native-gesture-handler';
 import { Provider as PaperProvider } from 'react-native-paper';
-import { Provider as ReduxProvider } from 'react-redux';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
 
-// Imports corrects
 import AppNavigator from './src/navigation/AppNavigator';
-import store from './src/store/store'; // Utilise l'export default du store
+import store from './src/store/store';
 import { YelyTheme } from './src/theme/theme';
+
+// Toast Global
+import AppToast from './src/components/ui/AppToast';
+import { hideToast, selectToast } from './src/store/slices/uiSlice';
+
+const GlobalToast = () => {
+  const dispatch = useDispatch();
+  const toast = useSelector(selectToast);
+
+  return (
+    <AppToast
+      visible={toast.visible}
+      type={toast.type}
+      title={toast.title}
+      message={toast.message}
+      duration={toast.duration}
+      onHide={() => dispatch(hideToast())}
+    />
+  );
+};
 
 export default function App() {
   return (
     <ReduxProvider store={store}>
       <PaperProvider theme={YelyTheme}>
-        <View style={styles.container}>
-          <StatusBar style="light" backgroundColor={YelyTheme.colors.background} />
-          {/* AppNavigator contient déjà le NavigationContainer, on l'appelle directement */}
-          <AppNavigator />
-        </View>
+        <SafeAreaProvider>
+          <NavigationContainer>
+            <View style={styles.container}>
+              <StatusBar 
+                style="light" 
+                backgroundColor={YelyTheme.colors.background} 
+                translucent 
+              />
+              <AppNavigator />
+              {/* Le Toast est ici pour être visible sur tous les écrans */}
+              <GlobalToast />
+            </View>
+          </NavigationContainer>
+        </SafeAreaProvider>
       </PaperProvider>
     </ReduxProvider>
   );
