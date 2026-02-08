@@ -9,6 +9,7 @@ import { COLORS, DIMENSIONS } from '../theme/theme';
 import DrawerContent from './DrawerContent';
 
 // Screens
+import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
 
 // Placeholder temporaire pour les écrans non encore codés
@@ -53,7 +54,7 @@ const AppDrawer = () => {
       <Drawer.Screen name="RiderHome" component={RiderHome} />
 
       {/* ═══════ ÉCRANS DRIVER ═══════ */}
-      <Drawer.Screen name="DriverHome" component={PlaceholderScreen} />
+      <Drawer.Screen name="DriverHome" component={DriverHome} />
       <Drawer.Screen name="Subscription" component={PlaceholderScreen} />
 
       {/* ═══════ ÉCRANS ADMIN / SUPERADMIN ═══════ */}
