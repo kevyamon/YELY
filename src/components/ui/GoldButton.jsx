@@ -1,6 +1,7 @@
 // src/components/ui/GoldButton.jsx
 // Bouton principal avec effet premium
 
+import { Ionicons } from '@expo/vector-icons'; // Import nécessaire pour les icônes en string
 import {
     ActivityIndicator,
     StyleSheet,
@@ -14,7 +15,15 @@ import Animated, {
     withSpring,
     withTiming,
 } from 'react-native-reanimated';
-import { ANIMATIONS, BORDERS, COLORS, DIMENSIONS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
+import {
+    ANIMATIONS,
+    BORDERS,
+    COLORS,
+    DIMENSIONS,
+    FONTS,
+    SHADOWS,
+    SPACING
+} from '../../theme/theme';
 
 const AnimatedTouchable = Animated.createAnimatedComponent(TouchableOpacity);
 
@@ -25,7 +34,7 @@ const GoldButton = ({
   size = 'normal',      // 'small', 'normal', 'large'
   loading = false,
   disabled = false,
-  icon = null,
+  icon = null,          // Peut être un string (ex: "car") ou un composant JSX
   fullWidth = true,
   style,
   textStyle,
@@ -91,6 +100,13 @@ const GoldButton = ({
     }
   };
 
+  // Détermine la couleur de l'icône selon le variant
+  const getIconColor = () => {
+    if (variant === 'primary') return COLORS.deepAsphalt;
+    if (variant === 'ghost') return COLORS.champagneGold;
+    return COLORS.moonlightWhite;
+  };
+
   return (
     <AnimatedTouchable
       onPress={onPress}
@@ -117,7 +133,21 @@ const GoldButton = ({
         />
       ) : (
         <View style={styles.contentRow}>
-          {icon && <View style={styles.iconWrapper}>{icon}</View>}
+          {/* ✅ GESTION CORRECTE DE L'ICÔNE */}
+          {icon && (
+            <View style={styles.iconWrapper}>
+              {typeof icon === 'string' ? (
+                <Ionicons 
+                  name={icon} 
+                  size={size === 'large' ? 24 : 20} 
+                  color={getIconColor()} 
+                />
+              ) : (
+                icon
+              )}
+            </View>
+          )}
+          
           <Text
             style={[
               getTextStyle(),
@@ -179,10 +209,11 @@ const styles = StyleSheet.create({
   contentRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm,
   },
   iconWrapper: {
-    marginRight: SPACING.xs,
+    marginRight: SPACING.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });
 

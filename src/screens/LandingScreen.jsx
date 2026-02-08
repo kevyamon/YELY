@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ La bonne source
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassModal from '../components/ui/GlassModal';
