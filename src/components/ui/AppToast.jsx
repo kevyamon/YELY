@@ -11,26 +11,26 @@ const TOAST_CONFIG = {
   success: {
     icon: 'checkmark-circle',
     color: COLORS.success,
-    bgColor: 'rgba(46, 204, 113, 0.15)',
-    borderColor: 'rgba(46, 204, 113, 0.30)',
+    bgColor: '#1A1A2E',
+    borderColor: 'rgba(3, 1, 14, 0.3)',
   },
   error: {
     icon: 'close-circle',
     color: COLORS.danger,
-    bgColor: 'rgba(231, 76, 60, 0.15)',
-    borderColor: 'rgba(231, 76, 60, 0.30)',
+    bgColor: '#1A1A2E',
+    borderColor: 'rgba(3, 1, 14, 0.3)',
   },
   warning: {
     icon: 'warning',
     color: COLORS.warning,
-    bgColor: 'rgba(243, 156, 18, 0.15)',
-    borderColor: 'rgba(243, 156, 18, 0.30)',
+    bgColor: '#1A1A2E',
+    borderColor: 'rgba(3, 1, 14, 0.3)',
   },
   info: {
     icon: 'information-circle',
     color: COLORS.info,
-    bgColor: 'rgba(52, 152, 219, 0.15)',
-    borderColor: 'rgba(52, 152, 219, 0.30)',
+    bgColor: '#1A1A2E',
+    borderColor: 'rgba(3, 1, 14, 0.3)',
   },
 };
 
