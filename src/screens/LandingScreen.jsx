@@ -1,3 +1,5 @@
+// src/screens/LandingScreen.jsx
+
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
@@ -18,10 +20,13 @@ import Animated, {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-// CORRECTION DES CHEMINS D'IMPORT (../ au lieu de ../../)
 import GlassModal from '../components/ui/GlassModal';
 import GoldButton from '../components/ui/GoldButton';
-import { closeModal, openModal } from '../store/slices/uiSlice';
+import {
+  closeModal,
+  openModal,
+  selectModal, // ← Utilise le selector officiel
+} from '../store/slices/uiSlice';
 import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -29,8 +34,9 @@ const { width, height } = Dimensions.get('window');
 const LandingScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-  // Sécurité : on initialise avec des valeurs par défaut si state.ui est undefined
-  const { isModalOpen, modalType } = useSelector((state) => state.ui || { isModalOpen: false, modalType: null });
+
+  // ✅ CORRECTION : utiliser le selector qui lit state.ui.modal
+  const modal = useSelector(selectModal);
 
   // Animations d'entrée
   const titleOpacity = useSharedValue(0);
@@ -41,7 +47,6 @@ const LandingScreen = () => {
   const decorOpacity = useSharedValue(0);
 
   useEffect(() => {
-    // Séquence d'animations
     titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
     titleTranslateY.value = withDelay(200, withSpring(0, { damping: 20, stiffness: 150 }));
     subtitleOpacity.value = withDelay(500, withTiming(1, { duration: 500 }));
@@ -59,7 +64,7 @@ const LandingScreen = () => {
     opacity: subtitleOpacity.value,
   }));
 
-  const buttonStyle = useAnimatedStyle(() => ({
+  const buttonAnimStyle = useAnimatedStyle(() => ({
     opacity: buttonOpacity.value,
     transform: [{ scale: buttonScale.value }],
   }));
@@ -69,7 +74,7 @@ const LandingScreen = () => {
   }));
 
   const handleOrderPress = () => {
-    dispatch(openModal({ type: 'decision' }));
+    dispatch(openModal({ type: 'decision', position: 'center' }));
   };
 
   const handleDecision = (hasAccount) => {
@@ -100,24 +105,27 @@ const LandingScreen = () => {
       <View style={styles.contentSection}>
         <Animated.View style={titleStyle}>
           <Text style={styles.title}>YÉLY</Text>
-          <Text style={styles.subtitle2}>Commander un taxi n'a jamais été aussi simple</Text>
+          <Text style={styles.subtitle2}>
+            Commander un taxi n'a jamais été aussi simple
+          </Text>
         </Animated.View>
 
         <Animated.View style={subtitleStyle}>
           <Text style={styles.description}>
-            Rejoignez des milliers d'utilisateurs qui font confiance à Yély pour leurs déplacements quotidiens.
+            Rejoignez des milliers d'utilisateurs qui font confiance à Yély
+            pour leurs déplacements quotidiens.
           </Text>
         </Animated.View>
       </View>
 
       {/* Bouton d'action */}
-      <Animated.View style={[styles.actionSection, buttonStyle]}>
+      <Animated.View style={[styles.actionSection, buttonAnimStyle]}>
+        {/* ✅ CORRECTION : icon est un STRING, pas un composant JSX */}
         <GoldButton
           title="COMMANDER UN TAXI"
           onPress={handleOrderPress}
           size="large"
-          // Assure-toi que Ionicons est bien installé, sinon retire l'icône temporairement
-          icon={<Ionicons name="car-sport" size={22} color={COLORS.deepAsphalt} />}
+          icon="car-sport"
         />
 
         <Text style={styles.footerText}>
@@ -126,28 +134,34 @@ const LandingScreen = () => {
         </Text>
       </Animated.View>
 
-      {/* Modale de Décision */}
+      {/* ✅ CORRECTION : Modale de Décision - lire modal.visible et modal.type */}
       <GlassModal
-        visible={isModalOpen && modalType === 'decision'}
+        visible={modal.visible && modal.type === 'decision'}
         onClose={() => dispatch(closeModal())}
         position="center"
       >
         <View style={styles.modalContent}>
           <View style={styles.modalIcon}>
-            <Ionicons name="person-circle-outline" size={48} color={COLORS.champagneGold} />
+            <Ionicons
+              name="person-circle-outline"
+              size={48}
+              color={COLORS.champagneGold}
+            />
           </View>
 
           <Text style={styles.modalTitle}>Avez-vous un compte ?</Text>
           <Text style={styles.modalSubtitle}>
-            Pour commander votre taxi, connectez-vous ou créez un compte gratuit.
+            Pour commander votre taxi, connectez-vous ou créez un compte
+            gratuit.
           </Text>
 
           <View style={styles.modalButtons}>
+            {/* ✅ CORRECTION : icon est un STRING */}
             <GoldButton
               title="Oui, me connecter"
               onPress={() => handleDecision(true)}
               variant="primary"
-              icon={<Ionicons name="log-in-outline" size={20} color={COLORS.deepAsphalt} />}
+              icon="log-in-outline"
             />
 
             <View style={{ height: SPACING.md }} />
@@ -156,7 +170,7 @@ const LandingScreen = () => {
               title="Non, créer un compte"
               onPress={() => handleDecision(false)}
               variant="secondary"
-              icon={<Ionicons name="person-add-outline" size={20} color={COLORS.moonlightWhite} />}
+              icon="person-add-outline"
             />
           </View>
         </View>
@@ -171,7 +185,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.deepAsphalt,
     paddingHorizontal: SPACING.xxl,
   },
-  // Décors d'ambiance
   decorCircle1: {
     position: 'absolute',
     top: -80,
@@ -190,7 +203,6 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     backgroundColor: 'rgba(212, 175, 55, 0.03)',
   },
-  // Logo
   logoSection: {
     flex: 0.3,
     justifyContent: 'flex-end',
@@ -211,7 +223,6 @@ const styles = StyleSheet.create({
     color: COLORS.deepAsphalt,
     marginTop: -2,
   },
-  // Contenu
   contentSection: {
     flex: 0.4,
     justifyContent: 'center',
@@ -239,7 +250,6 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
     paddingHorizontal: SPACING.lg,
   },
-  // Action
   actionSection: {
     flex: 0.3,
     justifyContent: 'center',
@@ -255,7 +265,6 @@ const styles = StyleSheet.create({
     color: COLORS.champagneGold,
     textDecorationLine: 'underline',
   },
-  // Modale
   modalContent: {
     alignItems: 'center',
   },
