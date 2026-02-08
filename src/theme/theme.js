@@ -2,6 +2,7 @@
 // Ce fichier est importé PARTOUT. Il est la source unique de vérité visuelle.
 
 import { Dimensions, Platform } from 'react-native';
+import { MD3DarkTheme } from 'react-native-paper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
@@ -9,21 +10,17 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 1. PALETTE DE COULEURS - "LUXE NOCTURNE & TRANSPARENCE"
 // ═══════════════════════════════════════════════════════════════
 const COLORS = {
-  // Couleur A - Le Fond Global (Deep Asphalt)
   deepAsphalt: '#121418',
-  deepAsphaltRGB: '18, 20, 24', // Pour les manipulations d'opacité
+  deepAsphaltRGB: '18, 20, 24',
 
-  // Couleur B - L'Accent Premium (Champagne Gold)
   champagneGold: '#D4AF37',
   champagneGoldRGB: '212, 175, 55',
   champagneGoldLight: '#E8D48B',
   champagneGoldDark: '#B8960E',
 
-  // Couleur C - Le Contraste (Moonlight White)
   moonlightWhite: '#F2F4F6',
   moonlightWhiteRGB: '242, 244, 246',
 
-  // Couleurs Sémantiques
   success: '#2ECC71',
   successRGB: '46, 204, 113',
   danger: '#E74C3C',
@@ -33,27 +30,22 @@ const COLORS = {
   info: '#3498DB',
   infoRGB: '52, 152, 219',
 
-  // Niveaux d'opacité du fond
   glassDark: 'rgba(18, 20, 24, 0.92)',
   glassMedium: 'rgba(18, 20, 24, 0.85)',
   glassLight: 'rgba(18, 20, 24, 0.75)',
   glassUltraLight: 'rgba(18, 20, 24, 0.60)',
 
-  // Niveaux d'opacité du texte
-  textPrimary: '#F2F4F6',           // 100%
-  textSecondary: 'rgba(242, 244, 246, 0.70)',  // 70%
-  textTertiary: 'rgba(242, 244, 246, 0.45)',   // 45%
-  textDisabled: 'rgba(242, 244, 246, 0.25)',   // 25%
+  textPrimary: '#F2F4F6',
+  textSecondary: 'rgba(242, 244, 246, 0.70)',
+  textTertiary: 'rgba(242, 244, 246, 0.45)',
+  textDisabled: 'rgba(242, 244, 246, 0.25)',
 
-  // Bordures Glassmorphism
   glassBorder: 'rgba(242, 244, 246, 0.10)',
   glassBorderActive: 'rgba(212, 175, 55, 0.30)',
 
-  // Overlay
   overlayDark: 'rgba(0, 0, 0, 0.60)',
   overlayMedium: 'rgba(0, 0, 0, 0.40)',
 
-  // Transparent
   transparent: 'transparent',
 };
 
@@ -61,7 +53,6 @@ const COLORS = {
 // 2. TYPOGRAPHIE
 // ═══════════════════════════════════════════════════════════════
 const FONTS = {
-  // Familles (à remplacer par vos polices custom chargées via expo-font)
   family: {
     bold: Platform.OS === 'ios' ? 'System' : 'Roboto',
     semiBold: Platform.OS === 'ios' ? 'System' : 'Roboto',
@@ -69,8 +60,6 @@ const FONTS = {
     regular: Platform.OS === 'ios' ? 'System' : 'Roboto',
     light: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
-
-  // Tailles
   sizes: {
     hero: 34,
     h1: 28,
@@ -82,8 +71,6 @@ const FONTS = {
     caption: 12,
     micro: 10,
   },
-
-  // Poids
   weights: {
     bold: '700',
     semiBold: '600',
@@ -91,8 +78,6 @@ const FONTS = {
     regular: '400',
     light: '300',
   },
-
-  // Hauteurs de ligne
   lineHeights: {
     tight: 1.2,
     normal: 1.5,
@@ -191,7 +176,6 @@ const SHADOWS = {
 // 6. ANIMATIONS - Courbes et Durées
 // ═══════════════════════════════════════════════════════════════
 const ANIMATIONS = {
-  // Durées
   duration: {
     instant: 100,
     fast: 200,
@@ -200,32 +184,12 @@ const ANIMATIONS = {
     verySlow: 600,
     dramatic: 800,
   },
-
-  // Configurations Spring pour react-native-reanimated
   spring: {
-    gentle: {
-      damping: 20,
-      stiffness: 150,
-      mass: 1,
-    },
-    bouncy: {
-      damping: 12,
-      stiffness: 180,
-      mass: 0.8,
-    },
-    snappy: {
-      damping: 25,
-      stiffness: 300,
-      mass: 0.8,
-    },
-    smooth: {
-      damping: 30,
-      stiffness: 200,
-      mass: 1,
-    },
+    gentle: { damping: 20, stiffness: 150, mass: 1 },
+    bouncy: { damping: 12, stiffness: 180, mass: 0.8 },
+    snappy: { damping: 25, stiffness: 300, mass: 0.8 },
+    smooth: { damping: 30, stiffness: 200, mass: 1 },
   },
-
-  // Courbes d'easing
   easing: {
     easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
     easeInOut: 'cubic-bezier(0.65, 0, 0.35, 1)',
@@ -237,7 +201,6 @@ const ANIMATIONS = {
 // 7. STYLES GLASSMORPHISM PRÉ-COMPOSÉS
 // ═══════════════════════════════════════════════════════════════
 const GLASS = {
-  // Carte standard (pour les éléments de liste, forfaits, etc.)
   card: {
     backgroundColor: COLORS.glassMedium,
     borderRadius: BORDERS.radius.xl,
@@ -245,23 +208,17 @@ const GLASS = {
     borderColor: COLORS.glassBorder,
     overflow: 'hidden',
   },
-
-  // Surface élevée (sidebar, header, modales)
   surface: {
     backgroundColor: COLORS.glassDark,
     borderWidth: BORDERS.width.thin,
     borderColor: COLORS.glassBorder,
   },
-
-  // Surface subtile (inputs, zones de texte)
   subtle: {
     backgroundColor: COLORS.glassUltraLight,
     borderRadius: BORDERS.radius.lg,
     borderWidth: BORDERS.width.thin,
     borderColor: COLORS.glassBorder,
   },
-
-  // Effet de surbrillance dorée
   goldHighlight: {
     backgroundColor: 'rgba(212, 175, 55, 0.08)',
     borderRadius: BORDERS.radius.xl,
@@ -274,53 +231,27 @@ const GLASS = {
 // 8. DIMENSIONS RESPONSIVE
 // ═══════════════════════════════════════════════════════════════
 const DIMENSIONS = {
-  screen: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
-  },
-  // Sidebar
-  sidebar: {
-    width: SCREEN_WIDTH * 0.78,
-    maxWidth: 320,
-  },
-  // Header
+  screen: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  sidebar: { width: SCREEN_WIDTH * 0.78, maxWidth: 320 },
   header: {
     height: Platform.OS === 'ios' ? 96 : 72,
     paddingTop: Platform.OS === 'ios' ? 48 : 24,
   },
-  // Bottom Sheet / Drawer de course
   drawer: {
     collapsed: SCREEN_HEIGHT * 0.28,
     expanded: SCREEN_HEIGHT * 0.55,
     full: SCREEN_HEIGHT * 0.85,
   },
-  // Boutons
-  button: {
-    height: 52,
-    heightSmall: 40,
-    heightLarge: 58,
-  },
-  // Input
-  input: {
-    height: 52,
-  },
-  // Carte forfait
-  forfaitCard: {
-    width: SCREEN_WIDTH * 0.72,
-    height: 160,
-  },
-  // Badge notification
-  badge: {
-    size: 20,
-    sizeLarge: 28,
-  },
+  button: { height: 52, heightSmall: 40, heightLarge: 58 },
+  input: { height: 52 },
+  forfaitCard: { width: SCREEN_WIDTH * 0.72, height: 160 },
+  badge: { size: 20, sizeLarge: 28 },
 };
 
 // ═══════════════════════════════════════════════════════════════
 // 9. STYLES DE COMPOSANTS PRÉ-COMPOSÉS
 // ═══════════════════════════════════════════════════════════════
 const COMPONENT_STYLES = {
-  // Bouton Primaire
   buttonPrimary: {
     backgroundColor: COLORS.champagneGold,
     borderRadius: BORDERS.radius.pill,
@@ -336,8 +267,6 @@ const COMPONENT_STYLES = {
     fontWeight: FONTS.weights.bold,
     letterSpacing: 0.5,
   },
-
-  // Bouton Secondaire
   buttonSecondary: {
     backgroundColor: COLORS.transparent,
     borderRadius: BORDERS.radius.pill,
@@ -353,8 +282,6 @@ const COMPONENT_STYLES = {
     fontSize: FONTS.sizes.body,
     fontWeight: FONTS.weights.semiBold,
   },
-
-  // Bouton Danger
   buttonDanger: {
     backgroundColor: COLORS.danger,
     borderRadius: BORDERS.radius.pill,
@@ -368,8 +295,6 @@ const COMPONENT_STYLES = {
     fontSize: FONTS.sizes.body,
     fontWeight: FONTS.weights.bold,
   },
-
-  // Input Field
   inputField: {
     height: DIMENSIONS.input.height,
     backgroundColor: COLORS.glassLight,
@@ -384,27 +309,19 @@ const COMPONENT_STYLES = {
     borderColor: COLORS.champagneGold,
     borderWidth: BORDERS.width.medium,
   },
-
-  // Section Container
   sectionContainer: {
     paddingHorizontal: SPACING.xl,
     paddingVertical: SPACING.lg,
   },
-
-  // Séparateur
   divider: {
     height: 1,
     backgroundColor: COLORS.glassBorder,
     marginVertical: SPACING.md,
   },
-
-  // Page container
   pageContainer: {
     flex: 1,
     backgroundColor: COLORS.deepAsphalt,
   },
-
-  // Screen safe area
   safeArea: {
     flex: 1,
     backgroundColor: COLORS.deepAsphalt,
@@ -412,22 +329,49 @@ const COMPONENT_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 10. ICÔNES CONFIGURATION (pour Ionicons ou autre)
+// 10. ICÔNES CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 const ICONS = {
-  sizes: {
-    xs: 16,
-    sm: 20,
-    md: 24,
-    lg: 28,
-    xl: 32,
-    xxl: 40,
-    hero: 64,
-  },
+  sizes: { xs: 16, sm: 20, md: 24, lg: 28, xl: 32, xxl: 40, hero: 64 },
   colors: {
     default: COLORS.textSecondary,
     active: COLORS.champagneGold,
     inactive: COLORS.textTertiary,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 11. THÈME REACT NATIVE PAPER (MD3) - Compatible PaperProvider
+// ═══════════════════════════════════════════════════════════════
+const YelyTheme = {
+  ...MD3DarkTheme,
+  dark: true,
+  colors: {
+    ...MD3DarkTheme.colors,
+    primary: COLORS.champagneGold,
+    onPrimary: COLORS.deepAsphalt,
+    primaryContainer: COLORS.champagneGoldDark,
+    onPrimaryContainer: COLORS.champagneGoldLight,
+    secondary: COLORS.moonlightWhite,
+    onSecondary: COLORS.deepAsphalt,
+    secondaryContainer: COLORS.glassMedium,
+    onSecondaryContainer: COLORS.moonlightWhite,
+    background: COLORS.deepAsphalt,
+    onBackground: COLORS.moonlightWhite,
+    surface: COLORS.glassDark,
+    onSurface: COLORS.moonlightWhite,
+    surfaceVariant: COLORS.glassMedium,
+    onSurfaceVariant: COLORS.textSecondary,
+    outline: COLORS.glassBorder,
+    error: COLORS.danger,
+    onError: COLORS.moonlightWhite,
+    // Couleurs custom ajoutées
+    textSecondary: COLORS.textSecondary,
+    textTertiary: COLORS.textTertiary,
+    champagneGold: COLORS.champagneGold,
+    success: COLORS.success,
+    warning: COLORS.warning,
+    info: COLORS.info,
   },
 };
 
@@ -448,7 +392,17 @@ const THEME = {
 };
 
 export {
-    ANIMATIONS, BORDERS, COLORS, COMPONENT_STYLES, DIMENSIONS, FONTS, GLASS, ICONS, SHADOWS, SPACING
+    ANIMATIONS,
+    BORDERS,
+    COLORS,
+    COMPONENT_STYLES,
+    DIMENSIONS,
+    FONTS,
+    GLASS,
+    ICONS,
+    SHADOWS,
+    SPACING,
+    YelyTheme
 };
 
 export default THEME;
