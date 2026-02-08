@@ -3,33 +3,25 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { restoreAuth } from '../store/slices/authSlice';
 import { ANIMATIONS, COLORS } from '../theme/theme';
 
-// Screens
+// Screens Auth
 import LandingScreen from '../screens/LandingScreen';
 import SplashScreen from '../screens/SplashScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
-import RiderHome from '../screens/home/RiderHome';
+
+// Drawer (contient tous les écrans protégés)
+import AppDrawer from './AppDrawer';
 
 const Stack = createNativeStackNavigator();
 
-// Placeholder temporaire pour les écrans non encore codés
-const PlaceholderScreen = ({ route }) => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.deepAsphalt }}>
-    <Text style={{ color: 'white', fontSize: 18 }}>
-      Écran {route?.name || 'inconnu'} en construction
-    </Text>
-  </View>
-);
-
 const AppNavigator = () => {
   const dispatch = useDispatch();
-  const { isAuthenticated, userInfo } = useSelector((state) => state.auth);
+  const { isAuthenticated } = useSelector((state) => state.auth);
   const [isReady, setIsReady] = useState(false);
 
   // Restauration de la session au démarrage
@@ -62,21 +54,8 @@ const AppNavigator = () => {
     return <SplashScreen />;
   }
 
-  // ✅ LOGIQUE DE ROUTE SÉCURISÉE
-  const getInitialRoute = () => {
-    if (!isAuthenticated) return 'Landing';
-    
-    // Si on est ici, on est forcément connecté. On vérifie le rôle.
-    const role = userInfo?.role?.toLowerCase() || 'rider';
-    if (role === 'driver') return 'DriverHome';
-    if (role === 'admin' || role === 'superadmin') return 'AdminDashboard';
-    
-    return 'RiderHome';
-  };
-
   return (
     <Stack.Navigator
-      initialRouteName={getInitialRoute()}
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: COLORS.deepAsphalt },
@@ -85,18 +64,16 @@ const AppNavigator = () => {
       }}
     >
       {!isAuthenticated ? (
-        // STACK AUTHENTIFICATION
+        // STACK AUTHENTIFICATION (Pas de Drawer ici)
         <Stack.Group>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="Login" component={LoginPage} />
           <Stack.Screen name="Register" component={RegisterPage} />
         </Stack.Group>
       ) : (
-        // STACK APPLICATION (Protégé)
+        // STACK APPLICATION : Le Drawer contient tous les écrans protégés
         <Stack.Group>
-          <Stack.Screen name="RiderHome" component={RiderHome} />
-          <Stack.Screen name="DriverHome" component={PlaceholderScreen} />
-          <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
+          <Stack.Screen name="MainApp" component={AppDrawer} />
         </Stack.Group>
       )}
     </Stack.Navigator>

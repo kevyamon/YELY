@@ -1,20 +1,22 @@
 // src/screens/home/RiderHome.jsx
+
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { Dimensions, StyleSheet, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps'; // Import normal ici
 import { Text } from 'react-native-paper';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import GlassCard from '../../components/ui/GlassCard';
+import MapCard from '../../components/map/MapCard';
+import SearchBar from '../../components/ui/SearchBar';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import THEME from '../../theme/theme';
 
-const { width, height } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
+  const insets = useSafeAreaInsets();
   const { location } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState('Localisation...');
 
@@ -25,80 +27,140 @@ const RiderHome = ({ navigation }) => {
         if (addr) setCurrentAddress(addr.shortName);
       };
       getAddress();
-      
-      mapRef.current?.animateToRegion({
-        latitude: location.latitude,
-        longitude: location.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
-      }, 1000);
     }
   }, [location]);
 
+  const topBarHeight = 70;
+  const availableHeight = SCREEN_HEIGHT - insets.top - topBarHeight - insets.bottom;
+  const mapHeight = availableHeight * 0.50;
+
   return (
-    <View style={styles.container}>
-      <MapView
-        ref={mapRef}
-        provider={PROVIDER_GOOGLE}
-        style={styles.map}
-        customMapStyle={mapStyle}
-        showsUserLocation
-        showsMyLocationButton={false}
-      >
-        {location && (
-          <Marker
-            coordinate={{ latitude: location.latitude, longitude: location.longitude }}
-          >
-            <View style={styles.userMarker}>
-              <View style={styles.userMarkerInner} />
-            </View>
-          </Marker>
-        )}
-      </MapView>
+    <View style={[styles.container, { paddingTop: insets.top }]}>
 
-      <SafeAreaView style={styles.header}>
-        <TouchableOpacity style={styles.menuButton}>
-          <Ionicons name="menu-outline" size={28} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
-        
-        <GlassCard style={styles.locationBar}>
-          <Ionicons name="radio-button-on" size={18} color={THEME.COLORS.champagneGold} />
+      {/* ═══════ ZONE HAUTE : Adresse + Hamburger ═══════ */}
+      <View style={styles.topBar}>
+        <View style={styles.locationContainer}>
+          <Ionicons name="radio-button-on" size={16} color={THEME.COLORS.champagneGold} />
           <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
-        </GlassCard>
-      </SafeAreaView>
+        </View>
 
-      <View style={styles.bottomSection}>
-        <TouchableOpacity activeOpacity={0.9}>
-          <GlassCard style={styles.searchCard}>
-            <View style={styles.searchRow}>
-              <Ionicons name="search" size={22} color={THEME.COLORS.textTertiary} />
-              <Text style={styles.searchText}>Où allez-vous ?</Text>
-            </View>
-          </GlassCard>
+        <TouchableOpacity
+          style={styles.menuButton}
+          onPress={() => navigation.openDrawer()}
+        >
+          <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
+      </View>
+
+      {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
+      <View style={{ height: mapHeight }}>
+        <MapCard
+          ref={mapRef}
+          location={location}
+          showUserMarker
+          showRecenterButton
+          floating
+          darkMode
+        />
+      </View>
+
+      {/* ═══════ ZONE BASSE : Recherche + Forfaits (futur) ═══════ */}
+      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.sm }]}>
+
+        <SearchBar
+          label="On va où ?"
+          hint="Saisissez votre destination"
+          onPress={() => {
+            // Phase 4 : ouvrira le DestinationSearchSheet
+            console.log('TODO: ouvrir recherche destination');
+          }}
+        />
+
+        {/* Espace réservé pour les futures cartes forfaits (Phase 5) */}
+        <View style={styles.forfaitsZone}>
+          <View style={styles.forfaitDots}>
+            <View style={[styles.dot, styles.dotActive]} />
+            <View style={styles.dot} />
+            <View style={styles.dot} />
+          </View>
+        </View>
       </View>
     </View>
   );
 };
 
-const mapStyle = [
-  { "elementType": "geometry", "stylers": [{ "color": "#121418" }] },
-  { "elementType": "labels.text.fill", "stylers": [{ "color": "#F2F4F6" }] }
-];
-
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
-  map: { width, height },
-  header: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', paddingHorizontal: 16, alignItems: 'center', zIndex: 10 },
-  menuButton: { width: 50, height: 50, backgroundColor: THEME.COLORS.glassDark, borderRadius: 25, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  locationBar: { flex: 1, marginLeft: 12, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, height: 50 },
-  locationText: { color: THEME.COLORS.moonlightWhite, marginLeft: 10, fontSize: 14, flex: 1 },
-  bottomSection: { position: 'absolute', bottom: 32, left: 20, right: 20 },
-  searchCard: { padding: 16, borderRadius: 20 },
-  searchRow: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  searchText: { color: THEME.COLORS.textTertiary, fontSize: 18, fontWeight: '500' },
-  userMarker: { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(212, 175, 55, 0.2)', justifyContent: 'center', alignItems: 'center' },
-  userMarkerInner: { width: 12, height: 12, borderRadius: 6, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2, borderColor: '#FFF' }
+  container: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.deepAsphalt,
+  },
+
+  // ─── ZONE HAUTE ───
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: THEME.SPACING.lg,
+    paddingVertical: THEME.SPACING.md,
+    backgroundColor: THEME.COLORS.deepAsphalt,
+  },
+  locationContainer: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassLight,
+    paddingHorizontal: THEME.SPACING.md,
+    paddingVertical: THEME.SPACING.md,
+    borderRadius: THEME.BORDERS.radius.lg,
+    borderWidth: THEME.BORDERS.width.thin,
+    borderColor: THEME.COLORS.glassBorder,
+    marginRight: THEME.SPACING.md,
+  },
+  locationText: {
+    color: THEME.COLORS.moonlightWhite,
+    marginLeft: THEME.SPACING.sm,
+    fontSize: THEME.FONTS.sizes.bodySmall,
+    flex: 1,
+  },
+  menuButton: {
+    width: 46,
+    height: 46,
+    backgroundColor: THEME.COLORS.glassDark,
+    borderRadius: 23,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: THEME.BORDERS.width.thin,
+    borderColor: THEME.COLORS.glassBorder,
+  },
+
+  // ─── ZONE BASSE ───
+  bottomSection: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.deepAsphalt,
+    paddingHorizontal: THEME.SPACING.lg,
+    paddingTop: THEME.SPACING.lg,
+  },
+
+  // ─── FORFAITS ZONE ───
+  forfaitsZone: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  forfaitDots: {
+    flexDirection: 'row',
+    gap: THEME.SPACING.xs,
+  },
+  dot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.COLORS.textDisabled,
+  },
+  dotActive: {
+    backgroundColor: THEME.COLORS.champagneGold,
+    width: 18,
+    borderRadius: 3,
+  },
 });
 
 export default RiderHome;
