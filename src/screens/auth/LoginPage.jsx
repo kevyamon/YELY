@@ -4,16 +4,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View,
+  Image,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from 'react-native';
 import Animated, {
-    FadeInDown
+  FadeInDown
 } from 'react-native-reanimated';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -30,7 +31,7 @@ const LoginPage = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
 
-  const [identifier, setIdentifier] = useState(''); // Email ou Téléphone
+  const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
 
   const [login, { isLoading }] = useLoginMutation();
@@ -53,15 +54,12 @@ const LoginPage = () => {
         token: res.token,
       }));
 
-      // Connecter le socket
       socketService.connect(res.token);
 
       dispatch(showSuccessToast({
         title: `Bienvenue ${res.user.name} !`,
         message: 'Connexion réussie.',
       }));
-
-      // La navigation est gérée automatiquement par AppNavigator
     } catch (err) {
       const errorMsg = err?.data?.message || 'Erreur de connexion. Vérifiez vos identifiants.';
       dispatch(showErrorToast({
@@ -92,8 +90,12 @@ const LoginPage = () => {
 
           {/* Logo et Titre */}
           <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.headerSection}>
-            <View style={styles.logoSmall}>
-              <Text style={styles.logoSmallText}>Y</Text>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require('../../../assets/logo.png')}
+                style={styles.logoImage}
+                resizeMode="cover"
+              />
             </View>
             <Text style={styles.title}>Bon retour</Text>
             <Text style={styles.subtitle}>
@@ -176,20 +178,19 @@ const styles = StyleSheet.create({
     marginTop: SPACING.huge,
     marginBottom: SPACING.xxxl,
   },
-  logoSmall: {
-    width: 56,
-    height: 56,
-    borderRadius: 16,
-    backgroundColor: COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.champagneGold,
     marginBottom: SPACING.xl,
     ...SHADOWS.goldSoft,
   },
-  logoSmallText: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: COLORS.deepAsphalt,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   title: {
     fontSize: FONTS.sizes.h1,
