@@ -16,21 +16,46 @@ import { YelyTheme } from './src/theme/theme';
 import AppToast from './src/components/ui/AppToast';
 import { hideToast, selectToast } from './src/store/slices/uiSlice';
 
-const GlobalToast = () => {
+// Socket.io — Système nerveux temps réel
+import useSocket from './src/hooks/useSocket';
+import useSocketEvents from './src/hooks/useSocketEvents';
+
+// Composant interne qui a accès au Redux store
+const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
 
+  // Brancher le socket (connexion/déconnexion automatique)
+  useSocket();
+
+  // Brancher les événements métier (courses, notifs, GPS, etc.)
+  useSocketEvents();
+
   return (
-    <Portal>
-      <AppToast
-        visible={toast.visible}
-        type={toast.type}
-        title={toast.title}
-        message={toast.message}
-        duration={toast.duration}
-        onHide={() => dispatch(hideToast())}
-      />
-    </Portal>
+    <>
+      <NavigationContainer>
+        <View style={styles.container}>
+          <StatusBar
+            style="light"
+            backgroundColor={YelyTheme.colors.background}
+            translucent
+          />
+          <AppNavigator />
+        </View>
+      </NavigationContainer>
+
+      {/* Toast global — rendu via Portal au-dessus de tout */}
+      <Portal>
+        <AppToast
+          visible={toast.visible}
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          duration={toast.duration}
+          onHide={() => dispatch(hideToast())}
+        />
+      </Portal>
+    </>
   );
 };
 
@@ -39,18 +64,7 @@ export default function App() {
     <ReduxProvider store={store}>
       <PaperProvider theme={YelyTheme}>
         <SafeAreaProvider>
-          <NavigationContainer>
-            <View style={styles.container}>
-              <StatusBar
-                style="light"
-                backgroundColor={YelyTheme.colors.background}
-                translucent
-              />
-              <AppNavigator />
-            </View>
-          </NavigationContainer>
-          {/* Le Toast est ICI, en dehors du NavigationContainer, rendu via Portal au-dessus de tout */}
-          <GlobalToast />
+          <AppContent />
         </SafeAreaProvider>
       </PaperProvider>
     </ReduxProvider>
