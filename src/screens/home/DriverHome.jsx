@@ -2,12 +2,13 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Switch, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import ScreenHeader from '../../components/ui/ScreenHeader';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
@@ -59,27 +60,18 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  const topBarHeight = 70;
-  const availableHeight = SCREEN_HEIGHT - insets.top - topBarHeight - insets.bottom;
+  const availableHeight = SCREEN_HEIGHT - insets.top - 80 - insets.bottom;
   const mapHeight = availableHeight * 0.50;
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
 
-      {/* ═══════ ZONE HAUTE : Adresse + Status + Hamburger ═══════ */}
-      <View style={styles.topBar}>
-        <View style={styles.locationContainer}>
-          <View style={[styles.statusDot, isAvailable && styles.statusDotOnline]} />
-          <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
-        >
-          <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
-      </View>
+      {/* ═══════ HEADER ═══════ */}
+      <ScreenHeader
+        leftIcon={isAvailable ? 'status-online' : 'status-offline'}
+        leftText={currentAddress}
+        onRightPress={() => navigation.openDrawer()}
+      />
 
       {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
       <View style={{ height: mapHeight }}>
@@ -165,62 +157,12 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.COLORS.deepAsphalt,
   },
-
-  // ─── ZONE HAUTE ───
-  topBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.deepAsphalt,
-  },
-  locationContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassLight,
-    paddingHorizontal: THEME.SPACING.md,
-    paddingVertical: THEME.SPACING.md,
-    borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    marginRight: THEME.SPACING.md,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: THEME.COLORS.textTertiary,
-  },
-  statusDotOnline: {
-    backgroundColor: THEME.COLORS.success,
-  },
-  locationText: {
-    color: THEME.COLORS.moonlightWhite,
-    marginLeft: THEME.SPACING.sm,
-    fontSize: THEME.FONTS.sizes.bodySmall,
-    flex: 1,
-  },
-  menuButton: {
-    width: 46,
-    height: 46,
-    backgroundColor: THEME.COLORS.glassDark,
-    borderRadius: 23,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-  },
-
-  // ─── ZONE BASSE ───
   bottomSection: {
     flex: 1,
     backgroundColor: THEME.COLORS.deepAsphalt,
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.lg,
   },
-
-  // ─── CARTE DISPONIBILITÉ ───
   availabilityCard: {
     backgroundColor: THEME.COLORS.glassMedium,
     borderRadius: THEME.BORDERS.radius.xl,
@@ -262,8 +204,6 @@ const styles = StyleSheet.create({
     marginTop: THEME.SPACING.xxs,
     marginLeft: THEME.SPACING.xxl + THEME.SPACING.sm,
   },
-
-  // ─── STATS ───
   statsRow: {
     flexDirection: 'row',
     gap: THEME.SPACING.sm,

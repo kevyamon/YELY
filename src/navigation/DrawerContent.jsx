@@ -62,7 +62,7 @@ const DrawerContent = (props) => {
     <Animated.View
       style={[
         styles.container,
-        { paddingTop: insets.top },
+        { paddingTop: insets.top + SPACING.sm },
         {
           opacity: fadeAnim,
           transform: [{ scale: scaleAnim }],
