@@ -1,14 +1,13 @@
 // src/services/socketService.js
 // Singleton Socket.io - Le système nerveux temps réel
 
-import Constants from 'expo-constants';
 import { io } from 'socket.io-client';
-import { setCurrentRide, setRideStatus, updateDriverLocation } from '../store/slices/rideSlice';
-import { showToast } from '../store/slices/uiSlice';
-import store from '../store/store';
 
-// Récupération sécurisée de l'URL API
-const SOCKET_URL = Constants.expoConfig?.extra?.SOCKET_URL || 'https://your-backend.onrender.com';
+// Utilise la même variable d'environnement que apiSlice
+// EXPO_PUBLIC_API_URL = https://yely-backend-xxx.onrender.com/api
+// On retire le /api pour le socket car Socket.io se connecte à la racine
+const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+const SOCKET_URL = API_URL.replace('/api', '');
 
 class SocketService {
   constructor() {
@@ -17,6 +16,7 @@ class SocketService {
     this.reconnectAttempts = 0;
     this.maxReconnectAttempts = 10;
     this.locationInterval = null;
+    this._listeners = [];
   }
 
   /**
@@ -24,6 +24,12 @@ class SocketService {
    * @param {string} token - Token d'authentification JWT
    */
   connect(token) {
+    // Ne pas connecter si pas de token ou pas d'URL
+    if (!token || !SOCKET_URL) {
+      console.warn('[Socket] Connexion ignorée : token ou URL manquant');
+      return;
+    }
+
     if (this.socket?.connected) {
       console.log('[Socket] Déjà connecté');
       return;
@@ -33,7 +39,7 @@ class SocketService {
 
     this.socket = io(SOCKET_URL, {
       auth: { token },
-      transports: ['websocket'], // Force websocket pour éviter le long-polling (mieux pour React Native)
+      transports: ['websocket'],
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 2000,
@@ -42,10 +48,14 @@ class SocketService {
       autoConnect: true,
     });
 
-    this._setupListeners();
+    this._setupCoreListeners();
   }
 
-  _setupListeners() {
+  /**
+   * Listeners de base (connexion/déconnexion)
+   * Les listeners métier seront ajoutés par les hooks/composants
+   */
+  _setupCoreListeners() {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
@@ -57,100 +67,57 @@ class SocketService {
     this.socket.on('disconnect', (reason) => {
       console.log('[Socket] ❌ Déconnecté:', reason);
       this.isConnected = false;
-      if (reason === 'io server disconnect') {
-        // La déconnexion a été initiée par le serveur, on ne reconnecte pas automatiquement
-        this.socket.connect();
-      }
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('[Socket] Erreur de connexion:', error.message);
       this.reconnectAttempts++;
-    });
-
-    // ═══ ÉVÉNEMENTS COURSE ═══
-    this.socket.on('new_ride_request', (data) => {
-      console.log('[Socket] 🚕 Nouvelle demande de course reçue:', data);
-      store.dispatch({
-        type: 'ui/openModal',
-        payload: { type: 'rideRequest', data },
-      });
-    });
-
-    this.socket.on('ride_accepted', (data) => {
-      console.log('[Socket] ✅ Course acceptée:', data);
-      // Mise à jour du store Redux
-      store.dispatch(setCurrentRide(data.ride));
-      store.dispatch(setRideStatus('accepted'));
-      
-      store.dispatch(showToast({
-        type: 'success',
-        title: 'Course acceptée !',
-        message: `${data.driver?.name || 'Un chauffeur'} arrive dans ~${data.estimatedTime || '?'} min`,
-      }));
-    });
-
-    this.socket.on('ride_cancelled', (data) => {
-      console.log('[Socket] ❌ Course annulée:', data);
-      store.dispatch(setRideStatus('cancelled'));
-      store.dispatch(showToast({
-        type: 'warning',
-        title: 'Course annulée',
-        message: data.reason || 'La course a été annulée.',
-      }));
-    });
-
-    this.socket.on('ride_started', () => {
-      console.log('[Socket] 🚗 Course démarrée');
-      store.dispatch(setRideStatus('ongoing'));
-    });
-
-    this.socket.on('ride_completed', (data) => {
-      console.log('[Socket] 🏁 Course terminée');
-      store.dispatch(setRideStatus('completed'));
-      if (data?.ride) {
-        store.dispatch(setCurrentRide(data.ride));
+      // Log uniquement les 3 premières tentatives pour ne pas spammer la console
+      if (this.reconnectAttempts <= 3) {
+        console.warn('[Socket] Erreur de connexion (tentative', this.reconnectAttempts + '):', error.message);
+      }
+      // Après le max de tentatives, on arrête
+      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        console.error('[Socket] Nombre max de tentatives atteint. Arrêt.');
+        this.disconnect();
       }
     });
+  }
 
-    // ═══ TRACKING GPS DU CHAUFFEUR ═══
-    this.socket.on('driver_location_update', (data) => {
-      // Optimisation : ne dispatcher que si les données sont valides
-      if (data && data.latitude && data.longitude) {
-        store.dispatch(updateDriverLocation({
-          latitude: data.latitude,
-          longitude: data.longitude,
-          heading: data.heading || 0,
-        }));
-      }
-    });
+  /**
+   * Écouter un événement
+   * @param {string} event - Nom de l'événement
+   * @param {Function} callback - Fonction à appeler
+   */
+  on(event, callback) {
+    if (this.socket) {
+      this.socket.on(event, callback);
+      this._listeners.push({ event, callback });
+    }
+  }
 
-    // ═══ NOTIFICATIONS GÉNÉRALES ═══
-    this.socket.on('notification', (data) => {
-      store.dispatch(showToast({
-        type: data.type || 'info',
-        title: data.title || 'Notification',
-        message: data.message || '',
-      }));
-    });
+  /**
+   * Retirer un listener
+   * @param {string} event - Nom de l'événement
+   * @param {Function} callback - Fonction à retirer
+   */
+  off(event, callback) {
+    if (this.socket) {
+      this.socket.off(event, callback);
+      this._listeners = this._listeners.filter(
+        (l) => !(l.event === event && l.callback === callback)
+      );
+    }
+  }
 
-    // ═══ ABONNEMENT CHAUFFEUR ═══
-    this.socket.on('subscription_validated', (data) => {
-      store.dispatch(showToast({
-        type: 'success',
-        title: 'Abonnement activé ! 🎉',
-        message: `Votre abonnement ${data.plan} est maintenant actif.`,
-      }));
-    });
-
-    // ═══ ADMIN - Alertes ═══
-    this.socket.on('new_proof_submitted', (data) => {
-      store.dispatch(showToast({
-        type: 'info',
-        title: 'Nouvelle preuve reçue',
-        message: `${data.driverName || 'Un chauffeur'} a soumis une preuve de paiement.`,
-      }));
-    });
+  /**
+   * Émettre un événement
+   * @param {string} event - Nom de l'événement
+   * @param {*} data - Données à envoyer
+   */
+  emit(event, data) {
+    if (this.socket?.connected) {
+      this.socket.emit(event, data);
+    }
   }
 
   /**
@@ -177,7 +144,7 @@ class SocketService {
   startLocationTracking(getLocationFn, intervalMs = 5000) {
     this.stopLocationTracking();
     console.log('[Socket] Démarrage du tracking GPS...');
-    
+
     this.locationInterval = setInterval(async () => {
       try {
         const coords = await getLocationFn();
@@ -190,6 +157,9 @@ class SocketService {
     }, intervalMs);
   }
 
+  /**
+   * Arrête le suivi GPS
+   */
   stopLocationTracking() {
     if (this.locationInterval) {
       clearInterval(this.locationInterval);
@@ -198,27 +168,52 @@ class SocketService {
     }
   }
 
-  // Rejoindre une "room" spécifique (ex: ride_12345)
+  /**
+   * Rejoindre une "room" spécifique
+   * @param {string} roomId
+   */
   joinRoom(roomId) {
     if (this.socket?.connected && roomId) {
       this.socket.emit('join_room', roomId);
     }
   }
 
+  /**
+   * Quitter une "room"
+   * @param {string} roomId
+   */
   leaveRoom(roomId) {
     if (this.socket?.connected && roomId) {
       this.socket.emit('leave_room', roomId);
     }
   }
 
+  /**
+   * Déconnexion propre
+   */
   disconnect() {
     this.stopLocationTracking();
+    // Retirer tous les listeners custom
+    this._listeners.forEach(({ event, callback }) => {
+      this.socket?.off(event, callback);
+    });
+    this._listeners = [];
+
     if (this.socket) {
       console.log('[Socket] Déconnexion manuelle');
       this.socket.disconnect();
       this.socket = null;
       this.isConnected = false;
+      this.reconnectAttempts = 0;
     }
+  }
+
+  /**
+   * Vérifie si le socket est connecté
+   * @returns {boolean}
+   */
+  getIsConnected() {
+    return this.socket?.connected || false;
   }
 }
 
