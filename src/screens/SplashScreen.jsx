@@ -1,24 +1,21 @@
 // src/screens/SplashScreen.jsx
 
 import { useEffect } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withDelay,
-    withSequence,
-    withSpring,
-    withTiming
+  useAnimatedStyle,
+  useSharedValue,
+  withDelay,
+  withSequence,
+  withSpring,
+  withTiming,
 } from 'react-native-reanimated';
-import { COLORS, FONTS, SPACING } from '../theme/theme';
-
-const { width, height } = Dimensions.get('window');
+import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
 const SplashScreen = () => {
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
-  const shimmer = useSharedValue(0);
 
   useEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 600 });
@@ -27,7 +24,6 @@ const SplashScreen = () => {
       withSpring(1, { damping: 15, stiffness: 150 })
     );
     textOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
-    shimmer.value = withDelay(800, withTiming(1, { duration: 1000 }));
   }, []);
 
   const logoStyle = useAnimatedStyle(() => ({
@@ -42,8 +38,11 @@ const SplashScreen = () => {
   return (
     <View style={styles.container}>
       <Animated.View style={[styles.logoContainer, logoStyle]}>
-        <Text style={styles.logoText}>Y</Text>
-        <View style={styles.logoDot} />
+        <Image
+          source={require('../../assets/logo.png')}
+          style={styles.logoImage}
+          resizeMode="cover"
+        />
       </Animated.View>
 
       <Animated.View style={[styles.textContainer, textStyle]}>
@@ -62,28 +61,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   logoContainer: {
-    width: 100,
-    height: 100,
-    borderRadius: 30,
-    backgroundColor: COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    overflow: 'hidden',
+    borderWidth: 2.5,
+    borderColor: COLORS.champagneGold,
     marginBottom: SPACING.xxl,
+    ...SHADOWS.gold,
   },
-  logoText: {
-    fontSize: 56,
-    fontWeight: '900',
-    color: COLORS.deepAsphalt,
-    marginTop: -4,
-  },
-  logoDot: {
-    position: 'absolute',
-    bottom: 22,
-    right: 22,
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.deepAsphalt,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
   textContainer: {
     alignItems: 'center',

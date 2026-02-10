@@ -1,10 +1,10 @@
 // src/screens/LandingScreen.jsx
 
-import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { useEffect } from 'react';
 import {
   Dimensions,
+  Image,
   StatusBar,
   StyleSheet,
   Text,
@@ -17,7 +17,7 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { SafeAreaView } from 'react-native-safe-area-context'; // ✅ La bonne source
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassModal from '../components/ui/GlassModal';
@@ -25,7 +25,7 @@ import GoldButton from '../components/ui/GoldButton';
 import {
   closeModal,
   openModal,
-  selectModal, // ← Utilise le selector officiel
+  selectModal,
 } from '../store/slices/uiSlice';
 import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
@@ -34,11 +34,11 @@ const { width, height } = Dimensions.get('window');
 const LandingScreen = () => {
   const navigation = useNavigation();
   const dispatch = useDispatch();
-
-  // ✅ CORRECTION : utiliser le selector qui lit state.ui.modal
   const modal = useSelector(selectModal);
 
   // Animations d'entrée
+  const logoOpacity = useSharedValue(0);
+  const logoScale = useSharedValue(0.5);
   const titleOpacity = useSharedValue(0);
   const titleTranslateY = useSharedValue(30);
   const subtitleOpacity = useSharedValue(0);
@@ -47,13 +47,20 @@ const LandingScreen = () => {
   const decorOpacity = useSharedValue(0);
 
   useEffect(() => {
-    titleOpacity.value = withDelay(200, withTiming(1, { duration: 600 }));
-    titleTranslateY.value = withDelay(200, withSpring(0, { damping: 20, stiffness: 150 }));
-    subtitleOpacity.value = withDelay(500, withTiming(1, { duration: 500 }));
-    buttonOpacity.value = withDelay(800, withTiming(1, { duration: 400 }));
-    buttonScale.value = withDelay(800, withSpring(1, { damping: 12, stiffness: 180 }));
+    logoOpacity.value = withDelay(100, withTiming(1, { duration: 500 }));
+    logoScale.value = withDelay(100, withSpring(1, { damping: 12, stiffness: 180 }));
+    titleOpacity.value = withDelay(400, withTiming(1, { duration: 600 }));
+    titleTranslateY.value = withDelay(400, withSpring(0, { damping: 20, stiffness: 150 }));
+    subtitleOpacity.value = withDelay(700, withTiming(1, { duration: 500 }));
+    buttonOpacity.value = withDelay(1000, withTiming(1, { duration: 400 }));
+    buttonScale.value = withDelay(1000, withSpring(1, { damping: 12, stiffness: 180 }));
     decorOpacity.value = withDelay(300, withTiming(1, { duration: 800 }));
   }, []);
+
+  const logoStyle = useAnimatedStyle(() => ({
+    opacity: logoOpacity.value,
+    transform: [{ scale: logoScale.value }],
+  }));
 
   const titleStyle = useAnimatedStyle(() => ({
     opacity: titleOpacity.value,
@@ -96,9 +103,13 @@ const LandingScreen = () => {
 
       {/* Logo */}
       <View style={styles.logoSection}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoLetter}>Y</Text>
-        </View>
+        <Animated.View style={[styles.logoContainer, logoStyle]}>
+          <Image
+            source={require('../../assets/logo.png')}
+            style={styles.logoImage}
+            resizeMode="cover"
+          />
+        </Animated.View>
       </View>
 
       {/* Contenu central */}
@@ -120,7 +131,6 @@ const LandingScreen = () => {
 
       {/* Bouton d'action */}
       <Animated.View style={[styles.actionSection, buttonAnimStyle]}>
-        {/* ✅ CORRECTION : icon est un STRING, pas un composant JSX */}
         <GoldButton
           title="COMMANDER UN TAXI"
           onPress={handleOrderPress}
@@ -134,18 +144,18 @@ const LandingScreen = () => {
         </Text>
       </Animated.View>
 
-      {/* ✅ CORRECTION : Modale de Décision - lire modal.visible et modal.type */}
+      {/* Modale de Décision */}
       <GlassModal
         visible={modal.visible && modal.type === 'decision'}
         onClose={() => dispatch(closeModal())}
         position="center"
       >
         <View style={styles.modalContent}>
-          <View style={styles.modalIcon}>
-            <Ionicons
-              name="person-circle-outline"
-              size={48}
-              color={COLORS.champagneGold}
+          <View style={styles.modalLogoContainer}>
+            <Image
+              source={require('../../assets/logo.png')}
+              style={styles.modalLogoImage}
+              resizeMode="cover"
             />
           </View>
 
@@ -156,7 +166,6 @@ const LandingScreen = () => {
           </Text>
 
           <View style={styles.modalButtons}>
-            {/* ✅ CORRECTION : icon est un STRING */}
             <GoldButton
               title="Oui, me connecter"
               onPress={() => handleDecision(true)}
@@ -203,26 +212,28 @@ const styles = StyleSheet.create({
     borderRadius: 125,
     backgroundColor: 'rgba(212, 175, 55, 0.03)',
   },
+
+  // ─── LOGO ───
   logoSection: {
     flex: 0.3,
     justifyContent: 'flex-end',
     alignItems: 'center',
   },
-  logoMark: {
-    width: 72,
-    height: 72,
-    borderRadius: 22,
-    backgroundColor: COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
+  logoContainer: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.champagneGold,
     ...SHADOWS.gold,
   },
-  logoLetter: {
-    fontSize: 42,
-    fontWeight: '900',
-    color: COLORS.deepAsphalt,
-    marginTop: -2,
+  logoImage: {
+    width: '100%',
+    height: '100%',
   },
+
+  // ─── CONTENU ───
   contentSection: {
     flex: 0.4,
     justifyContent: 'center',
@@ -250,6 +261,8 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xl,
     paddingHorizontal: SPACING.lg,
   },
+
+  // ─── ACTION ───
   actionSection: {
     flex: 0.3,
     justifyContent: 'center',
@@ -265,11 +278,24 @@ const styles = StyleSheet.create({
     color: COLORS.champagneGold,
     textDecorationLine: 'underline',
   },
+
+  // ─── MODALE ───
   modalContent: {
     alignItems: 'center',
   },
-  modalIcon: {
+  modalLogoContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    overflow: 'hidden',
+    borderWidth: 2,
+    borderColor: COLORS.champagneGold,
     marginBottom: SPACING.lg,
+    ...SHADOWS.goldSoft,
+  },
+  modalLogoImage: {
+    width: '100%',
+    height: '100%',
   },
   modalTitle: {
     fontSize: FONTS.sizes.h3,

@@ -10,10 +10,10 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 1. PALETTE DE COULEURS - "LUXE NOCTURNE & TRANSPARENCE"
 // ═══════════════════════════════════════════════════════════════
 const COLORS = {
-  deepAsphalt: '#bb396d',
+  deepAsphalt: '#d8528c',
   deepAsphaltRGB: '18, 20, 24',
 
-  champagneGold: '#D4AF37',
+  champagneGold: '#1adf5b',
   champagneGoldRGB: '212, 175, 55',
   champagneGoldLight: '#E8D48B',
   champagneGoldDark: '#B8960E',
@@ -40,7 +40,7 @@ const COLORS = {
   textTertiary: 'rgba(242, 244, 246, 0.45)',
   textDisabled: 'rgba(242, 244, 246, 0.25)',
 
-  glassBorder: 'rgba(242, 244, 246, 0.10)',
+  glassBorder: 'rgba(242, 244, 246, 0.50)',
   glassBorderActive: 'rgba(212, 175, 55, 0.30)',
 
   overlayDark: 'rgba(0, 0, 0, 0.60)',
@@ -392,17 +392,17 @@ const THEME = {
 };
 
 export {
-    ANIMATIONS,
-    BORDERS,
-    COLORS,
-    COMPONENT_STYLES,
-    DIMENSIONS,
-    FONTS,
-    GLASS,
-    ICONS,
-    SHADOWS,
-    SPACING,
-    YelyTheme
+  ANIMATIONS,
+  BORDERS,
+  COLORS,
+  COMPONENT_STYLES,
+  DIMENSIONS,
+  FONTS,
+  GLASS,
+  ICONS,
+  SHADOWS,
+  SPACING,
+  YelyTheme
 };
 
 export default THEME;
