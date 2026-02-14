@@ -24,6 +24,8 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
       }),
     }),
+    /* 
+    // MÉTHODES DÉSACTIVÉES - PAS ENCORE IMPLÉMENTÉES BACKEND
     getUserProfile: builder.query({
       query: () => '/auth/profile',
       providesTags: ['User'],
@@ -36,13 +38,6 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
-    updateAvailability: builder.mutation({
-      query: (data) => ({
-        url: '/auth/availability',
-        method: 'PUT',
-        body: data,
-      }),
-    }),
     uploadDocuments: builder.mutation({
       query: (formData) => ({
         url: '/auth/documents',
@@ -52,6 +47,14 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    */
+    updateAvailability: builder.mutation({
+      query: (data) => ({
+        url: '/auth/availability',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -59,8 +62,10 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
+  /*
   useGetUserProfileQuery,
   useUpdateUserProfileMutation,
-  useUpdateAvailabilityMutation,
   useUploadDocumentsMutation,
+  */
+  useUpdateAvailabilityMutation,
 } = usersApiSlice;

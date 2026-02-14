@@ -2,10 +2,12 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSlice } from '@reduxjs/toolkit';
+import SecureStorageAdapter from '../secureStoreAdapter';
 
 const initialState = {
   userInfo: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
 };
 
@@ -14,13 +16,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, token } = action.payload;
+      const { user, accessToken, refreshToken } = action.payload;
       state.userInfo = user;
-      state.token = token;
+      state.token = accessToken;
+      state.refreshToken = refreshToken;
       state.isAuthenticated = true;
       // Persister
       AsyncStorage.setItem('userInfo', JSON.stringify(user));
-      AsyncStorage.setItem('token', token);
+      SecureStorageAdapter.setItem('token', accessToken);
+      if (refreshToken) {
+        SecureStorageAdapter.setItem('refreshToken', refreshToken);
+      }
     },
     updateUserInfo: (state, action) => {
       state.userInfo = { ...state.userInfo, ...action.payload };
@@ -29,13 +35,17 @@ const authSlice = createSlice({
     logout: (state) => {
       state.userInfo = null;
       state.token = null;
+      state.refreshToken = null;
       state.isAuthenticated = false;
-      AsyncStorage.multiRemove(['userInfo', 'token']);
+      AsyncStorage.removeItem('userInfo');
+      SecureStorageAdapter.removeItem('token');
+      SecureStorageAdapter.removeItem('refreshToken');
     },
     restoreAuth: (state, action) => {
-      const { user, token } = action.payload;
+      const { user, token, refreshToken } = action.payload;
       state.userInfo = user;
       state.token = token;
+      state.refreshToken = refreshToken;
       state.isAuthenticated = true;
     },
   },

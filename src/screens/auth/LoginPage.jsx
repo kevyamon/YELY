@@ -50,11 +50,12 @@ const LoginPage = () => {
       const res = await login({ identifier: identifier.trim(), password }).unwrap();
 
       dispatch(setCredentials({
-        user: res.user,
-        token: res.token,
+        user: res.data.user,
+        accessToken: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
       }));
 
-      socketService.connect(res.token);
+      socketService.connect(res.data.accessToken);
 
       dispatch(showSuccessToast({
         title: `Bienvenue ${res.user.name} !`,

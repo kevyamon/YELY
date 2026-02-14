@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
+import SecureStorageAdapter from '../store/secureStoreAdapter';
+
 import { restoreAuth } from '../store/slices/authSlice';
 import { ANIMATIONS, COLORS } from '../theme/theme';
 
@@ -28,15 +30,17 @@ const AppNavigator = () => {
   useEffect(() => {
     const restoreSession = async () => {
       try {
-        const [storedUser, storedToken] = await Promise.all([
+        const [storedUser, storedToken, storedRefreshToken] = await Promise.all([
           AsyncStorage.getItem('userInfo'),
-          AsyncStorage.getItem('token'),
+          SecureStorageAdapter.getItem('token'),
+          SecureStorageAdapter.getItem('refreshToken'),
         ]);
 
         if (storedUser && storedToken) {
           dispatch(restoreAuth({
             user: JSON.parse(storedUser),
             token: storedToken,
+            refreshToken: storedRefreshToken,
           }));
         }
       } catch (e) {

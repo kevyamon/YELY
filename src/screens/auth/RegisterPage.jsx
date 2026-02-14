@@ -3,12 +3,12 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
 import { Checkbox, Text } from 'react-native-paper';
@@ -50,19 +50,35 @@ export default function RegisterPage({ navigation, route }) {
       return false;
     }
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    // Regex Email Strict + Disposable check
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const disposableDomains = ['tempmail.com', '10minutemail.com', 'guerrillamail.com', 'yopmail.com']; // Liste basique
+
     if (!emailRegex.test(email)) {
       dispatch(showErrorToast({
         title: "Email invalide",
-        message: "Veuillez entrer une adresse e-mail correcte."
+        message: "Format d'email incorrect."
       }));
       return false;
     }
 
-    if (password.length < 6) {
+    const domain = email.split('@')[1];
+    if (disposableDomains.includes(domain)) {
       dispatch(showErrorToast({
-        title: "Sécurité",
-        message: "Le mot de passe doit contenir au moins 6 caractères."
+        title: "Email interdit",
+        message: "Les emails temporaires ne sont pas acceptés."
+      }));
+      return false;
+    }
+
+    // Regex Password Bank Grade
+    // Min 8, 1 Maj, 1 Min, 1 Chiffre, 1 Special
+    const passwordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?])/;
+
+    if (password.length < 8 || !passwordRegex.test(password)) {
+      dispatch(showErrorToast({
+        title: "Mot de passe trop faible",
+        message: "8 caractères min, majuscule, minuscule, chiffre et symbole requis."
       }));
       return false;
     }
@@ -77,8 +93,9 @@ export default function RegisterPage({ navigation, route }) {
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
 
       dispatch(setCredentials({
-        user: res.user,
-        token: res.token
+        user: res.data.user,
+        accessToken: res.data.accessToken,
+        refreshToken: res.data.refreshToken,
       }));
 
       dispatch(showSuccessToast({
