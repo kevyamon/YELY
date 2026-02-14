@@ -11,7 +11,7 @@ import {
   View
 } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
-import { ProgressBar, Text } from 'react-native-paper'; // Ajout ProgressBar
+import { ProgressBar, Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -77,7 +77,6 @@ export default function RegisterPage({ navigation, route }) {
       dispatch(showErrorToast({ title: "Email invalide", message: ERROR_MESSAGES.email }));
       return false;
     }
-    // On utilise la jauge pour valider le mdp
     if (passwordStats.score < 1) { 
        dispatch(showErrorToast({ title: "Mot de passe faible", message: "Veuillez respecter tous les critères." }));
        return false;
@@ -103,7 +102,6 @@ export default function RegisterPage({ navigation, route }) {
     }
   };
 
-  // Composant visuel pour une ligne d'exigence MDP
   const PasswordRequirement = ({ met, text }) => (
     <View style={styles.reqRow}>
       <Ionicons 
@@ -120,11 +118,19 @@ export default function RegisterPage({ navigation, route }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
+          {/* BOUTON RETOUR LANDING */}
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Landing')} 
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.champagneGold} />
+            <Text style={styles.backText}>Retour</Text>
+          </TouchableOpacity>
+
           <Text style={styles.mainTitle}>INSCRIPTION</Text>
 
           <GlassCard style={styles.card}>
             
-            {/* NOUVEAUX BOUTONS SÉLECTEURS DE RÔLE */}
             <View style={styles.roleContainer}>
               <TouchableOpacity 
                 style={[styles.roleBtn, role === 'rider' && styles.roleBtnActive]} 
@@ -179,7 +185,6 @@ export default function RegisterPage({ navigation, route }) {
               onChangeText={(t) => setFormData({ ...formData, email: t })}
             />
 
-            {/* PASSWORD INPUT + JAUGE */}
             <View style={{ marginBottom: 15 }}>
               <GlassInput
                 icon="lock-closed-outline"
@@ -189,7 +194,6 @@ export default function RegisterPage({ navigation, route }) {
                 onChangeText={(t) => setFormData({ ...formData, password: t })}
               />
               
-              {/* Jauge visuelle */}
               {formData.password.length > 0 && (
                 <View style={styles.gaugeContainer}>
                   <ProgressBar 
@@ -201,7 +205,7 @@ export default function RegisterPage({ navigation, route }) {
                     <PasswordRequirement met={passwordStats.length} text="8 caractères min." />
                     <PasswordRequirement met={passwordStats.upper} text="1 Majuscule" />
                     <PasswordRequirement met={passwordStats.number} text="1 Chiffre" />
-                    <PasswordRequirement met={passwordStats.special} text="1 Symbole (@#$%)" />
+                    <PasswordRequirement met={passwordStats.special} text="1 Symbole" />
                   </View>
                 </View>
               )}
@@ -230,10 +234,25 @@ export default function RegisterPage({ navigation, route }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
+  
+  // Style bouton retour
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.SPACING.md,
+    marginTop: THEME.SPACING.xs,
+    alignSelf: 'flex-start'
+  },
+  backText: {
+    color: THEME.COLORS.champagneGold,
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600'
+  },
+
   mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
   
-  // Styles Boutons Rôles
   roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg },
   roleBtn: { 
     flex: 1, 
@@ -247,7 +266,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.glassLight 
   },
   roleBtnActive: { 
-    backgroundColor: "#10B981", // Le VERT demandé
+    backgroundColor: "#10B981",
     borderColor: "#10B981" 
   },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
@@ -257,7 +276,6 @@ const styles = StyleSheet.create({
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
   
-  // Styles Jauge MDP
   gaugeContainer: { marginTop: -10, marginBottom: 5 },
   requirementsBox: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 10 },
   reqRow: { flexDirection: 'row', alignItems: 'center', marginRight: 5 },
