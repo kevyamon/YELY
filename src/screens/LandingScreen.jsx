@@ -1,15 +1,15 @@
 // src/screens/LandingScreen.jsx
 // LANDING PAGE - LUXURY & IDENTITY
-// CSCSM Level: High-End UI
+// CSCSM Level: High-End UI + Smart Back Handler
 
+import { useFocusEffect } from '@react-navigation/native'; // 2. Pour cibler cet écran
 import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Animated,
+  BackHandler,
   Dimensions,
-  Image // Ajout de Image pour le logo
-  ,
-
+  Image,
   ImageBackground,
   StatusBar,
   StyleSheet,
@@ -17,9 +17,11 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import { useDispatch } from 'react-redux'; // 3. Pour déclencher ton Toast
 
 import GlassModal from '../components/ui/GlassModal';
 import GoldButton from '../components/ui/GoldButton';
+import { showSuccessToast } from '../store/slices/uiSlice'; // 4. Ton action Toast
 import THEME from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -35,11 +37,48 @@ const LANDING_CONFIG = {
 // ═════════════════════════════════════════════════════════════════════════
 
 export default function LandingScreen({ navigation }) {
+  const dispatch = useDispatch();
   const [showTerms, setShowTerms] = useState(false);
 
   // --- ANIMATIONS ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+
+  // --- GESTION DU DOUBLE RETOUR (Double Tap to Exit) ---
+  const lastBackPress = useRef(0); // Mémorise le temps du dernier appui
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        const currentTimestamp = new Date().getTime();
+        
+        // Si l'utilisateur a appuyé il y a moins de 2 secondes
+        if (currentTimestamp - lastBackPress.current < 2000) {
+          BackHandler.exitApp(); // On quitte l'application
+          return true;
+        }
+
+        // Sinon, c'est le premier appui
+        lastBackPress.current = currentTimestamp;
+        
+        // On affiche ton message via ton système de Toast Redux
+        dispatch(showSuccessToast({
+          title: "Quitter Yély ?",
+          message: "Faite retour encore pour quitter Yély"
+        }));
+
+        // On bloque le retour par défaut (qui fermerait l'app direct)
+        return true; 
+      };
+
+      // On active l'écouteur
+      const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+
+      // On nettoie quand on quitte l'écran
+      return () => subscription.remove();
+    }, [dispatch])
+  );
+  // -----------------------------------------------------
 
   useEffect(() => {
     Animated.parallel([
@@ -98,7 +137,6 @@ export default function LandingScreen({ navigation }) {
                <Image 
                  source={require('../../assets/logo.png')} 
                  style={styles.logoImage} 
-                 // cover = Remplit le cercle sans déformer
                  resizeMode="cover" 
                />
             </View>
@@ -110,7 +148,6 @@ export default function LandingScreen({ navigation }) {
           {/* BOTTOM SECTION */}
           <Animated.View style={[styles.bottomSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             
-            {/* DESCRIPTION MISE À JOUR : Maféré */}
             <Text style={styles.description}>
               Réservez des chauffeurs professionnels et vivez une expérience de transport sûre, élégante et fiable à Maféré.
             </Text>
@@ -130,7 +167,6 @@ export default function LandingScreen({ navigation }) {
               <Text style={styles.termsText}>Conditions d'utilisation</Text>
             </TouchableOpacity>
 
-            {/* COPYRIGHT PRO */}
             <Text style={styles.copyright}>© 2026 Yély • v1.0.0</Text>
           </Animated.View>
         </View>
@@ -192,7 +228,6 @@ const styles = StyleSheet.create({
     width: 110, 
     height: 110,
     borderRadius: 55,
-    // On clip pour que l'image ne dépasse pas du cercle
     overflow: 'hidden', 
     backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
@@ -202,10 +237,8 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212, 175, 55, 0.2)'
   },
   logoImage: {
-    // 🛠️ CORRECTION : Remplissage 100% du conteneur
     width: '100%',  
     height: '100%',
-    // Plus besoin de borderRadius ici, c'est le parent qui gère
   },
   brandTitle: {
     fontSize: 42,
