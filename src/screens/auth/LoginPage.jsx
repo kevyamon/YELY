@@ -1,4 +1,5 @@
 // src/screens/auth/LoginPage.jsx
+// PAGE CONNEXION - LOGIQUE PASSIVE (Navigation gérée par AppDrawer)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -9,7 +10,7 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity, // Pour l'animation fluide
+  TouchableOpacity,
   UIManager,
   View
 } from 'react-native';
@@ -27,7 +28,7 @@ import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// Active l'animation sur Android
+// Animation Layout Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -36,49 +37,48 @@ export default function LoginPage({ navigation }) {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
 
-  const [formData, setFormData] = useState({
-    identifier: '', 
-    password: ''
-  });
-
+  const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
   const [isEmailMode, setIsEmailMode] = useState(false);
 
-  // 🧠 DÉTECTION INTELLIGENTE : EMAIL vs TÉLÉPHONE
+  // Détection auto Email vs Téléphone
   useEffect(() => {
-    // Si contient une lettre ou un @, c'est un email -> Mode Plein Écran
     const isEmail = /[a-zA-Z@]/.test(formData.identifier);
-    
     if (isEmail !== isEmailMode) {
-      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // Animation fluide
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setIsEmailMode(isEmail);
     }
   }, [formData.identifier]);
 
   const handleLogin = async () => {
     if (!formData.identifier.trim() || !formData.password.trim()) {
-      dispatch(showErrorToast({ title: "Champs requis", message: "Veuillez entrer vos identifiants." }));
+      dispatch(showErrorToast({ title: "Champs requis", message: "Entrez vos identifiants." }));
       return;
     }
 
     try {
+      // Préparation de l'identifiant (Ajout indicatif si téléphone)
       let finalIdentifier = formData.identifier.trim();
-
-      // Si ce n'est PAS un email (donc un téléphone), on ajoute l'indicatif
       if (!isEmailMode) {
         const cleanPhone = finalIdentifier.replace(/\s/g, '').replace(/^0+/, '');
         finalIdentifier = `+${callingCode}${cleanPhone}`;
       }
 
+      // 1. APPEL API
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
+      // 2. SAUVEGARDE REDUX (C'est ICI que la magie opère)
+      // Le changement de 'user' va être détecté par AppNavigator -> Qui montera AppDrawer -> Qui redirigera.
       dispatch(setCredentials({ user, accessToken, refreshToken }));
+
       dispatch(showSuccessToast({
         title: "Bon retour !",
         message: `Ravi de vous revoir, ${user.name.split(' ')[0]}.`
       }));
+      
+      // ⛔️ PAS DE NAVIGATION MANUELLE (ex: navigation.navigate('Home'))
 
     } catch (err) {
       console.error('[LOGIN_ERROR]', err);
@@ -101,19 +101,12 @@ export default function LoginPage({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.headerContainer}>
-            <Image 
-              source={require('../../../assets/logo.png')} 
-              style={styles.logo}
-              resizeMode="contain"
-            />
+            <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
             <Text style={styles.welcomeText}>CONNEXION</Text>
           </View>
 
           <GlassCard style={styles.card}>
-            
-            {/* INPUT DYNAMIQUE : Le drapeau disparaît si on tape un email */}
             <View style={styles.inputRow}>
-               
                {!isEmailMode && (
                  <View style={styles.countryPickerContainer}>
                    <CountryPicker
@@ -124,10 +117,9 @@ export default function LoginPage({ navigation }) {
                    <Text style={styles.callingCodeText}>+{callingCode}</Text>
                  </View>
                )}
-
                <View style={{ flex: 1 }}>
                   <GlassInput
-                    icon={isEmailMode ? "mail-outline" : "call-outline"} // Icône changeante aussi !
+                    icon={isEmailMode ? "mail-outline" : "call-outline"}
                     placeholder="Tél ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
@@ -135,7 +127,6 @@ export default function LoginPage({ navigation }) {
                   />
                </View>
             </View>
-            
             <Text style={styles.hintText}>
               {isEmailMode ? "Mode Email détecté" : "Saisissez votre numéro"}
             </Text>
@@ -171,31 +162,16 @@ export default function LoginPage({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
-  
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.md,
-    marginTop: THEME.SPACING.xs,
-    alignSelf: 'flex-start'
-  },
-  backText: {
-    color: THEME.COLORS.champagneGold,
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600'
-  },
-
+  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, marginTop: THEME.SPACING.xs, alignSelf: 'flex-start' },
+  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
   headerContainer: { alignItems: 'center', marginBottom: THEME.SPACING.xl },
   logo: { width: 120, height: 120, marginBottom: THEME.SPACING.md },
   welcomeText: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
-  
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
   hintText: { color: THEME.COLORS.textTertiary, fontSize: 10, marginTop: -10, marginBottom: 10, marginLeft: 5, fontStyle: 'italic', textAlign: 'right' },
-
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary }

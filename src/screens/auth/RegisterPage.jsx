@@ -1,4 +1,5 @@
 // src/screens/auth/RegisterPage.jsx
+// PAGE INSCRIPTION - LOGIQUE PASSIVE
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -28,6 +29,8 @@ import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators';
 export default function RegisterPage({ navigation, route }) {
   const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
+  
+  // Récupération du rôle envoyé depuis le Landing (Rider par défaut)
   const [role, setRole] = useState(route.params?.role?.toLowerCase() || 'rider');
 
   const [formData, setFormData] = useState({
@@ -40,13 +43,9 @@ export default function RegisterPage({ navigation, route }) {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
 
-  // --- LOGIQUE JAUGE MOT DE PASSE ---
+  // Logique Jauge Password
   const [passwordStats, setPasswordStats] = useState({
-    length: false,
-    upper: false,
-    number: false,
-    special: false,
-    score: 0 // 0 à 1
+    length: false, upper: false, number: false, special: false, score: 0
   });
 
   useEffect(() => {
@@ -57,11 +56,9 @@ export default function RegisterPage({ navigation, route }) {
       number: /\d/.test(pass),
       special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass)
     };
-    
     const validCount = Object.values(stats).filter(Boolean).length;
     setPasswordStats({ ...stats, score: validCount / 4 });
   }, [formData.password]);
-  // ----------------------------------
 
   const validateForm = () => {
     const { name, email, password, phone } = formData;
@@ -78,7 +75,7 @@ export default function RegisterPage({ navigation, route }) {
       return false;
     }
     if (passwordStats.score < 1) { 
-       dispatch(showErrorToast({ title: "Mot de passe faible", message: "Veuillez respecter tous les critères." }));
+       dispatch(showErrorToast({ title: "Mot de passe faible", message: "Respectez les critères." }));
        return false;
     }
     return true;
@@ -89,12 +86,19 @@ export default function RegisterPage({ navigation, route }) {
 
     try {
       const fullPhone = `+${callingCode}${formData.phone.replace(/^0+/, '')}`;
+      
+      // 1. APPEL API
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
+      // 2. SAUVEGARDE REDUX
+      // Le changement de 'user' déclenchera AppDrawer > useEffect > navigation.reset
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte créé avec succès." }));
       
+      dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte créé avec succès." }));
+
+      // ⛔️ PAS DE NAVIGATION MANUELLE
+
     } catch (err) {
       console.error('[REGISTER_ERROR]', err);
       const errorMessage = err?.data?.message || "Erreur lors de l'inscription.";
@@ -118,7 +122,6 @@ export default function RegisterPage({ navigation, route }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          {/* BOUTON RETOUR LANDING */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('Landing')} 
             style={styles.backButton}
@@ -202,7 +205,7 @@ export default function RegisterPage({ navigation, route }) {
                     style={{ borderRadius: 5, height: 6, backgroundColor: 'rgba(255,255,255,0.1)' }} 
                   />
                   <View style={styles.requirementsBox}>
-                    <PasswordRequirement met={passwordStats.length} text="8 caractères min." />
+                    <PasswordRequirement met={passwordStats.length} text="8 chars min." />
                     <PasswordRequirement met={passwordStats.upper} text="1 Majuscule" />
                     <PasswordRequirement met={passwordStats.number} text="1 Chiffre" />
                     <PasswordRequirement met={passwordStats.special} text="1 Symbole" />
@@ -234,53 +237,22 @@ export default function RegisterPage({ navigation, route }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
-  
-  // Style bouton retour
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.md,
-    marginTop: THEME.SPACING.xs,
-    alignSelf: 'flex-start'
-  },
-  backText: {
-    color: THEME.COLORS.champagneGold,
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: '600'
-  },
-
+  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, marginTop: THEME.SPACING.xs, alignSelf: 'flex-start' },
+  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
   mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
-  
   roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg },
-  roleBtn: { 
-    flex: 1, 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    paddingVertical: 12, 
-    borderRadius: 12, 
-    borderWidth: 1, 
-    borderColor: THEME.COLORS.glassBorder, 
-    backgroundColor: THEME.COLORS.glassLight 
-  },
-  roleBtnActive: { 
-    backgroundColor: "#10B981",
-    borderColor: "#10B981" 
-  },
+  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, backgroundColor: THEME.COLORS.glassLight },
+  roleBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: '#FFF' },
-
   phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  
   gaugeContainer: { marginTop: -10, marginBottom: 5 },
   requirementsBox: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 10 },
   reqRow: { flexDirection: 'row', alignItems: 'center', marginRight: 5 },
   reqText: { fontSize: 11, marginLeft: 4 },
-
   registerButton: { marginTop: THEME.SPACING.sm },
   loginFooter: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   loginRedirect: { color: THEME.COLORS.textTertiary }
