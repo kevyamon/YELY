@@ -1,14 +1,16 @@
 // src/screens/auth/LoginPage.jsx
 
-import { Ionicons } from '@expo/vector-icons'; // Ajout pour la flèche
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import {
   Image,
   KeyboardAvoidingView,
+  LayoutAnimation,
   Platform,
   ScrollView,
   StyleSheet,
-  TouchableOpacity,
+  TouchableOpacity, // Pour l'animation fluide
+  UIManager,
   View
 } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
@@ -25,6 +27,11 @@ import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
+// Active l'animation sur Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
+
 export default function LoginPage({ navigation }) {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
@@ -34,9 +41,20 @@ export default function LoginPage({ navigation }) {
     password: ''
   });
 
-  // Gestion Indicatif (Comme sur Register)
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
+  const [isEmailMode, setIsEmailMode] = useState(false);
+
+  // 🧠 DÉTECTION INTELLIGENTE : EMAIL vs TÉLÉPHONE
+  useEffect(() => {
+    // Si contient une lettre ou un @, c'est un email -> Mode Plein Écran
+    const isEmail = /[a-zA-Z@]/.test(formData.identifier);
+    
+    if (isEmail !== isEmailMode) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // Animation fluide
+      setIsEmailMode(isEmail);
+    }
+  }, [formData.identifier]);
 
   const handleLogin = async () => {
     if (!formData.identifier.trim() || !formData.password.trim()) {
@@ -47,21 +65,16 @@ export default function LoginPage({ navigation }) {
     try {
       let finalIdentifier = formData.identifier.trim();
 
-      // LOGIQUE HYBRIDE :
-      // Si ce n'est pas un email (pas de @), on considère que c'est un téléphone
-      // et on ajoute l'indicatif sélectionné.
-      if (!finalIdentifier.includes('@')) {
-        // On nettoie le numéro (enlève les espaces et le 0 au début si présent)
+      // Si ce n'est PAS un email (donc un téléphone), on ajoute l'indicatif
+      if (!isEmailMode) {
         const cleanPhone = finalIdentifier.replace(/\s/g, '').replace(/^0+/, '');
         finalIdentifier = `+${callingCode}${cleanPhone}`;
       }
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
-
-      const { user, accessToken, refreshToken } = res.data; // Structure aplatie
+      const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-
       dispatch(showSuccessToast({
         title: "Bon retour !",
         message: `Ravi de vous revoir, ${user.name.split(' ')[0]}.`
@@ -70,11 +83,7 @@ export default function LoginPage({ navigation }) {
     } catch (err) {
       console.error('[LOGIN_ERROR]', err);
       const errorMessage = err?.data?.message || "Identifiants incorrects.";
-      
-      dispatch(showErrorToast({
-        title: "Erreur de connexion",
-        message: errorMessage
-      }));
+      dispatch(showErrorToast({ title: "Erreur de connexion", message: errorMessage }));
     }
   };
 
@@ -83,7 +92,6 @@ export default function LoginPage({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          {/* BOUTON RETOUR LANDING */}
           <TouchableOpacity 
             onPress={() => navigation.navigate('Landing')} 
             style={styles.backButton}
@@ -103,19 +111,23 @@ export default function LoginPage({ navigation }) {
 
           <GlassCard style={styles.card}>
             
-            {/* INPUT HYBRIDE : TÉLÉPHONE (avec indicatif) OU EMAIL */}
+            {/* INPUT DYNAMIQUE : Le drapeau disparaît si on tape un email */}
             <View style={styles.inputRow}>
-               <View style={styles.countryPickerContainer}>
-                 <CountryPicker
-                   countryCode={countryCode}
-                   withFilter withFlag withCallingCode
-                   onSelect={(c) => { setCountryCode(c.cca2); setCallingCode(c.callingCode[0]); }}
-                 />
-                 <Text style={styles.callingCodeText}>+{callingCode}</Text>
-               </View>
+               
+               {!isEmailMode && (
+                 <View style={styles.countryPickerContainer}>
+                   <CountryPicker
+                     countryCode={countryCode}
+                     withFilter withFlag withCallingCode
+                     onSelect={(c) => { setCountryCode(c.cca2); setCallingCode(c.callingCode[0]); }}
+                   />
+                   <Text style={styles.callingCodeText}>+{callingCode}</Text>
+                 </View>
+               )}
+
                <View style={{ flex: 1 }}>
                   <GlassInput
-                    icon="person-outline"
+                    icon={isEmailMode ? "mail-outline" : "call-outline"} // Icône changeante aussi !
                     placeholder="Tél ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
@@ -123,7 +135,10 @@ export default function LoginPage({ navigation }) {
                   />
                </View>
             </View>
-            <Text style={styles.hintText}>Pour un email, l'indicatif sera ignoré.</Text>
+            
+            <Text style={styles.hintText}>
+              {isEmailMode ? "Mode Email détecté" : "Saisissez votre numéro"}
+            </Text>
 
             <GlassInput
               icon="lock-closed-outline"
@@ -157,7 +172,6 @@ const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
   
-  // Style bouton retour
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,7 +194,7 @@ const styles = StyleSheet.create({
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  hintText: { color: THEME.COLORS.textTertiary, fontSize: 10, marginTop: -10, marginBottom: 10, marginLeft: 5, fontStyle: 'italic' },
+  hintText: { color: THEME.COLORS.textTertiary, fontSize: 10, marginTop: -10, marginBottom: 10, marginLeft: 5, fontStyle: 'italic', textAlign: 'right' },
 
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
