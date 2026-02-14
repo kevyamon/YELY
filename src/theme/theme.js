@@ -10,7 +10,7 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 1. PALETTE DE COULEURS - "LUXE NOCTURNE & TRANSPARENCE"
 // ═══════════════════════════════════════════════════════════════
 const COLORS = {
-  deepAsphalt: '#d84e8a',
+  deepAsphalt: '#000000',
   deepAsphaltRGB: '18, 20, 24',
 
   champagneGold: '#1adf5b',

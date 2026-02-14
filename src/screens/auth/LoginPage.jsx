@@ -58,7 +58,7 @@ const LoginPage = () => {
       socketService.connect(res.data.accessToken);
 
       dispatch(showSuccessToast({
-        title: `Bienvenue ${res.user.name} !`,
+        title: `Bienvenue ${res.data.user.name} !`,
         message: 'Connexion réussie.',
       }));
     } catch (err) {
