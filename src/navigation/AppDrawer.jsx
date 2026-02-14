@@ -1,74 +1,39 @@
 // src/navigation/AppDrawer.jsx
-
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { Platform, Text, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Import crucial
 
-import { selectUserRole } from '../store/slices/authSlice';
-import { COLORS, DIMENSIONS } from '../theme/theme';
-import DrawerContent from './DrawerContent';
-
-// Screens
 import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
-
-// Placeholder temporaire pour les écrans non encore codés
-const PlaceholderScreen = ({ route }) => (
-  <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.deepAsphalt }}>
-    <Text style={{ color: 'white', fontSize: 18 }}>
-      Écran {route?.name || 'inconnu'} en construction
-    </Text>
-  </View>
-);
+import THEME from '../theme/theme';
+import DrawerContent from './DrawerContent';
 
 const Drawer = createDrawerNavigator();
 
-const AppDrawer = () => {
-  const role = useSelector(selectUserRole) || 'rider';
-
-  // Déterminer l'écran initial selon le rôle
-  const getInitialRoute = () => {
-    if (role === 'driver') return 'DriverHome';
-    if (role === 'admin' || role === 'superadmin') return 'AdminDashboard';
-    return 'RiderHome';
-  };
+export default function AppDrawer() {
+  const insets = useSafeAreaInsets();
+  
+  // CALCUL CRUCIAL : Hauteur Notch + Hauteur Header
+  const headerOffset = insets.top + THEME.LAYOUT.HEADER_HEIGHT;
 
   return (
     <Drawer.Navigator
-      initialRouteName={getInitialRoute()}
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
-        headerShown: false,
-        drawerPosition: 'right',
-        drawerType: Platform.OS === 'web' ? 'permanent' : 'front',
+        headerShown: false, // On utilise notre propre ScreenHeader
+        drawerType: 'front', // Le tiroir passe devant le contenu (mais sous le header grâce au style)
         drawerStyle: {
-          backgroundColor: 'transparent',
-          width: Math.min(DIMENSIONS.sidebar.width, DIMENSIONS.sidebar.maxWidth),
+          backgroundColor: THEME.COLORS.deepAsphalt,
+          width: '80%',
+          marginTop: headerOffset, // LE SECRET : On décale le tiroir vers le bas
+          borderTopRightRadius: 20, // Petit style sympa
         },
-        overlayColor: 'rgba(0, 0, 0, 0.60)',
-        swipeEnabled: true,
-        swipeEdgeWidth: 50,
+        // Pour l'overlay (le voile noir), c'est plus complexe à limiter nativement,
+        // mais avec drawerType 'front' et le style ci-dessus, le menu sera visuellement correct.
+        overlayColor: 'rgba(0,0,0,0.7)',
       }}
     >
-      {/* ═══════ ÉCRANS RIDER ═══════ */}
       <Drawer.Screen name="RiderHome" component={RiderHome} />
-
-      {/* ═══════ ÉCRANS DRIVER ═══════ */}
       <Drawer.Screen name="DriverHome" component={DriverHome} />
-      <Drawer.Screen name="Subscription" component={PlaceholderScreen} />
-
-      {/* ═══════ ÉCRANS ADMIN / SUPERADMIN ═══════ */}
-      <Drawer.Screen name="AdminDashboard" component={PlaceholderScreen} />
-      <Drawer.Screen name="Validations" component={PlaceholderScreen} />
-      <Drawer.Screen name="Drivers" component={PlaceholderScreen} />
-      <Drawer.Screen name="Finance" component={PlaceholderScreen} />
-
-      {/* ═══════ ÉCRANS COMMUNS ═══════ */}
-      <Drawer.Screen name="History" component={PlaceholderScreen} />
-      <Drawer.Screen name="Notifications" component={PlaceholderScreen} />
-      <Drawer.Screen name="Profile" component={PlaceholderScreen} />
     </Drawer.Navigator>
   );
-};
-
-export default AppDrawer;
+}

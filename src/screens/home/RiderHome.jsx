@@ -1,114 +1,104 @@
 // src/screens/home/RiderHome.jsx
+import { useEffect, useState } from 'react';
+import { StyleSheet, View } from 'react-native';
 
-import { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
-
+// Composants
 import MapCard from '../../components/map/MapCard';
-import ScreenHeader from '../../components/ui/ScreenHeader';
+import ScreenHeader from '../../components/ui/ScreenHeader'; // Le nouveau Header
+import ScreenWrapper from '../../components/ui/ScreenWrapper'; // Le nouveau Wrapper
 import SearchBar from '../../components/ui/SearchBar';
+
 import useGeolocation from '../../hooks/useGeolocation';
-import MapService from '../../services/mapService';
 import THEME from '../../theme/theme';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const RiderHome = ({ navigation }) => {
-  const mapRef = useRef(null);
-  const insets = useSafeAreaInsets();
+export default function RiderHome() {
   const { location } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState('Localisation...');
 
   useEffect(() => {
     if (location) {
-      const getAddress = async () => {
-        const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-        if (addr) setCurrentAddress(addr.shortName);
+      // Simulation appel service
+      const getAddr = async () => {
+         // const addr = await MapService.reverseGeocode...
+         setCurrentAddress("Maféré, Centre ville");
       };
-      getAddress();
+      getAddr();
     }
   }, [location]);
 
-  const availableHeight = SCREEN_HEIGHT - insets.top - 80 - insets.bottom;
-  const mapHeight = availableHeight * 0.50;
-
   return (
-    <View style={styles.container}>
-
-      {/* ═══════ HEADER ═══════ */}
-      <ScreenHeader
-        leftIcon="radio-button-on"
-        leftText={currentAddress}
-        onRightPress={() => navigation.openDrawer()}
+    // 1. SCREEN WRAPPER : Gère le Notch (paddingTop automatique)
+    <ScreenWrapper>
+      
+      {/* 2. HEADER COMMANDANT : Fixe en haut de la zone sûre */}
+      <ScreenHeader 
+        showLocation={true}
+        locationText={currentAddress}
       />
 
-      {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
-      <View style={{ height: mapHeight }}>
-        <MapCard
-          ref={mapRef}
-          location={location}
-          showUserMarker
-          showRecenterButton
-          floating
-          darkMode
-        />
-      </View>
+      {/* 3. CONTENU PRINCIPAL : Prend tout l'espace RESTANT */}
+      <View style={styles.mainContent}>
+        
+        {/* LA CARTE : Remplit le conteneur mainContent (donc s'arrête sous le header) */}
+        <View style={styles.mapContainer}>
+           <MapCard 
+             location={location}
+             showUserMarker={true}
+             darkMode={true}
+           />
+        </View>
 
-      {/* ═══════ ZONE BASSE : Recherche + Forfaits (futur) ═══════ */}
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.sm }]}>
-
-        <SearchBar
-          label="On va où ?"
-          hint="Saisissez votre destination"
-          onPress={() => {
-            console.log('TODO: ouvrir recherche destination');
-          }}
-        />
-
-        {/* Espace réservé pour les futures cartes forfaits (Phase 5) */}
-        <View style={styles.forfaitsZone}>
-          <View style={styles.forfaitDots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
+        {/* UI BASSE : Flotte par-dessus la carte, mais ancrée en bas du mainContent */}
+        <View style={styles.bottomOverlay}>
+          <SearchBar 
+             label="On va où ?"
+             hint="Destination..."
+             onPress={() => console.log("Search")}
+          />
+          
+          {/* Indicateurs Forfaits */}
+          <View style={styles.dotsContainer}>
+             <View style={[styles.dot, styles.dotActive]} />
+             <View style={styles.dot} />
           </View>
         </View>
+
       </View>
-    </View>
+
+    </ScreenWrapper>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
+  mainContent: {
+    flex: 1, // Prend toute la hauteur restante sous le Header
+    position: 'relative', // Pour que les enfants absolus se réfèrent à ça
+    overflow: 'hidden', // Coupe tout ce qui dépasse (Sécurité Vortex)
+    borderTopLeftRadius: 20, // Optionnel : Effet "Carte glissée sous le header"
+    borderTopRightRadius: 20,
+    marginTop: -15, // PETIT HACK VISUEL : Pour que la carte semble connectée au header
+    paddingTop: 15, // On compense
     backgroundColor: THEME.COLORS.deepAsphalt,
   },
-  bottomSection: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt,
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.lg,
+  mapContainer: {
+    ...StyleSheet.absoluteFillObject, // Rempli le mainContent
+    zIndex: 0,
   },
-  forfaitsZone: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  bottomOverlay: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: THEME.SPACING.lg,
+    zIndex: 10,
+    // Pas de background ici pour laisser voir la carte autour des boutons
   },
-  forfaitDots: {
+  dotsContainer: {
     flexDirection: 'row',
-    gap: THEME.SPACING.xs,
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 10
   },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.COLORS.textDisabled,
-  },
-  dotActive: {
-    backgroundColor: THEME.COLORS.champagneGold,
-    width: 18,
-    borderRadius: 3,
-  },
+  dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
+  dotActive: { backgroundColor: THEME.COLORS.champagneGold, width: 24 }
 });
-
-export default RiderHome;

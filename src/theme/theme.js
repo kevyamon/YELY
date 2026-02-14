@@ -249,7 +249,14 @@ const DIMENSIONS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 9. STYLES DE COMPOSANTS PRÉ-COMPOSÉS
+// 9. CONSTANTES DE LAYOUT (NOUVEAU - COMMANDANT SUPRÊME)
+// ═══════════════════════════════════════════════════════════════
+const LAYOUT = {
+  HEADER_HEIGHT: 60, // Hauteur fixe du contenu du header (sans compter le notch)
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 10. STYLES DE COMPOSANTS PRÉ-COMPOSÉS
 // ═══════════════════════════════════════════════════════════════
 const COMPONENT_STYLES = {
   buttonPrimary: {
@@ -329,7 +336,7 @@ const COMPONENT_STYLES = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 10. ICÔNES CONFIGURATION
+// 11. ICÔNES CONFIGURATION
 // ═══════════════════════════════════════════════════════════════
 const ICONS = {
   sizes: { xs: 16, sm: 20, md: 24, lg: 28, xl: 32, xxl: 40, hero: 64 },
@@ -341,7 +348,7 @@ const ICONS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 11. THÈME REACT NATIVE PAPER (MD3) - Compatible PaperProvider
+// 12. THÈME REACT NATIVE PAPER (MD3) - Compatible PaperProvider
 // ═══════════════════════════════════════════════════════════════
 const YelyTheme = {
   ...MD3DarkTheme,
@@ -387,6 +394,7 @@ const THEME = {
   ANIMATIONS,
   GLASS,
   DIMENSIONS,
+  LAYOUT, // <--- AJOUTÉ ICI
   COMPONENT_STYLES,
   ICONS,
 };
@@ -396,11 +404,10 @@ export {
   BORDERS,
   COLORS,
   COMPONENT_STYLES,
-  DIMENSIONS,
+  DIMENSIONS, // <--- AJOUTÉ ICI
   FONTS,
   GLASS,
-  ICONS,
-  SHADOWS,
+  ICONS, LAYOUT, SHADOWS,
   SPACING,
   YelyTheme
 };

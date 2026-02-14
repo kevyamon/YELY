@@ -1,147 +1,117 @@
 // src/components/ui/ScreenHeader.jsx
-
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Text } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import THEME from '../../theme/theme';
 
-import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
-
-const ScreenHeader = ({
-  // Contenu gauche (zone principale)
-  leftIcon,
-  leftIconColor = COLORS.champagneGold,
-  leftContent,
-  leftText,
-
-  // Bouton droit (hamburger par défaut)
-  rightIcon = 'menu-outline',
-  rightIconColor = COLORS.champagneGold,
-  onRightPress,
-
-  // Personnalisation
-  backgroundColor = COLORS.deepAsphalt,
-  borderBottom = false,
-  style,
-  children,
-}) => {
-  const insets = useSafeAreaInsets();
+export default function ScreenHeader({ 
+  title, 
+  showLocation = false, 
+  locationText = "Localisation..." 
+}) {
+  const navigation = useNavigation();
 
   return (
-    <View
-      style={[
-        styles.safeArea,
-        { paddingTop: insets.top + SPACING.sm },
-        { backgroundColor },
-        borderBottom && styles.withBorder,
-        style,
-      ]}
-    >
-      <View style={styles.content}>
-        {/* ─── Zone gauche (flexible) ─── */}
-        {children ? (
-          <View style={styles.leftSection}>{children}</View>
-        ) : leftContent ? (
-          <View style={styles.leftSection}>{leftContent}</View>
-        ) : (
-          <View style={styles.leftContainer}>
-            {leftIcon && (
-              <View style={[styles.leftIconDot, leftIcon === 'status-online' && styles.leftIconDotOnline]}>
-                {leftIcon === 'status-online' || leftIcon === 'status-offline' ? (
-                  <View
-                    style={[
-                      styles.statusDot,
-                      leftIcon === 'status-online' && styles.statusDotOnline,
-                    ]}
-                  />
-                ) : (
-                  <Ionicons name={leftIcon} size={16} color={leftIconColor} />
-                )}
-              </View>
-            )}
-            {leftText && (
-              <Text numberOfLines={1} style={styles.leftText}>{leftText}</Text>
-            )}
-          </View>
-        )}
+    <View style={styles.headerContainer}>
+      
+      {/* BLOC GAUCHE : MENU */}
+      <TouchableOpacity 
+        style={styles.iconButton} 
+        onPress={() => navigation.openDrawer()}
+      >
+        <Ionicons name="menu" size={28} color={THEME.COLORS.champagneGold} />
+      </TouchableOpacity>
 
-        {/* ─── Bouton droit ─── */}
-        {onRightPress && (
-          <TouchableOpacity
-            style={styles.rightButton}
-            onPress={onRightPress}
-            activeOpacity={0.7}
-          >
-            <Ionicons name={rightIcon} size={26} color={rightIconColor} />
-          </TouchableOpacity>
+      {/* BLOC CENTRAL : TITRE ou LOCATION */}
+      <View style={styles.centerContent}>
+        {showLocation ? (
+          <View style={styles.locationWrapper}>
+            <View style={styles.locationRow}>
+              <Ionicons name="location-sharp" size={12} color={THEME.COLORS.champagneGold} style={{marginRight: 4}} />
+              <Text style={styles.labelCaption}>POSITION ACTUELLE</Text>
+            </View>
+            <Text style={styles.locationText} numberOfLines={1}>
+              {locationText}
+            </Text>
+          </View>
+        ) : (
+          <Text style={styles.screenTitle}>{title?.toUpperCase() || 'YÉLY'}</Text>
         )}
       </View>
+
+      {/* BLOC DROIT : NOTIFICATIONS */}
+      <TouchableOpacity style={styles.iconButton}>
+         <Ionicons name="notifications-outline" size={24} color={THEME.COLORS.textSecondary} />
+         <View style={styles.badge} />
+      </TouchableOpacity>
+
     </View>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  safeArea: {
-    paddingBottom: SPACING.sm,
-  },
-  withBorder: {
-    borderBottomWidth: BORDERS.width.thin,
-    borderBottomColor: COLORS.glassBorder,
-  },
-  content: {
+  headerContainer: {
+    height: THEME.LAYOUT.HEADER_HEIGHT, // 60px Fixe
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: SPACING.lg,
+    justifyContent: 'space-between',
+    backgroundColor: THEME.COLORS.deepAsphalt, // FOND OPAQUE (Noir/Blanc selon ton thème)
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.05)', // Séparateur subtil
+    paddingHorizontal: THEME.SPACING.md,
+    zIndex: 10000, // Toujours au-dessus
+    // Ombre pour l'effet "Commandant"
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    elevation: 5,
   },
-
-  // ─── GAUCHE ───
-  leftSection: {
-    flex: 1,
-    marginRight: SPACING.md,
-  },
-  leftContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.glassLight,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.md,
-    borderRadius: BORDERS.radius.lg,
-    borderWidth: BORDERS.width.thin,
-    borderColor: COLORS.glassBorder,
-    marginRight: SPACING.md,
-  },
-  leftIconDot: {
-    flexShrink: 0,
-  },
-  leftIconDotOnline: {},
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: COLORS.textTertiary,
-  },
-  statusDotOnline: {
-    backgroundColor: COLORS.success,
-  },
-  leftText: {
-    color: COLORS.moonlightWhite,
-    marginLeft: SPACING.sm,
-    fontSize: FONTS.sizes.bodySmall,
-    flex: 1,
-  },
-
-  // ─── DROITE ───
-  rightButton: {
-    width: 46,
-    height: 46,
-    backgroundColor: COLORS.glassDark,
-    borderRadius: 23,
+  iconButton: {
+    width: 40,
+    height: 40,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: BORDERS.width.thin,
-    borderColor: COLORS.glassBorder,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
+  centerContent: {
+    flex: 1,
+    alignItems: 'center',
+    paddingHorizontal: 10,
+  },
+  screenTitle: {
+    color: THEME.COLORS.champagneGold,
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 2,
+  },
+  locationWrapper: {
+    alignItems: 'center',
+  },
+  locationRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 2,
+  },
+  labelCaption: {
+    color: THEME.COLORS.champagneGold,
+    fontSize: 8,
+    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  locationText: {
+    color: THEME.COLORS.textPrimary, // Noir ou Blanc selon ton thème
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  badge: {
+    position: 'absolute',
+    top: 8,
+    right: 10,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.COLORS.danger,
+  }
 });
-
-export default ScreenHeader;
