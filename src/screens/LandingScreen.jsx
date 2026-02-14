@@ -9,6 +9,7 @@ import {
   Dimensions,
   Image // Ajout de Image pour le logo
   ,
+
   ImageBackground,
   StatusBar,
   StyleSheet,
@@ -27,7 +28,7 @@ const { width, height } = Dimensions.get('window');
 // ⚙️ CONFIGURATION DU LANDING
 // ═════════════════════════════════════════════════════════════════════════
 const LANDING_CONFIG = {
-  SHOW_IMAGE: true, 
+  SHOW_IMAGE: false, 
   IMAGE_SOURCE: require('../../assets/images/landing-bg.png'),
   DEFAULT_GRADIENT: [THEME.COLORS.deepAsphalt, '#000000'] 
 };
