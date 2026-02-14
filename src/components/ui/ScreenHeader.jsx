@@ -14,15 +14,17 @@ export default function ScreenHeader({
   return (
     <View style={styles.headerContainer}>
       
-      {/* BLOC GAUCHE : MENU */}
+      {/* ⬅️ GAUCHE : NOTIFICATIONS (Cloche) */}
       <TouchableOpacity 
-        style={styles.iconButton} 
-        onPress={() => navigation.openDrawer()}
+        style={styles.iconButton}
+        onPress={() => console.log("Notifs click")} 
       >
-        <Ionicons name="menu" size={28} color={THEME.COLORS.champagneGold} />
+         <Ionicons name="notifications-outline" size={24} color={THEME.COLORS.textSecondary} />
+         {/* Point rouge de notif */}
+         <View style={styles.badge} />
       </TouchableOpacity>
 
-      {/* BLOC CENTRAL : TITRE ou LOCATION */}
+      {/* ⏺️ CENTRE : TITRE ou LOCATION */}
       <View style={styles.centerContent}>
         {showLocation ? (
           <View style={styles.locationWrapper}>
@@ -39,10 +41,12 @@ export default function ScreenHeader({
         )}
       </View>
 
-      {/* BLOC DROIT : NOTIFICATIONS */}
-      <TouchableOpacity style={styles.iconButton}>
-         <Ionicons name="notifications-outline" size={24} color={THEME.COLORS.textSecondary} />
-         <View style={styles.badge} />
+      {/* ➡️ DROITE : MENU (Ouvre le Drawer à droite) */}
+      <TouchableOpacity 
+        style={styles.iconButton} 
+        onPress={() => navigation.openDrawer()}
+      >
+        <Ionicons name="menu" size={28} color={THEME.COLORS.champagneGold} />
       </TouchableOpacity>
 
     </View>
@@ -51,16 +55,16 @@ export default function ScreenHeader({
 
 const styles = StyleSheet.create({
   headerContainer: {
-    height: THEME.LAYOUT.HEADER_HEIGHT, // 60px Fixe
+    height: THEME.LAYOUT.HEADER_HEIGHT,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: THEME.COLORS.deepAsphalt, // FOND OPAQUE (Noir/Blanc selon ton thème)
+    backgroundColor: THEME.COLORS.deepAsphalt,
     borderBottomWidth: 1,
-    borderBottomColor: 'rgba(255,255,255,0.05)', // Séparateur subtil
+    borderBottomColor: 'rgba(255,255,255,0.05)',
     paddingHorizontal: THEME.SPACING.md,
-    zIndex: 10000, // Toujours au-dessus
-    // Ombre pour l'effet "Commandant"
+    zIndex: 10000,
+    // Ombre légère
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.3,
@@ -101,7 +105,7 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   locationText: {
-    color: THEME.COLORS.textPrimary, // Noir ou Blanc selon ton thème
+    color: THEME.COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '600',
   },

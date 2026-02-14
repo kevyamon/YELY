@@ -1,14 +1,18 @@
 // src/screens/home/DriverHome.jsx
+// HOME DRIVER - STRUCTURE SPLIT & GESTION ÉTAT
+// Map (Haut) + Disponibilité/Stats (Bas)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Switch, View } from 'react-native';
-import { Text } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
+// Composants UI
 import MapCard from '../../components/map/MapCard';
 import ScreenHeader from '../../components/ui/ScreenHeader';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+
+// Logique & Store
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
@@ -16,220 +20,245 @@ import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice'
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
-
-const DriverHome = ({ navigation }) => {
+export default function DriverHome({ navigation }) {
   const mapRef = useRef(null);
-  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  
+  // 1. DATA USER & LOCA
   const user = useSelector(selectCurrentUser);
-  const { location } = useGeolocation();
-  const [currentAddress, setCurrentAddress] = useState('Localisation...');
+  const { location, errorMsg } = useGeolocation();
+  const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  // État Disponibilité
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
+  // 2. REVERSE GEOCODING
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
-        const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-        if (addr) setCurrentAddress(addr.shortName);
+        try {
+          const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
+          if (addr && addr.shortName) setCurrentAddress(addr.shortName);
+          else setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+        } catch (error) {
+          setCurrentAddress("Adresse indisponible");
+        }
       };
       getAddress();
+    } else if (errorMsg) {
+      setCurrentAddress("Erreur GPS");
     }
-  }, [location]);
+  }, [location, errorMsg]);
 
+  // 3. GESTION DISPONIBILITÉ
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
-
     try {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
-
+      
       dispatch(showSuccessToast({
-        title: res.isAvailable ? "En ligne !" : "Hors ligne",
-        message: res.message,
+        title: res.isAvailable ? "Vous êtes EN LIGNE" : "Vous êtes HORS LIGNE",
+        message: res.isAvailable ? "Prêt à recevoir des courses." : "Vous ne recevrez plus de courses.",
       }));
     } catch (err) {
       console.error('[AVAILABILITY] Erreur:', err);
       dispatch(showErrorToast({
         title: "Erreur",
-        message: err?.data?.message || "Impossible de changer votre statut.",
+        message: "Impossible de changer votre statut.",
       }));
     }
   };
 
-  const availableHeight = SCREEN_HEIGHT - insets.top - 80 - insets.bottom;
-  const mapHeight = availableHeight * 0.50;
-
   return (
-    <View style={styles.container}>
+    <ScreenWrapper>
 
-      {/* ═══════ HEADER ═══════ */}
-      <ScreenHeader
-        leftIcon={isAvailable ? 'status-online' : 'status-offline'}
-        leftText={currentAddress}
-        onRightPress={() => navigation.openDrawer()}
+      {/* 1. HEADER (Fixe en haut) */}
+      <ScreenHeader 
+        showLocation={true}
+        locationText={currentAddress}
       />
 
-      {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
-      <View style={{ height: mapHeight }}>
-        <MapCard
-          ref={mapRef}
-          location={location}
-          showUserMarker
-          showRecenterButton
-          floating
-          darkMode
-        />
-      </View>
+      {/* 2. CONTENU PRINCIPAL (Split View) */}
+      <View style={styles.mainContainer}>
 
-      {/* ═══════ ZONE BASSE : Switch + Infos ═══════ */}
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.sm }]}>
+        {/* --- ZONE HAUTE : CARTE (55%) --- */}
+        <View style={styles.mapSection}>
+           {location ? (
+             <MapCard 
+               ref={mapRef}
+               location={location}
+               showUserMarker={true}
+               darkMode={true}
+               // Si driver dispo, on peut changer la couleur du marker (plus tard)
+             />
+           ) : (
+             <View style={styles.loadingContainer}>
+               <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+               <Text style={styles.loadingText}>Localisation...</Text>
+             </View>
+           )}
+        </View>
 
-        {/* Carte de disponibilité */}
-        <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
-          <View style={styles.availabilityContent}>
-            <View style={styles.availabilityInfo}>
-              <View style={styles.availabilityHeader}>
-                <Ionicons
-                  name={isAvailable ? 'radio-button-on' : 'radio-button-off'}
-                  size={20}
-                  color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary}
-                />
-                <Text style={[
-                  styles.availabilityTitle,
-                  isAvailable && styles.availabilityTitleOnline,
-                ]}>
-                  {isAvailable ? 'En service' : 'Hors ligne'}
+        {/* --- ZONE BASSE : CONTRÔLES (45%) --- */}
+        <View style={styles.bottomSection}>
+
+          {/* CARTE DISPONIBILITÉ */}
+          <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
+            <View style={styles.availabilityRow}>
+              
+              {/* Infos Gauche */}
+              <View style={styles.statusInfo}>
+                <View style={styles.statusHeader}>
+                  <Ionicons 
+                    name={isAvailable ? "radio-button-on" : "radio-button-off"} 
+                    size={18} 
+                    color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary} 
+                  />
+                  <Text style={[styles.statusTitle, isAvailable && { color: THEME.COLORS.success }]}>
+                    {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
+                  </Text>
+                </View>
+                <Text style={styles.statusSubtitle}>
+                  {isAvailable ? 'Recherche de courses en cours...' : 'Passez en ligne pour travailler'}
                 </Text>
               </View>
-              <Text style={styles.availabilityHint}>
-                {isAvailable
-                  ? 'Vous recevez des courses'
-                  : 'Activez pour recevoir des courses'
-                }
-              </Text>
+
+              {/* Switch Droite */}
+              <Switch
+                value={isAvailable}
+                onValueChange={handleToggleAvailability}
+                disabled={isToggling}
+                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(46, 204, 113, 0.3)' }}
+                thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
+              />
             </View>
-
-            <Switch
-              value={isAvailable}
-              onValueChange={handleToggleAvailability}
-              disabled={isToggling}
-              trackColor={{
-                false: 'rgba(242, 244, 246, 0.15)',
-                true: 'rgba(46, 204, 113, 0.35)',
-              }}
-              thumbColor={isAvailable ? THEME.COLORS.success : THEME.COLORS.textSecondary}
-              ios_backgroundColor="rgba(242, 244, 246, 0.15)"
-            />
           </View>
+
+          {/* DASHBOARD STATS RAPIDES */}
+          <View style={styles.statsContainer}>
+            <StatBox icon="car-sport" value="0" label="Courses" />
+            <StatBox icon="time" value="0h" label="Heures" />
+            <StatBox icon="wallet" value="0 F" label="Gains" isGold />
+          </View>
+
         </View>
 
-        {/* Stats rapides */}
-        <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="car-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Courses</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0h</Text>
-            <Text style={styles.statLabel}>En ligne</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="wallet-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0F</Text>
-            <Text style={styles.statLabel}>Gains</Text>
-          </View>
-        </View>
       </View>
-    </View>
+    </ScreenWrapper>
   );
-};
+}
+
+// Petit composant interne pour les stats
+const StatBox = ({ icon, value, label, isGold }) => (
+  <View style={styles.statBox}>
+    <Ionicons name={icon} size={22} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
+    <Text style={[styles.statValue, isGold && { color: THEME.COLORS.champagneGold }]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
-  container: {
+  mainContainer: {
     flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt,
+    flexDirection: 'column',
   },
+  
+  // --- CARTE ---
+  mapSection: {
+    flex: 0.55,
+    overflow: 'hidden',
+    borderBottomLeftRadius: 24,
+    borderBottomRightRadius: 24,
+    backgroundColor: '#1a1a1a',
+    zIndex: 1,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+  },
+  loadingText: {
+    color: 'white', 
+    marginTop: 10, 
+    fontSize: 12
+  },
+
+  // --- CONTROLES ---
   bottomSection: {
-    flex: 1,
+    flex: 0.45,
     backgroundColor: THEME.COLORS.deepAsphalt,
+    paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.lg,
   },
+
+  // Disponibilité
   availabilityCard: {
-    backgroundColor: THEME.COLORS.glassMedium,
-    borderRadius: THEME.BORDERS.radius.xl,
-    borderWidth: THEME.BORDERS.width.thin,
+    backgroundColor: THEME.COLORS.glassLight,
+    borderRadius: 16,
+    borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    ...THEME.SHADOWS.soft,
+    padding: 16,
+    marginBottom: 20,
   },
   availabilityCardOnline: {
-    borderColor: 'rgba(46, 204, 113, 0.30)',
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
+    backgroundColor: 'rgba(46, 204, 113, 0.08)', // Vert très léger
+    borderColor: 'rgba(46, 204, 113, 0.3)',
   },
-  availabilityContent: {
+  availabilityRow: {
     flexDirection: 'row',
-    alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.lg,
+    alignItems: 'center',
   },
-  availabilityInfo: {
-    flex: 1,
-    marginRight: THEME.SPACING.md,
-  },
-  availabilityHeader: {
+  statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.SPACING.sm,
+    marginBottom: 4,
+    gap: 8,
   },
-  availabilityTitle: {
+  statusTitle: {
     color: THEME.COLORS.textSecondary,
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.semiBold,
+    fontWeight: '900',
+    fontSize: 14,
+    letterSpacing: 1,
   },
-  availabilityTitleOnline: {
-    color: THEME.COLORS.success,
-  },
-  availabilityHint: {
+  statusSubtitle: {
     color: THEME.COLORS.textTertiary,
-    fontSize: THEME.FONTS.sizes.caption,
-    marginTop: THEME.SPACING.xxs,
-    marginLeft: THEME.SPACING.xxl + THEME.SPACING.sm,
+    fontSize: 11,
   },
-  statsRow: {
+
+  // Stats
+  statsContainer: {
     flexDirection: 'row',
-    gap: THEME.SPACING.sm,
-    marginTop: THEME.SPACING.lg,
+    justifyContent: 'space-between',
+    gap: 10,
   },
-  statCard: {
+  statBox: {
     flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderRadius: 12,
+    paddingVertical: 15,
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassMedium,
-    borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    paddingVertical: THEME.SPACING.lg,
-    gap: THEME.SPACING.xs,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
   statValue: {
-    color: THEME.COLORS.moonlightWhite,
-    fontSize: THEME.FONTS.sizes.h4,
-    fontWeight: THEME.FONTS.weights.bold,
+    color: 'white',
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 4,
   },
   statLabel: {
     color: THEME.COLORS.textTertiary,
-    fontSize: THEME.FONTS.sizes.micro,
+    fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
+  }
 });
-
-export default DriverHome;
