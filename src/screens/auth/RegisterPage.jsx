@@ -90,8 +90,10 @@ export default function RegisterPage({ navigation, route }) {
 
     try {
       const fullPhone = `+${callingCode}${formData.phone}`;
+      // L'unwrap() nous donne la réponse propre du serveur
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
 
+      // On accède aux données via res.data car le backend les enveloppe maintenant pour la sécurité
       dispatch(setCredentials({
         user: res.data.user,
         accessToken: res.data.accessToken,

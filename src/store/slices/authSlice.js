@@ -1,6 +1,6 @@
 // src/store/slices/authSlice.js
+// GESTION DE LA SESSION - Stockage sécurisé Bank Grade
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSlice } from '@reduxjs/toolkit';
 import SecureStorageAdapter from '../secureStoreAdapter';
 
@@ -21,8 +21,9 @@ const authSlice = createSlice({
       state.token = accessToken;
       state.refreshToken = refreshToken;
       state.isAuthenticated = true;
-      // Persister
-      AsyncStorage.setItem('userInfo', JSON.stringify(user));
+
+      // 🛡️ SÉCURITÉ : Persistance dans le coffre-fort
+      SecureStorageAdapter.setItem('userInfo', JSON.stringify(user));
       SecureStorageAdapter.setItem('token', accessToken);
       if (refreshToken) {
         SecureStorageAdapter.setItem('refreshToken', refreshToken);
@@ -30,14 +31,14 @@ const authSlice = createSlice({
     },
     updateUserInfo: (state, action) => {
       state.userInfo = { ...state.userInfo, ...action.payload };
-      AsyncStorage.setItem('userInfo', JSON.stringify(state.userInfo));
+      SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.userInfo));
     },
     logout: (state) => {
       state.userInfo = null;
       state.token = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
-      AsyncStorage.removeItem('userInfo');
+      SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
       SecureStorageAdapter.removeItem('refreshToken');
     },
