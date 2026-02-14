@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
+import CountryPicker from 'react-native-country-picker-modal'; // Ajout
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -28,9 +29,13 @@ export default function LoginPage({ navigation }) {
   const [login, { isLoading }] = useLoginMutation();
 
   const [formData, setFormData] = useState({
-    identifier: '', // Email ou Téléphone
+    identifier: '', 
     password: ''
   });
+
+  // Gestion Indicatif (Comme sur Register)
+  const [countryCode, setCountryCode] = useState('CI');
+  const [callingCode, setCallingCode] = useState('225');
 
   const handleLogin = async () => {
     if (!formData.identifier.trim() || !formData.password.trim()) {
@@ -39,10 +44,20 @@ export default function LoginPage({ navigation }) {
     }
 
     try {
-      const res = await login(formData).unwrap();
+      let finalIdentifier = formData.identifier.trim();
 
-      // Extraction propre depuis res.data (Standard Backend)
-      const { user, accessToken, refreshToken } = res.data;
+      // LOGIQUE HYBRIDE :
+      // Si ce n'est pas un email (pas de @), on considère que c'est un téléphone
+      // et on ajoute l'indicatif sélectionné.
+      if (!finalIdentifier.includes('@')) {
+        // On nettoie le numéro (enlève les espaces et le 0 au début si présent)
+        const cleanPhone = finalIdentifier.replace(/\s/g, '').replace(/^0+/, '');
+        finalIdentifier = `+${callingCode}${cleanPhone}`;
+      }
+
+      const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
+
+      const { user, accessToken, refreshToken } = res.data; // Structure aplatie (tokenService corrigé)
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
 
@@ -77,13 +92,28 @@ export default function LoginPage({ navigation }) {
           </View>
 
           <GlassCard style={styles.card}>
-            <GlassInput
-              icon="person-outline"
-              placeholder="Email ou Téléphone"
-              autoCapitalize="none"
-              value={formData.identifier}
-              onChangeText={(t) => setFormData({ ...formData, identifier: t })}
-            />
+            
+            {/* INPUT HYBRIDE : TÉLÉPHONE (avec indicatif) OU EMAIL */}
+            <View style={styles.inputRow}>
+               <View style={styles.countryPickerContainer}>
+                 <CountryPicker
+                   countryCode={countryCode}
+                   withFilter withFlag withCallingCode
+                   onSelect={(c) => { setCountryCode(c.cca2); setCallingCode(c.callingCode[0]); }}
+                 />
+                 <Text style={styles.callingCodeText}>+{callingCode}</Text>
+               </View>
+               <View style={{ flex: 1 }}>
+                  <GlassInput
+                    icon="person-outline"
+                    placeholder="Tél ou Email"
+                    autoCapitalize="none"
+                    value={formData.identifier}
+                    onChangeText={(t) => setFormData({ ...formData, identifier: t })}
+                  />
+               </View>
+            </View>
+            <Text style={styles.hintText}>Pour un email, l'indicatif sera ignoré.</Text>
 
             <GlassInput
               icon="lock-closed-outline"
@@ -120,6 +150,13 @@ const styles = StyleSheet.create({
   logo: { width: 120, height: 120, marginBottom: THEME.SPACING.md },
   welcomeText: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
+  
+  // Styles nouveaux pour l'input hybride
+  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
+  callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
+  hintText: { color: THEME.COLORS.textTertiary, fontSize: 10, marginTop: -10, marginBottom: 10, marginLeft: 5, fontStyle: 'italic' },
+
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary }

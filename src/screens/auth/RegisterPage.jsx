@@ -1,6 +1,7 @@
 // src/screens/auth/RegisterPage.jsx
 
-import { useState } from 'react';
+import { Ionicons } from '@expo/vector-icons';
+import { useEffect, useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -10,7 +11,7 @@ import {
   View
 } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
-import { Checkbox, Text } from 'react-native-paper';
+import { ProgressBar, Text } from 'react-native-paper'; // Ajout ProgressBar
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -22,7 +23,7 @@ import { useRegisterMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
-import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators'; // Import propre
+import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators';
 
 export default function RegisterPage({ navigation, route }) {
   const dispatch = useDispatch();
@@ -39,29 +40,48 @@ export default function RegisterPage({ navigation, route }) {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
 
+  // --- LOGIQUE JAUGE MOT DE PASSE ---
+  const [passwordStats, setPasswordStats] = useState({
+    length: false,
+    upper: false,
+    number: false,
+    special: false,
+    score: 0 // 0 à 1
+  });
+
+  useEffect(() => {
+    const pass = formData.password;
+    const stats = {
+      length: pass.length >= 8,
+      upper: /[A-Z]/.test(pass),
+      number: /\d/.test(pass),
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass)
+    };
+    
+    const validCount = Object.values(stats).filter(Boolean).length;
+    setPasswordStats({ ...stats, score: validCount / 4 });
+  }, [formData.password]);
+  // ----------------------------------
+
   const validateForm = () => {
     const { name, email, password, phone } = formData;
-
     if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
-      dispatch(showErrorToast({ title: "Champs requis", message: "Veuillez tout remplir." }));
+      dispatch(showErrorToast({ title: "Incomplet", message: "Tous les champs sont requis." }));
       return false;
     }
-
     if (!VALIDATORS.name(name)) {
       dispatch(showErrorToast({ title: "Nom invalide", message: ERROR_MESSAGES.name }));
       return false;
     }
-
     if (!VALIDATORS.email(email)) {
       dispatch(showErrorToast({ title: "Email invalide", message: ERROR_MESSAGES.email }));
       return false;
     }
-
-    if (!VALIDATORS.password(password)) {
-      dispatch(showErrorToast({ title: "Mot de passe faible", message: ERROR_MESSAGES.password }));
-      return false;
+    // On utilise la jauge pour valider le mdp
+    if (passwordStats.score < 1) { 
+       dispatch(showErrorToast({ title: "Mot de passe faible", message: "Veuillez respecter tous les critères." }));
+       return false;
     }
-
     return true;
   };
 
@@ -69,58 +89,58 @@ export default function RegisterPage({ navigation, route }) {
     if (!validateForm()) return;
 
     try {
-      const fullPhone = `+${callingCode}${formData.phone.replace(/^0+/, '')}`; // Retire le 0 initial si présent
-      
-      // Appel API
+      const fullPhone = `+${callingCode}${formData.phone.replace(/^0+/, '')}`;
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
-
-      // DEBUG: Vérification console si besoin
-      // console.log('Register Response:', res);
-
-      // Le backend renvoie maintenant : { success: true, data: { user, accessToken... } }
       const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-
-      dispatch(showSuccessToast({
-        title: "Bienvenue !",
-        message: "Compte créé avec succès."
-      }));
+      dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte créé avec succès." }));
       
-      // La navigation sera gérée par l'AppNavigator via isAuthenticated, 
-      // mais on peut forcer si besoin.
-
     } catch (err) {
       console.error('[REGISTER_ERROR]', err);
       const errorMessage = err?.data?.message || "Erreur lors de l'inscription.";
-      
-      dispatch(showErrorToast({
-        title: "Échec inscription",
-        message: errorMessage
-      }));
+      dispatch(showErrorToast({ title: "Échec inscription", message: errorMessage }));
     }
   };
+
+  // Composant visuel pour une ligne d'exigence MDP
+  const PasswordRequirement = ({ met, text }) => (
+    <View style={styles.reqRow}>
+      <Ionicons 
+        name={met ? "checkmark-circle" : "ellipse-outline"} 
+        size={14} 
+        color={met ? "#10B981" : THEME.COLORS.textTertiary} 
+      />
+      <Text style={[styles.reqText, { color: met ? "#10B981" : THEME.COLORS.textTertiary }]}>{text}</Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
-          <Text style={styles.mainTitle}>INSCRIPTION {role === 'rider' ? 'PASSAGER' : 'CHAUFFEUR'}</Text>
+          <Text style={styles.mainTitle}>INSCRIPTION</Text>
 
           <GlassCard style={styles.card}>
-            {/* SÉLECTEUR DE RÔLE */}
-            <View style={styles.roleSelectionBox}>
-              <View style={styles.choiceContainer}>
-                <TouchableOpacity style={styles.choiceItem} onPress={() => setRole('rider')}>
-                  <Checkbox.Android status={role === 'rider' ? 'checked' : 'unchecked'} color={THEME.COLORS.champagneGold} />
-                  <Text style={styles.choiceText}>Passager</Text>
-                </TouchableOpacity>
-                <TouchableOpacity style={styles.choiceItem} onPress={() => setRole('driver')}>
-                  <Checkbox.Android status={role === 'driver' ? 'checked' : 'unchecked'} color={THEME.COLORS.champagneGold} />
-                  <Text style={styles.choiceText}>Chauffeur</Text>
-                </TouchableOpacity>
-              </View>
+            
+            {/* NOUVEAUX BOUTONS SÉLECTEURS DE RÔLE */}
+            <View style={styles.roleContainer}>
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'rider' && styles.roleBtnActive]} 
+                onPress={() => setRole('rider')}
+              >
+                <Ionicons name="person" size={20} color={role === 'rider' ? '#FFF' : THEME.COLORS.textSecondary} />
+                <Text style={[styles.roleText, role === 'rider' && styles.roleTextActive]}>Passager</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.roleBtn, role === 'driver' && styles.roleBtnActive]} 
+                onPress={() => setRole('driver')}
+              >
+                <Ionicons name="car" size={20} color={role === 'driver' ? '#FFF' : THEME.COLORS.textSecondary} />
+                <Text style={[styles.roleText, role === 'driver' && styles.roleTextActive]}>Chauffeur</Text>
+              </TouchableOpacity>
             </View>
 
             <GlassInput
@@ -159,13 +179,33 @@ export default function RegisterPage({ navigation, route }) {
               onChangeText={(t) => setFormData({ ...formData, email: t })}
             />
 
-            <GlassInput
-              icon="lock-closed-outline"
-              placeholder="Mot de passe"
-              secureTextEntry
-              value={formData.password}
-              onChangeText={(t) => setFormData({ ...formData, password: t })}
-            />
+            {/* PASSWORD INPUT + JAUGE */}
+            <View style={{ marginBottom: 15 }}>
+              <GlassInput
+                icon="lock-closed-outline"
+                placeholder="Mot de passe"
+                secureTextEntry
+                value={formData.password}
+                onChangeText={(t) => setFormData({ ...formData, password: t })}
+              />
+              
+              {/* Jauge visuelle */}
+              {formData.password.length > 0 && (
+                <View style={styles.gaugeContainer}>
+                  <ProgressBar 
+                    progress={passwordStats.score} 
+                    color={passwordStats.score === 1 ? "#10B981" : (passwordStats.score > 0.5 ? "orange" : "red")} 
+                    style={{ borderRadius: 5, height: 6, backgroundColor: 'rgba(255,255,255,0.1)' }} 
+                  />
+                  <View style={styles.requirementsBox}>
+                    <PasswordRequirement met={passwordStats.length} text="8 caractères min." />
+                    <PasswordRequirement met={passwordStats.upper} text="1 Majuscule" />
+                    <PasswordRequirement met={passwordStats.number} text="1 Chiffre" />
+                    <PasswordRequirement met={passwordStats.special} text="1 Symbole (@#$%)" />
+                  </View>
+                </View>
+              )}
+            </View>
 
             <GoldButton
               title="CRÉER MON COMPTE"
@@ -192,14 +232,38 @@ const styles = StyleSheet.create({
   scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
   mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
-  roleSelectionBox: { marginBottom: THEME.SPACING.md },
-  choiceContainer: { flexDirection: 'row', justifyContent: 'space-around' },
-  choiceItem: { flexDirection: 'row', alignItems: 'center' },
-  choiceText: { color: THEME.COLORS.moonlightWhite, marginLeft: THEME.SPACING.xs },
+  
+  // Styles Boutons Rôles
+  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg },
+  roleBtn: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.glassBorder, 
+    backgroundColor: THEME.COLORS.glassLight 
+  },
+  roleBtnActive: { 
+    backgroundColor: "#10B981", // Le VERT demandé
+    borderColor: "#10B981" 
+  },
+  roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
+  roleTextActive: { color: '#FFF' },
+
   phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  registerButton: { marginTop: THEME.SPACING.md },
+  
+  // Styles Jauge MDP
+  gaugeContainer: { marginTop: -10, marginBottom: 5 },
+  requirementsBox: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 10 },
+  reqRow: { flexDirection: 'row', alignItems: 'center', marginRight: 5 },
+  reqText: { fontSize: 11, marginLeft: 4 },
+
+  registerButton: { marginTop: THEME.SPACING.sm },
   loginFooter: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   loginRedirect: { color: THEME.COLORS.textTertiary }
 });
