@@ -3,13 +3,12 @@
 // CSCSM Level: High-End UI
 
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient'; // Assure-toi d'avoir installé expo-linear-gradient
+import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Dimensions,
   ImageBackground,
-  ScrollView,
   StatusBar,
   StyleSheet,
   Text,
@@ -23,15 +22,33 @@ import THEME from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
 
+// ═════════════════════════════════════════════════════════════════════════
+// ⚙️ CONFIGURATION DU LANDING (Le panneau de contrôle)
+// ═════════════════════════════════════════════════════════════════════════
+const LANDING_CONFIG = {
+  // 🟢 ACTIVE/DÉSACTIVE L'IMAGE DE FOND
+  // true = Affiche l'image (Mode Normal)
+  // false = Affiche le dégradé par défaut (Mode Sobre / Event / Noël si tu changes les couleurs)
+  SHOW_IMAGE: true, 
+
+  // 🖼️ TON IMAGE LOCALE (Doit exister dans assets/images/)
+  // Tu peux changer ce fichier selon les saisons (ex: landing-noel.png)
+  IMAGE_SOURCE: require('../../assets/images/landing-bg.png'),
+
+  // 🎨 COULEURS DU FOND PAR DÉFAUT (Si image désactivée)
+  // Par défaut : Du gris asphalte luxueux vers le noir profond
+  DEFAULT_GRADIENT: [THEME.COLORS.deepAsphalt, '#000000'] 
+};
+// ═════════════════════════════════════════════════════════════════════════
+
 export default function LandingScreen({ navigation }) {
   const [showTerms, setShowTerms] = useState(false);
 
   // --- ANIMATIONS ---
-  const fadeAnim = useRef(new Animated.Value(0)).current;  // Opacité initiale 0
-  const slideAnim = useRef(new Animated.Value(50)).current; // Position initiale +50px (plus bas)
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
 
   useEffect(() => {
-    // Lancement de l'animation d'entrée
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -41,42 +58,58 @@ export default function LandingScreen({ navigation }) {
       Animated.timing(slideAnim, {
         toValue: 0,
         duration: 800,
-        useNativeDriver: true, // Glisse vers sa position naturelle (0)
+        useNativeDriver: true,
       }),
     ]).start();
   }, []);
+
+  // Rendu conditionnel du fond (Image ou Dégradé pur)
+  const renderBackground = (children) => {
+    if (LANDING_CONFIG.SHOW_IMAGE) {
+      return (
+        <ImageBackground
+          source={LANDING_CONFIG.IMAGE_SOURCE}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          {/* Overlay sombre pour que le texte reste lisible sur l'image */}
+          <LinearGradient
+            colors={['transparent', 'rgba(0,0,0,0.6)', '#000000']}
+            style={styles.gradientOverlay}
+          />
+          {children}
+        </ImageBackground>
+      );
+    } else {
+      // Mode "Sans Image" : On met un beau dégradé pro
+      return (
+        <LinearGradient
+          colors={LANDING_CONFIG.DEFAULT_GRADIENT}
+          style={styles.backgroundImage}
+        >
+          {children}
+        </LinearGradient>
+      );
+    }
+  };
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* 1. BACKGROUND IMMERSIF */}
-      {/* Remplace l'image par une belle photo de ville de nuit ou voiture de luxe */}
-      <ImageBackground
-        source={{ uri: 'https://images.unsplash.com/photo-1493238792015-fa093a3093a1?q=80&w=1920&auto=format&fit=crop' }} 
-        style={styles.backgroundImage}
-        resizeMode="cover"
-      >
-        {/* Dégradé sombre pour lisibilité */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.6)', '#000000']}
-          style={styles.gradientOverlay}
-        />
-
-        {/* 2. CONTENU ANIMÉ */}
+      {renderBackground(
         <View style={styles.contentContainer}>
           
           {/* LOGO & TITRE */}
           <Animated.View style={[styles.headerSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.logoContainer}>
-               {/* Si tu as un logo image, remplace l'icône par <Image ... /> */}
                <Ionicons name="car-sport" size={64} color={THEME.COLORS.champagneGold} />
             </View>
             <Text style={styles.brandTitle}>YÉLY</Text>
             <Text style={styles.tagline}>L'EXCELLENCE EN MOUVEMENT</Text>
           </Animated.View>
 
-          {/* ACTION SECTION (Bas de page) */}
+          {/* ACTION SECTION */}
           <Animated.View style={[styles.bottomSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             
             <Text style={styles.description}>
@@ -101,40 +134,38 @@ export default function LandingScreen({ navigation }) {
             <Text style={styles.copyright}>v1.0.0 • Made with ❤️ in Babi</Text>
           </Animated.View>
         </View>
-      </ImageBackground>
+      )}
 
-      {/* 3. MODAL CONDITIONS D'UTILISATION (Activé !) */}
+      {/* MODAL CONDITIONS D'UTILISATION */}
       <GlassModal
         visible={showTerms}
         onClose={() => setShowTerms(false)}
         title="CONDITIONS GÉNÉRALES"
       >
-        <ScrollView style={styles.termsScroll} showsVerticalScrollIndicator={false}>
-          <Text style={styles.termsContent}>
-            <Text style={styles.boldGold}>1. ACCEPTATION DES CONDITIONS</Text>{"\n"}
-            En utilisant l'application Yély, vous acceptez d'être lié par les présentes conditions d'utilisation.{"\n"}{"\n"}
+        <Text style={styles.termsContent}>
+          <Text style={styles.boldGold}>1. ACCEPTATION DES CONDITIONS</Text>{"\n"}
+          En utilisant l'application Yély, vous acceptez d'être lié par les présentes conditions d'utilisation.{"\n"}{"\n"}
 
-            <Text style={styles.boldGold}>2. SÉCURITÉ ET RESPONSABILITÉ</Text>{"\n"}
-            Yély s'engage à connecter les passagers avec des chauffeurs vérifiés. Toutefois, les chauffeurs sont des prestataires indépendants.{"\n"}{"\n"}
+          <Text style={styles.boldGold}>2. SÉCURITÉ ET RESPONSABILITÉ</Text>{"\n"}
+          Yély s'engage à connecter les passagers avec des chauffeurs vérifiés. Toutefois, les chauffeurs sont des prestataires indépendants.{"\n"}{"\n"}
 
-            <Text style={styles.boldGold}>3. PAIEMENTS</Text>{"\n"}
-            Les tarifs sont calculés automatiquement en fonction de la distance et de la catégorie de véhicule choisie.{"\n"}{"\n"}
+          <Text style={styles.boldGold}>3. PAIEMENTS</Text>{"\n"}
+          Les tarifs sont calculés automatiquement en fonction de la distance et de la catégorie de véhicule choisie.{"\n"}{"\n"}
 
-            <Text style={styles.boldGold}>4. ANNULATIONS</Text>{"\n"}
-            Des frais peuvent s'appliquer si vous annulez une course plus de 5 minutes après l'acceptation du chauffeur.{"\n"}{"\n"}
+          <Text style={styles.boldGold}>4. ANNULATIONS</Text>{"\n"}
+          Des frais peuvent s'appliquer si vous annulez une course plus de 5 minutes après l'acceptation du chauffeur.{"\n"}{"\n"}
 
-            <Text style={styles.boldGold}>5. CONFIDENTIALITÉ</Text>{"\n"}
-            Vos données personnelles sont protégées et ne sont utilisées que pour le bon fonctionnement du service.
-          </Text>
-          
-          <View style={{ height: 20 }} />
-          
-          <GoldButton 
-            title="J'AI COMPRIS" 
-            onPress={() => setShowTerms(false)}
-            style={{ marginBottom: 10 }}
-          />
-        </ScrollView>
+          <Text style={styles.boldGold}>5. CONFIDENTIALITÉ</Text>{"\n"}
+          Vos données personnelles sont protégées et ne sont utilisées que pour le bon fonctionnement du service.
+        </Text>
+        
+        <View style={{ height: 20 }} />
+        
+        <GoldButton 
+          title="J'AI COMPRIS" 
+          onPress={() => setShowTerms(false)}
+          style={{ marginBottom: 10 }}
+        />
       </GlassModal>
 
     </View>
@@ -145,11 +176,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   backgroundImage: { flex: 1, width: width, height: height },
   gradientOverlay: {
-    ...StyleSheet.absoluteFillObject, // Couvre toute l'image
+    ...StyleSheet.absoluteFillObject,
   },
   contentContainer: {
     flex: 1,
-    justifyContent: 'space-between', // Sépare haut et bas
+    justifyContent: 'space-between',
     paddingHorizontal: THEME.SPACING.xl,
     paddingTop: height * 0.15,
     paddingBottom: THEME.SPACING.xl,
@@ -161,7 +192,7 @@ const styles = StyleSheet.create({
     width: 100,
     height: 100,
     borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.1)', // Cercle subtil
+    backgroundColor: 'rgba(255,255,255,0.1)',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: THEME.SPACING.md,
@@ -219,7 +250,6 @@ const styles = StyleSheet.create({
   },
 
   // MODAL STYLES
-  termsScroll: { flex: 1 },
   termsContent: { color: '#FFF', lineHeight: 20, fontSize: 14 },
   boldGold: { color: THEME.COLORS.champagneGold, fontWeight: 'bold', fontSize: 16 }
 });
