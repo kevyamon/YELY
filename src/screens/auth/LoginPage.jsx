@@ -1,7 +1,5 @@
 // src/screens/auth/LoginPage.jsx
 
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
 import { useState } from 'react';
 import {
   Image,
@@ -9,231 +7,120 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
-  View,
+  View
 } from 'react-native';
-import Animated, {
-  FadeInDown
-} from 'react-native-reanimated';
+import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
+import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
-import socketService from '../../services/socketService';
+
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
-import { showErrorToast, showSuccessToast, showToast } from '../../store/slices/uiSlice';
-import { COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import THEME from '../../theme/theme';
 
-const LoginPage = () => {
-  const navigation = useNavigation();
+export default function LoginPage({ navigation }) {
   const dispatch = useDispatch();
-
-  const [identifier, setIdentifier] = useState('');
-  const [password, setPassword] = useState('');
-
   const [login, { isLoading }] = useLoginMutation();
 
+  const [formData, setFormData] = useState({
+    identifier: '', // Email ou Téléphone
+    password: ''
+  });
+
   const handleLogin = async () => {
-    if (!identifier.trim() || !password.trim()) {
-      dispatch(showToast({
-        type: 'warning',
-        title: 'Champs requis',
-        message: 'Veuillez remplir tous les champs.',
-      }));
+    if (!formData.identifier.trim() || !formData.password.trim()) {
+      dispatch(showErrorToast({ title: "Champs requis", message: "Veuillez entrer vos identifiants." }));
       return;
     }
 
     try {
-      const res = await login({ identifier: identifier.trim(), password }).unwrap();
+      const res = await login(formData).unwrap();
 
-      dispatch(setCredentials({
-        user: res.data.user,
-        accessToken: res.data.accessToken,
-        refreshToken: res.data.refreshToken,
-      }));
+      // Extraction propre depuis res.data (Standard Backend)
+      const { user, accessToken, refreshToken } = res.data;
 
-      socketService.connect(res.data.accessToken);
+      dispatch(setCredentials({ user, accessToken, refreshToken }));
 
       dispatch(showSuccessToast({
-        title: `Bienvenue ${res.data.user.name} !`,
-        message: 'Connexion réussie.',
+        title: "Bon retour !",
+        message: `Ravi de vous revoir, ${user.name.split(' ')[0]}.`
       }));
+
     } catch (err) {
-      const errorMsg = err?.data?.message || 'Erreur de connexion. Vérifiez vos identifiants.';
+      console.error('[LOGIN_ERROR]', err);
+      const errorMessage = err?.data?.message || "Identifiants incorrects.";
+      
       dispatch(showErrorToast({
-        title: 'Échec de connexion',
-        message: errorMsg,
+        title: "Erreur de connexion",
+        message: errorMessage
       }));
     }
   };
 
   return (
-    <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.keyboardView}
-      >
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {/* Header avec bouton retour */}
-          <TouchableOpacity
-            onPress={() => navigation.goBack()}
-            style={styles.backButton}
-          >
-            <Ionicons name="arrow-back" size={24} color={COLORS.textPrimary} />
-          </TouchableOpacity>
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          
+          <View style={styles.headerContainer}>
+            <Image 
+              source={require('../../../assets/logo.png')} 
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <Text style={styles.welcomeText}>CONNEXION</Text>
+          </View>
 
-          {/* Logo et Titre */}
-          <Animated.View entering={FadeInDown.delay(100).duration(500)} style={styles.headerSection}>
-            <View style={styles.logoContainer}>
-              <Image
-                source={require('../../../assets/logo.png')}
-                style={styles.logoImage}
-                resizeMode="cover"
-              />
-            </View>
-            <Text style={styles.title}>Bon retour</Text>
-            <Text style={styles.subtitle}>
-              Connectez-vous avec votre email ou votre numéro de téléphone
-            </Text>
-          </Animated.View>
-
-          {/* Formulaire */}
-          <Animated.View entering={FadeInDown.delay(300).duration(500)} style={styles.formSection}>
+          <GlassCard style={styles.card}>
             <GlassInput
-              label="Email ou Téléphone"
-              value={identifier}
-              onChangeText={setIdentifier}
-              placeholder="exemple@mail.com ou 07XXXXXXXX"
-              keyboardType="email-address"
-              autoCapitalize="none"
               icon="person-outline"
+              placeholder="Email ou Téléphone"
+              autoCapitalize="none"
+              value={formData.identifier}
+              onChangeText={(t) => setFormData({ ...formData, identifier: t })}
             />
 
             <GlassInput
-              label="Mot de passe"
-              value={password}
-              onChangeText={setPassword}
-              placeholder="Votre mot de passe"
-              secureTextEntry
               icon="lock-closed-outline"
+              placeholder="Mot de passe"
+              secureTextEntry
+              value={formData.password}
+              onChangeText={(t) => setFormData({ ...formData, password: t })}
             />
 
-            <TouchableOpacity style={styles.forgotPassword}>
-              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
-            </TouchableOpacity>
-          </Animated.View>
-
-          {/* Bouton de connexion */}
-          <Animated.View entering={FadeInDown.delay(500).duration(500)} style={styles.actionSection}>
             <GoldButton
               title="SE CONNECTER"
               onPress={handleLogin}
               loading={isLoading}
+              style={styles.loginButton}
               icon="log-in-outline"
             />
+          </GlassCard>
 
-            <View style={styles.registerLink}>
-              <Text style={styles.registerLinkText}>Pas encore de compte ? </Text>
-              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
-                <Text style={styles.registerLinkAction}>S'inscrire</Text>
-              </TouchableOpacity>
-            </View>
-          </Animated.View>
+          <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.footer}>
+            <Text style={styles.footerText}>
+              Nouveau sur Yély ? <Text style={{ color: THEME.COLORS.champagneGold, fontWeight: 'bold' }}>Créer un compte</Text>
+            </Text>
+          </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
-};
+}
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.deepAsphalt,
-  },
-  keyboardView: {
-    flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: SPACING.xxl,
-    paddingBottom: SPACING.huge,
-  },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: COLORS.glassLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: SPACING.md,
-  },
-  headerSection: {
-    alignItems: 'center',
-    marginTop: SPACING.huge,
-    marginBottom: SPACING.xxxl,
-  },
-  logoContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    overflow: 'hidden',
-    borderWidth: 2,
-    borderColor: COLORS.champagneGold,
-    marginBottom: SPACING.xl,
-    ...SHADOWS.goldSoft,
-  },
-  logoImage: {
-    width: '100%',
-    height: '100%',
-  },
-  title: {
-    fontSize: FONTS.sizes.h1,
-    fontWeight: FONTS.weights.bold,
-    color: COLORS.textPrimary,
-    marginBottom: SPACING.sm,
-  },
-  subtitle: {
-    fontSize: FONTS.sizes.bodySmall,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 20,
-  },
-  formSection: {
-    marginBottom: SPACING.xl,
-  },
-  forgotPassword: {
-    alignSelf: 'flex-end',
-    marginTop: -SPACING.sm,
-  },
-  forgotPasswordText: {
-    color: COLORS.champagneGold,
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: FONTS.weights.medium,
-  },
-  actionSection: {
-    marginTop: SPACING.xl,
-  },
-  registerLink: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    marginTop: SPACING.xxl,
-  },
-  registerLinkText: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.bodySmall,
-  },
-  registerLinkAction: {
-    color: COLORS.champagneGold,
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: FONTS.weights.bold,
-  },
+  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
+  headerContainer: { alignItems: 'center', marginBottom: THEME.SPACING.xl },
+  logo: { width: 120, height: 120, marginBottom: THEME.SPACING.md },
+  welcomeText: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', letterSpacing: 2 },
+  card: { padding: THEME.SPACING.lg },
+  loginButton: { marginTop: THEME.SPACING.md },
+  footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
+  footerText: { color: THEME.COLORS.textTertiary }
 });
-
-export default LoginPage;

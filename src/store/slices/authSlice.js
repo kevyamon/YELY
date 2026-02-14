@@ -1,5 +1,5 @@
 // src/store/slices/authSlice.js
-// GESTION DE LA SESSION - Stockage sécurisé Bank Grade
+// GESTION DE LA SESSION - Blindage contre les crashs
 
 import { createSlice } from '@reduxjs/toolkit';
 import SecureStorageAdapter from '../secureStoreAdapter';
@@ -16,13 +16,20 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, accessToken, refreshToken } = action.payload;
+      const { user, accessToken, refreshToken } = action.payload || {};
+
+      // SÉCURITÉ : Refus de mettre à jour si les données critiques manquent
+      if (!user || !accessToken) {
+        console.warn('[Redux] Tentative de setCredentials avec des données incomplètes.');
+        return;
+      }
+
       state.userInfo = user;
       state.token = accessToken;
       state.refreshToken = refreshToken;
       state.isAuthenticated = true;
 
-      // 🛡️ SÉCURITÉ : Persistance dans le coffre-fort
+      // Persistance sécurisée
       SecureStorageAdapter.setItem('userInfo', JSON.stringify(user));
       SecureStorageAdapter.setItem('token', accessToken);
       if (refreshToken) {
@@ -30,6 +37,7 @@ const authSlice = createSlice({
       }
     },
     updateUserInfo: (state, action) => {
+      if (!state.userInfo) return;
       state.userInfo = { ...state.userInfo, ...action.payload };
       SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.userInfo));
     },
@@ -43,11 +51,11 @@ const authSlice = createSlice({
       SecureStorageAdapter.removeItem('refreshToken');
     },
     restoreAuth: (state, action) => {
-      const { user, token, refreshToken } = action.payload;
+      const { user, token, refreshToken } = action.payload || {};
       state.userInfo = user;
       state.token = token;
       state.refreshToken = refreshToken;
-      state.isAuthenticated = true;
+      state.isAuthenticated = !!(user && token);
     },
   },
 });
