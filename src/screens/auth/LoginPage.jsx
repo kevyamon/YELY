@@ -1,5 +1,6 @@
 // src/screens/auth/LoginPage.jsx
 
+import { Ionicons } from '@expo/vector-icons'; // Ajout pour la flèche
 import { useState } from 'react';
 import {
   Image,
@@ -10,7 +11,7 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import CountryPicker from 'react-native-country-picker-modal'; // Ajout
+import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -57,7 +58,7 @@ export default function LoginPage({ navigation }) {
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
 
-      const { user, accessToken, refreshToken } = res.data; // Structure aplatie (tokenService corrigé)
+      const { user, accessToken, refreshToken } = res.data; // Structure aplatie
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
 
@@ -82,6 +83,15 @@ export default function LoginPage({ navigation }) {
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
           
+          {/* BOUTON RETOUR LANDING */}
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Landing')} 
+            style={styles.backButton}
+          >
+            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.champagneGold} />
+            <Text style={styles.backText}>Retour</Text>
+          </TouchableOpacity>
+
           <View style={styles.headerContainer}>
             <Image 
               source={require('../../../assets/logo.png')} 
@@ -146,12 +156,27 @@ export default function LoginPage({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
+  
+  // Style bouton retour
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: THEME.SPACING.md,
+    marginTop: THEME.SPACING.xs,
+    alignSelf: 'flex-start'
+  },
+  backText: {
+    color: THEME.COLORS.champagneGold,
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: '600'
+  },
+
   headerContainer: { alignItems: 'center', marginBottom: THEME.SPACING.xl },
   logo: { width: 120, height: 120, marginBottom: THEME.SPACING.md },
   welcomeText: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', letterSpacing: 2 },
   card: { padding: THEME.SPACING.lg },
   
-  // Styles nouveaux pour l'input hybride
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
