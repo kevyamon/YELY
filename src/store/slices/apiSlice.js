@@ -1,45 +1,50 @@
-import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import { setCredentials, logout } from './authSlice';
-import SecureStorageAdapter from '../secureStoreAdapter';
+// src/store/slices/apiSlice.js
+// API GATEWAY - Gestion Centralisée & Reconnexion Auto
+// CSCSM Level: Bank Grade
 
-// Mutex simple pour éviter refresh multiples
+import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import SecureStorageAdapter from '../secureStoreAdapter';
+import { logout, setCredentials } from './authSlice';
+
+// Mutex pour éviter que 10 requêtes tentent de refresh le token en même temps
 let isRefreshing = false;
 let refreshPromise = null;
 
-// On utilise process.env pour lire le fichier .env de manière moderne avec Expo
-// On garde ton lien Render en secours si le .env n'est pas chargé
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL || 'https://yely-backend-pu0n.onrender.com/api';
+// 🛡️ SÉCURITÉ : Plus de lien en dur. On charge strictement depuis l'environnement.
+const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+
+// Sécurité au démarrage : Si le .env n'est pas chargé, on arrête tout tout de suite.
+if (!BASE_URL) {
+  console.error("🚨 ERREUR CRITIQUE : EXPO_PUBLIC_API_URL est introuvable. Vérifiez votre fichier .env !");
+}
 
 const baseQuery = fetchBaseQuery({
   baseUrl: BASE_URL,
-  // 🛡️ SÉCURITÉ : On retire credentials: 'include' car ton serveur Render utilise "*" 
-  // pour le moment. On passera par les headers Authorization pour l'identité.
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     if (token) {
-      headers.set('authorization', `Bearer ${token}`);
+      headers.set('Authorization', `Bearer ${token}`);
     }
     headers.set('Content-Type', 'application/json');
     return headers;
   },
 });
 
-// Wrapper avec gestion de la réauthentification (401)
 const baseQueryWithReauth = async (args, api, extraOptions) => {
-  // 1. Tenter la requête
   let result = await baseQuery(args, api, extraOptions);
 
-  // 2. Si 401 (Non autorisé / Token expiré)
+  // Interception 401 (Token expiré)
   if (result?.error?.status === 401) {
     if (!isRefreshing) {
       isRefreshing = true;
 
+      // Lancement du refresh
       refreshPromise = (async () => {
         try {
           const refreshToken = await SecureStorageAdapter.getItem('refreshToken');
-
           if (!refreshToken) throw new Error('No refresh token');
 
+          // Note : La route refresh est aussi sous /v1/auth/refresh
           const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -50,7 +55,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
           if (refreshResponse.ok && data.success) {
             const currentUser = api.getState().auth.userInfo;
-
+            
+            // Mise à jour du store
             api.dispatch(setCredentials({
               user: currentUser,
               accessToken: data.data.accessToken,
@@ -61,6 +67,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             throw new Error('Refresh failed');
           }
         } catch (e) {
+          // Si le refresh échoue, on déconnecte tout le monde (Sécurité)
           api.dispatch(logout());
           return false;
         } finally {
@@ -70,10 +77,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       })();
     }
 
-    await refreshPromise;
-
-    // Réessayer la requête initiale
-    result = await baseQuery(args, api, extraOptions);
+    // Attendre que le premier refresh finisse avant de réessayer
+    const success = await refreshPromise;
+    if (success) {
+      result = await baseQuery(args, api, extraOptions);
+    }
   }
 
   return result;
