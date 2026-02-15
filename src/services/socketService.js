@@ -1,20 +1,20 @@
 // src/services/socketService.js
-// Singleton Socket.io - Le système nerveux temps réel (Sécurisé)
+// Singleton Socket.io - Le système nerveux temps réel (Sécurisé & Silencieux)
 
 import { io } from 'socket.io-client';
 
-// EXPO_PUBLIC_API_URL = https://yely-backend-xxx.onrender.com/api
-// On retire le /api car Socket.io se connecte à la racine
+// EXPO_PUBLIC_API_URL = https://yely-backend-xxx.onrender.com/api/v1
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-const SOCKET_URL = API_URL.replace('/api', '');
+
+// Extraction de la racine (ex: https://yely-backend...)
+const SOCKET_URL = API_URL.split('/api')[0];
 
 class SocketService {
   constructor() {
     this.socket = null;
     this.isConnected = false;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 10;
-    this.locationInterval = null;
+    this.maxReconnectAttempts = 5; 
     this._listeners = [];
   }
 
@@ -24,54 +24,46 @@ class SocketService {
    */
   connect(token) {
     if (!token || !SOCKET_URL) {
-      if (__DEV__) console.warn('[Socket] Connexion impossible : Config manquante');
-      return;
+      return; // Silencieux si pas de config
     }
 
     if (this.socket?.connected) {
-      return; // Déjà connecté
+      return; 
     }
 
-    // SECURITY: On ne loggue JAMAIS l'URL en clair
-    if (__DEV__) console.log('[Socket] Initialisation du tunnel sécurisé...');
-
+    // 🔇 SILENCE RADIO : On ne loggue plus l'URL ici.
+    
     this.socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
+      path: '/socket.io/',
       reconnection: true,
       reconnectionAttempts: this.maxReconnectAttempts,
       reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      timeout: 20000,
-      autoConnect: true,
     });
 
     this._setupCoreListeners();
   }
 
-  /**
-   * Listeners de base (Infrastructure)
-   */
   _setupCoreListeners() {
     if (!this.socket) return;
 
     this.socket.on('connect', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      if (__DEV__) console.log('[Socket] ✅ Tunnel établi (Secure)');
+      // Juste un check visuel simple
+      if (__DEV__) console.log('[Socket] ✅ Connecté !');
     });
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      if (__DEV__) console.log('[Socket] ❌ Tunnel fermé:', reason);
+      if (__DEV__) console.log('[Socket] Déconnecté');
     });
 
     this.socket.on('connect_error', (error) => {
       this.reconnectAttempts++;
-      // On ne loggue l'erreur qu'en dev pour le debug
-      if (__DEV__ && this.reconnectAttempts <= 3) {
-        console.warn(`[Socket] Tentative ${this.reconnectAttempts} échouée.`);
-      }
+      // On cache les détails techniques, on log juste le compteur
+      if (__DEV__) console.warn(`[Socket] Tentative connexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
       
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
         this.disconnect();
@@ -79,9 +71,6 @@ class SocketService {
     });
   }
 
-  /**
-   * Gestionnaire d'événements (Façade)
-   */
   on(event, callback) {
     if (this.socket) {
       this.socket.on(event, callback);
@@ -104,9 +93,6 @@ class SocketService {
     }
   }
 
-  /**
-   * Émission optimisée de la position GPS
-   */
   emitLocation(coords) {
     if (this.socket?.connected && coords) {
       this.socket.emit('update_location', {
@@ -116,29 +102,6 @@ class SocketService {
         speed: coords.speed || 0,
         timestamp: Date.now(),
       });
-    }
-  }
-
-  startLocationTracking(getLocationFn, intervalMs = 5000) {
-    this.stopLocationTracking();
-    if (__DEV__) console.log('[Socket] 🛰️ Tracking GPS actif');
-
-    this.locationInterval = setInterval(async () => {
-      try {
-        const coords = await getLocationFn();
-        if (coords) {
-          this.emitLocation(coords);
-        }
-      } catch (error) {
-        // Silencieux en prod
-      }
-    }, intervalMs);
-  }
-
-  stopLocationTracking() {
-    if (this.locationInterval) {
-      clearInterval(this.locationInterval);
-      this.locationInterval = null;
     }
   }
 
@@ -155,8 +118,6 @@ class SocketService {
   }
 
   disconnect() {
-    this.stopLocationTracking();
-    // Nettoyage complet
     this._listeners.forEach(({ event, callback }) => {
       this.socket?.off(event, callback);
     });

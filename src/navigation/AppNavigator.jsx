@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION (Auth vs App)
+// ORCHESTRATEUR DE NAVIGATION (Normal)
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -30,12 +30,14 @@ const AppNavigator = () => {
   useEffect(() => {
     const restoreSession = async () => {
       try {
+        // On récupère les infos stockées
         const [storedUser, storedToken, storedRefreshToken] = await Promise.all([
           AsyncStorage.getItem('userInfo'),
           SecureStorageAdapter.getItem('token'),
           SecureStorageAdapter.getItem('refreshToken'),
         ]);
 
+        // Si on a un user ET un token, on restaure la session
         if (storedUser && storedToken) {
           dispatch(restoreAuth({
             user: JSON.parse(storedUser),
@@ -46,7 +48,8 @@ const AppNavigator = () => {
       } catch (e) {
         console.error('[Auth] Erreur de restauration:', e);
       } finally {
-        setTimeout(() => setIsReady(true), 2000); // Splash delay
+        // Petit délai pour l'esthétique du Splash Screen
+        setTimeout(() => setIsReady(true), 2000);
       }
     };
 
@@ -75,7 +78,6 @@ const AppNavigator = () => {
         </Stack.Group>
       ) : (
         // 🟢 ZONE PRIVÉE (Connecté)
-        // Le Drawer gérera lui-même Rider vs Driver via initialRouteName
         <Stack.Group>
           <Stack.Screen name="MainApp" component={AppDrawer} />
         </Stack.Group>
