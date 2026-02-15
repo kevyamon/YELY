@@ -1,9 +1,8 @@
 // src/hooks/useSocket.js
-// Gère la connexion/déconnexion du socket selon l'état d'authentification
+// Hook de gestion du cycle de vie du Socket
 
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
-
 import socketService from '../services/socketService';
 import { selectIsAuthenticated, selectToken } from '../store/slices/authSlice';
 
@@ -13,28 +12,25 @@ const useSocket = () => {
   const wasConnected = useRef(false);
 
   useEffect(() => {
+    // 1. Connexion si auth valide
     if (isAuthenticated && token) {
-      // Connecter le socket si authentifié
       if (!wasConnected.current) {
-        console.log('[useSocket] Authentifié → connexion socket');
         socketService.connect(token);
         wasConnected.current = true;
       }
-    } else {
-      // Déconnecter le socket si pas authentifié
+    } 
+    // 2. Déconnexion si logout
+    else {
       if (wasConnected.current) {
-        console.log('[useSocket] Déconnecté → fermeture socket');
         socketService.disconnect();
         wasConnected.current = false;
       }
     }
 
-    // Cleanup à la destruction du composant
+    // 3. Cleanup au démontage du composant racine
     return () => {
-      if (wasConnected.current) {
-        socketService.disconnect();
-        wasConnected.current = false;
-      }
+      // On laisse la connexion active tant que l'app tourne, 
+      // sauf changement explicite d'état (logout)
     };
   }, [isAuthenticated, token]);
 

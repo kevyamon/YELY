@@ -1,10 +1,9 @@
 // src/screens/auth/LoginPage.jsx
-// PAGE CONNEXION - LOGIQUE PASSIVE (Navigation gérée par AppDrawer)
+// PAGE CONNEXION - Design Épuré (Sans Logo) & Navigation Passive
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
 import {
-  Image,
   KeyboardAvoidingView,
   LayoutAnimation,
   Platform,
@@ -28,7 +27,6 @@ import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// Animation Layout Android
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
@@ -42,7 +40,6 @@ export default function LoginPage({ navigation }) {
   const [callingCode, setCallingCode] = useState('225');
   const [isEmailMode, setIsEmailMode] = useState(false);
 
-  // Détection auto Email vs Téléphone
   useEffect(() => {
     const isEmail = /[a-zA-Z@]/.test(formData.identifier);
     if (isEmail !== isEmailMode) {
@@ -58,32 +55,26 @@ export default function LoginPage({ navigation }) {
     }
 
     try {
-      // Préparation de l'identifiant (Ajout indicatif si téléphone)
       let finalIdentifier = formData.identifier.trim();
       if (!isEmailMode) {
         const cleanPhone = finalIdentifier.replace(/\s/g, '').replace(/^0+/, '');
         finalIdentifier = `+${callingCode}${cleanPhone}`;
       }
 
-      // 1. APPEL API
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
-      // 2. SAUVEGARDE REDUX (C'est ICI que la magie opère)
-      // Le changement de 'user' va être détecté par AppNavigator -> Qui montera AppDrawer -> Qui redirigera.
+      // UPDATE REDUX -> Déclenche le AppNavigator automatiquement
       dispatch(setCredentials({ user, accessToken, refreshToken }));
 
       dispatch(showSuccessToast({
-        title: "Bon retour !",
-        message: `Ravi de vous revoir, ${user.name.split(' ')[0]}.`
+        title: "Connexion réussie",
+        message: `Bienvenue, ${user.name.split(' ')[0]}.`
       }));
-      
-      // ⛔️ PAS DE NAVIGATION MANUELLE (ex: navigation.navigate('Home'))
 
     } catch (err) {
-      console.error('[LOGIN_ERROR]', err);
       const errorMessage = err?.data?.message || "Identifiants incorrects.";
-      dispatch(showErrorToast({ title: "Erreur de connexion", message: errorMessage }));
+      dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));
     }
   };
 
@@ -101,8 +92,9 @@ export default function LoginPage({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.headerContainer}>
-            <Image source={require('../../../assets/logo.png')} style={styles.logo} resizeMode="contain" />
+            {/* LOGO SUPPRIMÉ ICI */}
             <Text style={styles.welcomeText}>CONNEXION</Text>
+            <Text style={styles.subText}>Accédez à votre espace Yély</Text>
           </View>
 
           <GlassCard style={styles.card}>
@@ -127,10 +119,7 @@ export default function LoginPage({ navigation }) {
                   />
                </View>
             </View>
-            <Text style={styles.hintText}>
-              {isEmailMode ? "Mode Email détecté" : "Saisissez votre numéro"}
-            </Text>
-
+            
             <GlassInput
               icon="lock-closed-outline"
               placeholder="Mot de passe"
@@ -150,7 +139,7 @@ export default function LoginPage({ navigation }) {
 
           <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.footer}>
             <Text style={styles.footerText}>
-              Nouveau sur Yély ? <Text style={{ color: THEME.COLORS.champagneGold, fontWeight: 'bold' }}>Créer un compte</Text>
+              Pas encore de compte ? <Text style={styles.linkText}>Créer un compte</Text>
             </Text>
           </TouchableOpacity>
         </ScrollView>
@@ -162,17 +151,17 @@ export default function LoginPage({ navigation }) {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
   scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
-  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, marginTop: THEME.SPACING.xs, alignSelf: 'flex-start' },
+  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.xl },
   backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  headerContainer: { alignItems: 'center', marginBottom: THEME.SPACING.xl },
-  logo: { width: 120, height: 120, marginBottom: THEME.SPACING.md },
-  welcomeText: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', letterSpacing: 2 },
+  headerContainer: { marginBottom: THEME.SPACING.xl, marginTop: THEME.SPACING.lg },
+  welcomeText: { color: THEME.COLORS.champagneGold, fontSize: 32, fontWeight: 'bold', letterSpacing: 1 },
+  subText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 8 },
   card: { padding: THEME.SPACING.lg },
   inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  hintText: { color: THEME.COLORS.textTertiary, fontSize: 10, marginTop: -10, marginBottom: 10, marginLeft: 5, fontStyle: 'italic', textAlign: 'right' },
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
-  footerText: { color: THEME.COLORS.textTertiary }
+  footerText: { color: THEME.COLORS.textTertiary },
+  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
 });
