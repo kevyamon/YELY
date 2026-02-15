@@ -1,4 +1,5 @@
 // src/navigation/AppNavigator.jsx
+// ORCHESTRATEUR DE NAVIGATION (Auth vs App)
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
@@ -6,7 +7,6 @@ import { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 
 import SecureStorageAdapter from '../store/secureStoreAdapter';
-
 import { restoreAuth } from '../store/slices/authSlice';
 import { ANIMATIONS, COLORS } from '../theme/theme';
 
@@ -16,7 +16,7 @@ import SplashScreen from '../screens/SplashScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
 
-// Drawer (contient tous les écrans protégés)
+// Drawer (Zone Connectée)
 import AppDrawer from './AppDrawer';
 
 const Stack = createNativeStackNavigator();
@@ -46,8 +46,7 @@ const AppNavigator = () => {
       } catch (e) {
         console.error('[Auth] Erreur de restauration:', e);
       } finally {
-        // Petit délai pour laisser le SplashScreen briller
-        setTimeout(() => setIsReady(true), 2000);
+        setTimeout(() => setIsReady(true), 2000); // Splash delay
       }
     };
 
@@ -68,14 +67,15 @@ const AppNavigator = () => {
       }}
     >
       {!isAuthenticated ? (
-        // STACK AUTHENTIFICATION (Pas de Drawer ici)
+        // 🔴 ZONE PUBLIQUE
         <Stack.Group>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="Login" component={LoginPage} />
           <Stack.Screen name="Register" component={RegisterPage} />
         </Stack.Group>
       ) : (
-        // STACK APPLICATION : Le Drawer contient tous les écrans protégés
+        // 🟢 ZONE PRIVÉE (Connecté)
+        // Le Drawer gérera lui-même Rider vs Driver via initialRouteName
         <Stack.Group>
           <Stack.Screen name="MainApp" component={AppDrawer} />
         </Stack.Group>

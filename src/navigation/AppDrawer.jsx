@@ -1,9 +1,7 @@
 // src/navigation/AppDrawer.jsx
-// NAVIGATEUR PRINCIPAL - REDIRECTION FORCÉE PAR RÔLE
+// NAVIGATEUR PRINCIPAL - Gestion native du rôle
 
 import { createDrawerNavigator } from '@react-navigation/drawer';
-import { useNavigation } from '@react-navigation/native';
-import { useEffect } from 'react';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
@@ -17,33 +15,28 @@ const Drawer = createDrawerNavigator();
 
 export default function AppDrawer() {
   const insets = useSafeAreaInsets();
-  const navigation = useNavigation();
   const user = useSelector(selectCurrentUser);
   
   // 1. DÉTECTION DU RÔLE
+  // Cette variable est calculée AVANT l'affichage.
+  // React Navigation va l'utiliser pour savoir quel écran afficher en premier.
   const isDriver = user?.role === 'driver';
   const targetScreen = isDriver ? 'DriverHome' : 'RiderHome';
 
-  // 2. REDIRECTION FORCÉE (Le "fix" ultime)
-  useEffect(() => {
-    if (user) {
-      // On force la navigation vers le bon écran, sans historique précédent
-      navigation.reset({
-        index: 0,
-        routes: [{ name: targetScreen }],
-      });
-    }
-  }, [user?.role]); // Se déclenche si le rôle change ou au chargement
+  // 🗑️ SUPPRESSION DU USEEFFECT "RESET" QUI CAUSAIT LE BUG
+  // La propriété initialRouteName ci-dessous suffit amplement.
 
   const headerOffset = insets.top + THEME.LAYOUT.HEADER_HEIGHT;
 
   return (
     <Drawer.Navigator
-      initialRouteName={targetScreen} // Fallback
+      // C'est ICI que la magie opère proprement
+      initialRouteName={targetScreen} 
+      
       drawerContent={(props) => <DrawerContent {...props} />}
       screenOptions={{
         headerShown: false,
-        drawerPosition: 'right',
+        drawerPosition: 'right', // Drawer à droite (comme Uber)
         drawerType: 'front',
         drawerStyle: {
           backgroundColor: THEME.COLORS.deepAsphalt,
@@ -52,7 +45,6 @@ export default function AppDrawer() {
           borderTopLeftRadius: 20,
         },
         overlayColor: 'rgba(0,0,0,0.7)',
-        // Désactive le retour arrière pour ne pas retourner sur la mauvaise home
         swipeEnabled: true, 
       }}
     >
