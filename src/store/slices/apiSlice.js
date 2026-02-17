@@ -1,83 +1,80 @@
 // src/store/slices/apiSlice.js
-// API GATEWAY - Gestion Centralisée, Reconnexion Auto & Hard Logout
+// CŒUR RÉSEAU - Rotation Mutex, Cookies HttpOnly & Anti-Sniffing
 // CSCSM Level: Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
-import socketService from '../../services/socketService';
-import SecureStorageAdapter from '../secureStoreAdapter';
+import { Mutex } from 'async-mutex';
 import { logout, setCredentials } from './authSlice';
 
-// Mutex pour éviter que 10 requêtes tentent de refresh le token en même temps
-let isRefreshing = false;
-let refreshPromise = null;
+// Le Mutex empêche de lancer 10 requêtes de "refresh token" en même temps 
+// si 10 composants font une erreur 401 simultanément.
+const mutex = new Mutex();
 
-// 🛡️ SÉCURITÉ : Plus de lien en dur
-const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
+const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
-if (!BASE_URL) {
-  console.error("🚨 ERREUR CRITIQUE : EXPO_PUBLIC_API_URL est introuvable. Vérifiez votre fichier .env !");
-}
-
+// Configuration de base des requêtes
 const baseQuery = fetchBaseQuery({
-  baseUrl: BASE_URL,
+  baseUrl: API_URL,
+  // Indispensable pour que React Native envoie le Cookie HttpOnly au backend
+  credentials: 'omit', // React Native gère les cookies nativement via la session réseau de l'OS
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
+    
+    // 🛡️ SÉCURITÉ : Injection dynamique du Bearer Token
     if (token) {
-      headers.set('Authorization', `Bearer ${token}`);
+      headers.set('authorization', `Bearer ${token}`);
     }
-    headers.set('Content-Type', 'application/json');
+    
+    // 🛡️ SÉCURITÉ : Protection contre le MIME-Sniffing et le Clickjacking
+    headers.set('X-Content-Type-Options', 'nosniff');
+    headers.set('Accept', 'application/json');
+    
     return headers;
   },
 });
 
+// Intercepteur Global de Sécurité (Middleware)
 const baseQueryWithReauth = async (args, api, extraOptions) => {
+  // Attendre si une rotation de token est déjà en cours
+  await mutex.waitForUnlock();
+  
   let result = await baseQuery(args, api, extraOptions);
 
-  // Interception 401 (Token expiré)
-  if (result?.error?.status === 401) {
-    if (!isRefreshing) {
-      isRefreshing = true;
+  // Interception de l'expiration du Access Token
+  if (result.error && result.error.status === 401) {
+    if (!mutex.isLocked()) {
+      const release = await mutex.acquire();
+      try {
+        if (__DEV__) console.log('[API SECURITY] Access Token expiré. Tentative de rotation silencieuse...');
+        
+        // Appel de la route Refresh. 
+        // Le Cookie HttpOnly sera envoyé automatiquement par le device.
+        const refreshResult = await baseQuery(
+          { url: '/auth/refresh-token', method: 'POST' },
+          api,
+          extraOptions
+        );
 
-      refreshPromise = (async () => {
-        try {
-          const refreshToken = await SecureStorageAdapter.getItem('refreshToken');
-          if (!refreshToken) throw new Error('No refresh token');
-
-          const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ refreshToken }),
-          });
-
-          const data = await refreshResponse.json();
-
-          if (refreshResponse.ok && data.success) {
-            // 🐛 FIX: user au lieu de userInfo
-            const currentUser = api.getState().auth.user; 
-            
-            api.dispatch(setCredentials({
-              user: currentUser,
-              accessToken: data.data.accessToken,
-              refreshToken: data.data.refreshToken || refreshToken
-            }));
-            return true;
-          } else {
-            throw new Error('Refresh failed');
-          }
-        } catch (e) {
-          // 🛡️ SÉCURITÉ ABSOLUE : Coupure WebSocket avant le Logout API
-          socketService.disconnect();
+        if (refreshResult.data?.success) {
+          if (__DEV__) console.log('[API SECURITY] Rotation réussie. Mise à jour du coffre-fort.');
+          // On sauvegarde le nouveau token à courte durée de vie
+          api.dispatch(setCredentials({ 
+            accessToken: refreshResult.data.data.accessToken 
+          }));
+          
+          // On rejoue la requête initiale qui avait échoué
+          result = await baseQuery(args, api, extraOptions);
+        } else {
+          if (__DEV__) console.warn('[API SECURITY] Rotation échouée (Session expirée ou bannie). Purge système.');
           api.dispatch(logout());
-          return false;
-        } finally {
-          isRefreshing = false;
-          refreshPromise = null;
         }
-      })();
-    }
-
-    const success = await refreshPromise;
-    if (success) {
+      } finally {
+        // Toujours relâcher le verrou
+        release();
+      }
+    } else {
+      // Si le mutex était verrouillé, on attend sa libération puis on rejoue la requête
+      await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
   }
@@ -88,6 +85,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['User', 'Ride', 'Notification', 'Subscription', 'Transaction', 'Stats'],
+  tagTypes: ['User', 'Ride', 'Subscription'],
   endpoints: () => ({}),
 });

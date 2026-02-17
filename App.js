@@ -1,4 +1,16 @@
 // App.js
+// POINT D'ENTRÉE - Câblage Redux, Providers & Silence de Production
+// CSCSM Level: Bank Grade
+
+// 🛡️ SÉCURITÉ : Silence Radio absolu en Production. 
+// Empêche toute fuite de données (PII, tokens, états) vers Logcat ou Xcode Console.
+if (!__DEV__) {
+  console.log = () => {};
+  console.warn = () => {};
+  console.error = () => {};
+  console.info = () => {};
+  console.debug = () => {};
+}
 
 import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
@@ -6,7 +18,6 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 
-// CORRECTION MOBILE : Import du GestureHandlerRootView
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -18,26 +29,21 @@ import AppNavigator from './src/navigation/AppNavigator';
 import store from './src/store/store';
 import { YelyTheme } from './src/theme/theme';
 
-// Toast Global
 import AppToast from './src/components/ui/AppToast';
 import { hideToast, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
-// Socket.io — Système nerveux temps réel
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
-// Composant interne qui a accès au Redux store
 const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
 
-  // Brancher le socket (connexion/déconnexion automatique)
+  // Orchestrateur réseau WebSocket
   useSocket();
-
-  // Brancher les événements métier (courses, notifs, GPS, etc.)
   useSocketEvents();
 
-  // 📡 ÉCOUTEUR RÉSEAU GLOBAL
+  // 📡 ÉCOUTEUR RÉSEAU GLOBAL & GESTION HORS-LIGNE
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
@@ -68,7 +74,7 @@ const AppContent = () => {
         </View>
       </NavigationContainer>
 
-      {/* Toast global — rendu via Portal au-dessus de tout */}
+      {/* Toast global rendu via Portal */}
       <Portal>
         <AppToast
           visible={toast.visible}
@@ -85,7 +91,6 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    // CORRECTION MOBILE : On englobe TOUTE l'application ici
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
         <PaperProvider theme={YelyTheme}>
