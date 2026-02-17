@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Layout Absolu & Injection Dynamique
+// HOME RIDER WEB - Carte claire
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -85,7 +85,6 @@ const RiderHome = ({ navigation }) => {
     title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger
   }] : [];
 
-  // Composant spécifique au web injecté dans le panel du bas
   const renderWebSearchControls = () => {
     if (!destination) {
       return (
@@ -117,13 +116,13 @@ const RiderHome = ({ navigation }) => {
   return (
     <View style={styles.container}>
 
-      {/* LA CARTE (100% de l'écran) */}
       <View style={styles.mapWrapper}>
         {location ? (
           <MapCard
             ref={mapRef}
             location={location}
-            showUserMarker showRecenterButton darkMode
+            showUserMarker showRecenterButton 
+            darkMode={false} // CORRECTION : Carte claire !
             markers={mapMarkers} 
             route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
           />
@@ -134,7 +133,6 @@ const RiderHome = ({ navigation }) => {
         )}
       </View>
 
-      {/* L'ARC DU HAUT */}
       <View style={[styles.topBar, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <View style={styles.locationContainer}>
           <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
@@ -146,7 +144,6 @@ const RiderHome = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* L'ARC DU BAS (Avec injection de la barre de recherche Web) */}
       <RiderBottomPanel 
         destination={destination}
         displayVehicles={displayVehicles}
@@ -156,7 +153,7 @@ const RiderHome = ({ navigation }) => {
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}
-        topContent={renderWebSearchControls()} // Magie de React !
+        topContent={renderWebSearchControls()} 
       />
 
       <DestinationSearchModal 
@@ -177,6 +174,7 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F5F5F5',
     zIndex: 1,
   },
   loadingContainer: {
@@ -198,10 +196,14 @@ const styles = StyleSheet.create({
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
+    borderWidth: 2.5,
+    borderTopWidth: 0, 
+    borderColor: THEME.COLORS.champagneGold, 
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 15,
   },
   locationContainer: {
     flex: 1,

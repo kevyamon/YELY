@@ -1,14 +1,14 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Correction Z-Index du Bouton de Recentrage
+// COMPOSANT CARTE - Auto-Contraste Intelligent & Anti-Flash Zoom
 
 import { Ionicons } from '@expo/vector-icons';
-import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
 
-const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 const MapCard = forwardRef(({
@@ -17,8 +17,8 @@ const MapCard = forwardRef(({
   route = null,
   showUserMarker = true,
   showRecenterButton = true,
-  darkMode = true,
   floating = false, 
+  autoContrast = true, // NOUVEAU : La carte gère son propre contraste !
   onMapReady,
   onPress,
   onMarkerPress,
@@ -27,19 +27,33 @@ const MapCard = forwardRef(({
   recenterBottomPadding = THEME.SPACING.lg 
 }, ref) => {
   const mapRef = useRef(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+  
+  // 🧠 INTELLIGENCE DU THÈMES : Lecture du thème système
+  const colorScheme = useColorScheme();
+  const isAppDark = colorScheme === 'dark';
+  
+  // Si autoContrast est activé, la carte inverse le thème de l'application !
+  // Si l'app est sombre (Arrière-plan noir) -> Carte claire
+  // Si l'app est claire (Arrière-plan blanc) -> Carte sombre
+  const isMapDark = autoContrast ? !isAppDark : isAppDark;
+
+  const safeLocation = location?.latitude && location?.longitude 
+    ? location 
+    : { latitude: 5.3600, longitude: -4.0083 };
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 800) => {
-      mapRef.current?.animateToRegion(region, duration);
+      if (isMapReady) mapRef.current?.animateToRegion(region, duration);
     },
     fitToCoordinates: (coords, options) => {
-      mapRef.current?.fitToCoordinates(coords, options);
+      if (isMapReady) mapRef.current?.fitToCoordinates(coords, options);
     },
     centerOnUser: () => {
-      if (location) {
+      if (isMapReady && location) {
         mapRef.current?.animateToRegion({
-          latitude: location.latitude,
-          longitude: location.longitude,
+          latitude: safeLocation.latitude,
+          longitude: safeLocation.longitude,
           latitudeDelta: 0.005,
           longitudeDelta: 0.005,
         }, 800);
@@ -48,54 +62,69 @@ const MapCard = forwardRef(({
   }));
 
   useEffect(() => {
-    if (location) {
+    if (isMapReady && location) {
       mapRef.current?.animateToRegion({
-        latitude: location.latitude,
-        longitude: location.longitude,
+        latitude: safeLocation.latitude,
+        longitude: safeLocation.longitude,
         latitudeDelta: 0.005,
         longitudeDelta: 0.005,
       }, 1000);
     }
-  }, [location]);
+  }, [location, isMapReady]);
+
+  const handleMapReady = () => {
+    setIsMapReady(true);
+    if (onMapReady) onMapReady();
+  };
 
   const initialRegion = {
-    latitude: location?.latitude || 5.3600,
-    longitude: location?.longitude || -4.0083,
+    latitude: safeLocation.latitude,
+    longitude: safeLocation.longitude,
     latitudeDelta: 0.01,
     longitudeDelta: 0.01,
   };
+
+  // Les couleurs exactes de fond de CartoDB pour éviter la moindre nuance de flash
+  const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
 
   return (
     <View style={[
       styles.container,
       floating && styles.floating,
       style,
+      { backgroundColor: mapBackgroundColor } 
     ]}>
-      {/* CORRECTION : Le bloc mapClip n'a plus d'overflow hidden strict 
-        qui couperait les éléments flottants enfants 
-      */}
-      <View style={[styles.mapClip, !floating && styles.mapClipEdge]}>
+      
+      <View style={[
+        styles.mapClip, 
+        !floating && styles.mapClipEdge,
+        { backgroundColor: mapBackgroundColor }
+      ]}>
         <MapView
           ref={mapRef}
-          style={styles.map}
+          style={[styles.map, { backgroundColor: mapBackgroundColor }]} // On force le fond natif
           initialRegion={initialRegion}
-          mapType="none"
+          mapType="none" 
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
           rotateEnabled={false}
-          onMapReady={onMapReady}
+          pitchEnabled={false} 
+          onMapReady={handleMapReady} 
           onPress={onPress}
         >
           <UrlTile
-            urlTemplate={darkMode ? DARK_TILE_URL : OSM_TILE_URL}
+            urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
             maximumZ={19}
             flipY={false}
+            shouldReplaceMapContent={true} 
+            tileSize={256}
+            fadeDuration={0} // ⚡ LE BLINDAGE ULTIME : 0 milliseconde de fondu blanc au zoom !
           />
 
           {showUserMarker && location && (
             <Marker
-              coordinate={{ latitude: location.latitude, longitude: location.longitude }}
+              coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
             >
               <View style={styles.userMarker}>
@@ -105,26 +134,29 @@ const MapCard = forwardRef(({
             </Marker>
           )}
 
-          {markers.map((marker, index) => (
-            <Marker
-              key={marker.id || `marker-${index}`}
-              coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-              title={marker.title || ''}
-              description={marker.description || ''}
-              anchor={{ x: 0.5, y: 0.5 }}
-              onPress={() => onMarkerPress?.(marker)}
-            >
-              {marker.customView || (
-                <View style={[styles.defaultMarker, marker.style]}>
-                  <Ionicons
-                    name={marker.icon || 'location'}
-                    size={marker.iconSize || 20}
-                    color={marker.iconColor || THEME.COLORS.champagneGold}
-                  />
-                </View>
-              )}
-            </Marker>
-          ))}
+          {markers.map((marker, index) => {
+            if (!marker.latitude || !marker.longitude) return null; 
+            return (
+              <Marker
+                key={marker.id || `marker-${index}`}
+                coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                title={marker.title || ''}
+                description={marker.description || ''}
+                anchor={{ x: 0.5, y: 0.5 }}
+                onPress={() => onMarkerPress?.(marker)}
+              >
+                {marker.customView || (
+                  <View style={[styles.defaultMarker, marker.style]}>
+                    <Ionicons
+                      name={marker.icon || 'location'}
+                      size={marker.iconSize || 20}
+                      color={marker.iconColor || THEME.COLORS.champagneGold}
+                    />
+                  </View>
+                )}
+              </Marker>
+            );
+          })}
 
           {route && route.coordinates && route.coordinates.length > 0 && (
             <Polyline
@@ -139,18 +171,15 @@ const MapCard = forwardRef(({
         </MapView>
       </View>
 
-      {/* CORRECTION : Le bouton est placé HORS de mapClip, directement dans le container.
-        Cela garantit qu'il flotte au-dessus de la carte sans être coupé.
-      */}
       {showRecenterButton && (
         <TouchableOpacity
           style={[styles.recenterButton, { bottom: recenterBottomPadding }]}
           activeOpacity={0.8}
           onPress={() => {
-            if (location) {
+            if (isMapReady && location) {
               mapRef.current?.animateToRegion({
-                latitude: location.latitude,
-                longitude: location.longitude,
+                latitude: safeLocation.latitude,
+                longitude: safeLocation.longitude,
                 latitudeDelta: 0.005,
                 longitudeDelta: 0.005,
               }, 800);
@@ -169,7 +198,7 @@ MapCard.displayName = 'MapCard';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative', // Nécessaire pour que le bouton absolu se repère par rapport à ce conteneur
+    position: 'relative', 
   },
   floating: {
     marginHorizontal: THEME.SPACING.md,
@@ -181,10 +210,10 @@ const styles = StyleSheet.create({
     ...THEME.SHADOWS.medium,
   },
   mapClip: {
-    ...StyleSheet.absoluteFillObject, // Remplit tout le conteneur parent
+    ...StyleSheet.absoluteFillObject, 
     borderRadius: THEME.BORDERS.radius.xxl,
     overflow: 'hidden',
-    zIndex: 1, // La carte est en dessous
+    zIndex: 1, 
   },
   mapClipEdge: {
     borderRadius: 0, 
@@ -226,21 +255,17 @@ const styles = StyleSheet.create({
   },
   recenterButton: {
     position: 'absolute',
-    right: THEME.SPACING.lg, // Collé à droite
+    right: THEME.SPACING.lg, 
     width: 52,
     height: 52,
     borderRadius: 26, 
-    backgroundColor: THEME.COLORS.glassDark, // Un fond sombre Yély fait mieux ressortir le bouton
+    backgroundColor: THEME.COLORS.glassDark, 
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: THEME.COLORS.champagneGold, // Cerclage or
-    
-    // CORRECTION : Le Z-index massif pour forcer l'affichage au-dessus de MapView
+    borderColor: THEME.COLORS.champagneGold, 
     zIndex: 999, 
-    elevation: 999, // Elevation Android vitale
-    
-    // Ombre dorée pour le style premium
+    elevation: 999, 
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -248,4 +273,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default MapCard;
+export default React.memo(MapCard);

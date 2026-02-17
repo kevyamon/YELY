@@ -1,17 +1,17 @@
-// src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - UX Immersion Totale Edge-to-Edge
+// src/screens/home/DriverHome.jsx
+// HOME DRIVER - Carte claire (contraste avec le thème sombre)
 
-import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Text } from 'react-native-paper';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import SmartFooter from '../../components/ui/SmartFooter';
+import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
+import MapService from '../../services/mapService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -19,15 +19,31 @@ import THEME from '../../theme/theme';
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
-  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
-  const user = useSelector(selectCurrentUser);
   
-  const { location, address } = useGeolocation();
-  const currentAddress = address || 'Localisation en cours...';
-
+  const user = useSelector(selectCurrentUser);
+  const { location, errorMsg } = useGeolocation();
+  const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+
+  useEffect(() => {
+    if (location) {
+      const getAddress = async () => {
+        try {
+          const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+          setCurrentAddress(addr);
+        } catch (error) {
+          setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+        }
+      };
+      getAddress();
+    } else if (errorMsg) {
+      setCurrentAddress("Erreur GPS");
+    }
+  }, [location, errorMsg]);
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
@@ -35,57 +51,48 @@ const DriverHome = ({ navigation }) => {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
-
+      
       dispatch(showSuccessToast({
         title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
         message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
       }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Impossible de changer votre statut." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
     }
   };
 
-  // Padding Web
-  const mapBottomPadding = 220; 
+  const mapBottomPadding = 320; 
 
   return (
-    <View style={styles.container}>
-
-      {/* LA CARTE (Absolue 100% Edge-to-Edge) */}
-      <View style={styles.mapWrapper}>
-        {location ? (
-          <MapCard
-            ref={mapRef}
-            location={location}
-            showUserMarker={true}
-            showRecenterButton={true}
-            floating={false} // Force le mode Edge-to-Edge sur le Web aussi
-            darkMode={true} 
-            recenterBottomPadding={mapBottomPadding}
-          />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-          </View>
-        )}
+    <View style={styles.screenWrapper}>
+      
+      <View style={styles.mapContainer}>
+         {location ? (
+           <MapCard 
+             ref={mapRef}
+             location={location}
+             showUserMarker={true}
+             showRecenterButton={true} 
+             darkMode={false} // CORRECTION : Carte claire !
+             floating={false} 
+             recenterBottomPadding={mapBottomPadding} 
+           />
+         ) : (
+           <View style={styles.loadingContainer}>
+             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+             <Text style={styles.loadingText}>Localisation...</Text>
+           </View>
+         )}
       </View>
 
-      {/* L'ARC DU HAUT */}
-      <View style={[styles.topBar, { paddingTop: insets.top + THEME.SPACING.md }]}>
-        <View style={styles.locationContainer}>
-          <View style={[styles.statusDot, isAvailable && styles.statusDotOnline]} />
-          <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
-        </View>
+      <SmartHeader 
+        scrollY={scrollY}
+        address={currentAddress}
+        userName={user?.name?.split(' ')[0] || "Chauffeur"}
+        onMenuPress={() => navigation.navigate('Menu')}
+        onNotificationPress={() => navigation.navigate('Notifications')}
+      />
 
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Menu')}
-        >
-          <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
-      </View>
-
-      {/* L'ARC DU BAS */}
       <SmartFooter 
         isAvailable={isAvailable}
         onToggle={handleToggleAvailability}
@@ -97,76 +104,25 @@ const DriverHome = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+  screenWrapper: {
     flex: 1,
-    position: 'relative', 
     backgroundColor: THEME.COLORS.background,
   },
-  mapWrapper: {
+  mapContainer: {
     ...StyleSheet.absoluteFillObject,
+    backgroundColor: '#F5F5F5', // Fond gris très clair avant chargement
     zIndex: 1,
   },
   loadingContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
   },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingBottom: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.background,
-    // DESIGN ORGANIQUE
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
-    zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-  },
-  locationContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassLight,
-    paddingHorizontal: THEME.SPACING.md,
-    paddingVertical: THEME.SPACING.md,
-    borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    marginRight: THEME.SPACING.md,
-  },
-  statusDot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: THEME.COLORS.textTertiary,
-  },
-  statusDotOnline: {
-    backgroundColor: THEME.COLORS.success,
-  },
-  locationText: {
-    color: THEME.COLORS.textPrimary,
-    marginLeft: THEME.SPACING.sm,
+  loadingText: {
+    marginTop: 10, 
     fontSize: 12,
-    flex: 1,
-  },
-  menuButton: {
-    width: 46,
-    height: 46,
-    backgroundColor: THEME.COLORS.glassDark,
-    borderRadius: 23,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    color: THEME.COLORS.textSecondary,
   }
 });
 

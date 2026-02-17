@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - UX Immersion Totale & Edge-to-Edge
+// HOME RIDER - UX Immersion Totale & Carte Auto-Intelligente
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -98,7 +98,7 @@ const RiderHome = ({ navigation }) => {
 
   const handleConfirmRide = () => {
     if (!selectedVehicle) return;
-    console.log("🚀 Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
+    console.log(" Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
   };
 
   const mapMarkers = destination ? [{
@@ -106,25 +106,23 @@ const RiderHome = ({ navigation }) => {
     title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger 
   }] : [];
 
-  // CALCUL HAUTEUR PANNEAU BAS : 
-  // On estime la hauteur du SmartFooter (environ 200px) pour placer le bouton juste au-dessus
   const mapBottomPadding = 240; 
 
   return (
     <View style={styles.screenWrapper}>
       
-      {/* LA CARTE - Edge to Edge */}
       <View style={styles.mapContainer}>
          {location ? (
            <MapCard 
              ref={mapRef}
              location={location}
              showUserMarker={true}
-             darkMode={true}
-             floating={false} // Laisse la carte remplir l'espace horizontal
+             showRecenterButton={true}
+             floating={false} // Immersion totale
              markers={mapMarkers}
              route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
-             recenterBottomPadding={mapBottomPadding} // Pousse le bouton recentrer au dessus du footer
+             recenterBottomPadding={mapBottomPadding} 
+             // Note: plus de prop 'darkMode', la carte est autonome !
            />
          ) : (
            <View style={styles.loadingContainer}>
@@ -169,11 +167,10 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: {
     flex: 1,
-    backgroundColor: THEME.COLORS.background, // Ce fond noir va créer l'effet des coins de l'arc
+    backgroundColor: THEME.COLORS.background, 
   },
   mapContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: THEME.COLORS.surface, 
     zIndex: 1,
   },
   loadingContainer: {

@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Ajustement du bouton de recentrage
+// HOME DRIVER - UX Immersion Totale & Carte Auto-Intelligente
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -61,7 +61,6 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // AJUSTEMENT : On passe de 220 à 320 pour faire monter le bouton bien au-dessus du footer
   const mapBottomPadding = 320; 
 
   return (
@@ -74,9 +73,11 @@ const DriverHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true} 
-             darkMode={true} 
-             floating={false} 
-             recenterBottomPadding={mapBottomPadding} // Le bouton est maintenant propulsé plus haut !
+             floating={false} // Immersion Totale
+             markers={[]} // Sécurité anti-crash : tableau vide explicite
+             route={null} // Sécurité anti-crash
+             recenterBottomPadding={mapBottomPadding} 
+             // Note: plus de prop 'darkMode', la carte est autonome !
            />
          ) : (
            <View style={styles.loadingContainer}>
@@ -111,7 +112,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: THEME.COLORS.surface,
+    flex: 1, 
     zIndex: 1,
   },
   loadingContainer: {
