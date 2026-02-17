@@ -1,7 +1,7 @@
 // src/screens/home/DriverHome.web.jsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { Dimensions, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,7 +9,6 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import useGeolocation from '../../hooks/useGeolocation';
-import MapService from '../../services/mapService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -22,20 +21,15 @@ const DriverHome = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
-  const { location } = useGeolocation();
-  const [currentAddress, setCurrentAddress] = useState('Localisation...');
+  
+  // UTILISATION DU HOOK UNIFIÉ (Plus de useEffect local)
+  const { location, address } = useGeolocation();
+  
+  // Utilisation directe de l'adresse du hook ou fallback
+  const currentAddress = address || 'Localisation en cours...';
+
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
-
-  useEffect(() => {
-    if (location) {
-      const getAddress = async () => {
-        const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-        if (addr) setCurrentAddress(addr.shortName);
-      };
-      getAddress();
-    }
-  }, [location]);
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;

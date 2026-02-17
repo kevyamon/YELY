@@ -1,7 +1,7 @@
 // src/screens/home/RiderHome.web.jsx
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useRef } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -9,24 +9,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import MapCard from '../../components/map/MapCard';
 import GlassCard from '../../components/ui/GlassCard';
 import useGeolocation from '../../hooks/useGeolocation';
-import MapService from '../../services/mapService';
 import THEME from '../../theme/theme';
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const insets = useSafeAreaInsets();
-  const { location } = useGeolocation();
-  const [currentAddress, setCurrentAddress] = useState('Localisation...');
-
-  useEffect(() => {
-    if (location) {
-      const getAddress = async () => {
-        const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-        if (addr) setCurrentAddress(addr.shortName);
-      };
-      getAddress();
-    }
-  }, [location]);
+  
+  // UTILISATION DU HOOK UNIFIÉ
+  const { location, address } = useGeolocation();
+  
+  // Utilisation directe de l'adresse du hook ou fallback
+  const currentAddress = address || 'Localisation en cours...';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>

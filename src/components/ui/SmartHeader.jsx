@@ -112,11 +112,31 @@ const SmartHeader = ({
           </TouchableOpacity>
         </View>
 
-        {/* LIGNE DU BAS : SearchBar & Bonjour (Disparaît au scroll) */}
+        {/* LIGNE DU BAS : Contenu Dynamique (Disparaît au scroll) */}
         <Animated.View style={[styles.searchContainer, searchBarAnimatedStyle]}>
-          <Text style={styles.greetingText}>Bonjour, {userName}</Text>
           
-          {/* BARRE DE RECHERCHE : Réservée aux Riders */}
+          {/* 1. BLOC SALUTATION */}
+          <View style={styles.greetingHeader}>
+             <Text style={styles.greetingText}>Bonjour, {userName}</Text>
+             
+             {/* MODE RIDER : Adresse en sous-titre (Gain de place) */}
+             {isRider && (
+               <View style={styles.riderAddressRow}>
+                  <Ionicons name="location-sharp" size={12} color={THEME.COLORS.champagneGold} />
+                  <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
+               </View>
+             )}
+          </View>
+
+          {/* 2. MODE DRIVER : Le Badge GPS bien visible (Validé) */}
+          {!isRider && (
+             <View style={styles.driverGpsBadge}>
+                 <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
+                 <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
+             </View>
+          )}
+          
+          {/* 3. MODE RIDER : La Barre de Recherche (Toujours en dernier) */}
           {isRider && (
             <TouchableOpacity 
               style={styles.searchBar} 
@@ -128,12 +148,6 @@ const SmartHeader = ({
             </TouchableOpacity>
           )}
           
-          {/* INFO GPS : Visible pour TOUS (Driver & Rider) */}
-          <View style={styles.gpsIndicator}>
-             <Ionicons name="navigate" size={12} color={THEME.COLORS.primary} />
-             <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
-          </View>
-
         </Animated.View>
 
       </View>
@@ -198,11 +212,29 @@ const styles = StyleSheet.create({
   searchContainer: {
     marginTop: 5,
   },
+  greetingHeader: {
+    marginBottom: 8,
+  },
   greetingText: {
     color: THEME.COLORS.textSecondary,
     fontSize: 14,
-    marginBottom: 8,
+    marginBottom: 4,
     marginLeft: 4,
+  },
+  
+  // --- STYLES SPÉCIFIQUES RIDER ---
+  riderAddressRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginLeft: 4,
+    marginBottom: 4,
+  },
+  riderAddressText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: '500',
+    marginLeft: 4,
+    opacity: 0.9,
   },
   searchBar: {
     flexDirection: 'row',
@@ -219,17 +251,26 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
   },
-  gpsIndicator: {
+
+  // --- STYLES SPÉCIFIQUES DRIVER ---
+  driverGpsBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
-    marginLeft: 4,
-    opacity: 0.7
+    marginTop: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    paddingVertical: 10, // Un peu plus grand pour le driver
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)',
+    alignSelf: 'flex-start',
   },
   gpsText: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 10,
-    marginLeft: 4,
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '500',
+    marginLeft: 8,
+    flex: 1, 
   }
 });
 
