@@ -1,13 +1,13 @@
 // src/navigation/AppNavigator.jsx
 // ORCHESTRATEUR DE NAVIGATION
-// Intègre les pages "Placeholders" pour éviter les crashs sur les liens vides.
+// Correction : Rendu conditionnel strict des Homes pour éviter le bug "Passager par défaut"
 
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // Pour le Placeholder
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import SecureStorageAdapter from '../store/secureStoreAdapter';
@@ -27,7 +27,6 @@ import RiderHome from '../screens/home/RiderHome';
 import MenuScreen from '../screens/MenuScreen';
 
 // 🚧 COMPOSANT TEMPORAIRE POUR LES PAGES EN CONSTRUCTION 🚧
-// Permet de cliquer sur les menus sans faire crasher l'app
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -82,9 +81,8 @@ const AppNavigator = () => {
     return null; 
   }
 
-  const getHomeScreen = () => {
-    return user?.role === 'driver' ? 'DriverHome' : 'RiderHome';
-  };
+  // Sécurité : On s'assure que le rôle est bien défini, sinon Rider par défaut
+  const isDriver = user?.role === 'driver';
 
   return (
     <Stack.Navigator
@@ -93,7 +91,7 @@ const AppNavigator = () => {
         animation: 'fade',
         contentStyle: { backgroundColor: THEME.COLORS.background },
       }}
-      initialRouteName={isAuthenticated ? getHomeScreen() : 'Landing'}
+      // Plus besoin de initialRouteName dynamique complexe, le contenu conditionnel gère tout
     >
       {!isAuthenticated ? (
         // 🔴 ZONE PUBLIQUE
@@ -105,8 +103,16 @@ const AppNavigator = () => {
       ) : (
         // 🟢 ZONE PRIVÉE
         <Stack.Group>
-          <Stack.Screen name="DriverHome" component={DriverHome} />
-          <Stack.Screen name="RiderHome" component={RiderHome} />
+          
+          {/* 👇 C'EST ICI LA CORRECTION MAJEURE 👇 */}
+          {/* On ne rend QUE l'écran correspondant au rôle. */}
+          {/* React Navigation est OBLIGÉ d'afficher le premier écran de la liste. */}
+          
+          {isDriver ? (
+             <Stack.Screen name="DriverHome" component={DriverHome} />
+          ) : (
+             <Stack.Screen name="RiderHome" component={RiderHome} />
+          )}
           
           {/* PAGE MENU (Slide Up) */}
           <Stack.Screen 
@@ -119,7 +125,7 @@ const AppNavigator = () => {
             }}
           />
 
-          {/* 🚧 PAGES EN CONSTRUCTION (Pour éviter les crashs) 🚧 */}
+          {/* 🚧 PAGES EN CONSTRUCTION 🚧 */}
           <Stack.Screen name="Profile" component={PlaceholderScreen} />
           <Stack.Screen name="History" component={PlaceholderScreen} />
           <Stack.Screen name="Notifications" component={PlaceholderScreen} />

@@ -31,14 +31,18 @@ const MenuScreen = () => {
 
   // 2. Gestion de la fermeture
   const handleClose = () => {
-    navigation.goBack();
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      // Fallback si on ne peut pas revenir en arrière (ne devrait pas arriver)
+      navigation.navigate(role === 'driver' ? 'DriverHome' : 'RiderHome');
+    }
   };
 
   // 3. Gestion de la Navigation
   const handleNavigate = (routeKey) => {
     try {
-      // On ferme le menu d'abord, puis on navigue (ou l'inverse selon l'effet voulu)
-      // Ici navigation directe, le menu est une page de la stack
+      // Pour les pages en construction, ça ira vers le Placeholder défini dans AppNavigator
       navigation.navigate(routeKey);
     } catch (error) {
       console.warn("Route introuvable ou erreur navigation:", routeKey);
@@ -48,11 +52,8 @@ const MenuScreen = () => {
   // 4. Gestion de la Déconnexion
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    // Simulation d'un petit délai pour l'UX (optionnel)
     setTimeout(() => {
       dispatch(logout());
-      // La navigation vers 'Landing' se fera automatiquement via AppNavigator
-      // qui écoute l'état isAuthenticated
       setIsLoggingOut(false);
     }, 800);
   };
@@ -64,13 +65,11 @@ const MenuScreen = () => {
     ]}>
       
       {/* HEADER : Infos User + Bouton Fermer */}
-      <View style={styles.headerSection}>
-        <DrawerHeader 
-          user={user} 
-          role={role} 
-          onClose={handleClose} 
-        />
-      </View>
+      <DrawerHeader 
+        user={user} 
+        role={role} 
+        onClose={handleClose} 
+      />
 
       {/* MENU : Liste des liens */}
       <ScrollView 
@@ -79,7 +78,7 @@ const MenuScreen = () => {
       >
         <DrawerMenu 
           role={role}
-          activeRoute={role === 'driver' ? 'DriverHome' : 'RiderHome'} // On simule l'accueil actif par défaut
+          activeRoute={role === 'driver' ? 'DriverHome' : 'RiderHome'} 
           onNavigate={handleNavigate}
           disabled={isLoggingOut}
         />
@@ -101,10 +100,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
-  },
-  headerSection: {
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.border,
   },
   scrollContent: {
     paddingVertical: THEME.SPACING.md,

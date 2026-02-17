@@ -1,34 +1,44 @@
 // src/components/drawer/menuConfig.js
+// CONFIGURATION DU MENU (Données & Utilitaires)
+
+// NOTE : On utilise ici le nom de l'icône "pleine" (ex: 'home').
+// DrawerMenu.jsx ajoutera automatiquement '-outline' quand c'est inactif.
 
 const MENU_ITEMS = {
   rider: [
-    { key: 'RiderHome', label: 'Accueil', icon: 'home-outline', iconActive: 'home' },
-    { key: 'History', label: 'Historique', icon: 'time-outline', iconActive: 'time' },
-    { key: 'Notifications', label: 'Notifications', icon: 'notifications-outline', iconActive: 'notifications' },
-    { key: 'Profile', label: 'Mon Profil', icon: 'person-outline', iconActive: 'person' },
+    { route: 'RiderHome', label: 'Accueil', icon: 'home' },
+    { route: 'History', label: 'Historique', icon: 'time' },
+    { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'Profile', label: 'Mon Profil', icon: 'person' },
   ],
   driver: [
-    { key: 'DriverHome', label: 'Accueil', icon: 'car-outline', iconActive: 'car' },
-    { key: 'Subscription', label: 'Abonnement', icon: 'card-outline', iconActive: 'card' },
-    { key: 'History', label: 'Historique', icon: 'time-outline', iconActive: 'time' },
-    { key: 'Notifications', label: 'Notifications', icon: 'notifications-outline', iconActive: 'notifications' },
-    { key: 'Profile', label: 'Mon Profil', icon: 'person-outline', iconActive: 'person' },
+    { route: 'DriverHome', label: 'Accueil', icon: 'car' },
+    { route: 'Subscription', label: 'Abonnement', icon: 'card' },
+    { route: 'History', label: 'Historique', icon: 'time' },
+    { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'Profile', label: 'Mon Profil', icon: 'person' },
   ],
   admin: [
-    { key: 'AdminDashboard', label: 'Dashboard', icon: 'grid-outline', iconActive: 'grid' },
-    { key: 'Validations', label: 'Validations', icon: 'checkmark-circle-outline', iconActive: 'checkmark-circle', badge: true },
-    { key: 'Drivers', label: 'Chauffeurs', icon: 'people-outline', iconActive: 'people' },
-    { key: 'Notifications', label: 'Notifications', icon: 'notifications-outline', iconActive: 'notifications' },
-    { key: 'Profile', label: 'Mon Profil', icon: 'person-outline', iconActive: 'person' },
+    { route: 'AdminDashboard', label: 'Dashboard', icon: 'grid' },
+    { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
+    { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
+    { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'Profile', label: 'Mon Profil', icon: 'person' },
   ],
   superadmin: [
-    { key: 'AdminDashboard', label: 'Dashboard', icon: 'grid-outline', iconActive: 'grid' },
-    { key: 'Validations', label: 'Validations', icon: 'checkmark-circle-outline', iconActive: 'checkmark-circle', badge: true },
-    { key: 'Drivers', label: 'Chauffeurs', icon: 'people-outline', iconActive: 'people' },
-    { key: 'Finance', label: 'Finance', icon: 'wallet-outline', iconActive: 'wallet' },
-    { key: 'Notifications', label: 'Notifications', icon: 'notifications-outline', iconActive: 'notifications' },
-    { key: 'Profile', label: 'Mon Profil', icon: 'person-outline', iconActive: 'person' },
+    { route: 'AdminDashboard', label: 'Dashboard', icon: 'grid' },
+    { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
+    { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
+    { route: 'Finance', label: 'Finance', icon: 'wallet' },
+    { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'Profile', label: 'Mon Profil', icon: 'person' },
   ],
+};
+
+// 👇 C'EST CETTE FONCTION QUI MANQUAIT 👇
+export const getMenuItems = (role) => {
+  // Sécurité : si le rôle est inconnu ou null, on retourne le menu passager par défaut
+  return MENU_ITEMS[role] || MENU_ITEMS.rider;
 };
 
 export const getRoleLabel = (role) => {

@@ -1,53 +1,60 @@
 // src/components/drawer/DrawerMenu.jsx
+// MENU LISTE - Nettoyé & Redressé (Aucun italique, aucun skew)
 
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
-import MENU_ITEMS from './menuConfig';
+import THEME from '../../theme/theme';
+import { getMenuItems } from './menuConfig';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
-  const menuItems = MENU_ITEMS[role] || MENU_ITEMS.rider;
+  // Récupération des items selon le rôle
+  const menuItems = getMenuItems(role);
 
   return (
     <View style={styles.container}>
-      {menuItems.map((item) => {
-        const isActive = activeRoute === item.key;
+      {menuItems.map((item, index) => {
+        const isActive = activeRoute === item.route;
 
         return (
           <TouchableOpacity
-            key={item.key}
-            activeOpacity={0.7}
-            disabled={disabled}
+            key={item.id || index}
             style={[
               styles.menuItem,
-              isActive && styles.menuItemActive,
+              isActive && styles.menuItemActive
             ]}
-            onPress={() => onNavigate(item.key)}
+            onPress={() => onNavigate(item.route)}
+            disabled={disabled}
+            activeOpacity={0.7}
           >
-            <View style={[styles.iconContainer, isActive && styles.iconContainerActive]}>
+            {/* ICÔNE */}
+            <View style={[
+              styles.iconContainer,
+              isActive && styles.iconContainerActive
+            ]}>
               <Ionicons
-                name={isActive ? item.iconActive : item.icon}
+                name={isActive ? item.icon : `${item.icon}-outline`}
                 size={22}
-                color={isActive ? COLORS.champagneGold : COLORS.textSecondary}
+                color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary}
               />
             </View>
 
-            <Text
-              style={[
-                styles.label,
-                isActive && styles.labelActive,
-              ]}
-            >
+            {/* TEXTE (Droit et Lisible) */}
+            <Text style={[
+              styles.menuLabel,
+              isActive && styles.menuLabelActive
+            ]}>
               {item.label}
             </Text>
 
-            {item.badge && (
-              <View style={styles.badgeDot} />
-            )}
-
-            {isActive && <View style={styles.activeIndicator} />}
+            {/* FLÈCHE BOUT (Optionnel, pour montrer que c'est cliquable) */}
+            <Ionicons 
+              name="chevron-forward" 
+              size={16} 
+              color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.border} 
+              style={{ opacity: 0.5 }}
+            />
           </TouchableOpacity>
         );
       })}
@@ -57,59 +64,47 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingTop: SPACING.md,
-    paddingBottom: SPACING.md,
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: THEME.SPACING.md,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    borderRadius: BORDERS.radius.lg,
-    marginBottom: SPACING.xs,
-    position: 'relative',
+    paddingVertical: 16, // Plus d'espace pour le doigt
+    paddingHorizontal: 16,
+    marginBottom: 8,
+    borderRadius: 12,
+    backgroundColor: 'transparent', // Par défaut transparent
+    // Pas de border par défaut pour alléger
   },
   menuItemActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    backgroundColor: THEME.COLORS.glassSurface, // Fond subtil si actif
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)', // Bordure Or légère
   },
   iconContainer: {
-    width: 38,
-    height: 38,
-    borderRadius: BORDERS.radius.md,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(128, 128, 128, 0.1)', // Gris très léger
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(242, 244, 246, 0.05)',
+    marginRight: 16,
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    backgroundColor: 'rgba(212, 175, 55, 0.15)', // Or léger
   },
-  label: {
+  menuLabel: {
     flex: 1,
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: FONTS.weights.medium,
-    marginLeft: SPACING.md,
+    fontSize: 16,
+    fontWeight: '500', // Medium pour la lisibilité
+    color: THEME.COLORS.textSecondary,
+    fontStyle: 'normal', // ⚠️ On force le style NORMAL (pas italique)
+    letterSpacing: 0.3,  // Un peu d'air
+    // Pas de transform ici !
   },
-  labelActive: {
-    color: COLORS.champagneGold,
-    fontWeight: FONTS.weights.semiBold,
-  },
-  badgeDot: {
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: COLORS.danger,
-    marginLeft: SPACING.sm,
-  },
-  activeIndicator: {
-    position: 'absolute',
-    left: 0,
-    top: '25%',
-    bottom: '25%',
-    width: 3,
-    borderRadius: 2,
-    backgroundColor: COLORS.champagneGold,
+  menuLabelActive: {
+    color: THEME.COLORS.textPrimary, // Noir (Jour) ou Blanc (Nuit)
+    fontWeight: '700', // Gras si actif
   },
 });
 
