@@ -1,13 +1,17 @@
 // src/components/drawer/DrawerFooter.jsx
-// FOOTER MENU - Sobre et Droit
+// FOOTER MENU - Version dynamique (Package.json)
 
 import { Ionicons } from '@expo/vector-icons';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
+import packageJson from '../../../package.json'; // Import de la version source
 import THEME from '../../theme/theme';
 
 const DrawerFooter = ({ onLogout, isLoggingOut }) => {
+  // Récupération automatique de la version
+  const appVersion = packageJson.version;
+
   return (
     <View style={styles.container}>
       
@@ -28,9 +32,9 @@ const DrawerFooter = ({ onLogout, isLoggingOut }) => {
         </Text>
       </TouchableOpacity>
 
-      {/* VERSION APP */}
+      {/* VERSION APP DYNAMIQUE */}
       <View style={styles.versionContainer}>
-        <Text style={styles.versionText}>Yély v1.0.0 • by Groupe Express</Text>
+        <Text style={styles.versionText}>Yély v{appVersion}</Text>
       </View>
       
     </View>
@@ -47,7 +51,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 12,
-    backgroundColor: 'rgba(231, 76, 60, 0.08)', // Rouge très léger
+    backgroundColor: 'rgba(231, 76, 60, 0.08)',
     borderWidth: 1,
     borderColor: 'rgba(231, 76, 60, 0.2)',
     marginBottom: 20,
@@ -57,7 +61,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: THEME.COLORS.danger,
-    fontStyle: 'normal', // ⚠️ Sécurité anti-italique
+    fontStyle: 'normal',
   },
   versionContainer: {
     alignItems: 'center',
@@ -65,7 +69,7 @@ const styles = StyleSheet.create({
   versionText: {
     fontSize: 12,
     color: THEME.COLORS.textTertiary,
-    fontStyle: 'normal', // ⚠️ Sécurité anti-italique
+    fontStyle: 'normal',
   },
 });
 
