@@ -259,8 +259,9 @@ const LAYOUT = {
   isSmallDevice: SCREEN_WIDTH < 375,
   
   // ⚠️ CRITIQUE : Mapping des propriétés pour éviter l'erreur "undefined"
+  // On mappe explicitement pour que LAYOUT.spacing.md et LAYOUT.radius.lg fonctionnent
   spacing: SPACING, 
-  borderRadius: BORDERS.radius,
+  radius: BORDERS.radius, // CORRECTION ICI: c'était 'borderRadius', maintenant c'est 'radius'
 
   // Hauteurs pour l'animation du SmartHeader
   HEADER_HEIGHT: 60,         // Hauteur minimum (réduit)
