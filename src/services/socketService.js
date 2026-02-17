@@ -1,12 +1,9 @@
 // src/services/socketService.js
-// Singleton Socket.io - Le système nerveux temps réel (Sécurisé & Silencieux)
+// Singleton Socket.io - Système Nerveux Temps Réel (Sécurisé, Silencieux & Anti-Loop)
 
 import { io } from 'socket.io-client';
 
-// EXPO_PUBLIC_API_URL = https://yely-backend-xxx.onrender.com/api/v1
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-
-// Extraction de la racine (ex: https://yely-backend...)
 const SOCKET_URL = API_URL.split('/api')[0];
 
 class SocketService {
@@ -18,21 +15,11 @@ class SocketService {
     this._listeners = [];
   }
 
-  /**
-   * Initialise la connexion Socket.io
-   * @param {string} token - Token d'authentification JWT
-   */
   connect(token) {
-    if (!token || !SOCKET_URL) {
-      return; // Silencieux si pas de config
-    }
-
-    if (this.socket?.connected) {
+    if (!token || !SOCKET_URL || this.socket?.connected) {
       return; 
     }
 
-    // 🔇 SILENCE RADIO : On ne loggue plus l'URL ici.
-    
     this.socket = io(SOCKET_URL, {
       auth: { token },
       transports: ['websocket'],
@@ -51,21 +38,27 @@ class SocketService {
     this.socket.on('connect', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      // Juste un check visuel simple
       if (__DEV__) console.log('[Socket] ✅ Connecté !');
     });
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      if (__DEV__) console.log('[Socket] Déconnecté');
+      if (__DEV__) console.log(`[Socket] Déconnecté: ${reason}`);
     });
 
     this.socket.on('connect_error', (error) => {
+      // 🛡️ SÉCURITÉ : Anti-Loop. Si le token est rejeté, on abandonne tout de suite.
+      if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
+        if (__DEV__) console.warn('[Socket] Accès refusé par le serveur. Arrêt des tentatives.');
+        this.disconnect();
+        return;
+      }
+
       this.reconnectAttempts++;
-      // On cache les détails techniques, on log juste le compteur
       if (__DEV__) console.warn(`[Socket] Tentative connexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
       
       if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+        if (__DEV__) console.error('[Socket] Échec définitif de connexion.');
         this.disconnect();
       }
     });
