@@ -1,18 +1,17 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - STRUCTURE SPLIT & GESTION ÉTAT
-// Map (Haut) + Disponibilité/Stats (Bas)
+// HOME DRIVER - HEADER CONDUCTEUR
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-// Composants UI
 import MapCard from '../../components/map/MapCard';
-import ScreenHeader from '../../components/ui/ScreenHeader';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import SmartHeader from '../../components/ui/SmartHeader';
 
-// Logique & Store
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
@@ -23,17 +22,16 @@ import THEME from '../../theme/theme';
 export default function DriverHome({ navigation }) {
   const mapRef = useRef(null);
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   
-  // 1. DATA USER & LOCA
   const user = useSelector(selectCurrentUser);
   const { location, errorMsg } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
-  // État Disponibilité
+  const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
-  // 2. REVERSE GEOCODING
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
@@ -51,7 +49,6 @@ export default function DriverHome({ navigation }) {
     }
   }, [location, errorMsg]);
 
-  // 3. GESTION DISPONIBILITÉ
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
     try {
@@ -60,31 +57,35 @@ export default function DriverHome({ navigation }) {
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
       
       dispatch(showSuccessToast({
-        title: res.isAvailable ? "Vous êtes EN LIGNE" : "Vous êtes HORS LIGNE",
-        message: res.isAvailable ? "Prêt à recevoir des courses." : "Vous ne recevrez plus de courses.",
+        title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
+        message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
       }));
     } catch (err) {
       console.error('[AVAILABILITY] Erreur:', err);
-      dispatch(showErrorToast({
-        title: "Erreur",
-        message: "Impossible de changer votre statut.",
-      }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
     }
   };
+
+  const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
 
   return (
     <ScreenWrapper>
 
-      {/* 1. HEADER (Fixe en haut) */}
-      <ScreenHeader 
-        showLocation={true}
-        locationText={currentAddress}
+      {/* HEADER MODE DRIVER (IMPORTANT) */}
+      <SmartHeader 
+        scrollY={scrollY}
+        address={currentAddress}
+        userName={user?.name?.split(' ')[0] || "Chauffeur"}
+        mode="driver" // ✅ C'est ICI que ça se joue
+        onMenuPress={() => navigation.openDrawer()}
+        onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 2. CONTENU PRINCIPAL (Split View) */}
-      <View style={styles.mainContainer}>
+      <View style={[
+        styles.mainContainer, 
+        { paddingTop: topPadding, backgroundColor: THEME.COLORS.deepAsphalt }
+      ]}>
 
-        {/* --- ZONE HAUTE : CARTE (55%) --- */}
         <View style={styles.mapSection}>
            {location ? (
              <MapCard 
@@ -92,7 +93,6 @@ export default function DriverHome({ navigation }) {
                location={location}
                showUserMarker={true}
                darkMode={true}
-               // Si driver dispo, on peut changer la couleur du marker (plus tard)
              />
            ) : (
              <View style={styles.loadingContainer}>
@@ -102,14 +102,9 @@ export default function DriverHome({ navigation }) {
            )}
         </View>
 
-        {/* --- ZONE BASSE : CONTRÔLES (45%) --- */}
         <View style={styles.bottomSection}>
-
-          {/* CARTE DISPONIBILITÉ */}
           <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
             <View style={styles.availabilityRow}>
-              
-              {/* Infos Gauche */}
               <View style={styles.statusInfo}>
                 <View style={styles.statusHeader}>
                   <Ionicons 
@@ -122,11 +117,10 @@ export default function DriverHome({ navigation }) {
                   </Text>
                 </View>
                 <Text style={styles.statusSubtitle}>
-                  {isAvailable ? 'Recherche de courses en cours...' : 'Passez en ligne pour travailler'}
+                  {isAvailable ? 'En attente de courses...' : 'Passez en ligne pour travailler'}
                 </Text>
               </View>
 
-              {/* Switch Droite */}
               <Switch
                 value={isAvailable}
                 onValueChange={handleToggleAvailability}
@@ -137,7 +131,6 @@ export default function DriverHome({ navigation }) {
             </View>
           </View>
 
-          {/* DASHBOARD STATS RAPIDES */}
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value="0" label="Courses" />
             <StatBox icon="time" value="0h" label="Heures" />
@@ -151,7 +144,6 @@ export default function DriverHome({ navigation }) {
   );
 }
 
-// Petit composant interne pour les stats
 const StatBox = ({ icon, value, label, isGold }) => (
   <View style={styles.statBox}>
     <Ionicons name={icon} size={22} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
@@ -165,8 +157,6 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
-  
-  // --- CARTE ---
   mapSection: {
     flex: 0.55,
     overflow: 'hidden',
@@ -191,16 +181,12 @@ const styles = StyleSheet.create({
     marginTop: 10, 
     fontSize: 12
   },
-
-  // --- CONTROLES ---
   bottomSection: {
     flex: 0.45,
     backgroundColor: THEME.COLORS.deepAsphalt,
     paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,
   },
-
-  // Disponibilité
   availabilityCard: {
     backgroundColor: THEME.COLORS.glassLight,
     borderRadius: 16,
@@ -210,7 +196,7 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   availabilityCardOnline: {
-    backgroundColor: 'rgba(46, 204, 113, 0.08)', // Vert très léger
+    backgroundColor: 'rgba(46, 204, 113, 0.08)',
     borderColor: 'rgba(46, 204, 113, 0.3)',
   },
   availabilityRow: {
@@ -234,8 +220,6 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textTertiary,
     fontSize: 11,
   },
-
-  // Stats
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

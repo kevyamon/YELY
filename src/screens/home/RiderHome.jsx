@@ -1,17 +1,15 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - STRUCTURE SCINDÉE & VRAIE LOCA
-// Map (Haut) + Search/Forfaits (Bas)
+// HOME RIDER
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated'; // Pour le SmartHeader
-import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Pour le calcul du padding
-import { useSelector } from 'react-redux'; // Pour le nom utilisateur
+import { useSharedValue } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import SearchBar from '../../components/ui/SearchBar';
-import SmartHeader from '../../components/ui/SmartHeader'; // ✅ On utilise le nouveau Header
+import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
@@ -22,26 +20,19 @@ export default function RiderHome({ navigation }) {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   
-  // 1. VRAIE GÉOLOCALISATION
   const { location, errorMsg } = useGeolocation(); 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
-  // Variable d'animation pour le header (reste à 0 car pas de scroll ici)
   const scrollY = useSharedValue(0);
-  
-  // 2. RÉCUPÉRATION DE L'ADRESSE (Reverse Geocoding)
+
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
         try {
           const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-          if (addr && addr.shortName) {
-            setCurrentAddress(addr.shortName);
-          } else {
-            setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
-          }
+          if (addr && addr.shortName) setCurrentAddress(addr.shortName);
+          else setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
         } catch (error) {
-          console.log("Erreur Geo", error);
           setCurrentAddress("Adresse indisponible");
         }
       };
@@ -51,28 +42,27 @@ export default function RiderHome({ navigation }) {
     }
   }, [location, errorMsg]);
 
-  // 📐 CALCUL DU PADDING : On pousse le contenu sous le Header Max Height
-  // On ajoute un petit bonus (+10) pour l'aération
-  const contentPaddingTop = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT - 10;
+  const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
 
   return (
     <ScreenWrapper>
       
-      {/* 1. HEADER (Fixe en haut - Style Canva) */}
+      {/* HEADER RIDER */}
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Passager"}
+        mode="rider" // ✅ Affiche "On va où ?"
         onMenuPress={() => navigation.openDrawer()}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => console.log("Ouvrir recherche")}
       />
 
-      {/* 2. CONTENU PRINCIPAL (Split View) */}
-      {/* ⚠️ CORRECTION : On applique le padding ici pour descendre tout le bloc */}
-      <View style={[styles.mainContainer, { paddingTop: contentPaddingTop }]}>
+      <View style={[
+        styles.mainContainer, 
+        { paddingTop: topPadding, backgroundColor: THEME.COLORS.deepAsphalt }
+      ]}>
         
-        {/* PARTIE HAUTE : LA CARTE (~55% de l'écran) */}
         <View style={styles.mapSection}>
            {location ? (
              <MapCard 
@@ -88,31 +78,17 @@ export default function RiderHome({ navigation }) {
            )}
         </View>
 
-        {/* PARTIE BASSE : RECHERCHE & FORFAITS (Le reste de l'écran) */}
         <View style={styles.bottomSection}>
           
-          {/* Barre de Recherche (Gardée comme dans ton fichier original) */}
-          {/* Note : Tu peux la retirer si tu utilises celle du header, mais je la laisse comme demandé */}
-          <View style={styles.searchContainer}>
-            <SearchBar 
-              label="On va où ?"
-              hint="Saisissez votre destination"
-              onPress={() => console.log("Ouvrir recherche")}
-            />
-          </View>
-
-          {/* Zone Forfaits (Placeholder pour la Phase 5) */}
           <View style={styles.forfaitsContainer}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
             
-            {/* Carte placeholder */}
             <View style={styles.emptyCard}>
                <Text style={{color: THEME.COLORS.textTertiary, fontStyle: 'italic'}}>
-                 Sélectionnez une destination pour voir les tarifs
+                 Sélectionnez une destination
                </Text>
             </View>
             
-            {/* Indicateurs (Dots) */}
             <View style={styles.dotsContainer}>
                <View style={[styles.dot, styles.dotActive]} />
                <View style={styles.dot} />
@@ -132,10 +108,7 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     flexDirection: 'column',
-    // backgroundColor: THEME.COLORS.background, // Optionnel
   },
-  
-  // ZONE CARTE (Haut)
   mapSection: {
     flex: 0.55, 
     overflow: 'hidden',
@@ -155,43 +128,37 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
   },
-
-  // ZONE BASSE (Bas)
   bottomSection: {
     flex: 0.45, 
     backgroundColor: THEME.COLORS.deepAsphalt,
-    paddingTop: THEME.SPACING.xl,
+    paddingTop: THEME.SPACING.lg,
     paddingHorizontal: THEME.SPACING.lg,
   },
-  
-  searchContainer: {
-    marginBottom: THEME.SPACING.xl,
-  },
-
   forfaitsContainer: {
     flex: 1,
     alignItems: 'center',
+    justifyContent: 'flex-start',
+    paddingTop: 10,
   },
   sectionTitle: {
     color: THEME.COLORS.textSecondary,
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 10,
+    marginBottom: 15,
     alignSelf: 'flex-start',
-    letterSpacing: 1.5,
+    letterSpacing: 2,
   },
   emptyCard: {
     width: '100%',
-    height: 100,
+    height: 110,
     backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 15,
+    marginBottom: 20,
   },
-
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
