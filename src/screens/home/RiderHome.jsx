@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Intégration Phase 5 (Estimation & Forfaits)
+// HOME RIDER - UX d'Annulation et de Réinitialisation
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -8,18 +8,17 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import VehicleCarousel from '../../components/ride/VehicleCarousel'; // INTÉGRATION PHASE 5
+import VehicleCarousel from '../../components/ride/VehicleCarousel';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice'; // INTÉGRATION API
+import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
-// Données de secours (Fallback) au cas où le backend ne réponde pas encore
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5', estimatedPrice: 1000 },
   { id: '2', type: 'standard', name: 'Standard', duration: '3', estimatedPrice: 1500 },
@@ -37,7 +36,6 @@ const RiderHome = ({ navigation }) => {
   const [routeCoords, setRouteCoords] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   
-  // PHASE 5 : Nouveaux états
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   
@@ -60,10 +58,8 @@ const RiderHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
-  // Définition des véhicules à afficher (API ou Mock pour ne jamais bloquer l'UX)
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
 
-  // Auto-sélection du véhicule Standard par défaut quand les forfaits s'affichent
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
       const standardOption = displayVehicles.find(v => v.type === 'standard');
@@ -75,10 +71,9 @@ const RiderHome = ({ navigation }) => {
 
   const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
-    setSelectedVehicle(null); // Réinitialisation du choix sur une nouvelle recherche
+    setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      // 1. Tracé GPS
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
       if (coords && coords.length > 0) {
         setRouteCoords(coords);
@@ -88,7 +83,6 @@ const RiderHome = ({ navigation }) => {
         });
       }
 
-      // 2. Appel au backend pour estimer le prix
       estimateRide({
         pickupLat: location.latitude,
         pickupLng: location.longitude,
@@ -98,10 +92,24 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
+  // NOUVEAU : Fonction pour tout réinitialiser quand on annule
+  const handleCancelDestination = () => {
+    setDestination(null);
+    setRouteCoords(null);
+    setSelectedVehicle(null);
+    // On recentre la carte sur la position actuelle
+    if (location && mapRef.current) {
+      const coords = [{ latitude: location.latitude, longitude: location.longitude }];
+      mapRef.current.fitToCoordinates(coords, {
+         edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+         animated: true,
+      });
+    }
+  };
+
   const handleConfirmRide = () => {
     if (!selectedVehicle) return;
     console.log("🚀 Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
-    // TODO Phase 6 : createRide mutation + socket
   };
 
   const mapMarkers = destination ? [{
@@ -123,6 +131,9 @@ const RiderHome = ({ navigation }) => {
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => setIsSearchModalVisible(true)}
+        // Props pour gérer l'annulation
+        hasDestination={!!destination}
+        onCancelDestination={handleCancelDestination}
       />
 
       <View style={[
@@ -162,7 +173,6 @@ const RiderHome = ({ navigation }) => {
                    error={estimateError}
                  />
                  
-                 {/* BOUTON D'ACTION PRINCIPAL (CTA) */}
                  <TouchableOpacity 
                    style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
                    disabled={!selectedVehicle || isEstimating}

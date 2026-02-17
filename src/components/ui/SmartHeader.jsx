@@ -1,5 +1,5 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT & DYNAMIQUE - Version UX Premium (Bouton CTA)
+// HEADER INTELLIGENT & DYNAMIQUE - UX Bouton & Annulation
 
 import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -21,18 +21,19 @@ const SmartHeader = ({
   userName = "Passager",
   onMenuPress, 
   onNotificationPress,
-  onSearchPress 
+  onSearchPress,
+  // NOUVEAU : Props pour gérer l'état d'estimation et l'annulation
+  hasDestination = false,
+  onCancelDestination 
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   const isRider = user?.role === 'rider';
 
-  // Limites de l'animation
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
-  // 1. Animation Hauteur & Ombre
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(
       scrollY.value,
@@ -51,7 +52,6 @@ const SmartHeader = ({
     return { height, shadowOpacity, elevation: shadowOpacity * 10 };
   });
 
-  // 2. Animation CTA (Disparition au scroll)
   const ctaAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
@@ -69,7 +69,6 @@ const SmartHeader = ({
     return { opacity, transform: [{ translateY }], display };
   });
 
-  // 3. Animation Titre Adresse (Apparition au centre)
   const titleAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
@@ -86,7 +85,6 @@ const SmartHeader = ({
     return { opacity, transform: [{ translateY }] };
   });
 
-  // 4. NOUVEAU : Animation du "Pop" pour le bouton CTA
   const buttonScale = useSharedValue(1);
   const buttonPopStyle = useAnimatedStyle(() => {
     return { transform: [{ scale: buttonScale.value }] };
@@ -94,19 +92,16 @@ const SmartHeader = ({
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
-      {/* Fond Opaque */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
         
-        {/* LIGNE DU HAUT : Menu, Notif, et Titre Caché */}
         <View style={styles.topRow}>
           <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
             <Ionicons name="notifications-outline" size={24} color={THEME.COLORS.champagneGold} />
             <View style={styles.badge} />
           </TouchableOpacity>
 
-          {/* Titre Adresse au Scroll */}
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
             <Text style={styles.locationTitle} numberOfLines={1}>
               📍 {address}
@@ -118,12 +113,10 @@ const SmartHeader = ({
           </TouchableOpacity>
         </View>
 
-        {/* LIGNE DU BAS : Contenu Dynamique */}
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           
           <View style={styles.greetingHeader}>
              <Text style={styles.greetingText}>Bonjour, {userName}</Text>
-             
              {isRider && (
                <View style={styles.riderAddressRow}>
                   <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
@@ -139,17 +132,31 @@ const SmartHeader = ({
              </View>
           )}
           
-          {/* NOUVEAU CTA : Bouton compact, jaune, texte noir avec effet POP */}
-          {isRider && (
+          {/* LOGIQUE D'AFFICHAGE DU BOUTON (Recherche vs Annulation) */}
+          {isRider && !hasDestination && (
             <Animated.View style={[styles.ctaWrapper, buttonPopStyle]}>
               <Pressable 
                 style={styles.ctaButton} 
-                onPressIn={() => buttonScale.value = withSpring(0.92)} // Se contracte
-                onPressOut={() => buttonScale.value = withSpring(1)}   // Rebondit
+                onPressIn={() => buttonScale.value = withSpring(0.92)}
+                onPressOut={() => buttonScale.value = withSpring(1)}
                 onPress={onSearchPress}
               >
                 <Ionicons name="car-sport" size={22} color="#121418" />
                 <Text style={styles.ctaText}>Commander un taxi</Text>
+              </Pressable>
+            </Animated.View>
+          )}
+
+          {isRider && hasDestination && (
+            <Animated.View style={[styles.ctaWrapper, buttonPopStyle]}>
+              <Pressable 
+                style={[styles.ctaButton, styles.cancelButton]} 
+                onPressIn={() => buttonScale.value = withSpring(0.92)}
+                onPressOut={() => buttonScale.value = withSpring(1)}
+                onPress={onCancelDestination}
+              >
+                <Ionicons name="close-circle" size={20} color={THEME.COLORS.danger} />
+                <Text style={styles.cancelText}>Annuler la destination</Text>
               </Pressable>
             </Animated.View>
           )}
@@ -216,11 +223,10 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.danger,
   },
   ctaContainer: {
-    // Retrait des marges excessives pour éviter le débordement
     marginTop: 0, 
   },
   greetingHeader: {
-    marginBottom: 6, // Plus serré pour laisser de la place au bouton
+    marginBottom: 6, 
   },
   greetingText: {
     color: THEME.COLORS.textSecondary,
@@ -241,22 +247,19 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     opacity: 0.9,
   },
-
-  // --- STYLES SPÉCIFIQUES DU NOUVEAU CTA ---
   ctaWrapper: {
-    alignItems: 'center', // Centre le bouton horizontalement
+    alignItems: 'center', 
     marginTop: 4,
   },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: THEME.COLORS.champagneGold, // JAUNE YÉLY
+    backgroundColor: THEME.COLORS.champagneGold, 
     paddingVertical: 12,
-    paddingHorizontal: 28, // Forme de pilule
-    borderRadius: 30, // Bords totalement arrondis
-    height: 48, // Hauteur bloquée pour ne JAMAIS toucher la carte
-    // Ombres dorées pour l'effet premium
+    paddingHorizontal: 28, 
+    borderRadius: 30, 
+    height: 48, 
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4,
@@ -264,14 +267,28 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   ctaText: {
-    color: '#121418', // Noir profond pour contraste parfait
+    color: '#121418', 
     fontSize: 16,
-    fontWeight: '900', // Très gras
+    fontWeight: '900', 
     marginLeft: 10,
     letterSpacing: 0.5,
   },
-
-  // --- STYLES SPÉCIFIQUES DRIVER ---
+  // STYLES BOUTON ANNULER
+  cancelButton: {
+    backgroundColor: 'rgba(231, 76, 60, 0.1)', // Fond rouge très léger (glass)
+    borderColor: THEME.COLORS.danger,
+    borderWidth: 1,
+    shadowOpacity: 0,
+    elevation: 0,
+    paddingHorizontal: 20,
+    height: 40, // Un peu plus petit pour être moins agressif
+  },
+  cancelText: {
+    color: THEME.COLORS.danger,
+    fontSize: 14,
+    fontWeight: 'bold',
+    marginLeft: 8,
+  },
   driverGpsBadge: {
     flexDirection: 'row',
     alignItems: 'center',

@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Phase 5 : Forfaits & Estimation
+// HOME RIDER WEB - Ajout bouton d'annulation de destination
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -70,6 +70,15 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
+  const handleCancelDestination = () => {
+    setDestination(null);
+    setRouteCoords(null);
+    setSelectedVehicle(null);
+    if (location && mapRef.current) {
+      mapRef.current.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }]);
+    }
+  };
+
   const handleConfirmRide = () => {
     if (!selectedVehicle) return;
     console.log("🚀 Lancement Web Phase 6 pour :", selectedVehicle.name);
@@ -121,7 +130,7 @@ const RiderHome = ({ navigation }) => {
 
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
 
-        {!destination && (
+        {!destination ? (
           <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
             <GlassCard style={styles.searchCard}>
               <View style={styles.searchRow}>
@@ -136,16 +145,21 @@ const RiderHome = ({ navigation }) => {
               </View>
             </GlassCard>
           </TouchableOpacity>
+        ) : (
+          // Bouton d'annulation Web quand on a une destination
+          <TouchableOpacity 
+             style={styles.cancelCard} 
+             activeOpacity={0.8} 
+             onPress={handleCancelDestination}
+          >
+             <Ionicons name="close-circle" size={20} color={THEME.COLORS.danger} />
+             <Text style={styles.cancelCardText}>Annuler la destination</Text>
+          </TouchableOpacity>
         )}
 
         <View style={[styles.forfaitsPlaceholder, destination && { marginTop: 0 }]}>
           <View style={styles.titleRow}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-            {destination && (
-               <TouchableOpacity onPress={() => setIsSearchModalVisible(true)}>
-                  <Text style={styles.editDestText}>Modifier dest.</Text>
-               </TouchableOpacity>
-            )}
           </View>
           
           {destination ? (
@@ -275,6 +289,23 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 2,
   },
+  cancelCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderColor: THEME.COLORS.danger,
+    borderWidth: 1,
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginBottom: 10,
+  },
+  cancelCardText: {
+    color: THEME.COLORS.danger,
+    fontWeight: 'bold',
+    marginLeft: 8,
+    fontSize: 14,
+  },
   forfaitsPlaceholder: {
     marginTop: 25,
     alignItems: 'center',
@@ -291,11 +322,6 @@ const styles = StyleSheet.create({
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 1,
-  },
-  editDestText: {
-    color: THEME.COLORS.champagneGold,
-    fontSize: 12,
-    fontWeight: 'bold',
   },
   emptyBox: {
     width: '100%',
