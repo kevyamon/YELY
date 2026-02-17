@@ -1,5 +1,6 @@
 // src/screens/home/RiderHome.jsx
 // HOME RIDER
+// Navigation mise à jour vers la page 'Menu'
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -51,16 +52,17 @@ export default function RiderHome({ navigation }) {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.name?.split(' ')[0] || "Passager"}
-        mode="rider" // ✅ Affiche "On va où ?"
-        onMenuPress={() => navigation.openDrawer()}
+        userName={user?.firstName || "Passager"} // Correction firstName
+        mode="rider"
+        // ⚠️ NAVIGATION VERS LA PAGE MENU
+        onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => console.log("Ouvrir recherche")}
       />
 
       <View style={[
         styles.mainContainer, 
-        { paddingTop: topPadding, backgroundColor: THEME.COLORS.deepAsphalt }
+        { paddingTop: topPadding, backgroundColor: THEME.COLORS.background } // Correction background
       ]}>
         
         <View style={styles.mapSection}>
@@ -78,7 +80,7 @@ export default function RiderHome({ navigation }) {
            )}
         </View>
 
-        <View style={styles.bottomSection}>
+        <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
           
           <View style={styles.forfaitsContainer}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
@@ -130,7 +132,7 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     flex: 0.45, 
-    backgroundColor: THEME.COLORS.deepAsphalt,
+    // Couleur de fond gérée dynamiquement par le style inline
     paddingTop: THEME.SPACING.lg,
     paddingHorizontal: THEME.SPACING.lg,
   },

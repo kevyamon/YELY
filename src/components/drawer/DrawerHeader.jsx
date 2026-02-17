@@ -1,30 +1,42 @@
 // src/components/drawer/DrawerHeader.jsx
-
-import { StyleSheet, View } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/slices/authSlice';
+import THEME from '../../theme/theme';
 
-import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
-import { getInitials, getRoleLabel } from './menuConfig';
+const DrawerHeader = ({ onClose, isFullScreen }) => {
+  const user = useSelector(selectCurrentUser);
+  const userName = user?.firstName || 'Utilisateur';
+  const userRole = user?.role === 'driver' ? 'Chauffeur' : 'Passager';
 
-const DrawerHeader = ({ user, role }) => {
   return (
     <View style={styles.container}>
-      <View style={styles.avatarContainer}>
-        <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{getInitials(user?.name)}</Text>
+      {/* Bouton FERMER (Croix) ou RETOUR en haut à droite */}
+      <View style={styles.topRow}>
+        <View style={styles.logoPlaceholder}>
+             {/* Petit logo optionnel ou vide */}
+             <Text style={styles.brandText}>YÉLY</Text>
         </View>
-        <View style={styles.onlineIndicator} />
+
+        <TouchableOpacity 
+            style={styles.closeButton} 
+            onPress={onClose}
+            activeOpacity={0.7}
+        >
+          <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
+        </TouchableOpacity>
       </View>
 
+      {/* Info Utilisateur */}
       <View style={styles.userInfo}>
-        <Text style={styles.userName} numberOfLines={1}>
-          {user?.name || 'Utilisateur'}
-        </Text>
-        <Text style={styles.userPhone} numberOfLines={1}>
-          {user?.phone || user?.email || ''}
-        </Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleBadgeText}>{getRoleLabel(role)}</Text>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{userName.charAt(0)}</Text>
+        </View>
+        <View>
+          <Text style={styles.name}>{userName}</Text>
+          <Text style={styles.role}>{userRole}</Text>
         </View>
       </View>
     </View>
@@ -33,71 +45,63 @@ const DrawerHeader = ({ user, role }) => {
 
 const styles = StyleSheet.create({
   container: {
+    paddingVertical: THEME.SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.COLORS.border,
+  },
+  topRow: {
     flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: SPACING.xl,
-    paddingVertical: SPACING.lg,
-    paddingTop: SPACING.xl,
+    marginBottom: THEME.SPACING.lg,
   },
-  avatarContainer: {
-    position: 'relative',
+  brandText: {
+    color: THEME.COLORS.primary, // OR
+    fontSize: 20,
+    fontWeight: 'bold',
+    letterSpacing: 2,
   },
-  avatar: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    borderWidth: BORDERS.width.medium,
-    borderColor: COLORS.champagneGold,
+  closeButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: THEME.COLORS.glassSurface, // Fond subtil
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  avatarText: {
-    color: COLORS.champagneGold,
-    fontSize: FONTS.sizes.h4,
-    fontWeight: FONTS.weights.bold,
-  },
-  onlineIndicator: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: COLORS.success,
-    borderWidth: 2,
-    borderColor: COLORS.glassDark,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
   },
   userInfo: {
-    flex: 1,
-    marginLeft: SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.SPACING.md,
   },
-  userName: {
-    color: COLORS.moonlightWhite,
-    fontSize: FONTS.sizes.body,
-    fontWeight: FONTS.weights.semiBold,
+  avatar: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: THEME.COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
-  userPhone: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.caption,
-    marginTop: SPACING.xxs,
+  avatarText: {
+    color: THEME.COLORS.textInverse, // Noir sur Or
+    fontSize: 24,
+    fontWeight: 'bold',
   },
-  roleBadge: {
-    alignSelf: 'flex-start',
-    marginTop: SPACING.xs,
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xxs,
-    borderRadius: BORDERS.radius.pill,
-    borderWidth: BORDERS.width.thin,
-    borderColor: 'rgba(212, 175, 55, 0.25)',
+  name: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 20,
+    fontWeight: 'bold',
   },
-  roleBadgeText: {
-    color: COLORS.champagneGold,
-    fontSize: FONTS.sizes.micro,
-    fontWeight: FONTS.weights.semiBold,
-    letterSpacing: 0.5,
-    textTransform: 'uppercase',
+  role: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 14,
   },
 });
 

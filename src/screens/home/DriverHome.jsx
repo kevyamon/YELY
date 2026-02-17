@@ -1,5 +1,6 @@
 // src/screens/home/DriverHome.jsx
 // HOME DRIVER - CORRIGÉ (Statistiques & Carte Statut visibles en mode Jour)
+// Navigation mise à jour vers la page 'Menu'
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -76,9 +77,10 @@ export default function DriverHome({ navigation }) {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.name?.split(' ')[0] || "Chauffeur"}
+        userName={user?.firstName || "Chauffeur"} // Correction firstName
         mode="driver"
-        onMenuPress={() => navigation.openDrawer()}
+        // ⚠️ NAVIGATION VERS LA PAGE MENU
+        onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
@@ -105,18 +107,16 @@ export default function DriverHome({ navigation }) {
            )}
         </View>
 
-        {/* 3. SECTION DU BAS (Celle qui posait problème) */}
+        {/* 3. SECTION DU BAS */}
         <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
           
           {/* CARTE DE STATUT (En Ligne / Hors Ligne) */}
           <View style={[
             styles.availabilityCard, 
             { 
-              // C'est ici le secret : On utilise glassSurface (qui devient blanc opaque le jour)
               backgroundColor: THEME.COLORS.glassSurface,
-              // Et on force la bordure grise visible
               borderColor: THEME.COLORS.border,
-              borderWidth: 1 // On s'assure que l'épaisseur est là
+              borderWidth: 1
             }, 
             isAvailable && styles.availabilityCardOnline
           ]}>
@@ -130,7 +130,7 @@ export default function DriverHome({ navigation }) {
                   />
                   <Text style={[
                       styles.statusTitle, 
-                      { color: THEME.COLORS.textPrimary }, // Noir le jour / Blanc la nuit
+                      { color: THEME.COLORS.textPrimary },
                       isAvailable && { color: THEME.COLORS.success }
                     ]}>
                     {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
@@ -151,7 +151,7 @@ export default function DriverHome({ navigation }) {
             </View>
           </View>
 
-          {/* LES STATS (Les 3 carrés) */}
+          {/* LES STATS */}
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value="0" label="Courses" />
             <StatBox icon="time" value="0h" label="Heures" />
@@ -165,27 +165,24 @@ export default function DriverHome({ navigation }) {
   );
 }
 
-// COMPOSANT STATBOX CORRIGÉ
-// Avant : il avait souvent des couleurs "white" forcées.
-// Maintenant : il écoute le THÈME.
+// COMPOSANT STATBOX
 const StatBox = ({ icon, value, label, isGold }) => (
   <View style={[
     styles.statBox, 
     { 
-      backgroundColor: THEME.COLORS.glassSurface, // Devient Blanc pur ou Gris vitré
-      borderColor: THEME.COLORS.border,           // Le contour gris visible
+      backgroundColor: THEME.COLORS.glassSurface,
+      borderColor: THEME.COLORS.border,
       borderWidth: 1
     }
   ]}>
     <Ionicons 
       name={icon} 
       size={22} 
-      // L'icône change de couleur selon le thème (pas juste blanc)
       color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
     />
     <Text style={[
       styles.statValue, 
-      { color: THEME.COLORS.textPrimary }, // LE TEXTE DEVIENT NOIR EN MODE JOUR
+      { color: THEME.COLORS.textPrimary },
       isGold && { color: THEME.COLORS.champagneGold }
     ]}>
       {value}
@@ -234,10 +231,9 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
-    // On enlève les styles fixes ici pour laisser le style dynamique (dans le JSX) gérer
   },
   availabilityCardOnline: {
-    backgroundColor: 'rgba(46, 204, 113, 0.08)', // Vert très clair, ça passe sur blanc et noir
+    backgroundColor: 'rgba(46, 204, 113, 0.08)',
     borderColor: 'rgba(46, 204, 113, 0.3)',
   },
   availabilityRow: {
@@ -269,7 +265,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
-    // shadowColor etc géré par le thème si besoin, restons simple pour le contraste
   },
   statValue: {
     fontSize: 18,
