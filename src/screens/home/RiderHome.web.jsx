@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Carte claire
+// HOME RIDER WEB - Fix Crash Annulation (centerOnUser)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -70,8 +70,9 @@ const RiderHome = ({ navigation }) => {
     setDestination(null);
     setRouteCoords(null);
     setSelectedVehicle(null);
+    // CORRECTION : Appel sécurisé
     if (location && mapRef.current) {
-      mapRef.current.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }]);
+      mapRef.current.centerOnUser();
     }
   };
 
@@ -122,7 +123,7 @@ const RiderHome = ({ navigation }) => {
             ref={mapRef}
             location={location}
             showUserMarker showRecenterButton 
-            darkMode={false} // CORRECTION : Carte claire !
+            floating={false}
             markers={mapMarkers} 
             route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
           />

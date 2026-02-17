@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - UX Immersion Totale & Carte Auto-Intelligente
+// HOME RIDER - Fix Crash Annulation (centerOnUser)
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -86,19 +86,20 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleCancelDestination = () => {
+    // 1. On vide les états
     setDestination(null);
     setRouteCoords(null);
     setSelectedVehicle(null);
+    
+    // 2. CORRECTION : On utilise centerOnUser() qui est fait pour ça, au lieu de fitToCoordinates
     if (location && mapRef.current) {
-      mapRef.current.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }], {
-         edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true,
-      });
+      mapRef.current.centerOnUser();
     }
   };
 
   const handleConfirmRide = () => {
     if (!selectedVehicle) return;
-    console.log(" Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
+    console.log("🚀 Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
   };
 
   const mapMarkers = destination ? [{
@@ -118,11 +119,10 @@ const RiderHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true}
-             floating={false} // Immersion totale
+             floating={false}
              markers={mapMarkers}
              route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
              recenterBottomPadding={mapBottomPadding} 
-             // Note: plus de prop 'darkMode', la carte est autonome !
            />
          ) : (
            <View style={styles.loadingContainer}>
