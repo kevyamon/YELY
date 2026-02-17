@@ -85,11 +85,18 @@ const COLORS = {
 COLORS.deepAsphalt = COLORS.background; // Redirige vers le nouveau fond
 COLORS.champagneGold = COLORS.primary;
 COLORS.moonlightWhite = COLORS.textPrimary;
+COLORS.glassDark = COLORS.glassSurface;
+COLORS.glassMedium = COLORS.glassSurface;
 COLORS.glassLight = COLORS.glassSurface;
+COLORS.glassUltraLight = COLORS.glassSurface;
 COLORS.glassBorder = COLORS.border;
+COLORS.glassBorderActive = COLORS.borderActive;
+COLORS.textDisabled = 'rgba(128, 128, 128, 0.5)';
+COLORS.overlayDark = 'rgba(0, 0, 0, 0.60)';
+COLORS.overlayMedium = 'rgba(0, 0, 0, 0.40)';
 
 // ═══════════════════════════════════════════════════════════════
-// 3. TYPOGRAPHIE (Inchangée mais optimisée)
+// 3. TYPOGRAPHIE
 // ═══════════════════════════════════════════════════════════════
 const FONTS = {
   family: {
@@ -100,22 +107,14 @@ const FONTS = {
     light: Platform.OS === 'ios' ? 'System' : 'Roboto',
   },
   sizes: {
-    hero: 34,
-    h1: 28,
-    h2: 24,
-    h3: 20,
-    h4: 18,
-    body: 16,
-    bodySmall: 14,
-    caption: 12,
-    micro: 10,
+    hero: 34, h1: 28, h2: 24, h3: 20, h4: 18,
+    body: 16, bodySmall: 14, caption: 12, micro: 10,
   },
   weights: {
-    bold: '700',
-    semiBold: '600',
-    medium: '500',
-    regular: '400',
-    light: '300',
+    bold: '700', semiBold: '600', medium: '500', regular: '400', light: '300',
+  },
+  lineHeights: {
+    tight: 1.2, normal: 1.5, relaxed: 1.8,
   },
 };
 
@@ -123,15 +122,15 @@ const FONTS = {
 // 4. ESPACEMENTS & BORDURES
 // ═══════════════════════════════════════════════════════════════
 const SPACING = {
-  xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, huge: 40,
+  xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, huge: 40, massive: 48, giant: 64,
 };
 
 const BORDERS = {
   radius: {
-    xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, pill: 9999,
+    xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, pill: 9999, circle: 9999,
   },
   width: {
-    thin: 0.5, normal: 1, medium: 2, thick: 3,
+    thin: 0.5, normal: 1, medium: 1.5, thick: 2,
   },
 };
 
@@ -139,31 +138,74 @@ const BORDERS = {
 // 5. OMBRES (Adaptées Jour/Nuit)
 // ═══════════════════════════════════════════════════════════════
 const SHADOWS = {
+  none: { shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
   soft: {
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: isDark ? 0.3 : 0.08, // Ombre plus légère le jour
+    shadowOpacity: isDark ? 0.3 : 0.08,
     shadowRadius: 4,
-    elevation: 2,
+    elevation: 3,
   },
   medium: {
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: isDark ? 0.4 : 0.12,
     shadowRadius: 8,
-    elevation: 4,
+    elevation: 6,
+  },
+  strong: {
+    shadowColor: COLORS.shadow,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: isDark ? 0.45 : 0.20,
+    shadowRadius: 16,
+    elevation: 12,
   },
   gold: {
     shadowColor: PALETTE.gold,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
-    elevation: 6,
+    shadowOpacity: 0.30,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  goldSoft: {
+    shadowColor: PALETTE.gold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
   },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 6. STYLES GLASSMORPHISM (ADAPTATIF)
+// 6. ANIMATIONS ET ICÔNES (RÉTABLIS EN CONSTANTES STRICTES)
+// ═══════════════════════════════════════════════════════════════
+const ANIMATIONS = {
+  duration: { instant: 100, fast: 200, normal: 300, slow: 450, verySlow: 600, dramatic: 800 },
+  spring: {
+    gentle: { damping: 20, stiffness: 150, mass: 1 },
+    bouncy: { damping: 12, stiffness: 180, mass: 0.8 },
+    snappy: { damping: 25, stiffness: 300, mass: 0.8 },
+    smooth: { damping: 30, stiffness: 200, mass: 1 },
+  },
+  easing: {
+    easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    easeIn: 'cubic-bezier(0.65, 0, 0.35, 1)',
+    easeInOut: 'cubic-bezier(0.65, 0, 0.35, 1)',
+    spring: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+  },
+};
+
+const ICONS = {
+  sizes: { xs: 16, sm: 20, md: 24, lg: 28, xl: 32, xxl: 40, hero: 64 },
+  colors: {
+    default: COLORS.textSecondary,
+    active: COLORS.primary,
+    inactive: COLORS.textTertiary,
+  },
+};
+
+// ═══════════════════════════════════════════════════════════════
+// 7. STYLES GLASSMORPHISM (ADAPTATIF)
 // ═══════════════════════════════════════════════════════════════
 const GLASS = {
   card: {
@@ -172,38 +214,60 @@ const GLASS = {
     borderWidth: BORDERS.width.thin,
     borderColor: COLORS.border,
     overflow: 'hidden',
-    // Effet de flou simulé par la couleur de fond semi-transparente
   },
-  input: {
-    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+  surface: {
+    backgroundColor: COLORS.glassSurface,
+    borderWidth: BORDERS.width.thin,
+    borderColor: COLORS.border,
+  },
+  subtle: {
+    backgroundColor: COLORS.glassSurface,
     borderRadius: BORDERS.radius.lg,
     borderWidth: BORDERS.width.thin,
     borderColor: COLORS.border,
   },
+  goldHighlight: {
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    borderRadius: BORDERS.radius.xl,
+    borderWidth: BORDERS.width.thin,
+    borderColor: COLORS.borderActive,
+  },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 7. LAYOUT & DIMENSIONS
+// 8. LAYOUT & DIMENSIONS
 // ═══════════════════════════════════════════════════════════════
+const DIMENSIONS = {
+  screen: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  sidebar: { width: SCREEN_WIDTH * 0.78, maxWidth: 320 },
+  header: {
+    height: Platform.OS === 'ios' ? 96 : 72,
+    paddingTop: Platform.OS === 'ios' ? 48 : 24,
+  },
+  drawer: {
+    collapsed: SCREEN_HEIGHT * 0.28,
+    expanded: SCREEN_HEIGHT * 0.55,
+    full: SCREEN_HEIGHT * 0.85,
+  },
+  button: { height: 52, heightSmall: 40, heightLarge: 58 },
+  input: { height: 52 },
+  forfaitCard: { width: SCREEN_WIDTH * 0.72, height: 160 },
+  badge: { size: 20, sizeLarge: 28 },
+};
+
 const LAYOUT = {
   window: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  isSmallDevice: SCREEN_WIDTH < 375,
   spacing: SPACING,
   radius: BORDERS.radius,
   HEADER_HEIGHT: 60,
   HEADER_MAX_HEIGHT: 180,
 };
 
-const DIMENSIONS = {
-  screen: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
-  button: { height: 52 },
-  input: { height: 52 },
-};
-
 // ═══════════════════════════════════════════════════════════════
-// 8. STYLES DE COMPOSANTS UNIFIÉS
+// 9. STYLES DE COMPOSANTS UNIFIÉS
 // ═══════════════════════════════════════════════════════════════
 const COMPONENT_STYLES = {
-  // BOUTON PRINCIPAL : Toujours OR, Texte toujours contrasté (Noir ou Blanc selon luminosité de l'Or)
   buttonPrimary: {
     backgroundColor: COLORS.primary,
     borderRadius: BORDERS.radius.pill,
@@ -214,45 +278,73 @@ const COMPONENT_STYLES = {
     ...SHADOWS.gold,
   },
   buttonPrimaryText: {
-    color: '#000000', // Noir sur Or est plus lisible et Premium
+    color: COLORS.textInverse, // Contraste géré (Noir sur or)
     fontSize: FONTS.sizes.body,
     fontWeight: FONTS.weights.bold,
   },
-  
-  // BOUTON SECONDAIRE : Outline
   buttonSecondary: {
     backgroundColor: 'transparent',
     borderRadius: BORDERS.radius.pill,
     height: DIMENSIONS.button.height,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingHorizontal: SPACING.xxl,
     borderWidth: 1.5,
-    borderColor: COLORS.textPrimary, // S'adapte (Noir le jour, Blanc la nuit)
+    borderColor: COLORS.textPrimary,
   },
   buttonSecondaryText: {
     color: COLORS.textPrimary,
     fontSize: FONTS.sizes.body,
     fontWeight: FONTS.weights.semiBold,
   },
-
-  // INPUTS
+  buttonDanger: {
+    backgroundColor: COLORS.danger,
+    borderRadius: BORDERS.radius.pill,
+    height: DIMENSIONS.button.height,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xxl,
+  },
+  buttonDangerText: {
+    color: '#FFFFFF',
+    fontSize: FONTS.sizes.body,
+    fontWeight: FONTS.weights.bold,
+  },
   inputField: {
-    ...GLASS.input,
     height: DIMENSIONS.input.height,
+    backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
+    borderRadius: BORDERS.radius.lg,
+    borderWidth: BORDERS.width.thin,
+    borderColor: COLORS.border,
     paddingHorizontal: SPACING.lg,
     color: COLORS.textPrimary,
     fontSize: FONTS.sizes.body,
   },
-  
-  // CONTAINERS
+  inputFieldFocused: {
+    borderColor: COLORS.primary,
+    borderWidth: BORDERS.width.medium,
+  },
+  sectionContainer: {
+    paddingHorizontal: SPACING.xl,
+    paddingVertical: SPACING.lg,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: COLORS.border,
+    marginVertical: SPACING.md,
+  },
   pageContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  safeArea: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 9. THÈME REACT NATIVE PAPER (MD3)
+// 10. THÈME REACT NATIVE PAPER (MD3)
 // ═══════════════════════════════════════════════════════════════
 const BasePaperTheme = isDark ? MD3DarkTheme : MD3LightTheme;
 
@@ -261,19 +353,22 @@ const YelyTheme = {
   colors: {
     ...BasePaperTheme.colors,
     primary: COLORS.primary,
-    onPrimary: '#000000', // Noir sur Or
+    onPrimary: COLORS.textInverse,
     background: COLORS.background,
     surface: COLORS.glassSurface,
     onSurface: COLORS.textPrimary,
     error: COLORS.danger,
-    // Custom
     champagneGold: COLORS.primary,
     textSecondary: COLORS.textSecondary,
+    textTertiary: COLORS.textTertiary,
+    success: COLORS.success,
+    warning: COLORS.warning,
+    info: COLORS.info,
   },
 };
 
 // ═══════════════════════════════════════════════════════════════
-// EXPORT
+// EXPORT UNIFIÉ & SÉCURISÉ (Rétrocompatibilité Totale)
 // ═══════════════════════════════════════════════════════════════
 const THEME = {
   COLORS,
@@ -281,25 +376,29 @@ const THEME = {
   SPACING,
   BORDERS,
   SHADOWS,
+  ANIMATIONS,
   GLASS,
-  LAYOUT,
   DIMENSIONS,
+  LAYOUT,
   COMPONENT_STYLES,
-  // Alias pour éviter les erreurs dans les anciens fichiers
-  ANIMATIONS: { // Ajout pour compatibilité
-    duration: { normal: 300 }, 
-  },
-  ICONS: {
-      colors: {
-          default: COLORS.textSecondary,
-          active: COLORS.primary,
-      }
-  }
+  ICONS,
 };
 
+// Il est crucial d'exporter séparément chaque constante pour que 
+// `import { ANIMATIONS } from 'theme'` fonctionne sans casser.
 export {
-  BORDERS, COLORS, COMPONENT_STYLES, DIMENSIONS, FONTS, GLASS,
-  LAYOUT, SHADOWS, SPACING, YelyTheme
+  ANIMATIONS,
+  BORDERS,
+  COLORS,
+  COMPONENT_STYLES,
+  DIMENSIONS,
+  FONTS,
+  GLASS,
+  ICONS,
+  LAYOUT,
+  SHADOWS,
+  SPACING,
+  YelyTheme
 };
 
 export default THEME;
