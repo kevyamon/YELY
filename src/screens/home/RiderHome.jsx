@@ -1,6 +1,7 @@
 // src/screens/home/RiderHome.jsx
 // HOME RIDER
-// Navigation mise à jour vers la page 'Menu'
+// Navigation vers 'Menu' activée
+// Export propre en fin de fichier
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -17,7 +18,7 @@ import MapService from '../../services/mapService';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
-export default function RiderHome({ navigation }) {
+const RiderHome = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   
@@ -52,7 +53,7 @@ export default function RiderHome({ navigation }) {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.firstName || "Passager"} // Correction firstName
+        userName={user?.firstName || "Passager"}
         mode="rider"
         // ⚠️ NAVIGATION VERS LA PAGE MENU
         onMenuPress={() => navigation.navigate('Menu')}
@@ -62,7 +63,7 @@ export default function RiderHome({ navigation }) {
 
       <View style={[
         styles.mainContainer, 
-        { paddingTop: topPadding, backgroundColor: THEME.COLORS.background } // Correction background
+        { paddingTop: topPadding, backgroundColor: THEME.COLORS.background }
       ]}>
         
         <View style={styles.mapSection}>
@@ -104,7 +105,7 @@ export default function RiderHome({ navigation }) {
 
     </ScreenWrapper>
   );
-}
+};
 
 const styles = StyleSheet.create({
   mainContainer: {
@@ -132,7 +133,6 @@ const styles = StyleSheet.create({
   },
   bottomSection: {
     flex: 0.45, 
-    // Couleur de fond gérée dynamiquement par le style inline
     paddingTop: THEME.SPACING.lg,
     paddingHorizontal: THEME.SPACING.lg,
   },
@@ -169,3 +169,5 @@ const styles = StyleSheet.create({
   dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)' },
   dotActive: { backgroundColor: THEME.COLORS.champagneGold, width: 20 }
 });
+
+export default RiderHome;

@@ -1,6 +1,7 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - CORRIGÉ (Statistiques & Carte Statut visibles en mode Jour)
-// Navigation mise à jour vers la page 'Menu'
+// HOME DRIVER
+// Navigation vers 'Menu' activée
+// Export propre en fin de fichier
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -20,7 +21,7 @@ import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice'
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-export default function DriverHome({ navigation }) {
+const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
@@ -77,20 +78,19 @@ export default function DriverHome({ navigation }) {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.firstName || "Chauffeur"} // Correction firstName
+        userName={user?.firstName || "Chauffeur"}
         mode="driver"
         // ⚠️ NAVIGATION VERS LA PAGE MENU
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 1. LE FOND PRINCIPAL (S'adapte Jour/Nuit) */}
       <View style={[
         styles.mainContainer, 
         { paddingTop: topPadding, backgroundColor: THEME.COLORS.background } 
       ]}>
 
-        {/* 2. SECTION CARTE */}
+        {/* SECTION CARTE */}
         <View style={[styles.mapSection, { backgroundColor: isDark ? '#1a1a1a' : '#e0e0e0' }]}>
            {location ? (
              <MapCard 
@@ -107,10 +107,9 @@ export default function DriverHome({ navigation }) {
            )}
         </View>
 
-        {/* 3. SECTION DU BAS */}
+        {/* SECTION DU BAS */}
         <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
           
-          {/* CARTE DE STATUT (En Ligne / Hors Ligne) */}
           <View style={[
             styles.availabilityCard, 
             { 
@@ -151,7 +150,7 @@ export default function DriverHome({ navigation }) {
             </View>
           </View>
 
-          {/* LES STATS */}
+          {/* STATS */}
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value="0" label="Courses" />
             <StatBox icon="time" value="0h" label="Heures" />
@@ -163,7 +162,7 @@ export default function DriverHome({ navigation }) {
       </View>
     </ScreenWrapper>
   );
-}
+};
 
 // COMPOSANT STATBOX
 const StatBox = ({ icon, value, label, isGold }) => (
@@ -276,3 +275,5 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
   }
 });
+
+export default DriverHome;

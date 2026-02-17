@@ -1,10 +1,13 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION (Corrigé : Pas de NavigationContainer ici !)
+// ORCHESTRATEUR DE NAVIGATION
+// Intègre les pages "Placeholders" pour éviter les crashs sur les liens vides.
 
+import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native'; // Pour le Placeholder
 import { useDispatch, useSelector } from 'react-redux';
 
 import SecureStorageAdapter from '../store/secureStoreAdapter';
@@ -16,28 +19,38 @@ import LandingScreen from '../screens/LandingScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
 
-// Homes (Nouvelle structure sans Drawer)
+// Homes
 import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
 
-// Menu (Nouvelle page)
+// Menu
 import MenuScreen from '../screens/MenuScreen';
 
-// On empêche le splash natif de partir trop vite tant qu'on charge
+// 🚧 COMPOSANT TEMPORAIRE POUR LES PAGES EN CONSTRUCTION 🚧
+// Permet de cliquer sur les menus sans faire crasher l'app
+const PlaceholderScreen = ({ route, navigation }) => (
+  <View style={styles.placeholderContainer}>
+    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+      <Ionicons name="arrow-back" size={24} color={THEME.COLORS.champagneGold} />
+      <Text style={styles.backText}>Retour</Text>
+    </TouchableOpacity>
+    <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
+    <Text style={styles.placeholderTitle}>{route.name}</Text>
+    <Text style={styles.placeholderText}>Cette fonctionnalité arrive bientôt.</Text>
+  </View>
+);
+
 SplashScreen.preventAutoHideAsync();
 
 const Stack = createNativeStackNavigator();
 
 const AppNavigator = () => {
   const dispatch = useDispatch();
-  
-  // Utilisation des sélecteurs (Assure-toi que authSlice les exporte bien, sinon utilise state.auth)
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   
   const [isReady, setIsReady] = useState(false);
 
-  // 1. RESTAURATION DE LA SESSION
   useEffect(() => {
     const restoreSession = async () => {
       try {
@@ -65,18 +78,14 @@ const AppNavigator = () => {
     restoreSession();
   }, [dispatch]);
 
-  // Tant que l'app n'a pas fini de charger, on ne rend rien (le Splash natif reste affiché)
   if (!isReady) {
     return null; 
   }
 
-  // Détermination de la Home
   const getHomeScreen = () => {
     return user?.role === 'driver' ? 'DriverHome' : 'RiderHome';
   };
 
-  // ⚠️ CORRECTION : PAS DE NavigationContainer ICI !
-  // Il est déjà dans App.js
   return (
     <Stack.Navigator
       screenOptions={{
@@ -99,20 +108,65 @@ const AppNavigator = () => {
           <Stack.Screen name="DriverHome" component={DriverHome} />
           <Stack.Screen name="RiderHome" component={RiderHome} />
           
-          {/* PAGE MENU (Style Facebook) */}
+          {/* PAGE MENU (Slide Up) */}
           <Stack.Screen 
             name="Menu" 
             component={MenuScreen} 
             options={{
-              animation: 'slide_from_bottom', // Ou 'slide_from_right'
-              presentation: 'modal', // Donne un effet de "feuille" par dessus
+              animation: 'slide_from_bottom',
+              presentation: 'modal',
               gestureEnabled: true,
             }}
           />
+
+          {/* 🚧 PAGES EN CONSTRUCTION (Pour éviter les crashs) 🚧 */}
+          <Stack.Screen name="Profile" component={PlaceholderScreen} />
+          <Stack.Screen name="History" component={PlaceholderScreen} />
+          <Stack.Screen name="Notifications" component={PlaceholderScreen} />
+          <Stack.Screen name="Subscription" component={PlaceholderScreen} />
+          <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
+          <Stack.Screen name="Validations" component={PlaceholderScreen} />
+          <Stack.Screen name="Drivers" component={PlaceholderScreen} />
+          <Stack.Screen name="Finance" component={PlaceholderScreen} />
         </Stack.Group>
       )}
     </Stack.Navigator>
   );
 };
+
+const styles = StyleSheet.create({
+  placeholderContainer: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  backButton: {
+    position: 'absolute',
+    top: 50,
+    left: 20,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  backText: {
+    color: THEME.COLORS.champagneGold,
+    marginLeft: 8,
+    fontSize: 16,
+    fontWeight: 'bold',
+  },
+  placeholderTitle: {
+    color: THEME.COLORS.champagneGold,
+    fontSize: 28,
+    fontWeight: 'bold',
+    marginTop: 20,
+    marginBottom: 10,
+  },
+  placeholderText: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 16,
+    textAlign: 'center',
+  },
+});
 
 export default AppNavigator;
