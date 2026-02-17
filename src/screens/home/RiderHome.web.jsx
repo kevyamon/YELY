@@ -2,25 +2,61 @@
 // HOME RIDER WEB - Layout Web avec Logique Unifiée
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import DestinationSearchSheet from '../../components/ui/DestinationSearchSheet'; // INTÉGRATION PHASE 4
 import GlassCard from '../../components/ui/GlassCard';
+
 import useGeolocation from '../../hooks/useGeolocation';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
+  const searchSheetRef = useRef(null); // Réf pour le bottom sheet
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   
   const { location, address } = useGeolocation();
   const currentAddress = address || 'Localisation en cours...';
+  
+  // NOUVEAU : État pour la destination
+  const [destination, setDestination] = useState(null);
+
+  // NOUVEAU : Fonction appelée par le search sheet
+  const handleDestinationSelect = (selectedPlace) => {
+    setDestination(selectedPlace);
+    
+    if (location && mapRef.current) {
+      const coords = [
+        { latitude: location.latitude, longitude: location.longitude },
+        { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
+      ];
+      mapRef.current.fitToCoordinates(coords);
+    }
+  };
+
+  // NOUVEAU : Fonction pour ouvrir le sheet
+  const handleOpenSearch = () => {
+    if (searchSheetRef.current) {
+      searchSheetRef.current.snapToIndex(1);
+    }
+  };
+
+  // Préparation des marqueurs
+  const mapMarkers = destination ? [{
+    id: 'destination',
+    latitude: destination.latitude,
+    longitude: destination.longitude,
+    title: destination.address,
+    icon: 'flag',
+    iconColor: THEME.COLORS.danger
+  }] : [];
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
@@ -49,6 +85,7 @@ const RiderHome = ({ navigation }) => {
             showUserMarker
             showRecenterButton
             darkMode
+            markers={mapMarkers} // Ajout du marqueur destination
           />
         ) : (
           <View style={styles.loadingContainer}>
@@ -60,15 +97,19 @@ const RiderHome = ({ navigation }) => {
       {/* ═══════ ZONE BASSE : Recherche & Offres ═══════ */}
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
 
-        <TouchableOpacity activeOpacity={0.8} onPress={() => console.log("Recherche...")}>
+        <TouchableOpacity activeOpacity={0.8} onPress={handleOpenSearch}>
           <GlassCard style={styles.searchCard}>
             <View style={styles.searchRow}>
               <View style={styles.searchIconContainer}>
                 <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
               </View>
               <View style={styles.searchTextContainer}>
-                <Text style={styles.searchLabel}>Où allez-vous ?</Text>
-                <Text style={styles.searchHint}>Saisissez votre destination</Text>
+                <Text style={styles.searchLabel}>
+                  {destination ? "Changer de destination" : "Où allez-vous ?"}
+                </Text>
+                <Text style={styles.searchHint} numberOfLines={1}>
+                  {destination ? destination.address : "Saisissez votre destination"}
+                </Text>
               </View>
               <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.textTertiary} />
             </View>
@@ -77,9 +118,18 @@ const RiderHome = ({ navigation }) => {
 
         <View style={styles.forfaitsPlaceholder}>
           <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-          <View style={styles.emptyBox}>
-             <Text style={styles.emptyText}>Sélectionnez une destination</Text>
-          </View>
+          
+          {destination ? (
+             <View style={styles.destinationBox}>
+                <Text style={styles.destinationTitle}>Destination : {destination.address}</Text>
+                <Text style={styles.phase5Text}>Tarification et forfaits en cours de calcul (Phase 5)...</Text>
+             </View>
+          ) : (
+             <View style={styles.emptyBox}>
+                <Text style={styles.emptyText}>Sélectionnez une destination</Text>
+             </View>
+          )}
+          
           <View style={styles.forfaitDots}>
             <View style={[styles.dot, styles.dotActive]} />
             <View style={styles.dot} />
@@ -87,6 +137,13 @@ const RiderHome = ({ navigation }) => {
           </View>
         </View>
       </View>
+
+      {/* LE TIROIR DE RECHERCHE */}
+      <DestinationSearchSheet 
+        ref={searchSheetRef}
+        onDestinationSelect={handleDestinationSelect}
+      />
+
     </View>
   );
 };
@@ -133,7 +190,7 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     flex: 1,
-    marginTop: 20, // 🌟 AÉRATION
+    marginTop: 20, 
   },
   loadingContainer: {
     height: 300,
@@ -202,6 +259,28 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textTertiary,
     fontStyle: 'italic',
     fontSize: 12,
+  },
+  destinationBox: {
+    width: '100%',
+    height: 80,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 12,
+    justifyContent: 'center',
+    padding: 15,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.champagneGold,
+    marginBottom: 15,
+  },
+  destinationTitle: {
+    color: THEME.COLORS.textPrimary,
+    fontWeight: 'bold',
+    fontSize: 14,
+    marginBottom: 5,
+  },
+  phase5Text: {
+    color: THEME.COLORS.danger,
+    fontSize: 12,
+    fontStyle: 'italic',
   },
   forfaitDots: {
     flexDirection: 'row',
