@@ -1,9 +1,9 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Espacement GPS & Design Aéré
+// HOME DRIVER - Mise à niveau GPS (OSM) & Design Unifié
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, View, useColorScheme } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,8 +23,6 @@ const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const colorScheme = useColorScheme();
-  const isDark = colorScheme === 'dark'; 
   
   const user = useSelector(selectCurrentUser);
   const { location, errorMsg } = useGeolocation();
@@ -34,15 +32,15 @@ const DriverHome = ({ navigation }) => {
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
+  // CORRECTION GPS : Utilisation de la nouvelle fonction OpenStreetMap unifiée
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
         try {
-          const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-          if (addr && addr.shortName) setCurrentAddress(addr.shortName);
-          else setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+          setCurrentAddress(addr);
         } catch (error) {
-          setCurrentAddress("Adresse indisponible");
+          setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
         }
       };
       getAddress();
@@ -68,7 +66,6 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // 🌟 ESPACEMENT AUGMENTÉ (+20) pour aérer la carte sous la localisation
   const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT + 20;
 
   return (
@@ -78,7 +75,7 @@ const DriverHome = ({ navigation }) => {
         scrollY={scrollY}
         address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Chauffeur"}
-        mode="driver"
+        // mode n'est plus forcé en dur dans SmartHeader, c'est le user.role qui décide
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
@@ -89,18 +86,19 @@ const DriverHome = ({ navigation }) => {
       ]}>
 
         {/* SECTION CARTE */}
-        <View style={[styles.mapSection, { backgroundColor: isDark ? '#1a1a1a' : '#e0e0e0' }]}>
+        {/* CORRECTION UX : Suppression des élévations pour éviter les bugs de modales futures */}
+        <View style={styles.mapSection}>
            {location ? (
              <MapCard 
                ref={mapRef}
                location={location}
                showUserMarker={true}
-               darkMode={isDark}
+               darkMode={true} // Forcé en dark mode pour l'esthétique Yély
              />
            ) : (
              <View style={styles.loadingContainer}>
                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-               <Text style={[styles.loadingText, { color: THEME.COLORS.textSecondary }]}>Localisation...</Text>
+               <Text style={styles.loadingText}>Localisation...</Text>
              </View>
            )}
         </View>
@@ -110,10 +108,6 @@ const DriverHome = ({ navigation }) => {
           
           <View style={[
             styles.availabilityCard, 
-            { 
-              backgroundColor: THEME.COLORS.glassSurface,
-              borderColor: THEME.COLORS.border,
-            }, 
             isAvailable && styles.availabilityCardOnline
           ]}>
             <View style={styles.availabilityRow}>
@@ -126,13 +120,12 @@ const DriverHome = ({ navigation }) => {
                   />
                   <Text style={[
                       styles.statusTitle, 
-                      { color: THEME.COLORS.textPrimary },
                       isAvailable && { color: THEME.COLORS.success }
                     ]}>
                     {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
                   </Text>
                 </View>
-                <Text style={[styles.statusSubtitle, { color: THEME.COLORS.textSecondary }]}>
+                <Text style={styles.statusSubtitle}>
                   {isAvailable ? 'En attente de courses...' : 'Passez en ligne pour travailler'}
                 </Text>
               </View>
@@ -163,14 +156,7 @@ const DriverHome = ({ navigation }) => {
 
 // COMPOSANT STATBOX INTERNE
 const StatBox = ({ icon, value, label, isGold }) => (
-  <View style={[
-    styles.statBox, 
-    { 
-      backgroundColor: THEME.COLORS.glassSurface,
-      borderColor: THEME.COLORS.border,
-      borderWidth: 1
-    }
-  ]}>
+  <View style={styles.statBox}>
     <Ionicons 
       name={icon} 
       size={22} 
@@ -178,15 +164,11 @@ const StatBox = ({ icon, value, label, isGold }) => (
     />
     <Text style={[
       styles.statValue, 
-      { color: THEME.COLORS.textPrimary },
       isGold && { color: THEME.COLORS.champagneGold }
     ]}>
       {value}
     </Text>
-    <Text style={[
-      styles.statLabel, 
-      { color: THEME.COLORS.textTertiary }
-    ]}>
+    <Text style={styles.statLabel}>
       {label}
     </Text>
   </View>
@@ -197,93 +179,85 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
-
   mapSection: {
     flex: 0.55,
     overflow: 'hidden',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    zIndex: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
+    backgroundColor: THEME.COLORS.surface,
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
   },
-
   loadingText: {
     marginTop: 10, 
-    fontSize: 12
+    fontSize: 12,
+    color: THEME.COLORS.textSecondary,
   },
-
   bottomSection: {
     flex: 0.45,
     backgroundColor: THEME.COLORS.background,
     paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,
   },
-
   availabilityCard: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
   },
-
   availabilityCardOnline: {
     backgroundColor: 'rgba(46, 204, 113, 0.08)',
     borderColor: 'rgba(46, 204, 113, 0.3)',
   },
-
   availabilityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
-
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
     gap: 8,
   },
-
   statusTitle: {
+    color: THEME.COLORS.textPrimary,
     fontWeight: '900',
     fontSize: 14,
     letterSpacing: 1,
   },
-
   statusSubtitle: {
+    color: THEME.COLORS.textSecondary,
     fontSize: 11,
   },
-
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
   },
-
   statBox: {
     flex: 1,
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
+    borderWidth: 1,
   },
-
   statValue: {
+    color: THEME.COLORS.textPrimary,
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 4,
   },
-
   statLabel: {
+    color: THEME.COLORS.textTertiary,
     fontSize: 10,
     textTransform: 'uppercase',
   }

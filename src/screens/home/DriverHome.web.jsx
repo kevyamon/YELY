@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Layout Web avec Logique Unifiée
+// HOME DRIVER WEB - Layout Web avec Logique Unifiée et Fiabilisée
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
@@ -73,14 +73,15 @@ const DriverHome = ({ navigation }) => {
           <MapCard
             ref={mapRef}
             location={location}
-            showUserMarker
-            showRecenterButton
-            floating
-            darkMode
+            showUserMarker={true}
+            showRecenterButton={true}
+            floating={true}
+            darkMode={true} // Forcé pour l'esthétique Yély
           />
         ) : (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+            <Text style={styles.loadingText}>Connexion au GPS...</Text>
           </View>
         )}
       </View>
@@ -184,13 +185,18 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
   },
   mapWrapper: {
-    marginTop: 20, // 🌟 AÉRATION
+    marginTop: 20, 
   },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
+  },
+  loadingText: {
+    color: THEME.COLORS.textSecondary,
+    marginTop: 10,
+    fontSize: 12,
   },
   bottomSection: {
     flex: 1,
