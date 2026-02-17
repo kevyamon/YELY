@@ -1,4 +1,5 @@
 // src/components/map/MapCard.jsx
+// COMPOSANT CARTE - Correction Z-Index du Bouton de Recentrage
 
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
@@ -7,7 +8,6 @@ import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
 
-// Tuiles gratuites (pas de clé API, pas de facturation)
 const OSM_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
@@ -18,16 +18,16 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   darkMode = true,
-  floating = true,
+  floating = false, 
   onMapReady,
   onPress,
   onMarkerPress,
   style,
   children,
+  recenterBottomPadding = THEME.SPACING.lg 
 }, ref) => {
   const mapRef = useRef(null);
 
-  // Exposer des méthodes au parent via ref
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 800) => {
       mapRef.current?.animateToRegion(region, duration);
@@ -47,7 +47,6 @@ const MapCard = forwardRef(({
     },
   }));
 
-  // Centrer la carte sur la position de l'utilisateur au premier chargement
   useEffect(() => {
     if (location) {
       mapRef.current?.animateToRegion({
@@ -72,7 +71,10 @@ const MapCard = forwardRef(({
       floating && styles.floating,
       style,
     ]}>
-      <View style={styles.mapClip}>
+      {/* CORRECTION : Le bloc mapClip n'a plus d'overflow hidden strict 
+        qui couperait les éléments flottants enfants 
+      */}
+      <View style={[styles.mapClip, !floating && styles.mapClipEdge]}>
         <MapView
           ref={mapRef}
           style={styles.map}
@@ -85,20 +87,15 @@ const MapCard = forwardRef(({
           onMapReady={onMapReady}
           onPress={onPress}
         >
-          {/* Tuiles OpenStreetMap gratuites */}
           <UrlTile
             urlTemplate={darkMode ? DARK_TILE_URL : OSM_TILE_URL}
             maximumZ={19}
             flipY={false}
           />
 
-          {/* Marqueur utilisateur personnalisé */}
           {showUserMarker && location && (
             <Marker
-              coordinate={{
-                latitude: location.latitude,
-                longitude: location.longitude,
-              }}
+              coordinate={{ latitude: location.latitude, longitude: location.longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
             >
               <View style={styles.userMarker}>
@@ -108,14 +105,10 @@ const MapCard = forwardRef(({
             </Marker>
           )}
 
-          {/* Marqueurs dynamiques (chauffeurs, destination, etc.) */}
           {markers.map((marker, index) => (
             <Marker
               key={marker.id || `marker-${index}`}
-              coordinate={{
-                latitude: marker.latitude,
-                longitude: marker.longitude,
-              }}
+              coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
               title={marker.title || ''}
               description={marker.description || ''}
               anchor={{ x: 0.5, y: 0.5 }}
@@ -133,7 +126,6 @@ const MapCard = forwardRef(({
             </Marker>
           ))}
 
-          {/* Tracé de l'itinéraire */}
           {route && route.coordinates && route.coordinates.length > 0 && (
             <Polyline
               coordinates={route.coordinates}
@@ -143,15 +135,17 @@ const MapCard = forwardRef(({
             />
           )}
 
-          {/* Contenu additionnel (enfants) */}
           {children}
         </MapView>
       </View>
 
-      {/* Bouton recentrer */}
+      {/* CORRECTION : Le bouton est placé HORS de mapClip, directement dans le container.
+        Cela garantit qu'il flotte au-dessus de la carte sans être coupé.
+      */}
       {showRecenterButton && (
         <TouchableOpacity
-          style={styles.recenterButton}
+          style={[styles.recenterButton, { bottom: recenterBottomPadding }]}
+          activeOpacity={0.8}
           onPress={() => {
             if (location) {
               mapRef.current?.animateToRegion({
@@ -163,7 +157,7 @@ const MapCard = forwardRef(({
             }
           }}
         >
-          <Ionicons name="locate-outline" size={22} color={THEME.COLORS.champagneGold} />
+          <Ionicons name="locate-outline" size={24} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       )}
     </View>
@@ -175,7 +169,7 @@ MapCard.displayName = 'MapCard';
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    position: 'relative',
+    position: 'relative', // Nécessaire pour que le bouton absolu se repère par rapport à ce conteneur
   },
   floating: {
     marginHorizontal: THEME.SPACING.md,
@@ -187,9 +181,13 @@ const styles = StyleSheet.create({
     ...THEME.SHADOWS.medium,
   },
   mapClip: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject, // Remplit tout le conteneur parent
     borderRadius: THEME.BORDERS.radius.xxl,
     overflow: 'hidden',
+    zIndex: 1, // La carte est en dessous
+  },
+  mapClipEdge: {
+    borderRadius: 0, 
   },
   map: {
     width: '100%',
@@ -228,16 +226,25 @@ const styles = StyleSheet.create({
   },
   recenterButton: {
     position: 'absolute',
-    bottom: THEME.SPACING.lg,
-    right: THEME.SPACING.lg,
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: THEME.COLORS.glassDark,
+    right: THEME.SPACING.lg, // Collé à droite
+    width: 52,
+    height: 52,
+    borderRadius: 26, 
+    backgroundColor: THEME.COLORS.glassDark, // Un fond sombre Yély fait mieux ressortir le bouton
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.champagneGold, // Cerclage or
+    
+    // CORRECTION : Le Z-index massif pour forcer l'affichage au-dessus de MapView
+    zIndex: 999, 
+    elevation: 999, // Elevation Android vitale
+    
+    // Ombre dorée pour le style premium
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
   },
 });
 

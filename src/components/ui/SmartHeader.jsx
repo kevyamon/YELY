@@ -1,19 +1,18 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT & DYNAMIQUE - UX Bouton & Annulation
+// HEADER INTELLIGENT - Refonte Architecture (ActionPill) & Design (Bords arrondis organiques)
 
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withSpring
+  useAnimatedStyle
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
+import ActionPill from './ActionPill'; // Import du nouveau composant
 
 const SmartHeader = ({ 
   scrollY, 
@@ -22,7 +21,6 @@ const SmartHeader = ({
   onMenuPress, 
   onNotificationPress,
   onSearchPress,
-  // NOUVEAU : Props pour gérer l'état d'estimation et l'annulation
   hasDestination = false,
   onCancelDestination 
 }) => {
@@ -35,63 +33,28 @@ const SmartHeader = ({
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(
-      scrollY.value,
-      [0, scrollDistance],
-      [headerMaxHeight, headerMinHeight],
-      Extrapolation.CLAMP
-    );
-
-    const shadowOpacity = interpolate(
-      scrollY.value,
-      [0, scrollDistance],
-      [0, 0.3], 
-      Extrapolation.CLAMP
-    );
-
+    const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
+    const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0, 0.3], Extrapolation.CLAMP);
     return { height, shadowOpacity, elevation: shadowOpacity * 10 };
   });
 
   const ctaAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [0, scrollDistance * 0.6], 
-      [1, 0],
-      Extrapolation.CLAMP
-    );
-    const translateY = interpolate(
-      scrollY.value,
-      [0, scrollDistance],
-      [0, -15],
-      Extrapolation.CLAMP
-    );
-    const display = opacity === 0 ? 'none' : 'flex';
-    return { opacity, transform: [{ translateY }], display };
+    const opacity = interpolate(scrollY.value, [0, scrollDistance * 0.6], [1, 0], Extrapolation.CLAMP);
+    const translateY = interpolate(scrollY.value, [0, scrollDistance], [0, -15], Extrapolation.CLAMP);
+    return { opacity, transform: [{ translateY }], display: opacity === 0 ? 'none' : 'flex' };
   });
 
   const titleAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(
-      scrollY.value,
-      [scrollDistance * 0.7, scrollDistance], 
-      [0, 1],
-      Extrapolation.CLAMP
-    );
-    const translateY = interpolate(
-      scrollY.value,
-      [scrollDistance * 0.5, scrollDistance],
-      [10, 0],
-      Extrapolation.CLAMP
-    );
+    const opacity = interpolate(scrollY.value, [scrollDistance * 0.7, scrollDistance], [0, 1], Extrapolation.CLAMP);
+    const translateY = interpolate(scrollY.value, [scrollDistance * 0.5, scrollDistance], [10, 0], Extrapolation.CLAMP);
     return { opacity, transform: [{ translateY }] };
-  });
-
-  const buttonScale = useSharedValue(1);
-  const buttonPopStyle = useAnimatedStyle(() => {
-    return { transform: [{ scale: buttonScale.value }] };
   });
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
+      {/* CORRECTION DESIGN (Le croquis) : 
+        Le fond du header a maintenant de gros arrondis en bas pour créer la courbe 
+      */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -103,9 +66,7 @@ const SmartHeader = ({
           </TouchableOpacity>
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <Text style={styles.locationTitle} numberOfLines={1}>
-              📍 {address}
-            </Text>
+            <Text style={styles.locationTitle} numberOfLines={1}>📍 {address}</Text>
           </Animated.View>
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
@@ -132,37 +93,26 @@ const SmartHeader = ({
              </View>
           )}
           
-          {/* LOGIQUE D'AFFICHAGE DU BOUTON (Recherche vs Annulation) */}
+          {/* UTILISATION DU NOUVEAU COMPOSANT : Code ultra propre et lisible ! */}
           {isRider && !hasDestination && (
-            <Animated.View style={[styles.ctaWrapper, buttonPopStyle]}>
-              <Pressable 
-                style={styles.ctaButton} 
-                onPressIn={() => buttonScale.value = withSpring(0.92)}
-                onPressOut={() => buttonScale.value = withSpring(1)}
-                onPress={onSearchPress}
-              >
-                <Ionicons name="car-sport" size={22} color="#121418" />
-                <Text style={styles.ctaText}>Commander un taxi</Text>
-              </Pressable>
-            </Animated.View>
+            <ActionPill 
+              mode="primary" 
+              text="Commander un taxi" 
+              icon="car-sport" 
+              onPress={onSearchPress} 
+            />
           )}
 
           {isRider && hasDestination && (
-            <Animated.View style={[styles.ctaWrapper, buttonPopStyle]}>
-              <Pressable 
-                style={[styles.ctaButton, styles.cancelButton]} 
-                onPressIn={() => buttonScale.value = withSpring(0.92)}
-                onPressOut={() => buttonScale.value = withSpring(1)}
-                onPress={onCancelDestination}
-              >
-                <Ionicons name="close-circle" size={20} color={THEME.COLORS.danger} />
-                <Text style={styles.cancelText}>Annuler la destination</Text>
-              </Pressable>
-            </Animated.View>
+            <ActionPill 
+              mode="cancel" 
+              text="Annuler la destination" 
+              icon="close-circle" 
+              onPress={onCancelDestination} 
+            />
           )}
           
         </Animated.View>
-
       </View>
     </Animated.View>
   );
@@ -181,10 +131,15 @@ const styles = StyleSheet.create({
   },
   background: {
     ...StyleSheet.absoluteFillObject,
+    // DESIGN ORGANIQUE : Bords arrondis massifs en bas (effet encastré)
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
+    // On ajoute un peu de padding en bas pour que le contenu ne touche pas la courbe
+    paddingBottom: 15, 
   },
   topRow: {
     height: THEME.LAYOUT.HEADER_HEIGHT,
@@ -246,48 +201,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 4,
     opacity: 0.9,
-  },
-  ctaWrapper: {
-    alignItems: 'center', 
-    marginTop: 4,
-  },
-  ctaButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: THEME.COLORS.champagneGold, 
-    paddingVertical: 12,
-    paddingHorizontal: 28, 
-    borderRadius: 30, 
-    height: 48, 
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 6,
-  },
-  ctaText: {
-    color: '#121418', 
-    fontSize: 16,
-    fontWeight: '900', 
-    marginLeft: 10,
-    letterSpacing: 0.5,
-  },
-  // STYLES BOUTON ANNULER
-  cancelButton: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)', // Fond rouge très léger (glass)
-    borderColor: THEME.COLORS.danger,
-    borderWidth: 1,
-    shadowOpacity: 0,
-    elevation: 0,
-    paddingHorizontal: 20,
-    height: 40, // Un peu plus petit pour être moins agressif
-  },
-  cancelText: {
-    color: THEME.COLORS.danger,
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginLeft: 8,
   },
   driverGpsBadge: {
     flexDirection: 'row',

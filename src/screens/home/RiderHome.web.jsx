@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Ajout bouton d'annulation de destination
+// HOME RIDER WEB - Layout Absolu & Injection Dynamique
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import VehicleCarousel from '../../components/ride/VehicleCarousel';
+import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
 
@@ -55,17 +55,13 @@ const RiderHome = ({ navigation }) => {
     
     if (location && mapRef.current) {
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
-      
       if (coords && coords.length > 0) {
         setRouteCoords(coords);
         mapRef.current.fitToCoordinates(coords); 
       }
-
       estimateRide({
-        pickupLat: location.latitude,
-        pickupLng: location.longitude,
-        dropoffLat: selectedPlace.latitude,
-        dropoffLng: selectedPlace.longitude
+        pickupLat: location.latitude, pickupLng: location.longitude,
+        dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
       });
     }
   };
@@ -85,39 +81,49 @@ const RiderHome = ({ navigation }) => {
   };
 
   const mapMarkers = destination ? [{
-    id: 'destination',
-    latitude: destination.latitude,
-    longitude: destination.longitude,
-    title: destination.address,
-    icon: 'flag',
-    iconColor: THEME.COLORS.danger
+    id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
+    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger
   }] : [];
 
-  return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
-
-      <View style={styles.topBar}>
-        <View style={styles.locationContainer}>
-          <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
-          <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
-        </View>
-
-        <TouchableOpacity
-          style={styles.menuButton}
-          onPress={() => navigation.navigate('Menu')}
-        >
-          <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
+  // Composant spécifique au web injecté dans le panel du bas
+  const renderWebSearchControls = () => {
+    if (!destination) {
+      return (
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
+          <GlassCard style={styles.searchCard}>
+            <View style={styles.searchRow}>
+              <View style={styles.searchIconContainer}>
+                <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
+              </View>
+              <View style={styles.searchTextContainer}>
+                <Text style={styles.searchLabel}>Où allez-vous ?</Text>
+                <Text style={styles.searchHint}>Saisissez votre destination</Text>
+              </View>
+              <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.textTertiary} />
+            </View>
+          </GlassCard>
         </TouchableOpacity>
-      </View>
+      );
+    }
 
+    return (
+      <TouchableOpacity style={styles.cancelCard} activeOpacity={0.8} onPress={handleCancelDestination}>
+         <Ionicons name="close-circle" size={20} color={THEME.COLORS.danger} />
+         <Text style={styles.cancelCardText}>Annuler la destination</Text>
+      </TouchableOpacity>
+    );
+  };
+
+  return (
+    <View style={styles.container}>
+
+      {/* LA CARTE (100% de l'écran) */}
       <View style={styles.mapWrapper}>
         {location ? (
           <MapCard
             ref={mapRef}
             location={location}
-            showUserMarker
-            showRecenterButton
-            darkMode
+            showUserMarker showRecenterButton darkMode
             markers={mapMarkers} 
             route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
           />
@@ -128,70 +134,30 @@ const RiderHome = ({ navigation }) => {
         )}
       </View>
 
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
-
-        {!destination ? (
-          <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
-            <GlassCard style={styles.searchCard}>
-              <View style={styles.searchRow}>
-                <View style={styles.searchIconContainer}>
-                  <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
-                </View>
-                <View style={styles.searchTextContainer}>
-                  <Text style={styles.searchLabel}>Où allez-vous ?</Text>
-                  <Text style={styles.searchHint}>Saisissez votre destination</Text>
-                </View>
-                <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.textTertiary} />
-              </View>
-            </GlassCard>
-          </TouchableOpacity>
-        ) : (
-          // Bouton d'annulation Web quand on a une destination
-          <TouchableOpacity 
-             style={styles.cancelCard} 
-             activeOpacity={0.8} 
-             onPress={handleCancelDestination}
-          >
-             <Ionicons name="close-circle" size={20} color={THEME.COLORS.danger} />
-             <Text style={styles.cancelCardText}>Annuler la destination</Text>
-          </TouchableOpacity>
-        )}
-
-        <View style={[styles.forfaitsPlaceholder, destination && { marginTop: 0 }]}>
-          <View style={styles.titleRow}>
-            <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-          </View>
-          
-          {destination ? (
-             <View style={styles.estimationWrapper}>
-               <VehicleCarousel 
-                 vehicles={displayVehicles}
-                 selectedVehicle={selectedVehicle}
-                 onSelect={setSelectedVehicle}
-                 isLoading={isEstimating && !estimationData}
-                 error={estimateError}
-               />
-               
-               <TouchableOpacity 
-                 style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
-                 disabled={!selectedVehicle || isEstimating}
-                 onPress={handleConfirmRide}
-                 activeOpacity={0.9}
-               >
-                 <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
-                   {selectedVehicle 
-                      ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
-                      : 'Sélectionnez un véhicule'}
-                 </Text>
-               </TouchableOpacity>
-             </View>
-          ) : (
-             <View style={styles.emptyBox}>
-                <Text style={styles.emptyText}>Sélectionnez une destination</Text>
-             </View>
-          )}
+      {/* L'ARC DU HAUT */}
+      <View style={[styles.topBar, { paddingTop: insets.top + THEME.SPACING.md }]}>
+        <View style={styles.locationContainer}>
+          <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
+          <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
         </View>
+
+        <TouchableOpacity style={styles.menuButton} onPress={() => navigation.navigate('Menu')}>
+          <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
+        </TouchableOpacity>
       </View>
+
+      {/* L'ARC DU BAS (Avec injection de la barre de recherche Web) */}
+      <RiderBottomPanel 
+        destination={destination}
+        displayVehicles={displayVehicles}
+        selectedVehicle={selectedVehicle}
+        onSelectVehicle={setSelectedVehicle}
+        isEstimating={isEstimating}
+        estimationData={estimationData}
+        estimateError={estimateError}
+        onConfirmRide={handleConfirmRide}
+        topContent={renderWebSearchControls()} // Magie de React !
+      />
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
@@ -206,14 +172,36 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative',
     backgroundColor: THEME.COLORS.background,
   },
+  mapWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+  },
   topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.md,
+    paddingBottom: THEME.SPACING.md,
     backgroundColor: THEME.COLORS.background,
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   locationContainer: {
     flex: 1,
@@ -242,19 +230,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-  },
-  mapWrapper: {
-    flex: 1,
-    marginTop: 10, 
-  },
-  loadingContainer: {
-    height: 300,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  bottomSection: {
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.lg,
   },
   searchCard: {
     padding: 0,
@@ -298,71 +273,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderRadius: 12,
     paddingVertical: 12,
-    marginBottom: 10,
   },
   cancelCardText: {
     color: THEME.COLORS.danger,
     fontWeight: 'bold',
     marginLeft: 8,
     fontSize: 14,
-  },
-  forfaitsPlaceholder: {
-    marginTop: 25,
-    alignItems: 'center',
-  },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 1,
-  },
-  emptyBox: {
-    width: '100%',
-    height: 80,
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  emptyText: {
-    color: THEME.COLORS.textTertiary,
-    fontStyle: 'italic',
-    fontSize: 12,
-  },
-  estimationWrapper: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  confirmButton: {
-    backgroundColor: THEME.COLORS.champagneGold,
-    paddingVertical: 16,
-    width: '100%',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 15,
-  },
-  confirmButtonDisabled: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderColor: THEME.COLORS.border,
-    borderWidth: 1,
-  },
-  confirmButtonText: {
-    color: '#121418',
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  confirmButtonTextDisabled: {
-    color: THEME.COLORS.textTertiary,
   }
 });
 

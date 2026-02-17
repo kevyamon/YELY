@@ -1,21 +1,21 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Layout Web avec Logique Unifiée et Fiabilisée
+// HOME DRIVER WEB - UX Immersion Totale Edge-to-Edge
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
-import { ActivityIndicator, Dimensions, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import SmartFooter from '../../components/ui/SmartFooter';
+
 import useGeolocation from '../../hooks/useGeolocation';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
-
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
@@ -45,15 +45,33 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  const topBarHeight = 70;
-  const availableHeight = SCREEN_HEIGHT - insets.top - topBarHeight - insets.bottom;
-  const mapHeight = availableHeight * 0.50;
+  // Padding Web
+  const mapBottomPadding = 220; 
 
   return (
-    <View style={[styles.container, { paddingTop: insets.top }]}>
+    <View style={styles.container}>
 
-      {/* ═══════ ZONE HAUTE : Adresse + Status + Menu ═══════ */}
-      <View style={styles.topBar}>
+      {/* LA CARTE (Absolue 100% Edge-to-Edge) */}
+      <View style={styles.mapWrapper}>
+        {location ? (
+          <MapCard
+            ref={mapRef}
+            location={location}
+            showUserMarker={true}
+            showRecenterButton={true}
+            floating={false} // Force le mode Edge-to-Edge sur le Web aussi
+            darkMode={true} 
+            recenterBottomPadding={mapBottomPadding}
+          />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          </View>
+        )}
+      </View>
+
+      {/* L'ARC DU HAUT */}
+      <View style={[styles.topBar, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <View style={styles.locationContainer}>
           <View style={[styles.statusDot, isAvailable && styles.statusDotOnline]} />
           <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
@@ -67,85 +85,51 @@ const DriverHome = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* ═══════ ZONE CENTRALE : La Carte (Aérée) ═══════ */}
-      <View style={[styles.mapWrapper, { height: mapHeight }]}>
-        {location ? (
-          <MapCard
-            ref={mapRef}
-            location={location}
-            showUserMarker={true}
-            showRecenterButton={true}
-            floating={true}
-            darkMode={true} // Forcé pour l'esthétique Yély
-          />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-            <Text style={styles.loadingText}>Connexion au GPS...</Text>
-          </View>
-        )}
-      </View>
+      {/* L'ARC DU BAS */}
+      <SmartFooter 
+        isAvailable={isAvailable}
+        onToggle={handleToggleAvailability}
+        isToggling={isToggling}
+      />
 
-      {/* ═══════ ZONE BASSE : Switch + Stats ═══════ */}
-      <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.sm }]}>
-
-        <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
-          <View style={styles.availabilityContent}>
-            <View style={styles.availabilityInfo}>
-              <View style={styles.availabilityHeader}>
-                <Ionicons
-                  name={isAvailable ? 'radio-button-on' : 'radio-button-off'}
-                  size={20}
-                  color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary}
-                />
-                <Text style={[styles.availabilityTitle, isAvailable && styles.availabilityTitleOnline]}>
-                  {isAvailable ? 'En service' : 'Hors ligne'}
-                </Text>
-              </View>
-              <Text style={styles.availabilityHint}>
-                {isAvailable ? 'Vous recevez des courses' : 'Passez en ligne pour travailler'}
-              </Text>
-            </View>
-
-            <Switch
-              value={isAvailable}
-              onValueChange={handleToggleAvailability}
-              disabled={isToggling}
-              trackColor={{ false: 'rgba(128,128,128,0.2)', true: 'rgba(46, 204, 113, 0.3)' }}
-              thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
-            />
-          </View>
-        </View>
-
-        <View style={styles.statsRow}>
-          <StatBox icon="car-sport" value="0" label="Courses" />
-          <StatBox icon="time" value="0h" label="Heures" />
-          <StatBox icon="wallet" value="0 F" label="Gains" isGold />
-        </View>
-      </View>
     </View>
   );
 };
 
-const StatBox = ({ icon, value, label, isGold }) => (
-  <View style={styles.statCard}>
-    <Ionicons name={icon} size={20} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
-    <Text style={[styles.statValue, isGold && { color: THEME.COLORS.champagneGold }]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
-  </View>
-);
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    position: 'relative', 
     backgroundColor: THEME.COLORS.background,
   },
+  mapWrapper: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+  },
   topBar: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.md,
+    paddingBottom: THEME.SPACING.md,
     backgroundColor: THEME.COLORS.background,
+    // DESIGN ORGANIQUE
+    borderBottomLeftRadius: 36,
+    borderBottomRightRadius: 36,
+    zIndex: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
   },
   locationContainer: {
     flex: 1,
@@ -183,87 +167,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-  },
-  mapWrapper: {
-    marginTop: 20, 
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  loadingText: {
-    color: THEME.COLORS.textSecondary,
-    marginTop: 10,
-    fontSize: 12,
-  },
-  bottomSection: {
-    flex: 1,
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.lg,
-  },
-  availabilityCard: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-  },
-  availabilityCardOnline: {
-    borderColor: 'rgba(46, 204, 113, 0.3)',
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
-  },
-  availabilityContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  availabilityInfo: {
-    flex: 1,
-  },
-  availabilityHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  availabilityTitle: {
-    color: THEME.COLORS.textPrimary,
-    fontWeight: 'bold',
-  },
-  availabilityTitleOnline: {
-    color: THEME.COLORS.success,
-  },
-  availabilityHint: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
-    marginTop: 4,
-  },
-  statsRow: {
-    flexDirection: 'row',
-    gap: 10,
-    marginTop: 20,
-  },
-  statCard: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    paddingVertical: 15,
-  },
-  statValue: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginVertical: 4,
-  },
-  statLabel: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: 10,
-    textTransform: 'uppercase',
-  },
+  }
 });
 
 export default DriverHome;

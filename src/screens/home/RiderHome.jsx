@@ -1,16 +1,14 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - UX d'Annulation et de Réinitialisation
+// HOME RIDER - UX Immersion Totale & Edge-to-Edge
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import VehicleCarousel from '../../components/ride/VehicleCarousel';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
-import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
@@ -26,7 +24,6 @@ const MOCK_VEHICLES = [
 ];
 
 const RiderHome = ({ navigation }) => {
-  const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   
   const { location, errorMsg } = useGeolocation(); 
@@ -67,8 +64,6 @@ const RiderHome = ({ navigation }) => {
     }
   }, [destination, displayVehicles, selectedVehicle]);
 
-  const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
-
   const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
     setSelectedVehicle(null);
@@ -84,25 +79,19 @@ const RiderHome = ({ navigation }) => {
       }
 
       estimateRide({
-        pickupLat: location.latitude,
-        pickupLng: location.longitude,
-        dropoffLat: selectedPlace.latitude,
-        dropoffLng: selectedPlace.longitude
+        pickupLat: location.latitude, pickupLng: location.longitude,
+        dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
       });
     }
   };
 
-  // NOUVEAU : Fonction pour tout réinitialiser quand on annule
   const handleCancelDestination = () => {
     setDestination(null);
     setRouteCoords(null);
     setSelectedVehicle(null);
-    // On recentre la carte sur la position actuelle
     if (location && mapRef.current) {
-      const coords = [{ latitude: location.latitude, longitude: location.longitude }];
-      mapRef.current.fitToCoordinates(coords, {
-         edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
-         animated: true,
+      mapRef.current.fitToCoordinates([{ latitude: location.latitude, longitude: location.longitude }], {
+         edgePadding: { top: 50, right: 50, bottom: 50, left: 50 }, animated: true,
       });
     }
   };
@@ -113,17 +102,38 @@ const RiderHome = ({ navigation }) => {
   };
 
   const mapMarkers = destination ? [{
-    id: 'destination',
-    latitude: destination.latitude,
-    longitude: destination.longitude,
-    title: destination.address,
-    icon: 'flag',
-    iconColor: THEME.COLORS.danger 
+    id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
+    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger 
   }] : [];
 
+  // CALCUL HAUTEUR PANNEAU BAS : 
+  // On estime la hauteur du SmartFooter (environ 200px) pour placer le bouton juste au-dessus
+  const mapBottomPadding = 240; 
+
   return (
-    <ScreenWrapper>
+    <View style={styles.screenWrapper}>
       
+      {/* LA CARTE - Edge to Edge */}
+      <View style={styles.mapContainer}>
+         {location ? (
+           <MapCard 
+             ref={mapRef}
+             location={location}
+             showUserMarker={true}
+             darkMode={true}
+             floating={false} // Laisse la carte remplir l'espace horizontal
+             markers={mapMarkers}
+             route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
+             recenterBottomPadding={mapBottomPadding} // Pousse le bouton recentrer au dessus du footer
+           />
+         ) : (
+           <View style={styles.loadingContainer}>
+             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+             <Text style={styles.loadingText}>Localisation en cours...</Text>
+           </View>
+         )}
+      </View>
+
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
@@ -131,72 +141,20 @@ const RiderHome = ({ navigation }) => {
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => setIsSearchModalVisible(true)}
-        // Props pour gérer l'annulation
         hasDestination={!!destination}
         onCancelDestination={handleCancelDestination}
       />
 
-      <View style={[
-        styles.mainContainer, 
-        { paddingTop: topPadding, backgroundColor: THEME.COLORS.background }
-      ]}>
-        
-        <View style={styles.mapSection}>
-           {location ? (
-             <MapCard 
-               ref={mapRef}
-               location={location}
-               showUserMarker={true}
-               darkMode={true}
-               markers={mapMarkers}
-               route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
-             />
-           ) : (
-             <View style={styles.loadingContainer}>
-               <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-               <Text style={styles.loadingText}>Localisation en cours...</Text>
-             </View>
-           )}
-        </View>
-
-        <View style={styles.bottomSection}>
-          <View style={styles.forfaitsContainer}>
-            <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-            
-            {destination ? (
-               <View style={styles.estimationWrapper}>
-                 <VehicleCarousel 
-                   vehicles={displayVehicles}
-                   selectedVehicle={selectedVehicle}
-                   onSelect={setSelectedVehicle}
-                   isLoading={isEstimating && !estimationData}
-                   error={estimateError}
-                 />
-                 
-                 <TouchableOpacity 
-                   style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
-                   disabled={!selectedVehicle || isEstimating}
-                   onPress={handleConfirmRide}
-                   activeOpacity={0.9}
-                 >
-                   <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
-                     {selectedVehicle 
-                        ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
-                        : 'Sélectionnez un véhicule'}
-                   </Text>
-                 </TouchableOpacity>
-               </View>
-            ) : (
-               <View style={styles.emptyCard}>
-                 <Text style={styles.emptyCardText}>
-                   Sélectionnez une destination
-                 </Text>
-               </View>
-            )}
-          </View>
-        </View>
-
-      </View>
+      <SmartFooter 
+        destination={destination}
+        displayVehicles={displayVehicles}
+        selectedVehicle={selectedVehicle}
+        onSelectVehicle={setSelectedVehicle}
+        isEstimating={isEstimating}
+        estimationData={estimationData}
+        estimateError={estimateError}
+        onConfirmRide={handleConfirmRide}
+      />
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
@@ -204,24 +162,22 @@ const RiderHome = ({ navigation }) => {
         onDestinationSelect={handleDestinationSelect}
       />
 
-    </ScreenWrapper>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  mainContainer: {
+  screenWrapper: {
     flex: 1,
-    flexDirection: 'column',
+    backgroundColor: THEME.COLORS.background, // Ce fond noir va créer l'effet des coins de l'arc
   },
-  mapSection: {
-    flex: 0.55, 
-    overflow: 'hidden',
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+  mapContainer: {
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.COLORS.surface, 
+    zIndex: 1,
   },
   loadingContainer: {
-    flex: 1,
+    ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
@@ -230,74 +186,6 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary, 
     marginTop: 10, 
     fontSize: 12
-  },
-  bottomSection: {
-    flex: 0.45, 
-    backgroundColor: THEME.COLORS.background,
-    paddingTop: THEME.SPACING.lg,
-  },
-  forfaitsContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'flex-start',
-  },
-  sectionTitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
-    fontWeight: 'bold',
-    marginBottom: 10,
-    alignSelf: 'flex-start',
-    letterSpacing: 2,
-    marginLeft: THEME.SPACING.lg,
-  },
-  emptyCard: {
-    width: '90%',
-    height: 110,
-    backgroundColor: THEME.COLORS.glassLight,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  emptyCardText: {
-    color: THEME.COLORS.textTertiary, 
-    fontStyle: 'italic'
-  },
-  estimationWrapper: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  confirmButton: {
-    backgroundColor: THEME.COLORS.champagneGold,
-    paddingVertical: 16,
-    width: '90%',
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginTop: 15,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  confirmButtonDisabled: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderColor: THEME.COLORS.border,
-    borderWidth: 1,
-    shadowOpacity: 0,
-    elevation: 0,
-  },
-  confirmButtonText: {
-    color: '#121418',
-    fontSize: 16,
-    fontWeight: '900',
-    letterSpacing: 0.5,
-  },
-  confirmButtonTextDisabled: {
-    color: THEME.COLORS.textTertiary,
   }
 });
 
