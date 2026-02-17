@@ -1,12 +1,15 @@
 // src/hooks/useSocket.js
-// Hook de gestion du cycle de vie du Socket
+// Hook React : Orchestrateur du Cycle de Vie Socket & Couplage Redux
+// CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { selectIsAuthenticated, selectToken } from '../store/slices/authSlice';
+import { logout, selectIsAuthenticated, selectToken } from '../store/slices/authSlice';
+import { showErrorToast } from '../store/slices/uiSlice';
 
 const useSocket = () => {
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const token = useSelector(selectToken);
   const wasConnected = useRef(false);
@@ -17,6 +20,23 @@ const useSocket = () => {
       if (!wasConnected.current) {
         socketService.connect(token);
         wasConnected.current = true;
+
+        // 🛡️ CÂBLAGE REDUX SÉCURISÉ : Écoute des rejets d'authentification
+        const handleForceDisconnect = (data) => {
+          const message = data?.message || 'Connexion interrompue par mesure de sécurité.';
+          dispatch(showErrorToast({ title: 'Accès Révoqué', message }));
+          dispatch(logout()); // Déconnexion propre de l'app
+        };
+
+        const handleConnectError = (error) => {
+          if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
+            dispatch(showErrorToast({ title: 'Session expirée', message: 'Veuillez vous reconnecter.' }));
+            dispatch(logout());
+          }
+        };
+
+        socketService.on('force_disconnect', handleForceDisconnect);
+        socketService.on('connect_error', handleConnectError);
       }
     } 
     // 2. Déconnexion si logout
@@ -27,12 +47,7 @@ const useSocket = () => {
       }
     }
 
-    // 3. Cleanup au démontage du composant racine
-    return () => {
-      // On laisse la connexion active tant que l'app tourne, 
-      // sauf changement explicite d'état (logout)
-    };
-  }, [isAuthenticated, token]);
+  }, [isAuthenticated, token, dispatch]);
 
   return {
     isConnected: socketService.getIsConnected(),

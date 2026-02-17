@@ -1,15 +1,13 @@
 // src/store/slices/authSlice.js
-// GESTION SESSION - Sécurisation PII (SecureStore) & Déconnexion Intégrale
+// GESTION SESSION - SÉCURISATION PII & FONCTIONS PURES REDUX
 // CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
-import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 
 const initialState = {
   user: null,
   token: null,
-  // 🛡️ SÉCURITÉ : Le refreshToken n'existe plus en clair côté client. Il est géré via Cookie réseau.
   isAuthenticated: false,
 };
 
@@ -18,7 +16,6 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      // Nettoyage de la destruction pour s'adapter au nouveau format de l'API
       const { user, accessToken, token } = action.payload || {};
       const finalToken = accessToken || token;
 
@@ -30,7 +27,7 @@ const authSlice = createSlice({
       state.token = finalToken || state.token;
       state.isAuthenticated = true;
 
-      // 🛡️ SÉCURITÉ : Persistance 100% SecureStore (Plus de PII en clair)
+      // 🛡️ SÉCURITÉ : Persistance 100% SecureStore
       if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
       if (state.token) SecureStorageAdapter.setItem('token', state.token);
     },
@@ -46,13 +43,10 @@ const authSlice = createSlice({
       state.token = null;
       state.isAuthenticated = false;
       
-      // 🛡️ SÉCURITÉ : Nettoyage intégral
+      // 🛡️ SÉCURITÉ : Nettoyage intégral. 
+      // Note: Le socket sera déconnecté réactivement par le Hook useSocket !
       SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
-      // Le navigateur ou le gestionnaire natif de requêtes nettoiera le cookie lui-même lors de l'appel API /logout.
-
-      // 🔌 COUPURE WEBSOCKET : Empêche le token zombie d'émettre
-      socketService.disconnect();
     },
 
     restoreAuth: (state, action) => {

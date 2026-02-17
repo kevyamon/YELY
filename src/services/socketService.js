@@ -1,5 +1,6 @@
 // src/services/socketService.js
-// Singleton Socket.io - Système Nerveux Temps Réel (Sécurisé, Silencieux & Anti-Loop)
+// Singleton Socket.io - Service Réseau Agnostique (Sans dépendance Redux)
+// CSCSM Level: Bank Grade
 
 import { io } from 'socket.io-client';
 
@@ -46,8 +47,14 @@ class SocketService {
       if (__DEV__) console.log(`[Socket] Déconnecté: ${reason}`);
     });
 
+    // 🛡️ SÉCURITÉ INTERNE : Blocage des boucles de reconnexion
+    this.socket.on('force_disconnect', (data) => {
+      if (__DEV__) console.warn(`[Socket] KICK FORCÉ DU SERVEUR: ${data?.reason}`);
+      this.maxReconnectAttempts = 0; 
+      this.disconnect();
+    });
+
     this.socket.on('connect_error', (error) => {
-      // 🛡️ SÉCURITÉ : Anti-Loop. Si le token est rejeté, on abandonne tout de suite.
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
         if (__DEV__) console.warn('[Socket] Accès refusé par le serveur. Arrêt des tentatives.');
         this.disconnect();
