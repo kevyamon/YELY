@@ -7,30 +7,31 @@ import { Animated, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
+// CORRECTION : Utilisation des variables dynamiques du thème
 const TOAST_CONFIG = {
   success: {
     icon: 'checkmark-circle',
     color: COLORS.success,
-    bgColor: '#1A1A2E',
-    borderColor: 'rgba(3, 1, 14, 0.3)',
+    bgColor: COLORS.glassSurface, // S'adapte jour/nuit
+    borderColor: COLORS.border,   // Prend ta bordure grise
   },
   error: {
     icon: 'close-circle',
     color: COLORS.danger,
-    bgColor: '#1A1A2E',
-    borderColor: 'rgba(3, 1, 14, 0.3)',
+    bgColor: COLORS.glassSurface,
+    borderColor: COLORS.border,
   },
   warning: {
     icon: 'warning',
     color: COLORS.warning,
-    bgColor: '#1A1A2E',
-    borderColor: 'rgba(3, 1, 14, 0.3)',
+    bgColor: COLORS.glassSurface,
+    borderColor: COLORS.border,
   },
   info: {
     icon: 'information-circle',
     color: COLORS.info,
-    bgColor: '#1A1A2E',
-    borderColor: 'rgba(3, 1, 14, 0.3)',
+    bgColor: COLORS.glassSurface,
+    borderColor: COLORS.border,
   },
 };
 
@@ -138,9 +139,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.lg,
     borderRadius: BORDERS.radius.lg,
-    borderWidth: BORDERS.width.thin,
+    borderWidth: BORDERS.width.thin, // Utilise l'épaisseur définie dans le thème
     zIndex: 99999,
     elevation: 99999,
+    // Ajout d'une petite ombre pour détacher le toast du fond
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   textContainer: {
     flex: 1,

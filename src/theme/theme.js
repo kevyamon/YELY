@@ -66,7 +66,7 @@ const COLORS = {
   glassModal: isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)',
   
   // Bordures : Subtiles et adaptées
-  border: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.08)',
+  border: isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.50)',
   borderActive: PALETTE.gold,
 
   // Fonctionnel

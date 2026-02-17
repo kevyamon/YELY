@@ -5,9 +5,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-    Extrapolation,
-    interpolate,
-    useAnimatedStyle
+  Extrapolation,
+  interpolate,
+  useAnimatedStyle
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -89,7 +89,7 @@ const SmartHeader = ({
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       {/* Fond Opaque pour cacher le contenu qui scroll dessous */}
-      <View style={[styles.background, { backgroundColor: THEME.COLORS.deepAsphalt }]} />
+      <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
         
@@ -186,7 +186,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   locationTitle: {
-    color: 'white',
+    color: THEME.COLORS.textPrimary, // Adapté au thème (Noir le jour / Blanc la nuit)
     fontWeight: 'bold',
     fontSize: 14,
   },
@@ -194,11 +194,11 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION: Fond dynamique
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
+    borderColor: THEME.COLORS.border, // CORRECTION: Bordure dynamique
   },
   badge: {
     position: 'absolute',
@@ -207,7 +207,7 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    backgroundColor: THEME.COLORS.error,
+    backgroundColor: THEME.COLORS.danger,
   },
   searchContainer: {
     marginTop: 5,
@@ -239,12 +239,12 @@ const styles = StyleSheet.create({
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
+    borderColor: THEME.COLORS.border, // CORRECTION
   },
   placeholderText: {
     color: THEME.COLORS.textTertiary,
@@ -257,12 +257,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    paddingVertical: 10, // Un peu plus grand pour le driver
+    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION
+    paddingVertical: 10, 
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
+    borderColor: THEME.COLORS.border, // CORRECTION
     alignSelf: 'flex-start',
   },
   gpsText: {

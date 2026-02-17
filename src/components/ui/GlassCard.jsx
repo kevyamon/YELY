@@ -15,9 +15,10 @@ const GlassCard = ({
 }) => {
   const getBackgroundColor = () => {
     switch (intensity) {
-      case 'light': return COLORS.glassUltraLight;
-      case 'dark': return COLORS.glassDark;
-      default: return COLORS.glassMedium;
+      // Toutes ces variantes pointent maintenant vers ta surface dynamique (Blanc ou Noir vitré)
+      case 'light': return COLORS.glassSurface; 
+      case 'dark': return COLORS.glassSurface;
+      default: return COLORS.glassSurface;
     }
   };
 
@@ -29,9 +30,12 @@ const GlassCard = ({
           borderRadius,
           backgroundColor: getBackgroundColor(),
         },
-        withBorder && styles.border,
+        withBorder && {
+          borderWidth: BORDERS.width.thin, // Ou BORDERS.width.normal si tu veux plus épais
+          borderColor: COLORS.border,      // C'est ça qui te donne le contour gris visible
+        },
         withGlow && {
-          borderColor: COLORS.glassBorderActive,
+          borderColor: COLORS.borderActive, // Le contour OR
           ...SHADOWS.goldSoft,
         },
         style,
@@ -47,11 +51,7 @@ const GlassCard = ({
 const styles = StyleSheet.create({
   container: {
     overflow: 'hidden',
-    ...SHADOWS.medium,
-  },
-  border: {
-    borderWidth: BORDERS.width.thin,
-    borderColor: COLORS.glassBorder,
+    ...SHADOWS.medium, // L'ombre aide aussi à détacher la carte du fond blanc
   },
   content: {
     flex: 1,
