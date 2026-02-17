@@ -50,8 +50,8 @@ const SmartHeader = ({
     return { height, shadowOpacity, elevation: shadowOpacity * 10 };
   });
 
-  // 2. Animation SearchBar (Disparition)
-  const searchBarAnimatedStyle = useAnimatedStyle(() => {
+  // 2. Animation SearchBar/CTA (Disparition)
+  const ctaAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
       [0, scrollDistance * 0.6], 
@@ -113,13 +113,13 @@ const SmartHeader = ({
         </View>
 
         {/* LIGNE DU BAS : Contenu Dynamique (Disparaît au scroll) */}
-        <Animated.View style={[styles.searchContainer, searchBarAnimatedStyle]}>
+        <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           
           {/* 1. BLOC SALUTATION */}
           <View style={styles.greetingHeader}>
              <Text style={styles.greetingText}>Bonjour, {userName}</Text>
              
-             {/* MODE RIDER : Adresse en sous-titre (Gain de place) */}
+             {/* MODE RIDER : Adresse en sous-titre */}
              {isRider && (
                <View style={styles.riderAddressRow}>
                   <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
@@ -128,7 +128,7 @@ const SmartHeader = ({
              )}
           </View>
 
-          {/* 2. MODE DRIVER : Le Badge GPS bien visible (Validé) */}
+          {/* 2. MODE DRIVER : Le Badge GPS bien visible */}
           {!isRider && (
              <View style={styles.driverGpsBadge}>
                  <Ionicons name="navigate" size={20} color={THEME.COLORS.champagneGold} />
@@ -136,15 +136,18 @@ const SmartHeader = ({
              </View>
           )}
           
-          {/* 3. MODE RIDER : La Barre de Recherche (Toujours en dernier) */}
+          {/* 3. MODE RIDER : Le Bouton d'action principal (CTA) */}
           {isRider && (
             <TouchableOpacity 
-              style={styles.searchBar} 
-              activeOpacity={0.9} 
+              style={styles.ctaButton} 
+              activeOpacity={0.8} 
               onPress={onSearchPress}
             >
-              <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.placeholderText}>Où allons-nous aujourd'hui ?</Text>
+              <View style={styles.ctaIconWrapper}>
+                <Ionicons name="car-sport" size={24} color={THEME.COLORS.champagneGold} />
+              </View>
+              <Text style={styles.ctaText}>Commander un taxi</Text>
+              <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textTertiary} style={{marginLeft: 'auto'}}/>
             </TouchableOpacity>
           )}
           
@@ -185,11 +188,10 @@ const styles = StyleSheet.create({
     right: 50,
     alignItems: 'center',
   },
-  // MODIFICATION ICI : Titre central au scroll
   locationTitle: {
     color: THEME.COLORS.textPrimary,
-    fontWeight: '800', // Plus gras
-    fontSize: 16, // Légèrement plus grand (était à 14)
+    fontWeight: '800',
+    fontSize: 16,
   },
   iconButton: {
     width: 40,
@@ -210,11 +212,11 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     backgroundColor: THEME.COLORS.danger,
   },
-  searchContainer: {
+  ctaContainer: {
     marginTop: 5,
   },
   greetingHeader: {
-    marginBottom: 8,
+    marginBottom: 12,
   },
   greetingText: {
     color: THEME.COLORS.textSecondary,
@@ -230,15 +232,15 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginBottom: 4,
   },
-  // MODIFICATION ICI : Adresse Rider
   riderAddressText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 14, // Légèrement plus grand (était à 12)
-    fontWeight: 'bold', // Plus gras (était à '500')
+    fontSize: 14,
+    fontWeight: 'bold',
     marginLeft: 4,
     opacity: 0.9,
   },
-  searchBar: {
+  // NOUVEAUX STYLES CTA (Bouton Commander)
+  ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassSurface,
@@ -246,12 +248,21 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    borderColor: THEME.COLORS.champagneGold, // Bordure dorée pour l'appel à l'action
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  placeholderText: {
-    color: THEME.COLORS.textTertiary,
-    marginLeft: 10,
-    fontSize: 16,
+  ctaIconWrapper: {
+    marginRight: 12,
+  },
+  ctaText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
 
   // --- STYLES SPÉCIFIQUES DRIVER ---
@@ -267,11 +278,10 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
     alignSelf: 'flex-start',
   },
-  // MODIFICATION ICI : Adresse Driver
   gpsText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 16, // Légèrement plus grand (était à 14)
-    fontWeight: 'bold', // Plus gras (était à '500')
+    fontSize: 16,
+    fontWeight: 'bold',
     marginLeft: 8,
     flex: 1, 
   }

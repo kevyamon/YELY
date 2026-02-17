@@ -21,13 +21,14 @@ const DestinationSearchSheet = forwardRef(({ onDestinationSelect }, ref) => {
 
   const snapPoints = useMemo(() => ['25%', '85%'], []);
 
+  // CORRECTION UX : Backdrop plus sombre pour un meilleur focus
   const renderBackdrop = useCallback(
     (props) => (
       <BottomSheetBackdrop
         {...props}
-        appearsOnIndex={1}
-        disappearsOnIndex={0}
-        opacity={0.5}
+        appearsOnIndex={0} // Commence à apparaître dès le premier niveau d'ouverture
+        disappearsOnIndex={-1}
+        opacity={0.7} // Opacité augmentée pour un effet plus "focus" (0.5 -> 0.7)
       />
     ),
     []
@@ -50,7 +51,7 @@ const DestinationSearchSheet = forwardRef(({ onDestinationSelect }, ref) => {
     }
   };
 
-  // Lors du clic sur une suggestion (Optimisé OSM : on a déjà les coordonnées)
+  // Lors du clic sur une suggestion
   const handleSelectPlace = (item) => {
     Keyboard.dismiss(); 
     
@@ -59,7 +60,7 @@ const DestinationSearchSheet = forwardRef(({ onDestinationSelect }, ref) => {
       ref.current.collapse(); 
     }
     
-    // On envoie directement les coordonnées au parent (RiderHome)
+    // On envoie directement les coordonnées au parent
     onDestinationSelect({
       address: item.mainText,
       fullAddress: item.description,
@@ -140,6 +141,12 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.background,
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
+    // Ajout d'une ombre portée sur le haut du tiroir pour le détacher du fond sombre
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 10,
   },
   handleIndicator: {
     backgroundColor: THEME.COLORS.border,
