@@ -1,37 +1,52 @@
 // src/components/ui/ScreenWrapper.jsx
-import { StatusBar, StyleSheet, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, StatusBar, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import THEME from '../../theme/theme';
+import { COLORS } from '../../theme/theme';
 
-export default function ScreenWrapper({ children, style, withHeader = false }) {
+const ScreenWrapper = ({ 
+  children, 
+  style, 
+  backgroundColor = COLORS.background,
+  statusBarColor = 'transparent', // Par défaut transparent pour l'effet "plein écran"
+  statusBarStyle = 'light-content'
+}) => {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={[
-      styles.container, 
-      { 
-        // Si on a un header custom, on applique juste le padding top pour le status bar
-        // Sinon, on laisse le contenu gérer ou on applique un padding standard
-        paddingTop: insets.top,
-        paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
-        paddingLeft: insets.left,
-        paddingRight: insets.right,
-      },
-      style
-    ]}>
+    <View style={[styles.container, { backgroundColor }]}>
+      {/* Configuration StatusBar pour Android/iOS :
+        - translucent: Permet au contenu de passer SOUS la barre d'état (Android)
+        - backgroundColor: Transparent pour voir le dégradé/header
+      */}
       <StatusBar 
-        barStyle="light-content" 
-        backgroundColor="transparent" 
+        barStyle={statusBarStyle} 
+        backgroundColor={statusBarColor} 
         translucent={true} 
       />
-      {children}
+      
+      {/* NOTE : On a retiré le "paddingTop: insets.top" ici.
+        C'est maintenant le SmartHeader qui gérera cet espace pour l'effet immersif.
+      */}
+      
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <View style={[styles.content, style]}>
+          {children}
+        </View>
+      </KeyboardAvoidingView>
     </View>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt, // Fond par défaut de l'app
+  },
+  content: {
+    flex: 1,
   },
 });
+
+export default ScreenWrapper;

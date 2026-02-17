@@ -4,33 +4,40 @@
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { useSharedValue } from 'react-native-reanimated'; // Pour le SmartHeader
+import { useSafeAreaInsets } from 'react-native-safe-area-context'; // Pour le calcul du padding
+import { useSelector } from 'react-redux'; // Pour le nom utilisateur
 
 import MapCard from '../../components/map/MapCard';
-import ScreenHeader from '../../components/ui/ScreenHeader';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import SearchBar from '../../components/ui/SearchBar';
+import SmartHeader from '../../components/ui/SmartHeader'; // ✅ On utilise le nouveau Header
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
-export default function RiderHome() {
+export default function RiderHome({ navigation }) {
+  const insets = useSafeAreaInsets();
+  const user = useSelector(selectCurrentUser);
+  
   // 1. VRAIE GÉOLOCALISATION
   const { location, errorMsg } = useGeolocation(); 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  // Variable d'animation pour le header (reste à 0 car pas de scroll ici)
+  const scrollY = useSharedValue(0);
   
   // 2. RÉCUPÉRATION DE L'ADRESSE (Reverse Geocoding)
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
         try {
-          // Appel API réel pour convertir lat/long en texte
           const addr = await MapService.reverseGeocode(location.latitude, location.longitude);
-          
           if (addr && addr.shortName) {
-            setCurrentAddress(addr.shortName); // Ex: "Pharmacie de Maféré"
+            setCurrentAddress(addr.shortName);
           } else {
-            // Fallback : Coordonnées propres si pas de nom de rue
             setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
           }
         } catch (error) {
@@ -44,29 +51,36 @@ export default function RiderHome() {
     }
   }, [location, errorMsg]);
 
+  // 📐 CALCUL DU PADDING : On pousse le contenu sous le Header Max Height
+  // On ajoute un petit bonus (+10) pour l'aération
+  const contentPaddingTop = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT - 10;
+
   return (
     <ScreenWrapper>
       
-      {/* 1. HEADER (Fixe en haut) */}
-      {/* Affiche la vraie adresse calculée ci-dessus */}
-      <ScreenHeader 
-        showLocation={true}
-        locationText={currentAddress}
+      {/* 1. HEADER (Fixe en haut - Style Canva) */}
+      <SmartHeader 
+        scrollY={scrollY}
+        address={currentAddress}
+        userName={user?.name?.split(' ')[0] || "Passager"}
+        onMenuPress={() => navigation.openDrawer()}
+        onNotificationPress={() => navigation.navigate('Notifications')}
+        onSearchPress={() => console.log("Ouvrir recherche")}
       />
 
       {/* 2. CONTENU PRINCIPAL (Split View) */}
-      <View style={styles.mainContainer}>
+      {/* ⚠️ CORRECTION : On applique le padding ici pour descendre tout le bloc */}
+      <View style={[styles.mainContainer, { paddingTop: contentPaddingTop }]}>
         
         {/* PARTIE HAUTE : LA CARTE (~55% de l'écran) */}
         <View style={styles.mapSection}>
            {location ? (
              <MapCard 
-               location={location} // Passe la VRAIE location à la carte
+               location={location}
                showUserMarker={true}
                darkMode={true}
              />
            ) : (
-             // Chargement si pas encore de GPS
              <View style={styles.loadingContainer}>
                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
                <Text style={{color: 'white', marginTop: 10, fontSize: 12}}>Localisation en cours...</Text>
@@ -77,7 +91,8 @@ export default function RiderHome() {
         {/* PARTIE BASSE : RECHERCHE & FORFAITS (Le reste de l'écran) */}
         <View style={styles.bottomSection}>
           
-          {/* Barre de Recherche */}
+          {/* Barre de Recherche (Gardée comme dans ton fichier original) */}
+          {/* Note : Tu peux la retirer si tu utilises celle du header, mais je la laisse comme demandé */}
           <View style={styles.searchContainer}>
             <SearchBar 
               label="On va où ?"
@@ -117,17 +132,17 @@ const styles = StyleSheet.create({
   mainContainer: {
     flex: 1,
     flexDirection: 'column',
+    // backgroundColor: THEME.COLORS.background, // Optionnel
   },
   
   // ZONE CARTE (Haut)
   mapSection: {
-    flex: 0.55, // 55% de la hauteur disponible
+    flex: 0.55, 
     overflow: 'hidden',
-    borderBottomLeftRadius: 24, // Style arrondi moderne
+    borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     backgroundColor: '#1a1a1a', 
     zIndex: 1,
-    // Petite ombre pour séparer du bas
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -143,7 +158,7 @@ const styles = StyleSheet.create({
 
   // ZONE BASSE (Bas)
   bottomSection: {
-    flex: 0.45, // 45% restant
+    flex: 0.45, 
     backgroundColor: THEME.COLORS.deepAsphalt,
     paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,

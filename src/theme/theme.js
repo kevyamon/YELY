@@ -10,7 +10,8 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 1. PALETTE DE COULEURS - "LUXE NOCTURNE & TRANSPARENCE"
 // ═══════════════════════════════════════════════════════════════
 const COLORS = {
-  deepAsphalt: '#1d023f94',
+  // ⚠️ CORRECTION : Couleur rendue OPAQUE pour le Header "Canva"
+  deepAsphalt: '#120128', 
   deepAsphaltRGB: '18, 20, 24',
 
   champagneGold: '#1adf5b',
@@ -192,6 +193,7 @@ const ANIMATIONS = {
   },
   easing: {
     easeOut: 'cubic-bezier(0.16, 1, 0.3, 1)',
+    easeIn: 'cubic-bezier(0.65, 0, 0.35, 1)',
     easeInOut: 'cubic-bezier(0.65, 0, 0.35, 1)',
     spring: 'cubic-bezier(0.175, 0.885, 0.32, 1.275)',
   },
@@ -249,10 +251,20 @@ const DIMENSIONS = {
 };
 
 // ═══════════════════════════════════════════════════════════════
-// 9. CONSTANTES DE LAYOUT (NOUVEAU - COMMANDANT SUPRÊME)
+// 9. CONSTANTES DE LAYOUT (COMMANDANT SUPRÊME)
 // ═══════════════════════════════════════════════════════════════
 const LAYOUT = {
-  HEADER_HEIGHT: 60, // Hauteur fixe du contenu du header (sans compter le notch)
+  // Alias pour compatibilité
+  window: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
+  isSmallDevice: SCREEN_WIDTH < 375,
+  
+  // ⚠️ CRITIQUE : Mapping des propriétés pour éviter l'erreur "undefined"
+  spacing: SPACING, 
+  borderRadius: BORDERS.radius,
+
+  // Hauteurs pour l'animation du SmartHeader
+  HEADER_HEIGHT: 60,         // Hauteur minimum (réduit)
+  HEADER_MAX_HEIGHT: 180,    // Hauteur maximum (étendu)
 };
 
 // ═══════════════════════════════════════════════════════════════
@@ -394,7 +406,7 @@ const THEME = {
   ANIMATIONS,
   GLASS,
   DIMENSIONS,
-  LAYOUT, // <--- AJOUTÉ ICI
+  LAYOUT,
   COMPONENT_STYLES,
   ICONS,
 };
@@ -404,10 +416,12 @@ export {
   BORDERS,
   COLORS,
   COMPONENT_STYLES,
-  DIMENSIONS, // <--- AJOUTÉ ICI
+  DIMENSIONS,
   FONTS,
   GLASS,
-  ICONS, LAYOUT, SHADOWS,
+  ICONS,
+  LAYOUT,
+  SHADOWS,
   SPACING,
   YelyTheme
 };
