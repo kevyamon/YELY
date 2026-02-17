@@ -1,8 +1,9 @@
 // src/store/slices/apiSlice.js
-// API GATEWAY - Gestion Centralisée & Reconnexion Auto
+// API GATEWAY - Gestion Centralisée, Reconnexion Auto & Hard Logout
 // CSCSM Level: Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 import { logout, setCredentials } from './authSlice';
 
@@ -10,10 +11,9 @@ import { logout, setCredentials } from './authSlice';
 let isRefreshing = false;
 let refreshPromise = null;
 
-// 🛡️ SÉCURITÉ : Plus de lien en dur. On charge strictement depuis l'environnement.
+// 🛡️ SÉCURITÉ : Plus de lien en dur
 const BASE_URL = process.env.EXPO_PUBLIC_API_URL;
 
-// Sécurité au démarrage : Si le .env n'est pas chargé, on arrête tout tout de suite.
 if (!BASE_URL) {
   console.error("🚨 ERREUR CRITIQUE : EXPO_PUBLIC_API_URL est introuvable. Vérifiez votre fichier .env !");
 }
@@ -38,13 +38,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     if (!isRefreshing) {
       isRefreshing = true;
 
-      // Lancement du refresh
       refreshPromise = (async () => {
         try {
           const refreshToken = await SecureStorageAdapter.getItem('refreshToken');
           if (!refreshToken) throw new Error('No refresh token');
 
-          // Note : La route refresh est aussi sous /v1/auth/refresh
           const refreshResponse = await fetch(`${BASE_URL}/auth/refresh`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -54,9 +52,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           const data = await refreshResponse.json();
 
           if (refreshResponse.ok && data.success) {
-            const currentUser = api.getState().auth.userInfo;
+            // 🐛 FIX: user au lieu de userInfo
+            const currentUser = api.getState().auth.user; 
             
-            // Mise à jour du store
             api.dispatch(setCredentials({
               user: currentUser,
               accessToken: data.data.accessToken,
@@ -67,7 +65,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             throw new Error('Refresh failed');
           }
         } catch (e) {
-          // Si le refresh échoue, on déconnecte tout le monde (Sécurité)
+          // 🛡️ SÉCURITÉ ABSOLUE : Coupure WebSocket avant le Logout API
+          socketService.disconnect();
           api.dispatch(logout());
           return false;
         } finally {
@@ -77,7 +76,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       })();
     }
 
-    // Attendre que le premier refresh finisse avant de réessayer
     const success = await refreshPromise;
     if (success) {
       result = await baseQuery(args, api, extraOptions);

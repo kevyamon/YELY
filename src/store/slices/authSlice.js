@@ -1,8 +1,9 @@
 // src/store/slices/authSlice.js
-// GESTION SESSION - Standardisé & Compatible removeItem
+// GESTION SESSION - Sécurisation PII (SecureStore) & Déconnexion Intégrale
+// CSCSM Level: Bank Grade
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createSlice } from '@reduxjs/toolkit';
+import socketService from '../../services/socketService'; // 🔌 IMPORT SOCKET
 import SecureStorageAdapter from '../secureStoreAdapter';
 
 const initialState = {
@@ -29,16 +30,18 @@ const authSlice = createSlice({
       state.refreshToken = refreshToken || state.refreshToken;
       state.isAuthenticated = true;
 
-      // Persistance
-      if (user) AsyncStorage.setItem('userInfo', JSON.stringify(user));
-      if (finalToken) SecureStorageAdapter.setItem('token', finalToken);
-      if (refreshToken) SecureStorageAdapter.setItem('refreshToken', refreshToken);
+      // 🛡️ SÉCURITÉ : Persistance 100% SecureStore (Plus de PII en clair)
+      if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
+      if (state.token) SecureStorageAdapter.setItem('token', state.token);
+      if (state.refreshToken) SecureStorageAdapter.setItem('refreshToken', state.refreshToken);
     },
     
     updateUserInfo: (state, action) => {
       if (!state.user) return;
       state.user = { ...state.user, ...action.payload };
-      AsyncStorage.setItem('userInfo', JSON.stringify(state.user));
+      
+      // 🛡️ SÉCURITÉ : Mise à jour dans le coffre-fort
+      SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
     },
 
     logout: (state) => {
@@ -47,10 +50,13 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.isAuthenticated = false;
       
-      // Nettoyage (CORRIGÉ: removeItem au lieu de deleteItem)
-      AsyncStorage.removeItem('userInfo');
+      // 🛡️ SÉCURITÉ : Nettoyage intégral
+      SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
       SecureStorageAdapter.removeItem('refreshToken');
+
+      // 🔌 COUPURE WEBSOCKET : Empêche le token zombie d'émettre
+      socketService.disconnect();
     },
 
     restoreAuth: (state, action) => {

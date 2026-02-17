@@ -1,9 +1,8 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION
-// Correction : Rendu conditionnel strict des Homes pour éviter le bug "Passager par défaut"
+// ORCHESTRATEUR DE NAVIGATION - Démarrage "Trustless" (Validation de Session)
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
@@ -11,7 +10,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import SecureStorageAdapter from '../store/secureStoreAdapter';
-import { restoreAuth, selectCurrentUser, selectIsAuthenticated } from '../store/slices/authSlice';
+import { logout, restoreAuth, selectCurrentUser, selectIsAuthenticated, setCredentials } from '../store/slices/authSlice';
 import THEME from '../theme/theme';
 
 // Screens Auth
@@ -51,37 +50,69 @@ const AppNavigator = () => {
   const [isReady, setIsReady] = useState(false);
 
   useEffect(() => {
-    const restoreSession = async () => {
+    const verifyAndRestoreSession = async () => {
       try {
-        const [storedUser, storedToken, storedRefreshToken] = await Promise.all([
-          AsyncStorage.getItem('userInfo'),
-          SecureStorageAdapter.getItem('token'),
-          SecureStorageAdapter.getItem('refreshToken'),
-        ]);
+        // 1. Récupération depuis le stockage chiffré
+        const storedUserStr = await SecureStorageAdapter.getItem('userInfo');
+        const storedToken = await SecureStorageAdapter.getItem('token');
+        const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
 
-        if (storedUser && storedToken) {
-          dispatch(restoreAuth({
-            user: JSON.parse(storedUser),
-            token: storedToken,
-            refreshToken: storedRefreshToken,
-          }));
+        if (storedUserStr && storedRefreshToken && storedToken) {
+          const storedUser = JSON.parse(storedUserStr);
+
+          try {
+            // 2. 🛡️ DÉMARRAGE TRUSTLESS : On demande au backend si on est toujours légitime
+            const API_URL = process.env.EXPO_PUBLIC_API_URL;
+            const response = await fetch(`${API_URL}/auth/refresh`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ refreshToken: storedRefreshToken }),
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data.success) {
+                // Session certifiée valide !
+                dispatch(setCredentials({
+                  user: storedUser,
+                  accessToken: data.data.accessToken,
+                  refreshToken: data.data.refreshToken || storedRefreshToken,
+                }));
+              } else {
+                dispatch(logout()); // Token révoqué
+              }
+            } else {
+              // 401 ou 403 : Banni ou expiré
+              if (response.status === 401 || response.status === 403) {
+                dispatch(logout());
+              } else {
+                // Erreur 500 : On restaure pour ne pas bloquer l'app
+                dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
+              }
+            }
+          } catch (networkError) {
+            // Pas d'internet (Mode Offline-First) : on restaure les données locales
+            dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
+          }
+        } else {
+          dispatch(logout()); // Données manquantes
         }
       } catch (e) {
-        console.error('[Auth] Erreur restauration:', e);
+        console.error('[Auth] Erreur critique au démarrage:', e);
+        dispatch(logout());
       } finally {
         setIsReady(true);
         await SplashScreen.hideAsync();
       }
     };
 
-    restoreSession();
+    verifyAndRestoreSession();
   }, [dispatch]);
 
   if (!isReady) {
     return null; 
   }
 
-  // Sécurité : On s'assure que le rôle est bien défini, sinon Rider par défaut
   const isDriver = user?.role === 'driver';
 
   return (
@@ -91,30 +122,21 @@ const AppNavigator = () => {
         animation: 'fade',
         contentStyle: { backgroundColor: THEME.COLORS.background },
       }}
-      // Plus besoin de initialRouteName dynamique complexe, le contenu conditionnel gère tout
     >
       {!isAuthenticated ? (
-        // 🔴 ZONE PUBLIQUE
         <Stack.Group>
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="Login" component={LoginPage} />
           <Stack.Screen name="Register" component={RegisterPage} />
         </Stack.Group>
       ) : (
-        // 🟢 ZONE PRIVÉE
         <Stack.Group>
-          
-          {/* 👇 C'EST ICI LA CORRECTION MAJEURE 👇 */}
-          {/* On ne rend QUE l'écran correspondant au rôle. */}
-          {/* React Navigation est OBLIGÉ d'afficher le premier écran de la liste. */}
-          
           {isDriver ? (
              <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
              <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {/* PAGE MENU (Slide Up) */}
           <Stack.Screen 
             name="Menu" 
             component={MenuScreen} 
@@ -125,7 +147,6 @@ const AppNavigator = () => {
             }}
           />
 
-          {/* 🚧 PAGES EN CONSTRUCTION 🚧 */}
           <Stack.Screen name="Profile" component={PlaceholderScreen} />
           <Stack.Screen name="History" component={PlaceholderScreen} />
           <Stack.Screen name="Notifications" component={PlaceholderScreen} />
@@ -141,38 +162,11 @@ const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  placeholderContainer: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  backText: {
-    color: THEME.COLORS.champagneGold,
-    marginLeft: 8,
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  placeholderTitle: {
-    color: THEME.COLORS.champagneGold,
-    fontSize: 28,
-    fontWeight: 'bold',
-    marginTop: 20,
-    marginBottom: 10,
-  },
-  placeholderText: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 16,
-    textAlign: 'center',
-  },
+  placeholderContainer: { flex: 1, backgroundColor: THEME.COLORS.background, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  backButton: { position: 'absolute', top: 50, left: 20, flexDirection: 'row', alignItems: 'center' },
+  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: 'bold' },
+  placeholderTitle: { color: THEME.COLORS.champagneGold, fontSize: 28, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
+  placeholderText: { color: THEME.COLORS.textSecondary, fontSize: 16, textAlign: 'center' },
 });
 
 export default AppNavigator;
