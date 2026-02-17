@@ -10,6 +10,8 @@ import Animated, {
     useAnimatedStyle
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const SmartHeader = ({ 
@@ -21,7 +23,9 @@ const SmartHeader = ({
   onSearchPress 
 }) => {
   const insets = useSafeAreaInsets();
-  
+  const user = useSelector(selectCurrentUser);
+  const isRider = user?.role === 'rider';
+
   // Limites de l'animation
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
@@ -110,22 +114,26 @@ const SmartHeader = ({
 
         {/* LIGNE DU BAS : SearchBar & Bonjour (Disparaît au scroll) */}
         <Animated.View style={[styles.searchContainer, searchBarAnimatedStyle]}>
-          <Text style={styles.greetingText}>Bonjour, {userName} 👋</Text>
+          <Text style={styles.greetingText}>Bonjour, {userName}</Text>
           
-          <TouchableOpacity 
-            style={styles.searchBar} 
-            activeOpacity={0.9} 
-            onPress={onSearchPress}
-          >
-            <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} />
-            <Text style={styles.placeholderText}>Où allons-nous aujourd'hui ?</Text>
-          </TouchableOpacity>
-          
-          {/* Petite info adresse statique pour confirmer le GPS */}
-          <View style={styles.gpsIndicator}>
-             <Ionicons name="navigate" size={12} color={THEME.COLORS.primary} />
-             <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
-          </View>
+          {isRider && (
+            <>
+              <TouchableOpacity 
+                style={styles.searchBar} 
+                activeOpacity={0.9} 
+                onPress={onSearchPress}
+              >
+                <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} />
+                <Text style={styles.placeholderText}>Où allons-nous aujourd'hui ?</Text>
+              </TouchableOpacity>
+              
+              {/* Petite info adresse statique pour confirmer le GPS */}
+              <View style={styles.gpsIndicator}>
+                 <Ionicons name="navigate" size={12} color={THEME.COLORS.primary} />
+                 <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
+              </View>
+            </>
+          )}
         </Animated.View>
 
       </View>
