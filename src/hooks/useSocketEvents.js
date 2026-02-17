@@ -1,21 +1,14 @@
-// src/hooks/useSocketEvents.js
-// Orchestrateur des événements Socket (Rider & Driver)
-
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-
 import socketService from '../services/socketService';
 import { selectIsAuthenticated } from '../store/slices/authSlice';
 import {
-  setAssignedDriver,
+  clearIncomingRide,
   setCurrentRide,
-  setRideStatus,
-  updateDriverLocation,
+  setIncomingRide,
+  updateRideStatus
 } from '../store/slices/rideSlice';
-import {
-  openModal,
-  showToast,
-} from '../store/slices/uiSlice';
+import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const useSocketEvents = () => {
   const dispatch = useDispatch();
@@ -24,127 +17,79 @@ const useSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // --- HANDLERS (Gestionnaires d'événements) ---
-
-    // 1. Gestion des Courses
-    const handleRideEvents = {
-      request: (data) => {
-        dispatch(openModal({ type: 'rideRequest', position: 'center', data }));
-      },
-      accepted: (data) => {
-        if (data.ride) dispatch(setCurrentRide(data.ride));
-        if (data.driver) dispatch(setAssignedDriver(data.driver));
-        dispatch(setRideStatus('accepted'));
-        dispatch(showToast({
-          type: 'success',
-          title: 'Chauffeur trouvé !',
-          message: `${data.driver?.name || 'Le chauffeur'} arrive.`
-        }));
-      },
-      cancelled: (data) => {
-        dispatch(setRideStatus('cancelled'));
-        dispatch(showToast({
-          type: 'warning',
-          title: 'Course annulée',
-          message: data.reason || 'La course a été annulée.'
-        }));
-      },
-      started: () => {
-        dispatch(setRideStatus('ongoing'));
-        dispatch(showToast({ title: 'Course démarrée', message: 'Bon voyage !' }));
-      },
-      completed: (data) => {
-        dispatch(setRideStatus('completed'));
-        if (data?.ride) dispatch(setCurrentRide(data.ride));
-        dispatch(showToast({ type: 'success', title: 'Arrivée', message: 'Course terminée.' }));
-      }
+    const handleNewRideRequest = (data) => {
+      dispatch(setIncomingRide(data));
     };
 
-    // 2. Tracking & Proximité
-    const handleLocationEvents = {
-      driverUpdate: (data) => {
-        if (data?.latitude && data?.longitude) {
-          dispatch(updateDriverLocation({
-            latitude: data.latitude,
-            longitude: data.longitude,
-            heading: data.heading || 0,
-          }));
-        }
-      },
-      driverArrived: (data) => {
-        dispatch(showToast({
-          type: 'success',
-          title: 'Votre Yély est là',
-          message: data.message || 'Le chauffeur vous attend.'
-        }));
-      },
-      pancarte: (data) => {
-        dispatch(showToast({
-          type: 'info',
-          title: 'Signal lumineux',
-          message: `${data.senderName} vous fait signe !`
-        }));
-      }
+    const handleRideTakenByOther = () => {
+      dispatch(clearIncomingRide());
     };
 
-    // 3. Admin & Système
-    const handleSystemEvents = {
-      notification: (data) => {
-        dispatch(showToast({
-          type: data.type || 'info',
-          title: data.title || 'Info',
-          message: data.message
-        }));
-      },
-      subscription: (data) => {
-        dispatch(showToast({
-          type: 'success',
-          title: 'Abonnement Validé',
-          message: `Forfait ${data.plan} actif.`
-        }));
-      },
-      proof: (data) => {
-        dispatch(showToast({
-          type: 'info',
-          title: 'Finance',
-          message: 'Nouvelle preuve de paiement reçue.'
-        }));
-      }
+    const handleDriverFound = (data) => {
+      dispatch(updateRideStatus({ 
+        status: 'negotiating', 
+        driverName: data.driverName 
+      }));
     };
 
-    // --- SUBSCRIPTIONS (Abonnements aux canaux) ---
-    
-    // Courses
-    socketService.on('new_ride_request', handleRideEvents.request);
-    socketService.on('ride_accepted', handleRideEvents.accepted);
-    socketService.on('ride_cancelled', handleRideEvents.cancelled);
-    socketService.on('ride_started', handleRideEvents.started);
-    socketService.on('ride_completed', handleRideEvents.completed);
+    const handlePriceProposal = (data) => {
+      dispatch(setCurrentRide({ 
+        proposedPrice: data.amount, 
+        driverName: data.driverName, 
+        status: 'negotiating' 
+      }));
+    };
 
-    // Location
-    socketService.on('driver_location_update', handleLocationEvents.driverUpdate);
-    socketService.on('driver_arrived', handleLocationEvents.driverArrived);
-    socketService.on('pancarte_active', handleLocationEvents.pancarte);
+    const handleProposalAccepted = (data) => {
+      dispatch(setCurrentRide({ ...data, status: 'accepted' }));
+      dispatch(clearIncomingRide());
+      dispatch(showSuccessToast({ 
+        title: 'Course confirmée', 
+        message: 'Le client a accepté votre tarif.' 
+      }));
+    };
 
-    // Système
-    socketService.on('notification', handleSystemEvents.notification);
-    socketService.on('subscription_validated', handleSystemEvents.subscription);
-    socketService.on('new_proof_submitted', handleSystemEvents.proof);
+    const handleProposalRejected = () => {
+      dispatch(clearIncomingRide());
+      dispatch(updateRideStatus({ status: 'searching' }));
+      dispatch(showErrorToast({ 
+        title: 'Prix refusé', 
+        message: 'Le client a décliné votre proposition.' 
+      }));
+    };
 
-    // --- CLEANUP ---
+    const handleRideStarted = (data) => {
+      dispatch(updateRideStatus({ 
+        status: 'ongoing', 
+        startedAt: data.startedAt 
+      }));
+    };
+
+    const handleRideCompleted = (data) => {
+      dispatch(updateRideStatus({ 
+        status: 'completed', 
+        finalPrice: data.finalPrice 
+      }));
+    };
+
+    socketService.on('new_ride_request', handleNewRideRequest);
+    socketService.on('ride_taken_by_other', handleRideTakenByOther);
+    socketService.on('driver_found', handleDriverFound);
+    socketService.on('price_proposal_received', handlePriceProposal);
+    socketService.on('proposal_accepted', handleProposalAccepted);
+    socketService.on('proposal_rejected', handleProposalRejected);
+    socketService.on('ride_started', handleRideStarted);
+    socketService.on('ride_completed', handleRideCompleted);
+
     return () => {
-      // On détache proprement tous les listeners à la fin
-      socketService.off('new_ride_request', handleRideEvents.request);
-      socketService.off('ride_accepted', handleRideEvents.accepted);
-      socketService.off('ride_cancelled', handleRideEvents.cancelled);
-      socketService.off('ride_started', handleRideEvents.started);
-      socketService.off('ride_completed', handleRideEvents.completed);
-      socketService.off('driver_location_update', handleLocationEvents.driverUpdate);
-      socketService.off('driver_arrived', handleLocationEvents.driverArrived);
-      socketService.off('pancarte_active', handleLocationEvents.pancarte);
-      socketService.off('notification', handleSystemEvents.notification);
-      socketService.off('subscription_validated', handleSystemEvents.subscription);
-      socketService.off('new_proof_submitted', handleSystemEvents.proof);
+      socketService.off('new_ride_request', handleNewRideRequest);
+      socketService.off('ride_taken_by_other', handleRideTakenByOther);
+      socketService.off('driver_found', handleDriverFound);
+      socketService.off('price_proposal_received', handlePriceProposal);
+      socketService.off('proposal_accepted', handleProposalAccepted);
+      socketService.off('proposal_rejected', handleProposalRejected);
+      socketService.off('ride_started', handleRideStarted);
+      socketService.off('ride_completed', handleRideCompleted);
     };
   }, [isAuthenticated, dispatch]);
 };

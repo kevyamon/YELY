@@ -1,74 +1,47 @@
-// src/store/slices/rideSlice.js
-
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  currentRide: null,
-  rideStatus: null, // 'idle', 'searching', 'requested', 'accepted', 'ongoing', 'completed', 'cancelled'
-  pickup: null, // { latitude, longitude, address }
-  destination: null, // { latitude, longitude, address }
-  selectedForfait: 'STANDARD', // 'ECHO', 'STANDARD', 'VIP'
-  estimatedPrice: 0,
-  estimatedTime: 0,
-  driverLocation: null, // Pour le tracking temps réel
-  assignedDriver: null,
-  isIdentifyMode: false, // Mode "Pancarte Numérique"
+  currentRide: null, 
+  incomingRide: null, 
 };
 
 const rideSlice = createSlice({
   name: 'ride',
   initialState,
   reducers: {
-    setPickup: (state, action) => {
-      state.pickup = action.payload;
+    setIncomingRide: (state, action) => {
+      state.incomingRide = action.payload;
     },
-    setDestination: (state, action) => {
-      state.destination = action.payload;
-    },
-    setSelectedForfait: (state, action) => {
-      state.selectedForfait = action.payload;
-    },
-    setEstimates: (state, action) => {
-      state.estimatedPrice = action.payload.price;
-      state.estimatedTime = action.payload.time;
-    },
-    setRideStatus: (state, action) => {
-      state.rideStatus = action.payload;
+    clearIncomingRide: (state) => {
+      state.incomingRide = null;
     },
     setCurrentRide: (state, action) => {
-      state.currentRide = action.payload;
-      state.rideStatus = action.payload?.status || 'idle';
+      state.currentRide = { ...state.currentRide, ...action.payload };
     },
-    setAssignedDriver: (state, action) => {
-      state.assignedDriver = action.payload;
+    updateRideStatus: (state, action) => {
+      if (state.currentRide) {
+        const { status, driverName, startedAt, finalPrice } = action.payload;
+        if (status) state.currentRide.status = status;
+        if (driverName) state.currentRide.driverName = driverName;
+        if (startedAt) state.currentRide.startedAt = startedAt;
+        if (finalPrice) state.currentRide.finalPrice = finalPrice;
+      }
     },
-    updateDriverLocation: (state, action) => {
-      state.driverLocation = action.payload;
-    },
-    activateIdentifyMode: (state) => {
-      state.isIdentifyMode = true;
-    },
-    deactivateIdentifyMode: (state) => {
-      state.isIdentifyMode = false;
-    },
-    resetRide: (state) => {
-      return initialState;
-    },
+    clearCurrentRide: (state) => {
+      state.currentRide = null;
+    }
   },
 });
 
-export const {
-  setPickup,
-  setDestination,
-  setSelectedForfait,
-  setEstimates,
-  setRideStatus,
-  setCurrentRide,
-  setAssignedDriver,
-  updateDriverLocation,
-  activateIdentifyMode,
-  deactivateIdentifyMode,
-  resetRide,
+export const { 
+  setIncomingRide, 
+  clearIncomingRide, 
+  setCurrentRide, 
+  updateRideStatus, 
+  clearCurrentRide 
 } = rideSlice.actions;
+
+export const selectIncomingRide = (state) => state.ride.incomingRide;
+export const selectCurrentRide = (state) => state.ride.currentRide;
 
 export default rideSlice.reducer;

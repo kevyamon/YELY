@@ -1,45 +1,59 @@
-// src/store/api/ridesApiSlice.js
-
 import { apiSlice } from '../slices/apiSlice';
 
 export const ridesApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
-    createRide: builder.mutation({
+    
+    // --- NOUVEAUX ENDPOINTS PHASE 6 (Matchmaking & Négociation) ---
+    requestRide: builder.mutation({
       query: (data) => ({
-        url: '/api/rides',
+        url: '/api/rides/request',
         method: 'POST',
         body: data,
       }),
       invalidatesTags: ['Ride'],
     }),
-    acceptRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/accept`,
-        method: 'PUT',
+    lockRide: builder.mutation({
+      query: (data) => ({
+        url: '/api/rides/lock',
+        method: 'POST',
+        body: data,
       }),
       invalidatesTags: ['Ride'],
     }),
-    rejectRide: builder.mutation({
-      query: ({ rideId, reason }) => ({
-        url: `/api/rides/${rideId}/reject`,
-        method: 'PUT',
-        body: { reason },
+    submitPrice: builder.mutation({
+      query: (data) => ({
+        url: '/api/rides/propose',
+        method: 'POST',
+        body: data,
       }),
+      invalidatesTags: ['Ride'],
+    }),
+    finalizeRide: builder.mutation({
+      query: (data) => ({
+        url: '/api/rides/finalize',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Ride'],
     }),
     startRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/start`,
-        method: 'PUT',
+      query: (data) => ({
+        url: '/api/rides/start',
+        method: 'POST',
+        body: data,
       }),
       invalidatesTags: ['Ride'],
     }),
     completeRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/complete`,
-        method: 'PUT',
+      query: (data) => ({
+        url: '/api/rides/complete',
+        method: 'POST',
+        body: data,
       }),
       invalidatesTags: ['Ride'],
     }),
+
+    // --- ANCIENS ENDPOINTS CONSERVÉS (Phase 5, Historique, etc.) ---
     cancelRide: builder.mutation({
       query: ({ rideId, reason }) => ({
         url: `/api/rides/${rideId}/cancel`,
@@ -63,20 +77,19 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       query: () => '/api/rides/current',
       providesTags: ['Ride'],
     }),
-    // 🏗️ PHASE 5 : NOUVEAU ENDPOINT POUR L'ESTIMATION
     estimateRide: builder.query({
       query: ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => 
         `/api/rides/estimate?pickupLat=${pickupLat}&pickupLng=${pickupLng}&dropoffLat=${dropoffLat}&dropoffLng=${dropoffLng}`,
     }),
   }),
-  // CORRECTION : Autorise le rechargement à chaud (Hot Reload) sans erreur de duplication
   overrideExisting: true,
 });
 
 export const {
-  useCreateRideMutation,
-  useAcceptRideMutation,
-  useRejectRideMutation,
+  useRequestRideMutation,
+  useLockRideMutation,
+  useSubmitPriceMutation,
+  useFinalizeRideMutation,
   useStartRideMutation,
   useCompleteRideMutation,
   useCancelRideMutation,

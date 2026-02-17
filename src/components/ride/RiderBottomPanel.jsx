@@ -1,5 +1,5 @@
 // src/components/ride/RiderBottomPanel.jsx
-// COMPOSANT PASSAGER (WEB) - Tracé de courbe complet (Full Contour)
+// COMPOSANT PASSAGER (WEB/MOBILE) - Tracé de courbe complet & RTK Query Ready
 
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,6 +16,7 @@ const RiderBottomPanel = ({
   estimationData,
   estimateError,
   onConfirmRide,
+  isOrdering, // 🚀 NOUVELLE PROP : Gère l'état de chargement de la commande
   topContent = null 
 }) => {
   const insets = useSafeAreaInsets();
@@ -47,15 +48,17 @@ const RiderBottomPanel = ({
            />
            
            <TouchableOpacity 
-             style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
-             disabled={!selectedVehicle || isEstimating}
+             style={[styles.confirmButton, (!selectedVehicle || isOrdering) && styles.confirmButtonDisabled]}
+             disabled={!selectedVehicle || isEstimating || isOrdering}
              onPress={onConfirmRide}
              activeOpacity={0.9}
            >
-             <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
-               {selectedVehicle 
-                  ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
-                  : 'Sélectionnez un véhicule'}
+             <Text style={[styles.confirmButtonText, (!selectedVehicle || isOrdering) && styles.confirmButtonTextDisabled]}>
+               {isOrdering 
+                 ? 'Recherche en cours...' 
+                 : selectedVehicle 
+                   ? `Commander Yély ${selectedVehicle.name || selectedVehicle.label || ''} • ${selectedVehicle.estimatedPrice || selectedVehicle.amount || 0} F`
+                   : 'Sélectionnez un véhicule'}
              </Text>
            </TouchableOpacity>
          </View>
@@ -81,12 +84,9 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     zIndex: 10,
-
-    // CORRECTION : Contour complet !
     borderWidth: 2.5,
-    borderBottomWidth: 0, // On cache juste la ligne collée au bas de l'écran
+    borderBottomWidth: 0, 
     borderColor: THEME.COLORS.champagneGold,
-    
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: -8 },
     shadowOpacity: 0.5,
