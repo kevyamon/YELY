@@ -1,21 +1,30 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Intégration Tracé GPS (Routing) & UX Modale Glass
+// HOME RIDER - Intégration Phase 5 (Estimation & Forfaits)
 
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import DestinationSearchModal from '../../components/ui/DestinationSearchModal.jsx'; // Pivot UX
+import VehicleCarousel from '../../components/ride/VehicleCarousel'; // INTÉGRATION PHASE 5
+import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice'; // INTÉGRATION API
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
+
+// Données de secours (Fallback) au cas où le backend ne réponde pas encore
+const MOCK_VEHICLES = [
+  { id: '1', type: 'echo', name: 'Echo', duration: '5', estimatedPrice: 1000 },
+  { id: '2', type: 'standard', name: 'Standard', duration: '3', estimatedPrice: 1500 },
+  { id: '3', type: 'vip', name: 'VIP', duration: '8', estimatedPrice: 3000 }
+];
 
 const RiderHome = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -26,9 +35,11 @@ const RiderHome = ({ navigation }) => {
   
   const [destination, setDestination] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null); 
-  
-  // NOUVEAU : État d'ouverture de la modale de recherche
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  
+  // PHASE 5 : Nouveaux états
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
@@ -49,14 +60,26 @@ const RiderHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
+  // Définition des véhicules à afficher (API ou Mock pour ne jamais bloquer l'UX)
+  const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
+
+  // Auto-sélection du véhicule Standard par défaut quand les forfaits s'affichent
+  useEffect(() => {
+    if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
+      const standardOption = displayVehicles.find(v => v.type === 'standard');
+      setSelectedVehicle(standardOption || displayVehicles[0]);
+    }
+  }, [destination, displayVehicles, selectedVehicle]);
+
   const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
 
   const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
+    setSelectedVehicle(null); // Réinitialisation du choix sur une nouvelle recherche
     
     if (location && mapRef.current) {
+      // 1. Tracé GPS
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
-      
       if (coords && coords.length > 0) {
         setRouteCoords(coords);
         mapRef.current.fitToCoordinates(coords, {
@@ -64,7 +87,21 @@ const RiderHome = ({ navigation }) => {
           animated: true,
         });
       }
+
+      // 2. Appel au backend pour estimer le prix
+      estimateRide({
+        pickupLat: location.latitude,
+        pickupLng: location.longitude,
+        dropoffLat: selectedPlace.latitude,
+        dropoffLng: selectedPlace.longitude
+      });
     }
+  };
+
+  const handleConfirmRide = () => {
+    if (!selectedVehicle) return;
+    console.log("🚀 Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
+    // TODO Phase 6 : createRide mutation + socket
   };
 
   const mapMarkers = destination ? [{
@@ -85,7 +122,7 @@ const RiderHome = ({ navigation }) => {
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={() => setIsSearchModalVisible(true)} // Ouvre la modale
+        onSearchPress={() => setIsSearchModalVisible(true)}
       />
 
       <View style={[
@@ -116,10 +153,28 @@ const RiderHome = ({ navigation }) => {
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
             
             {destination ? (
-               <View style={styles.destinationCard}>
-                  <Text style={styles.destinationTitle}>Destination choisie :</Text>
-                  <Text style={styles.destinationText} numberOfLines={2}>{destination.address}</Text>
-                  <Text style={styles.phase5Text}>Les forfaits s'afficheront ici (Phase 5)</Text>
+               <View style={styles.estimationWrapper}>
+                 <VehicleCarousel 
+                   vehicles={displayVehicles}
+                   selectedVehicle={selectedVehicle}
+                   onSelect={setSelectedVehicle}
+                   isLoading={isEstimating && !estimationData}
+                   error={estimateError}
+                 />
+                 
+                 {/* BOUTON D'ACTION PRINCIPAL (CTA) */}
+                 <TouchableOpacity 
+                   style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
+                   disabled={!selectedVehicle || isEstimating}
+                   onPress={handleConfirmRide}
+                   activeOpacity={0.9}
+                 >
+                   <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
+                     {selectedVehicle 
+                        ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
+                        : 'Sélectionnez un véhicule'}
+                   </Text>
+                 </TouchableOpacity>
                </View>
             ) : (
                <View style={styles.emptyCard}>
@@ -128,18 +183,11 @@ const RiderHome = ({ navigation }) => {
                  </Text>
                </View>
             )}
-            
-            <View style={styles.dotsContainer}>
-               <View style={[styles.dot, styles.dotActive]} />
-               <View style={styles.dot} />
-               <View style={styles.dot} />
-            </View>
           </View>
         </View>
 
       </View>
 
-      {/* MODALE DE RECHERCHE FLUIDE */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
@@ -177,24 +225,23 @@ const styles = StyleSheet.create({
     flex: 0.45, 
     backgroundColor: THEME.COLORS.background,
     paddingTop: THEME.SPACING.lg,
-    paddingHorizontal: THEME.SPACING.lg,
   },
   forfaitsContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
-    paddingTop: 10,
   },
   sectionTitle: {
     color: THEME.COLORS.textSecondary,
     fontSize: 11,
     fontWeight: 'bold',
-    marginBottom: 15,
+    marginBottom: 10,
     alignSelf: 'flex-start',
     letterSpacing: 2,
+    marginLeft: THEME.SPACING.lg,
   },
   emptyCard: {
-    width: '100%',
+    width: '90%',
     height: 110,
     backgroundColor: THEME.COLORS.glassLight,
     borderRadius: 16,
@@ -202,53 +249,45 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.glassBorder,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginTop: 10,
   },
   emptyCardText: {
     color: THEME.COLORS.textTertiary, 
     fontStyle: 'italic'
   },
-  destinationCard: {
+  estimationWrapper: {
     width: '100%',
-    height: 110,
-    backgroundColor: THEME.COLORS.glassSurface,
+    alignItems: 'center',
+  },
+  confirmButton: {
+    backgroundColor: THEME.COLORS.champagneGold,
+    paddingVertical: 16,
+    width: '90%',
     borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  confirmButtonDisabled: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
     borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold,
-    padding: 15,
-    justifyContent: 'center',
-    marginBottom: 20,
+    shadowOpacity: 0,
+    elevation: 0,
   },
-  destinationTitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 12,
-    marginBottom: 4,
-  },
-  destinationText: {
-    color: THEME.COLORS.textPrimary,
+  confirmButtonText: {
+    color: '#121418',
     fontSize: 16,
-    fontWeight: 'bold',
-    marginBottom: 8,
+    fontWeight: '900',
+    letterSpacing: 0.5,
   },
-  phase5Text: {
-    color: THEME.COLORS.danger,
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  dotsContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 8,
-  },
-  dot: { 
-    width: 6, 
-    height: 6, 
-    borderRadius: 3, 
-    backgroundColor: THEME.COLORS.glassBorder 
-  },
-  dotActive: { 
-    backgroundColor: THEME.COLORS.champagneGold, 
-    width: 20 
+  confirmButtonTextDisabled: {
+    color: THEME.COLORS.textTertiary,
   }
 });
 

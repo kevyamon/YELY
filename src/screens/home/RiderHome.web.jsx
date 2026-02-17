@@ -1,21 +1,29 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Layout Web avec Modale Glass
+// HOME RIDER WEB - Phase 5 : Forfaits & Estimation
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import DestinationSearchModal from '../../components/ui/DestinationSearchModal.jsx'; // Pivot UX
+import VehicleCarousel from '../../components/ride/VehicleCarousel';
+import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
+
+const MOCK_VEHICLES = [
+  { id: '1', type: 'echo', name: 'Echo', duration: '5', estimatedPrice: 1000 },
+  { id: '2', type: 'standard', name: 'Standard', duration: '3', estimatedPrice: 1500 },
+  { id: '3', type: 'vip', name: 'VIP', duration: '8', estimatedPrice: 3000 }
+];
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
@@ -27,21 +35,44 @@ const RiderHome = ({ navigation }) => {
   
   const [destination, setDestination] = useState(null);
   const [routeCoords, setRouteCoords] = useState(null); 
-  
-  // NOUVEAU : État d'ouverture
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+
+  const [selectedVehicle, setSelectedVehicle] = useState(null);
+  const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
+
+  const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
+
+  useEffect(() => {
+    if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
+      const standardOption = displayVehicles.find(v => v.type === 'standard');
+      setSelectedVehicle(standardOption || displayVehicles[0]);
+    }
+  }, [destination, displayVehicles, selectedVehicle]);
 
   const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
+    setSelectedVehicle(null);
     
     if (location && mapRef.current) {
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
       
       if (coords && coords.length > 0) {
         setRouteCoords(coords);
-        mapRef.current.fitToCoordinates(coords); // Sur le web, Leaflet gère le fitToBounds différemment
+        mapRef.current.fitToCoordinates(coords); 
       }
+
+      estimateRide({
+        pickupLat: location.latitude,
+        pickupLng: location.longitude,
+        dropoffLat: selectedPlace.latitude,
+        dropoffLng: selectedPlace.longitude
+      });
     }
+  };
+
+  const handleConfirmRide = () => {
+    if (!selectedVehicle) return;
+    console.log("🚀 Lancement Web Phase 6 pour :", selectedVehicle.name);
   };
 
   const mapMarkers = destination ? [{
@@ -56,7 +87,6 @@ const RiderHome = ({ navigation }) => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
 
-      {/* ═══════ ZONE HAUTE : Adresse + Menu ═══════ */}
       <View style={styles.topBar}>
         <View style={styles.locationContainer}>
           <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
@@ -71,7 +101,6 @@ const RiderHome = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* ═══════ ZONE CENTRALE : La Carte (Aérée) ═══════ */}
       <View style={styles.mapWrapper}>
         {location ? (
           <MapCard
@@ -90,51 +119,66 @@ const RiderHome = ({ navigation }) => {
         )}
       </View>
 
-      {/* ═══════ ZONE BASSE : Recherche & Offres ═══════ */}
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
 
-        <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
-          <GlassCard style={styles.searchCard}>
-            <View style={styles.searchRow}>
-              <View style={styles.searchIconContainer}>
-                <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
+        {!destination && (
+          <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
+            <GlassCard style={styles.searchCard}>
+              <View style={styles.searchRow}>
+                <View style={styles.searchIconContainer}>
+                  <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
+                </View>
+                <View style={styles.searchTextContainer}>
+                  <Text style={styles.searchLabel}>Où allez-vous ?</Text>
+                  <Text style={styles.searchHint}>Saisissez votre destination</Text>
+                </View>
+                <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.textTertiary} />
               </View>
-              <View style={styles.searchTextContainer}>
-                <Text style={styles.searchLabel}>
-                  {destination ? "Changer de destination" : "Où allez-vous ?"}
-                </Text>
-                <Text style={styles.searchHint} numberOfLines={1}>
-                  {destination ? destination.address : "Saisissez votre destination"}
-                </Text>
-              </View>
-              <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.textTertiary} />
-            </View>
-          </GlassCard>
-        </TouchableOpacity>
+            </GlassCard>
+          </TouchableOpacity>
+        )}
 
-        <View style={styles.forfaitsPlaceholder}>
-          <Text style={styles.sectionTitle}>NOS OFFRES</Text>
+        <View style={[styles.forfaitsPlaceholder, destination && { marginTop: 0 }]}>
+          <View style={styles.titleRow}>
+            <Text style={styles.sectionTitle}>NOS OFFRES</Text>
+            {destination && (
+               <TouchableOpacity onPress={() => setIsSearchModalVisible(true)}>
+                  <Text style={styles.editDestText}>Modifier dest.</Text>
+               </TouchableOpacity>
+            )}
+          </View>
           
           {destination ? (
-             <View style={styles.destinationBox}>
-                <Text style={styles.destinationTitle}>Destination : {destination.address}</Text>
-                <Text style={styles.phase5Text}>Tarification et forfaits en cours de calcul (Phase 5)...</Text>
+             <View style={styles.estimationWrapper}>
+               <VehicleCarousel 
+                 vehicles={displayVehicles}
+                 selectedVehicle={selectedVehicle}
+                 onSelect={setSelectedVehicle}
+                 isLoading={isEstimating && !estimationData}
+                 error={estimateError}
+               />
+               
+               <TouchableOpacity 
+                 style={[styles.confirmButton, !selectedVehicle && styles.confirmButtonDisabled]}
+                 disabled={!selectedVehicle || isEstimating}
+                 onPress={handleConfirmRide}
+                 activeOpacity={0.9}
+               >
+                 <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
+                   {selectedVehicle 
+                      ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
+                      : 'Sélectionnez un véhicule'}
+                 </Text>
+               </TouchableOpacity>
              </View>
           ) : (
              <View style={styles.emptyBox}>
                 <Text style={styles.emptyText}>Sélectionnez une destination</Text>
              </View>
           )}
-          
-          <View style={styles.forfaitDots}>
-            <View style={[styles.dot, styles.dotActive]} />
-            <View style={styles.dot} />
-            <View style={styles.dot} />
-          </View>
         </View>
       </View>
 
-      {/* MODALE DE RECHERCHE FLUIDE */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
@@ -187,7 +231,7 @@ const styles = StyleSheet.create({
   },
   mapWrapper: {
     flex: 1,
-    marginTop: 20, 
+    marginTop: 10, 
   },
   loadingContainer: {
     height: 300,
@@ -235,13 +279,23 @@ const styles = StyleSheet.create({
     marginTop: 25,
     alignItems: 'center',
   },
+  titleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
   sectionTitle: {
     color: THEME.COLORS.textSecondary,
     fontSize: 11,
     fontWeight: 'bold',
-    alignSelf: 'flex-start',
-    marginBottom: 15,
     letterSpacing: 1,
+  },
+  editDestText: {
+    color: THEME.COLORS.champagneGold,
+    fontSize: 12,
+    fontWeight: 'bold',
   },
   emptyBox: {
     width: '100%',
@@ -257,42 +311,33 @@ const styles = StyleSheet.create({
     fontStyle: 'italic',
     fontSize: 12,
   },
-  destinationBox: {
+  estimationWrapper: {
     width: '100%',
-    height: 80,
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: 12,
-    justifyContent: 'center',
-    padding: 15,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold,
-    marginBottom: 15,
+    alignItems: 'center',
   },
-  destinationTitle: {
-    color: THEME.COLORS.textPrimary,
-    fontWeight: 'bold',
-    fontSize: 14,
-    marginBottom: 5,
-  },
-  phase5Text: {
-    color: THEME.COLORS.danger,
-    fontSize: 12,
-    fontStyle: 'italic',
-  },
-  forfaitDots: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  dot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: THEME.COLORS.glassBorder,
-  },
-  dotActive: {
+  confirmButton: {
     backgroundColor: THEME.COLORS.champagneGold,
-    width: 18,
+    paddingVertical: 16,
+    width: '100%',
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
   },
+  confirmButtonDisabled: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
+    borderWidth: 1,
+  },
+  confirmButtonText: {
+    color: '#121418',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
+  },
+  confirmButtonTextDisabled: {
+    color: THEME.COLORS.textTertiary,
+  }
 });
 
 export default RiderHome;
