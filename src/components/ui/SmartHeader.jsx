@@ -1,13 +1,14 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT & DYNAMIQUE
-// S'adapte au scroll et affiche les vraies données (Adresse, Nom)
+// HEADER INTELLIGENT & DYNAMIQUE - Version UX Premium (Bouton CTA)
 
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedStyle
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -43,14 +44,14 @@ const SmartHeader = ({
     const shadowOpacity = interpolate(
       scrollY.value,
       [0, scrollDistance],
-      [0, 0.3], // L'ombre apparaît à la fin
+      [0, 0.3], 
       Extrapolation.CLAMP
     );
 
     return { height, shadowOpacity, elevation: shadowOpacity * 10 };
   });
 
-  // 2. Animation SearchBar/CTA (Disparition)
+  // 2. Animation CTA (Disparition au scroll)
   const ctaAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
@@ -61,15 +62,14 @@ const SmartHeader = ({
     const translateY = interpolate(
       scrollY.value,
       [0, scrollDistance],
-      [0, -20],
+      [0, -15],
       Extrapolation.CLAMP
     );
-    // On masque la vue pour éviter les clics fantômes quand invisible
     const display = opacity === 0 ? 'none' : 'flex';
     return { opacity, transform: [{ translateY }], display };
   });
 
-  // 3. Animation Titre Adresse (Apparition)
+  // 3. Animation Titre Adresse (Apparition au centre)
   const titleAnimatedStyle = useAnimatedStyle(() => {
     const opacity = interpolate(
       scrollY.value,
@@ -86,9 +86,15 @@ const SmartHeader = ({
     return { opacity, transform: [{ translateY }] };
   });
 
+  // 4. NOUVEAU : Animation du "Pop" pour le bouton CTA
+  const buttonScale = useSharedValue(1);
+  const buttonPopStyle = useAnimatedStyle(() => {
+    return { transform: [{ scale: buttonScale.value }] };
+  });
+
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
-      {/* Fond Opaque pour cacher le contenu qui scroll dessous */}
+      {/* Fond Opaque */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -100,7 +106,7 @@ const SmartHeader = ({
             <View style={styles.badge} />
           </TouchableOpacity>
 
-          {/* Titre Adresse (Visible uniquement quand header réduit) */}
+          {/* Titre Adresse au Scroll */}
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
             <Text style={styles.locationTitle} numberOfLines={1}>
               📍 {address}
@@ -112,14 +118,12 @@ const SmartHeader = ({
           </TouchableOpacity>
         </View>
 
-        {/* LIGNE DU BAS : Contenu Dynamique (Disparaît au scroll) */}
+        {/* LIGNE DU BAS : Contenu Dynamique */}
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           
-          {/* 1. BLOC SALUTATION */}
           <View style={styles.greetingHeader}>
              <Text style={styles.greetingText}>Bonjour, {userName}</Text>
              
-             {/* MODE RIDER : Adresse en sous-titre */}
              {isRider && (
                <View style={styles.riderAddressRow}>
                   <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
@@ -128,27 +132,26 @@ const SmartHeader = ({
              )}
           </View>
 
-          {/* 2. MODE DRIVER : Le Badge GPS bien visible */}
           {!isRider && (
              <View style={styles.driverGpsBadge}>
-                 <Ionicons name="navigate" size={20} color={THEME.COLORS.champagneGold} />
+                 <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                  <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
              </View>
           )}
           
-          {/* 3. MODE RIDER : Le Bouton d'action principal (CTA) */}
+          {/* NOUVEAU CTA : Bouton compact, jaune, texte noir avec effet POP */}
           {isRider && (
-            <TouchableOpacity 
-              style={styles.ctaButton} 
-              activeOpacity={0.8} 
-              onPress={onSearchPress}
-            >
-              <View style={styles.ctaIconWrapper}>
-                <Ionicons name="car-sport" size={24} color={THEME.COLORS.champagneGold} />
-              </View>
-              <Text style={styles.ctaText}>Commander un taxi</Text>
-              <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textTertiary} style={{marginLeft: 'auto'}}/>
-            </TouchableOpacity>
+            <Animated.View style={[styles.ctaWrapper, buttonPopStyle]}>
+              <Pressable 
+                style={styles.ctaButton} 
+                onPressIn={() => buttonScale.value = withSpring(0.92)} // Se contracte
+                onPressOut={() => buttonScale.value = withSpring(1)}   // Rebondit
+                onPress={onSearchPress}
+              >
+                <Ionicons name="car-sport" size={22} color="#121418" />
+                <Text style={styles.ctaText}>Commander un taxi</Text>
+              </Pressable>
+            </Animated.View>
           )}
           
         </Animated.View>
@@ -191,7 +194,7 @@ const styles = StyleSheet.create({
   locationTitle: {
     color: THEME.COLORS.textPrimary,
     fontWeight: '800',
-    fontSize: 16,
+    fontSize: 14,
   },
   iconButton: {
     width: 40,
@@ -213,10 +216,11 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.danger,
   },
   ctaContainer: {
-    marginTop: 5,
+    // Retrait des marges excessives pour éviter le débordement
+    marginTop: 0, 
   },
   greetingHeader: {
-    marginBottom: 12,
+    marginBottom: 6, // Plus serré pour laisser de la place au bouton
   },
   greetingText: {
     color: THEME.COLORS.textSecondary,
@@ -224,8 +228,6 @@ const styles = StyleSheet.create({
     marginBottom: 4,
     marginLeft: 4,
   },
-  
-  // --- STYLES SPÉCIFIQUES RIDER ---
   riderAddressRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -234,34 +236,38 @@ const styles = StyleSheet.create({
   },
   riderAddressText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     marginLeft: 4,
     opacity: 0.9,
   },
-  // NOUVEAUX STYLES CTA (Bouton Commander)
+
+  // --- STYLES SPÉCIFIQUES DU NOUVEAU CTA ---
+  ctaWrapper: {
+    alignItems: 'center', // Centre le bouton horizontalement
+    marginTop: 4,
+  },
   ctaButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
+    justifyContent: 'center',
+    backgroundColor: THEME.COLORS.champagneGold, // JAUNE YÉLY
     paddingVertical: 12,
-    paddingHorizontal: 16,
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold, // Bordure dorée pour l'appel à l'action
+    paddingHorizontal: 28, // Forme de pilule
+    borderRadius: 30, // Bords totalement arrondis
+    height: 48, // Hauteur bloquée pour ne JAMAIS toucher la carte
+    // Ombres dorées pour l'effet premium
     shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  ctaIconWrapper: {
-    marginRight: 12,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    elevation: 6,
   },
   ctaText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
+    color: '#121418', // Noir profond pour contraste parfait
+    fontSize: 16,
+    fontWeight: '900', // Très gras
+    marginLeft: 10,
     letterSpacing: 0.5,
   },
 
@@ -280,8 +286,8 @@ const styles = StyleSheet.create({
   },
   gpsText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '500',
     marginLeft: 8,
     flex: 1, 
   }

@@ -1,13 +1,10 @@
 // src/services/mapService.js
 // SERVICE CARTO & GÉOLOCALISATION - Niveau Industriel (Open Source)
-// Moteur de recherche : OpenStreetMap (Nominatim) - 100% Gratuit
+// Moteurs : Nominatim (Recherche) + OSRM (Calcul d'itinéraire)
 
 import * as Location from 'expo-location';
 
 class MapService {
-  /**
-   * Initialise les permissions GPS
-   */
   static async requestPermissions() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -21,9 +18,6 @@ class MapService {
     }
   }
 
-  /**
-   * Récupère la position actuelle de l'utilisateur
-   */
   static async getCurrentLocation() {
     try {
       const location = await Location.getCurrentPositionAsync({
@@ -39,18 +33,11 @@ class MapService {
     }
   }
 
-  /**
-   * 🏗️ PHASE 4 : AUTOCOMPLÉTION DES ADRESSES (OPENSTREETMAP)
-   * Utilise l'API gratuite Nominatim.
-   */
   static async getPlaceSuggestions(query) {
     if (!query || query.length < 3) return [];
 
     try {
-      // CORRECTION WEB : On passe l'email dans l'URL (paramètre &email=) 
-      // au lieu de le mettre dans le header 'User-Agent' pour éviter le blocage CORS du navigateur.
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
-
       const response = await fetch(url);
       const data = await response.json();
 
@@ -64,7 +51,6 @@ class MapService {
           longitude: parseFloat(item.lon),
         }));
       }
-      
       return [];
     } catch (error) {
       console.error('[MapService] Erreur getPlaceSuggestions:', error);
@@ -72,9 +58,6 @@ class MapService {
     }
   }
 
-  /**
-   * 🏗️ PHASE 4 : GEOCODING
-   */
   static async getCoordinatesFromPlaceId(placeId, fallbackCoords) {
     if (fallbackCoords && fallbackCoords.latitude && fallbackCoords.longitude) {
       return fallbackCoords;
@@ -82,14 +65,9 @@ class MapService {
     throw new Error('Coordonnées introuvables.');
   }
 
-  /**
-   * GÉOCODAGE INVERSE (Coordonnées -> Adresse texte)
-   */
   static async getAddressFromCoordinates(lat, lng) {
     try {
-      // CORRECTION WEB : Passage de l'email dans l'URL
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
-      
       const response = await fetch(url);
       const data = await response.json();
 
@@ -102,6 +80,36 @@ class MapService {
       console.error('[MapService] Erreur getAddressFromCoordinates:', error);
       return "Recherche de l'adresse...";
     }
+  }
+
+  /**
+   * 🏗️ NOUVEAU : CALCUL D'ITINÉRAIRE (ROUTING VIA OSRM)
+   * Génère le tracé exact en suivant les routes.
+   */
+  static async getRouteCoordinates(startCoords, endCoords) {
+    try {
+      // OSRM demande la longitude en premier (lon,lat)
+      const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.longitude},${endCoords.latitude}?overview=full&geometries=geojson`;
+      
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (data.code === 'Ok' && data.routes.length > 0) {
+        // OSRM renvoie un tableau [longitude, latitude], MapView veut {latitude, longitude}
+        return data.routes[0].geometry.coordinates.map(coord => ({
+          latitude: coord[1],
+          longitude: coord[0],
+        }));
+      }
+    } catch (error) {
+      console.error('[MapService] Erreur OSRM Route:', error);
+    }
+    
+    // Fallback de sécurité : Si le serveur échoue, on trace une ligne droite
+    return [
+      { latitude: startCoords.latitude, longitude: startCoords.longitude },
+      { latitude: endCoords.latitude, longitude: endCoords.longitude }
+    ];
   }
 }
 

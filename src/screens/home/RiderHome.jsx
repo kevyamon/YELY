@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - UX Aérée & Couleurs Thème
+// HOME RIDER - Intégration Tracé GPS (Routing) & UX Modale Glass
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import DestinationSearchSheet from '../../components/ui/DestinationSearchSheet'; // INTÉGRATION PHASE 4
+import DestinationSearchModal from '../../components/ui/DestinationSearchModal.jsx'; // Pivot UX
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -24,11 +24,13 @@ const RiderHome = ({ navigation }) => {
   const { location, errorMsg } = useGeolocation(); 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
-  // NOUVEAU : État pour la destination choisie et ref pour le bottom sheet
   const [destination, setDestination] = useState(null);
-  const searchSheetRef = useRef(null);
-  const mapRef = useRef(null);
+  const [routeCoords, setRouteCoords] = useState(null); 
   
+  // NOUVEAU : État d'ouverture de la modale de recherche
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  
+  const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
 
   useEffect(() => {
@@ -47,56 +49,43 @@ const RiderHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
-  // Ajustement de l'espacement pour ne pas coller au Header
   const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
 
-  // NOUVEAU : Fonction appelée quand le sheet renvoie une destination
-  const handleDestinationSelect = (selectedPlace) => {
+  const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
     
-    // Zoomer pour voir la position actuelle ET la destination
     if (location && mapRef.current) {
-      const coords = [
-        { latitude: location.latitude, longitude: location.longitude },
-        { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
-      ];
-      // On encadre les deux points avec une marge (padding)
-      mapRef.current.fitToCoordinates(coords, {
-        edgePadding: { top: 100, right: 50, bottom: 50, left: 50 },
-        animated: true,
-      });
+      const coords = await MapService.getRouteCoordinates(location, selectedPlace);
+      
+      if (coords && coords.length > 0) {
+        setRouteCoords(coords);
+        mapRef.current.fitToCoordinates(coords, {
+          edgePadding: { top: 120, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
+      }
     }
   };
 
-  // NOUVEAU : Fonction pour ouvrir le tiroir
-  const handleOpenSearch = () => {
-    if (searchSheetRef.current) {
-      searchSheetRef.current.snapToIndex(1); // 1 = le snapPoint à 85% défini dans DestinationSearchSheet
-    }
-  };
-
-  // Préparation des marqueurs pour MapCard
   const mapMarkers = destination ? [{
     id: 'destination',
     latitude: destination.latitude,
     longitude: destination.longitude,
     title: destination.address,
     icon: 'flag',
-    iconColor: THEME.COLORS.danger // Couleur différente pour bien distinguer la destination
+    iconColor: THEME.COLORS.danger 
   }] : [];
 
   return (
     <ScreenWrapper>
       
-      {/* HEADER RIDER */}
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Passager"}
-        mode="rider"
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={handleOpenSearch} // CONNEXION DU BOUTON
+        onSearchPress={() => setIsSearchModalVisible(true)} // Ouvre la modale
       />
 
       <View style={[
@@ -104,7 +93,6 @@ const RiderHome = ({ navigation }) => {
         { paddingTop: topPadding, backgroundColor: THEME.COLORS.background }
       ]}>
         
-        {/* SECTION CARTE */}
         <View style={styles.mapSection}>
            {location ? (
              <MapCard 
@@ -112,7 +100,8 @@ const RiderHome = ({ navigation }) => {
                location={location}
                showUserMarker={true}
                darkMode={true}
-               markers={mapMarkers} // Ajout du marqueur destination s'il existe
+               markers={mapMarkers}
+               route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
              />
            ) : (
              <View style={styles.loadingContainer}>
@@ -122,17 +111,14 @@ const RiderHome = ({ navigation }) => {
            )}
         </View>
 
-        {/* SECTION OFFRES (Bas de page) */}
         <View style={styles.bottomSection}>
-          
           <View style={styles.forfaitsContainer}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
             
             {destination ? (
-               // Si une destination est choisie, on affiche un résumé temporaire en attendant la Phase 5
                <View style={styles.destinationCard}>
                   <Text style={styles.destinationTitle}>Destination choisie :</Text>
-                  <Text style={styles.destinationText}>{destination.address}</Text>
+                  <Text style={styles.destinationText} numberOfLines={2}>{destination.address}</Text>
                   <Text style={styles.phase5Text}>Les forfaits s'afficheront ici (Phase 5)</Text>
                </View>
             ) : (
@@ -149,14 +135,14 @@ const RiderHome = ({ navigation }) => {
                <View style={styles.dot} />
             </View>
           </View>
-
         </View>
 
       </View>
 
-      {/* LE TIROIR DE RECHERCHE */}
-      <DestinationSearchSheet 
-        ref={searchSheetRef}
+      {/* MODALE DE RECHERCHE FLUIDE */}
+      <DestinationSearchModal 
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
       />
 
@@ -169,48 +155,36 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
-
   mapSection: {
     flex: 0.55, 
     overflow: 'hidden',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
     backgroundColor: THEME.COLORS.surface, 
-    zIndex: 1,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 8,
   },
-
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
   },
-
   loadingText: {
     color: THEME.COLORS.textSecondary, 
     marginTop: 10, 
     fontSize: 12
   },
-
   bottomSection: {
     flex: 0.45, 
     backgroundColor: THEME.COLORS.background,
     paddingTop: THEME.SPACING.lg,
     paddingHorizontal: THEME.SPACING.lg,
   },
-
   forfaitsContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: 10,
   },
-
   sectionTitle: {
     color: THEME.COLORS.textSecondary,
     fontSize: 11,
@@ -219,7 +193,6 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     letterSpacing: 2,
   },
-
   emptyCard: {
     width: '100%',
     height: 110,
@@ -231,12 +204,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 20,
   },
-
   emptyCardText: {
     color: THEME.COLORS.textTertiary, 
     fontStyle: 'italic'
   },
-  
   destinationCard: {
     width: '100%',
     height: 110,
@@ -248,39 +219,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: 20,
   },
-  
   destinationTitle: {
     color: THEME.COLORS.textSecondary,
     fontSize: 12,
     marginBottom: 4,
   },
-  
   destinationText: {
     color: THEME.COLORS.textPrimary,
     fontSize: 16,
     fontWeight: 'bold',
     marginBottom: 8,
   },
-  
   phase5Text: {
     color: THEME.COLORS.danger,
     fontSize: 12,
     fontStyle: 'italic',
   },
-
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
   },
-
   dot: { 
     width: 6, 
     height: 6, 
     borderRadius: 3, 
     backgroundColor: THEME.COLORS.glassBorder 
   },
-
   dotActive: { 
     backgroundColor: THEME.COLORS.champagneGold, 
     width: 20 

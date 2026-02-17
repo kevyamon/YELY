@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Layout Web avec Logique Unifiée
+// HOME RIDER WEB - Layout Web avec Modale Glass
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
@@ -9,46 +9,41 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import DestinationSearchSheet from '../../components/ui/DestinationSearchSheet'; // INTÉGRATION PHASE 4
+import DestinationSearchModal from '../../components/ui/DestinationSearchModal.jsx'; // Pivot UX
 import GlassCard from '../../components/ui/GlassCard';
 
 import useGeolocation from '../../hooks/useGeolocation';
+import MapService from '../../services/mapService';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
-  const searchSheetRef = useRef(null); // Réf pour le bottom sheet
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   
   const { location, address } = useGeolocation();
   const currentAddress = address || 'Localisation en cours...';
   
-  // NOUVEAU : État pour la destination
   const [destination, setDestination] = useState(null);
+  const [routeCoords, setRouteCoords] = useState(null); 
+  
+  // NOUVEAU : État d'ouverture
+  const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
 
-  // NOUVEAU : Fonction appelée par le search sheet
-  const handleDestinationSelect = (selectedPlace) => {
+  const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
     
     if (location && mapRef.current) {
-      const coords = [
-        { latitude: location.latitude, longitude: location.longitude },
-        { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
-      ];
-      mapRef.current.fitToCoordinates(coords);
+      const coords = await MapService.getRouteCoordinates(location, selectedPlace);
+      
+      if (coords && coords.length > 0) {
+        setRouteCoords(coords);
+        mapRef.current.fitToCoordinates(coords); // Sur le web, Leaflet gère le fitToBounds différemment
+      }
     }
   };
 
-  // NOUVEAU : Fonction pour ouvrir le sheet
-  const handleOpenSearch = () => {
-    if (searchSheetRef.current) {
-      searchSheetRef.current.snapToIndex(1);
-    }
-  };
-
-  // Préparation des marqueurs
   const mapMarkers = destination ? [{
     id: 'destination',
     latitude: destination.latitude,
@@ -85,7 +80,8 @@ const RiderHome = ({ navigation }) => {
             showUserMarker
             showRecenterButton
             darkMode
-            markers={mapMarkers} // Ajout du marqueur destination
+            markers={mapMarkers} 
+            route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
           />
         ) : (
           <View style={styles.loadingContainer}>
@@ -97,7 +93,7 @@ const RiderHome = ({ navigation }) => {
       {/* ═══════ ZONE BASSE : Recherche & Offres ═══════ */}
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
 
-        <TouchableOpacity activeOpacity={0.8} onPress={handleOpenSearch}>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => setIsSearchModalVisible(true)}>
           <GlassCard style={styles.searchCard}>
             <View style={styles.searchRow}>
               <View style={styles.searchIconContainer}>
@@ -138,9 +134,10 @@ const RiderHome = ({ navigation }) => {
         </View>
       </View>
 
-      {/* LE TIROIR DE RECHERCHE */}
-      <DestinationSearchSheet 
-        ref={searchSheetRef}
+      {/* MODALE DE RECHERCHE FLUIDE */}
+      <DestinationSearchModal 
+        visible={isSearchModalVisible}
+        onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
       />
 
