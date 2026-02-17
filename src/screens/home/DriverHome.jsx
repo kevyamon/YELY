@@ -1,9 +1,9 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - HEADER CONDUCTEUR
+// HOME DRIVER - CORRIGÉ (Statistiques & Carte Statut visibles en mode Jour)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Switch, Text, View, useColorScheme } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -23,6 +23,8 @@ export default function DriverHome({ navigation }) {
   const mapRef = useRef(null);
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark'; 
   
   const user = useSelector(selectCurrentUser);
   const { location, errorMsg } = useGeolocation();
@@ -71,39 +73,53 @@ export default function DriverHome({ navigation }) {
   return (
     <ScreenWrapper>
 
-      {/* HEADER MODE DRIVER (IMPORTANT) */}
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Chauffeur"}
-        mode="driver" // ✅ C'est ICI que ça se joue
+        mode="driver"
         onMenuPress={() => navigation.openDrawer()}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
+      {/* 1. LE FOND PRINCIPAL (S'adapte Jour/Nuit) */}
       <View style={[
         styles.mainContainer, 
-        { paddingTop: topPadding, backgroundColor: THEME.COLORS.deepAsphalt }
+        { paddingTop: topPadding, backgroundColor: THEME.COLORS.background } 
       ]}>
 
-        <View style={styles.mapSection}>
+        {/* 2. SECTION CARTE */}
+        <View style={[styles.mapSection, { backgroundColor: isDark ? '#1a1a1a' : '#e0e0e0' }]}>
            {location ? (
              <MapCard 
                ref={mapRef}
                location={location}
                showUserMarker={true}
-               darkMode={true}
+               darkMode={isDark}
              />
            ) : (
              <View style={styles.loadingContainer}>
                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-               <Text style={styles.loadingText}>Localisation...</Text>
+               <Text style={[styles.loadingText, { color: THEME.COLORS.textSecondary }]}>Localisation...</Text>
              </View>
            )}
         </View>
 
-        <View style={styles.bottomSection}>
-          <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
+        {/* 3. SECTION DU BAS (Celle qui posait problème) */}
+        <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
+          
+          {/* CARTE DE STATUT (En Ligne / Hors Ligne) */}
+          <View style={[
+            styles.availabilityCard, 
+            { 
+              // C'est ici le secret : On utilise glassSurface (qui devient blanc opaque le jour)
+              backgroundColor: THEME.COLORS.glassSurface,
+              // Et on force la bordure grise visible
+              borderColor: THEME.COLORS.border,
+              borderWidth: 1 // On s'assure que l'épaisseur est là
+            }, 
+            isAvailable && styles.availabilityCardOnline
+          ]}>
             <View style={styles.availabilityRow}>
               <View style={styles.statusInfo}>
                 <View style={styles.statusHeader}>
@@ -112,11 +128,15 @@ export default function DriverHome({ navigation }) {
                     size={18} 
                     color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary} 
                   />
-                  <Text style={[styles.statusTitle, isAvailable && { color: THEME.COLORS.success }]}>
+                  <Text style={[
+                      styles.statusTitle, 
+                      { color: THEME.COLORS.textPrimary }, // Noir le jour / Blanc la nuit
+                      isAvailable && { color: THEME.COLORS.success }
+                    ]}>
                     {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
                   </Text>
                 </View>
-                <Text style={styles.statusSubtitle}>
+                <Text style={[styles.statusSubtitle, { color: THEME.COLORS.textSecondary }]}>
                   {isAvailable ? 'En attente de courses...' : 'Passez en ligne pour travailler'}
                 </Text>
               </View>
@@ -125,12 +145,13 @@ export default function DriverHome({ navigation }) {
                 value={isAvailable}
                 onValueChange={handleToggleAvailability}
                 disabled={isToggling}
-                trackColor={{ false: 'rgba(255,255,255,0.1)', true: 'rgba(46, 204, 113, 0.3)' }}
+                trackColor={{ false: 'rgba(128,128,128,0.3)', true: 'rgba(46, 204, 113, 0.3)' }}
                 thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
               />
             </View>
           </View>
 
+          {/* LES STATS (Les 3 carrés) */}
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value="0" label="Courses" />
             <StatBox icon="time" value="0h" label="Heures" />
@@ -144,11 +165,37 @@ export default function DriverHome({ navigation }) {
   );
 }
 
+// COMPOSANT STATBOX CORRIGÉ
+// Avant : il avait souvent des couleurs "white" forcées.
+// Maintenant : il écoute le THÈME.
 const StatBox = ({ icon, value, label, isGold }) => (
-  <View style={styles.statBox}>
-    <Ionicons name={icon} size={22} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
-    <Text style={[styles.statValue, isGold && { color: THEME.COLORS.champagneGold }]}>{value}</Text>
-    <Text style={styles.statLabel}>{label}</Text>
+  <View style={[
+    styles.statBox, 
+    { 
+      backgroundColor: THEME.COLORS.glassSurface, // Devient Blanc pur ou Gris vitré
+      borderColor: THEME.COLORS.border,           // Le contour gris visible
+      borderWidth: 1
+    }
+  ]}>
+    <Ionicons 
+      name={icon} 
+      size={22} 
+      // L'icône change de couleur selon le thème (pas juste blanc)
+      color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
+    />
+    <Text style={[
+      styles.statValue, 
+      { color: THEME.COLORS.textPrimary }, // LE TEXTE DEVIENT NOIR EN MODE JOUR
+      isGold && { color: THEME.COLORS.champagneGold }
+    ]}>
+      {value}
+    </Text>
+    <Text style={[
+      styles.statLabel, 
+      { color: THEME.COLORS.textTertiary }
+    ]}>
+      {label}
+    </Text>
   </View>
 );
 
@@ -162,7 +209,6 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    backgroundColor: '#1a1a1a',
     zIndex: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -174,29 +220,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
   },
   loadingText: {
-    color: 'white', 
     marginTop: 10, 
     fontSize: 12
   },
   bottomSection: {
     flex: 0.45,
-    backgroundColor: THEME.COLORS.deepAsphalt,
     paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,
   },
   availabilityCard: {
-    backgroundColor: THEME.COLORS.glassLight,
     borderRadius: 16,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
     padding: 16,
     marginBottom: 20,
+    // On enlève les styles fixes ici pour laisser le style dynamique (dans le JSX) gérer
   },
   availabilityCardOnline: {
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
+    backgroundColor: 'rgba(46, 204, 113, 0.08)', // Vert très clair, ça passe sur blanc et noir
     borderColor: 'rgba(46, 204, 113, 0.3)',
   },
   availabilityRow: {
@@ -211,13 +252,11 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   statusTitle: {
-    color: THEME.COLORS.textSecondary,
     fontWeight: '900',
     fontSize: 14,
     letterSpacing: 1,
   },
   statusSubtitle: {
-    color: THEME.COLORS.textTertiary,
     fontSize: 11,
   },
   statsContainer: {
@@ -227,21 +266,17 @@ const styles = StyleSheet.create({
   },
   statBox: {
     flex: 1,
-    backgroundColor: 'rgba(255,255,255,0.03)',
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    // shadowColor etc géré par le thème si besoin, restons simple pour le contraste
   },
   statValue: {
-    color: 'white',
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 4,
   },
   statLabel: {
-    color: THEME.COLORS.textTertiary,
     fontSize: 10,
     textTransform: 'uppercase',
   }
