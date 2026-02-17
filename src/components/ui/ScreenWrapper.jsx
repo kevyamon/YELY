@@ -8,7 +8,7 @@ const ScreenWrapper = ({
   style, 
   backgroundColor = COLORS.background,
   statusBarColor = 'transparent', // Par défaut transparent pour l'effet "plein écran"
-  statusBarStyle = 'light-content'
+  statusBarStyle = 'dark-content' // CORRECTION : dark-content par défaut pour fond clair
 }) => {
   const insets = useSafeAreaInsets();
 

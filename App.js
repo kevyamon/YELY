@@ -56,9 +56,9 @@ const AppContent = () => {
       <NavigationContainer>
         <View style={styles.container}>
           {/* 📱 CORRECTION : LA BARRE D'ÉTAT EST DE RETOUR !
-              Heure, Batterie, Réseau visibles, en blanc (light), sur fond transparent */}
+              Heure, Batterie, Réseau visibles, en sombre (dark), pour contraster sur fond clair */}
           <StatusBar
-            style="light"
+            style="dark"
             backgroundColor="transparent"
             translucent={true}
           />
