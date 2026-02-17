@@ -1,5 +1,5 @@
 // src/components/ride/RiderBottomPanel.jsx
-// COMPOSANT PASSAGER - Panneau des forfaits fixe avec Design "Arc" (Encastré)
+// COMPOSANT PASSAGER (WEB) - Tracé de courbe complet (Full Contour)
 
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -16,7 +16,6 @@ const RiderBottomPanel = ({
   estimationData,
   estimateError,
   onConfirmRide,
-  // Propriété spéciale pour injecter la barre de recherche sur la version Web
   topContent = null 
 }) => {
   const insets = useSafeAreaInsets();
@@ -27,7 +26,6 @@ const RiderBottomPanel = ({
       { paddingBottom: Math.max(insets.bottom + 20, THEME.SPACING.xl) }
     ]}>
       
-      {/* INJECTION WEB (Barre de recherche ou Bouton annuler web) */}
       {topContent && (
         <View style={styles.topContentWrapper}>
           {topContent}
@@ -73,7 +71,6 @@ const RiderBottomPanel = ({
 
 const styles = StyleSheet.create({
   bottomPanel: {
-    // FIXATION PARFAITE EN BAS
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -81,16 +78,20 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.background,
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.xl,
-    
-    // DESIGN ORGANIQUE : Arc du bas
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 10,
+
+    // CORRECTION : Contour complet !
+    borderWidth: 2.5,
+    borderBottomWidth: 0, // On cache juste la ligne collée au bas de l'écran
+    borderColor: THEME.COLORS.champagneGold,
+    
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 15,
   },
   topContentWrapper: {
     marginBottom: 15,

@@ -1,5 +1,5 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Refonte Architecture (ActionPill) & Design (Bords arrondis organiques)
+// HEADER INTELLIGENT - Tracé de courbe complet (Full Contour)
 
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -12,7 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
-import ActionPill from './ActionPill'; // Import du nouveau composant
+import ActionPill from './ActionPill';
 
 const SmartHeader = ({ 
   scrollY, 
@@ -34,8 +34,8 @@ const SmartHeader = ({
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
-    const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0, 0.3], Extrapolation.CLAMP);
-    return { height, shadowOpacity, elevation: shadowOpacity * 10 };
+    const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
+    return { height, shadowOpacity, elevation: shadowOpacity * 20 };
   });
 
   const ctaAnimatedStyle = useAnimatedStyle(() => {
@@ -52,9 +52,6 @@ const SmartHeader = ({
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
-      {/* CORRECTION DESIGN (Le croquis) : 
-        Le fond du header a maintenant de gros arrondis en bas pour créer la courbe 
-      */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -75,7 +72,6 @@ const SmartHeader = ({
         </View>
 
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
-          
           <View style={styles.greetingHeader}>
              <Text style={styles.greetingText}>Bonjour, {userName}</Text>
              {isRider && (
@@ -93,25 +89,13 @@ const SmartHeader = ({
              </View>
           )}
           
-          {/* UTILISATION DU NOUVEAU COMPOSANT : Code ultra propre et lisible ! */}
           {isRider && !hasDestination && (
-            <ActionPill 
-              mode="primary" 
-              text="Commander un taxi" 
-              icon="car-sport" 
-              onPress={onSearchPress} 
-            />
+            <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
           )}
 
           {isRider && hasDestination && (
-            <ActionPill 
-              mode="cancel" 
-              text="Annuler la destination" 
-              icon="close-circle" 
-              onPress={onCancelDestination} 
-            />
+            <ActionPill mode="cancel" text="Annuler la destination" icon="close-circle" onPress={onCancelDestination} />
           )}
-          
         </Animated.View>
       </View>
     </Animated.View>
@@ -125,20 +109,23 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     zIndex: 100,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 8,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 8 },
+    shadowRadius: 16,
   },
   background: {
     ...StyleSheet.absoluteFillObject,
-    // DESIGN ORGANIQUE : Bords arrondis massifs en bas (effet encastré)
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
+    
+    // CORRECTION : Contour complet !
+    borderWidth: 2.5,
+    borderTopWidth: 0, // On cache juste la ligne du plafond
+    borderColor: THEME.COLORS.champagneGold, 
   },
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
-    // On ajoute un peu de padding en bas pour que le contenu ne touche pas la courbe
     paddingBottom: 15, 
   },
   topRow: {

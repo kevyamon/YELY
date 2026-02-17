@@ -1,5 +1,5 @@
 // src/components/ui/SmartFooter.jsx
-// FOOTER INTELLIGENT - Fixé en bas, unifie Rider et Driver
+// FOOTER INTELLIGENT - Tracé de courbe complet (Full Contour)
 
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
@@ -10,7 +10,6 @@ import THEME from '../../theme/theme';
 import VehicleCarousel from '../ride/VehicleCarousel';
 
 const SmartFooter = ({
-  // --- Props Rider ---
   destination,
   displayVehicles,
   selectedVehicle,
@@ -19,7 +18,6 @@ const SmartFooter = ({
   estimationData,
   estimateError,
   onConfirmRide,
-  // --- Props Driver ---
   isAvailable,
   onToggle,
   isToggling
@@ -28,15 +26,11 @@ const SmartFooter = ({
   const user = useSelector(selectCurrentUser);
   const isRider = user?.role === 'rider';
 
-  // Calcul du padding bas pour éviter la barre d'accueil iOS/Android
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
 
   return (
     <View style={[styles.container, { paddingBottom }]}>
       {isRider ? (
-        // ==========================================
-        // CONTENU PASSAGER (RIDER)
-        // ==========================================
         <>
           <View style={styles.titleRow}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
@@ -72,9 +66,6 @@ const SmartFooter = ({
           )}
         </>
       ) : (
-        // ==========================================
-        // CONTENU CHAUFFEUR (DRIVER)
-        // ==========================================
         <>
           <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
             <View style={styles.availabilityRow}>
@@ -115,7 +106,6 @@ const SmartFooter = ({
   );
 };
 
-// Sous-composant Driver
 const StatBox = ({ icon, value, label, isGold }) => (
   <View style={styles.statBox}>
     <Ionicons name={icon} size={22} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
@@ -136,13 +126,18 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     zIndex: 10,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
-    elevation: 10,
+
+    // CORRECTION : Contour complet !
+    borderWidth: 2.5,
+    borderBottomWidth: 0, // On cache juste la ligne collée au bas de l'écran
+    borderColor: THEME.COLORS.champagneGold,
+    
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: -8 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 15,
   },
-  // --- STYLES RIDER ---
   titleRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -206,7 +201,6 @@ const styles = StyleSheet.create({
   confirmButtonTextDisabled: {
     color: THEME.COLORS.textTertiary,
   },
-  // --- STYLES DRIVER ---
   availabilityCard: {
     backgroundColor: THEME.COLORS.glassSurface,
     borderColor: THEME.COLORS.border,
