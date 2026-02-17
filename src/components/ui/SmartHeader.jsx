@@ -122,7 +122,7 @@ const SmartHeader = ({
              {/* MODE RIDER : Adresse en sous-titre (Gain de place) */}
              {isRider && (
                <View style={styles.riderAddressRow}>
-                  <Ionicons name="location-sharp" size={12} color={THEME.COLORS.champagneGold} />
+                  <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
                   <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
                </View>
              )}
@@ -131,7 +131,7 @@ const SmartHeader = ({
           {/* 2. MODE DRIVER : Le Badge GPS bien visible (Validé) */}
           {!isRider && (
              <View style={styles.driverGpsBadge}>
-                 <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
+                 <Ionicons name="navigate" size={20} color={THEME.COLORS.champagneGold} />
                  <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
              </View>
           )}
@@ -185,20 +185,21 @@ const styles = StyleSheet.create({
     right: 50,
     alignItems: 'center',
   },
+  // MODIFICATION ICI : Titre central au scroll
   locationTitle: {
-    color: THEME.COLORS.textPrimary, // Adapté au thème (Noir le jour / Blanc la nuit)
-    fontWeight: 'bold',
-    fontSize: 14,
+    color: THEME.COLORS.textPrimary,
+    fontWeight: '800', // Plus gras
+    fontSize: 16, // Légèrement plus grand (était à 14)
   },
   iconButton: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION: Fond dynamique
+    backgroundColor: THEME.COLORS.glassSurface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: THEME.COLORS.border, // CORRECTION: Bordure dynamique
+    borderColor: THEME.COLORS.border,
   },
   badge: {
     position: 'absolute',
@@ -229,22 +230,23 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginBottom: 4,
   },
+  // MODIFICATION ICI : Adresse Rider
   riderAddressText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: '500',
+    fontSize: 14, // Légèrement plus grand (était à 12)
+    fontWeight: 'bold', // Plus gras (était à '500')
     marginLeft: 4,
     opacity: 0.9,
   },
   searchBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION
+    backgroundColor: THEME.COLORS.glassSurface,
     paddingVertical: 12,
     paddingHorizontal: 16,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: THEME.COLORS.border, // CORRECTION
+    borderColor: THEME.COLORS.border,
   },
   placeholderText: {
     color: THEME.COLORS.textTertiary,
@@ -257,18 +259,19 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
-    backgroundColor: THEME.COLORS.glassSurface, // CORRECTION
+    backgroundColor: THEME.COLORS.glassSurface,
     paddingVertical: 10, 
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: THEME.COLORS.border, // CORRECTION
+    borderColor: THEME.COLORS.border,
     alignSelf: 'flex-start',
   },
+  // MODIFICATION ICI : Adresse Driver
   gpsText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 16, // Légèrement plus grand (était à 14)
+    fontWeight: 'bold', // Plus gras (était à '500')
     marginLeft: 8,
     flex: 1, 
   }
