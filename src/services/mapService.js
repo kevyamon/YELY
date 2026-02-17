@@ -6,7 +6,7 @@ import * as Location from 'expo-location';
 
 class MapService {
   /**
-   * Initialise les permissions GPS (Déjà existant)
+   * Initialise les permissions GPS
    */
   static async requestPermissions() {
     try {
@@ -27,7 +27,7 @@ class MapService {
   static async getCurrentLocation() {
     try {
       const location = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced, // Économie de batterie
+        accuracy: Location.Accuracy.Balanced, 
       });
       return {
         latitude: location.coords.latitude,
@@ -42,30 +42,22 @@ class MapService {
   /**
    * 🏗️ PHASE 4 : AUTOCOMPLÉTION DES ADRESSES (OPENSTREETMAP)
    * Utilise l'API gratuite Nominatim.
-   * @param {string} query - Le texte tapé par l'utilisateur
-   * @returns {Promise<Array>} Tableau de suggestions avec coordonnées incluses
    */
   static async getPlaceSuggestions(query) {
     if (!query || query.length < 3) return [];
 
     try {
-      // url avec restriction sur la Côte d'Ivoire (countrycodes=ci) et limite à 5 résultats
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5`;
+      // CORRECTION WEB : On passe l'email dans l'URL (paramètre &email=) 
+      // au lieu de le mettre dans le header 'User-Agent' pour éviter le blocage CORS du navigateur.
+      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
 
-      // 🛡️ SÉCURITÉ : Nominatim exige un User-Agent valide sous peine de bloquer l'IP
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'YelyVTCApp/1.0 (contact@yely.ci)' 
-        }
-      });
-      
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data && data.length > 0) {
         return data.map((item) => ({
           id: item.place_id.toString(),
           description: item.display_name,
-          // Extraction intelligente du nom principal pour un affichage propre
           mainText: item.name || item.address?.road || item.display_name.split(',')[0],
           secondaryText: item.display_name,
           latitude: parseFloat(item.lat),
@@ -82,11 +74,8 @@ class MapService {
 
   /**
    * 🏗️ PHASE 4 : GEOCODING
-   * Avec OSM, les coordonnées sont déjà dans les suggestions. 
-   * Cette fonction n'est plus strictement nécessaire mais conservée pour compatibilité d'interface.
    */
   static async getCoordinatesFromPlaceId(placeId, fallbackCoords) {
-    // On retourne simplement les coordonnées déjà extraites lors de la recherche
     if (fallbackCoords && fallbackCoords.latitude && fallbackCoords.longitude) {
       return fallbackCoords;
     }
@@ -95,25 +84,16 @@ class MapService {
 
   /**
    * GÉOCODAGE INVERSE (Coordonnées -> Adresse texte)
-   * Trouve le nom de la rue à partir du GPS de l'appareil
-   * @param {number} lat - Latitude
-   * @param {number} lng - Longitude
-   * @returns {Promise<string>} L'adresse formatée
    */
   static async getAddressFromCoordinates(lat, lng) {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`;
+      // CORRECTION WEB : Passage de l'email dans l'URL
+      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
       
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': 'YelyVTCApp/1.0 (contact@yely.ci)' 
-        }
-      });
-      
+      const response = await fetch(url);
       const data = await response.json();
 
       if (data && data.display_name) {
-        // On nettoie un peu le résultat souvent très long d'OSM
         const parts = data.display_name.split(',');
         return parts.slice(0, 2).join(',').trim(); 
       }

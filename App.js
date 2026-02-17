@@ -5,7 +5,11 @@ import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
+
+// CORRECTION MOBILE : Import du GestureHandlerRootView
 import 'react-native-gesture-handler';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
@@ -55,8 +59,6 @@ const AppContent = () => {
     <>
       <NavigationContainer>
         <View style={styles.container}>
-          {/* 📱 CORRECTION : LA BARRE D'ÉTAT EST DE RETOUR !
-              Heure, Batterie, Réseau visibles, en sombre (dark), pour contraster sur fond clair */}
           <StatusBar
             style="dark"
             backgroundColor="transparent"
@@ -83,13 +85,16 @@ const AppContent = () => {
 
 export default function App() {
   return (
-    <ReduxProvider store={store}>
-      <PaperProvider theme={YelyTheme}>
-        <SafeAreaProvider>
-          <AppContent />
-        </SafeAreaProvider>
-      </PaperProvider>
-    </ReduxProvider>
+    // CORRECTION MOBILE : On englobe TOUTE l'application ici
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <ReduxProvider store={store}>
+        <PaperProvider theme={YelyTheme}>
+          <SafeAreaProvider>
+            <AppContent />
+          </SafeAreaProvider>
+        </PaperProvider>
+      </ReduxProvider>
+    </GestureHandlerRootView>
   );
 }
 
