@@ -1,5 +1,6 @@
 // src/screens/auth/LoginPage.jsx
 // PAGE CONNEXION - Design Épuré & Navigation Passive
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -62,9 +63,11 @@ const LoginPage = ({ navigation }) => {
       }
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
-      const { user, accessToken, refreshToken } = res.data;
+      
+      // 🛡️ SÉCURITÉ : L'API ne renvoie plus le refreshToken ici (il est dans le Cookie HTTPOnly)
+      const { user, accessToken } = res.data;
 
-      dispatch(setCredentials({ user, accessToken, refreshToken }));
+      dispatch(setCredentials({ user, accessToken }));
 
       dispatch(showSuccessToast({
         title: "Connexion réussie",
@@ -161,92 +164,24 @@ const LoginPage = ({ navigation }) => {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: THEME.COLORS.deepAsphalt 
-  },
-
-  scrollContent: { 
-    flexGrow: 1, 
-    justifyContent: 'center', 
-    padding: THEME.SPACING.xl 
-  },
-
-  backButton: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    marginBottom: THEME.SPACING.xl 
-  },
-
-  backText: { 
-    color: THEME.COLORS.champagneGold, 
-    marginLeft: 8, 
-    fontSize: 16, 
-    fontWeight: '600' 
-  },
-
-  headerContainer: { 
-    marginBottom: THEME.SPACING.xl, 
-    marginTop: THEME.SPACING.lg 
-  },
-
-  welcomeText: { 
-    color: THEME.COLORS.champagneGold, 
-    fontSize: 32, 
-    fontWeight: 'bold', 
-    letterSpacing: 1 
-  },
-
-  subText: { 
-    color: THEME.COLORS.textSecondary, 
-    fontSize: 16, 
-    marginTop: 8 
-  },
-
-  card: { 
-    padding: THEME.SPACING.lg 
-  },
-
-  inputRow: { 
-    flexDirection: 'row', 
-    gap: 8, 
-    alignItems: 'flex-start' 
-  },
-
+  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
+  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
+  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.xl },
+  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
+  headerContainer: { marginBottom: THEME.SPACING.xl, marginTop: THEME.SPACING.lg },
+  welcomeText: { color: THEME.COLORS.champagneGold, fontSize: 32, fontWeight: 'bold', letterSpacing: 1 },
+  subText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 8 },
+  card: { padding: THEME.SPACING.lg },
+  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
   countryPickerContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: THEME.COLORS.glassLight, 
-    paddingHorizontal: 10, 
-    borderRadius: 12, 
-    height: 52, 
-    borderWidth: 1, 
-    borderColor: THEME.COLORS.glassBorder 
+    flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, 
+    paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder 
   },
-
-  callingCodeText: { 
-    color: THEME.COLORS.champagneGold, 
-    marginLeft: 5, 
-    fontWeight: 'bold' 
-  },
-
-  loginButton: { 
-    marginTop: THEME.SPACING.md 
-  },
-
-  footer: { 
-    marginTop: THEME.SPACING.xl, 
-    alignItems: 'center' 
-  },
-
-  footerText: { 
-    color: THEME.COLORS.textTertiary 
-  },
-
-  linkText: { 
-    color: THEME.COLORS.champagneGold, 
-    fontWeight: 'bold' 
-  }
+  callingCodeText: { color: THEME.COLORS.champagneGold, marginLeft: 5, fontWeight: 'bold' },
+  loginButton: { marginTop: THEME.SPACING.md },
+  footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
+  footerText: { color: THEME.COLORS.textTertiary },
+  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
 });
 
 export default LoginPage;

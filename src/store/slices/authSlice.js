@@ -3,13 +3,13 @@
 // CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
-import socketService from '../../services/socketService'; // 🔌 IMPORT SOCKET
+import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 
 const initialState = {
   user: null,
   token: null,
-  refreshToken: null,
+  // 🛡️ SÉCURITÉ : Le refreshToken n'existe plus en clair côté client. Il est géré via Cookie réseau.
   isAuthenticated: false,
 };
 
@@ -18,7 +18,8 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, accessToken, token, refreshToken } = action.payload || {};
+      // Nettoyage de la destruction pour s'adapter au nouveau format de l'API
+      const { user, accessToken, token } = action.payload || {};
       const finalToken = accessToken || token;
 
       if (!user || !finalToken) {
@@ -27,43 +28,37 @@ const authSlice = createSlice({
 
       state.user = user || state.user;
       state.token = finalToken || state.token;
-      state.refreshToken = refreshToken || state.refreshToken;
       state.isAuthenticated = true;
 
       // 🛡️ SÉCURITÉ : Persistance 100% SecureStore (Plus de PII en clair)
       if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
       if (state.token) SecureStorageAdapter.setItem('token', state.token);
-      if (state.refreshToken) SecureStorageAdapter.setItem('refreshToken', state.refreshToken);
     },
     
     updateUserInfo: (state, action) => {
       if (!state.user) return;
       state.user = { ...state.user, ...action.payload };
-      
-      // 🛡️ SÉCURITÉ : Mise à jour dans le coffre-fort
       SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
     },
 
     logout: (state) => {
       state.user = null;
       state.token = null;
-      state.refreshToken = null;
       state.isAuthenticated = false;
       
       // 🛡️ SÉCURITÉ : Nettoyage intégral
       SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
-      SecureStorageAdapter.removeItem('refreshToken');
+      // Le navigateur ou le gestionnaire natif de requêtes nettoiera le cookie lui-même lors de l'appel API /logout.
 
       // 🔌 COUPURE WEBSOCKET : Empêche le token zombie d'émettre
       socketService.disconnect();
     },
 
     restoreAuth: (state, action) => {
-      const { user, token, refreshToken } = action.payload || {};
+      const { user, token } = action.payload || {};
       state.user = user;
       state.token = token;
-      state.refreshToken = refreshToken;
       state.isAuthenticated = !!(user && token);
     },
   },
@@ -72,7 +67,6 @@ const authSlice = createSlice({
 export const { setCredentials, updateUserInfo, logout, restoreAuth } = authSlice.actions;
 export default authSlice.reducer;
 
-// Selectors
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role;
