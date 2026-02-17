@@ -63,7 +63,14 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       query: () => '/api/rides/current',
       providesTags: ['Ride'],
     }),
+    // 🏗️ PHASE 5 : NOUVEAU ENDPOINT POUR L'ESTIMATION
+    estimateRide: builder.query({
+      query: ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => 
+        `/api/rides/estimate?pickupLat=${pickupLat}&pickupLng=${pickupLng}&dropoffLat=${dropoffLat}&dropoffLng=${dropoffLng}`,
+    }),
   }),
+  // CORRECTION : Autorise le rechargement à chaud (Hot Reload) sans erreur de duplication
+  overrideExisting: true,
 });
 
 export const {
@@ -76,4 +83,6 @@ export const {
   useRateRideMutation,
   useGetRideHistoryQuery,
   useGetCurrentRideQuery,
+  useEstimateRideQuery,
+  useLazyEstimateRideQuery,
 } = ridesApiSlice;

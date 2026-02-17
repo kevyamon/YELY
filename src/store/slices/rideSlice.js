@@ -1,86 +1,74 @@
-// src/store/api/ridesApiSlice.js
+// src/store/slices/rideSlice.js
 
-import { apiSlice } from '../slices/apiSlice';
+import { createSlice } from '@reduxjs/toolkit';
 
-export const ridesApiSlice = apiSlice.injectEndpoints({
-  endpoints: (builder) => ({
-    createRide: builder.mutation({
-      query: (data) => ({
-        url: '/api/rides',
-        method: 'POST',
-        body: data,
-      }),
-      invalidatesTags: ['Ride'],
-    }),
-    acceptRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/accept`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Ride'],
-    }),
-    rejectRide: builder.mutation({
-      query: ({ rideId, reason }) => ({
-        url: `/api/rides/${rideId}/reject`,
-        method: 'PUT',
-        body: { reason },
-      }),
-    }),
-    startRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/start`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Ride'],
-    }),
-    completeRide: builder.mutation({
-      query: ({ rideId }) => ({
-        url: `/api/rides/${rideId}/complete`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Ride'],
-    }),
-    cancelRide: builder.mutation({
-      query: ({ rideId, reason }) => ({
-        url: `/api/rides/${rideId}/cancel`,
-        method: 'PUT',
-        body: { reason },
-      }),
-      invalidatesTags: ['Ride'],
-    }),
-    rateRide: builder.mutation({
-      query: ({ rideId, rating, comment }) => ({
-        url: `/api/rides/${rideId}/rate`,
-        method: 'PUT',
-        body: { rating, comment },
-      }),
-    }),
-    getRideHistory: builder.query({
-      query: ({ page = 1, limit = 20 }) => `/api/rides/history?page=${page}&limit=${limit}`,
-      providesTags: ['Ride'],
-    }),
-    getCurrentRide: builder.query({
-      query: () => '/api/rides/current',
-      providesTags: ['Ride'],
-    }),
-    // 🏗️ PHASE 5 : NOUVEAU ENDPOINT POUR L'ESTIMATION
-    estimateRide: builder.query({
-      query: ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => 
-        `/api/rides/estimate?pickupLat=${pickupLat}&pickupLng=${pickupLng}&dropoffLat=${dropoffLat}&dropoffLng=${dropoffLng}`,
-    }),
-  }),
+const initialState = {
+  currentRide: null,
+  rideStatus: null, // 'idle', 'searching', 'requested', 'accepted', 'ongoing', 'completed', 'cancelled'
+  pickup: null, // { latitude, longitude, address }
+  destination: null, // { latitude, longitude, address }
+  selectedForfait: 'STANDARD', // 'ECHO', 'STANDARD', 'VIP'
+  estimatedPrice: 0,
+  estimatedTime: 0,
+  driverLocation: null, // Pour le tracking temps réel
+  assignedDriver: null,
+  isIdentifyMode: false, // Mode "Pancarte Numérique"
+};
+
+const rideSlice = createSlice({
+  name: 'ride',
+  initialState,
+  reducers: {
+    setPickup: (state, action) => {
+      state.pickup = action.payload;
+    },
+    setDestination: (state, action) => {
+      state.destination = action.payload;
+    },
+    setSelectedForfait: (state, action) => {
+      state.selectedForfait = action.payload;
+    },
+    setEstimates: (state, action) => {
+      state.estimatedPrice = action.payload.price;
+      state.estimatedTime = action.payload.time;
+    },
+    setRideStatus: (state, action) => {
+      state.rideStatus = action.payload;
+    },
+    setCurrentRide: (state, action) => {
+      state.currentRide = action.payload;
+      state.rideStatus = action.payload?.status || 'idle';
+    },
+    setAssignedDriver: (state, action) => {
+      state.assignedDriver = action.payload;
+    },
+    updateDriverLocation: (state, action) => {
+      state.driverLocation = action.payload;
+    },
+    activateIdentifyMode: (state) => {
+      state.isIdentifyMode = true;
+    },
+    deactivateIdentifyMode: (state) => {
+      state.isIdentifyMode = false;
+    },
+    resetRide: (state) => {
+      return initialState;
+    },
+  },
 });
 
 export const {
-  useCreateRideMutation,
-  useAcceptRideMutation,
-  useRejectRideMutation,
-  useStartRideMutation,
-  useCompleteRideMutation,
-  useCancelRideMutation,
-  useRateRideMutation,
-  useGetRideHistoryQuery,
-  useGetCurrentRideQuery,
-  useEstimateRideQuery,
-  useLazyEstimateRideQuery, // Lazy query pour déclencher l'estimation uniquement quand on a une destination
-} = ridesApiSlice;
+  setPickup,
+  setDestination,
+  setSelectedForfait,
+  setEstimates,
+  setRideStatus,
+  setCurrentRide,
+  setAssignedDriver,
+  updateDriverLocation,
+  activateIdentifyMode,
+  deactivateIdentifyMode,
+  resetRide,
+} = rideSlice.actions;
+
+export default rideSlice.reducer;
