@@ -26,11 +26,10 @@ import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators';
 
-export default function RegisterPage({ navigation, route }) {
+const RegisterPage = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
   
-  // Récupération du rôle envoyé depuis le Landing (Rider par défaut)
   const [role, setRole] = useState(route.params?.role?.toLowerCase() || 'rider');
 
   const [formData, setFormData] = useState({
@@ -43,7 +42,6 @@ export default function RegisterPage({ navigation, route }) {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
 
-  // Logique Jauge Password
   const [passwordStats, setPasswordStats] = useState({
     length: false, upper: false, number: false, special: false, score: 0
   });
@@ -87,17 +85,12 @@ export default function RegisterPage({ navigation, route }) {
     try {
       const fullPhone = `+${callingCode}${formData.phone.replace(/^0+/, '')}`;
       
-      // 1. APPEL API
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
-      // 2. SAUVEGARDE REDUX
-      // Le changement de 'user' déclenchera AppDrawer > useEffect > navigation.reset
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       
       dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte créé avec succès." }));
-
-      // ⛔️ PAS DE NAVIGATION MANUELLE
 
     } catch (err) {
       console.error('[REGISTER_ERROR]', err);
@@ -113,14 +106,23 @@ export default function RegisterPage({ navigation, route }) {
         size={14} 
         color={met ? "#10B981" : THEME.COLORS.textTertiary} 
       />
-      <Text style={[styles.reqText, { color: met ? "#10B981" : THEME.COLORS.textTertiary }]}>{text}</Text>
+      <Text style={[styles.reqText, { color: met ? "#10B981" : THEME.COLORS.textTertiary }]}>
+        {text}
+      </Text>
     </View>
   );
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           
           <TouchableOpacity 
             onPress={() => navigation.navigate('Landing')} 
@@ -202,7 +204,7 @@ export default function RegisterPage({ navigation, route }) {
                   <ProgressBar 
                     progress={passwordStats.score} 
                     color={passwordStats.score === 1 ? "#10B981" : (passwordStats.score > 0.5 ? "orange" : "red")} 
-                    style={{ borderRadius: 5, height: 6, backgroundColor: 'rgba(255,255,255,0.1)' }} 
+                    style={styles.progressBar} 
                   />
                   <View style={styles.requirementsBox}>
                     <PasswordRequirement met={passwordStats.length} text="8 chars min." />
@@ -223,11 +225,15 @@ export default function RegisterPage({ navigation, route }) {
             />
           </GlassCard>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginFooter}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Login')} 
+            style={styles.loginFooter}
+          >
             <Text style={styles.loginRedirect}>
-              Déjà membre ? <Text style={{ color: THEME.COLORS.champagneGold, fontWeight: 'bold' }}>Se connecter</Text>
+              Déjà membre ? <Text style={styles.linkText}>Se connecter</Text>
             </Text>
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -235,25 +241,148 @@ export default function RegisterPage({ navigation, route }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
-  scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
-  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, marginTop: THEME.SPACING.xs, alignSelf: 'flex-start' },
-  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
-  card: { padding: THEME.SPACING.lg },
-  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg },
-  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, backgroundColor: THEME.COLORS.glassLight },
-  roleBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
-  roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
-  roleTextActive: { color: '#FFF' },
-  phoneRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  gaugeContainer: { marginTop: -10, marginBottom: 5 },
-  requirementsBox: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 8, gap: 10 },
-  reqRow: { flexDirection: 'row', alignItems: 'center', marginRight: 5 },
-  reqText: { fontSize: 11, marginLeft: 4 },
-  registerButton: { marginTop: THEME.SPACING.sm },
-  loginFooter: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
-  loginRedirect: { color: THEME.COLORS.textTertiary }
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.deepAsphalt 
+  },
+
+  scrollContent: { 
+    flexGrow: 1, 
+    paddingHorizontal: THEME.SPACING.xl, 
+    paddingTop: THEME.SPACING.sm, 
+    paddingBottom: THEME.SPACING.lg 
+  },
+
+  backButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: THEME.SPACING.md, 
+    marginTop: THEME.SPACING.xs, 
+    alignSelf: 'flex-start' 
+  },
+
+  backText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 8, 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+
+  mainTitle: { 
+    color: THEME.COLORS.champagneGold, 
+    textAlign: 'center', 
+    fontSize: THEME.FONTS.sizes.h3, 
+    fontWeight: 'bold', 
+    marginBottom: THEME.SPACING.md, 
+    letterSpacing: 2 
+  },
+
+  card: { 
+    padding: THEME.SPACING.lg 
+  },
+
+  roleContainer: { 
+    flexDirection: 'row', 
+    gap: 15, 
+    marginBottom: THEME.SPACING.lg 
+  },
+
+  roleBtn: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: 12, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.glassBorder, 
+    backgroundColor: THEME.COLORS.glassLight 
+  },
+
+  roleBtnActive: { 
+    backgroundColor: "#10B981", 
+    borderColor: "#10B981" 
+  },
+
+  roleText: { 
+    marginLeft: 8, 
+    fontWeight: '600', 
+    color: THEME.COLORS.textSecondary 
+  },
+
+  roleTextActive: { 
+    color: '#FFF' 
+  },
+
+  phoneRow: { 
+    flexDirection: 'row', 
+    gap: 8, 
+    alignItems: 'flex-start' 
+  },
+
+  countryPickerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: THEME.COLORS.glassLight, 
+    paddingHorizontal: 10, 
+    borderRadius: 12, 
+    height: 52, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.glassBorder 
+  },
+
+  callingCodeText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 5, 
+    fontWeight: 'bold' 
+  },
+
+  gaugeContainer: { 
+    marginTop: -10, 
+    marginBottom: 5 
+  },
+
+  progressBar: { 
+    borderRadius: 5, 
+    height: 6, 
+    backgroundColor: 'rgba(255,255,255,0.1)' 
+  },
+
+  requirementsBox: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginTop: 8, 
+    gap: 10 
+  },
+
+  reqRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginRight: 5 
+  },
+
+  reqText: { 
+    fontSize: 11, 
+    marginLeft: 4 
+  },
+
+  registerButton: { 
+    marginTop: THEME.SPACING.sm 
+  },
+
+  loginFooter: { 
+    marginTop: THEME.SPACING.lg, 
+    alignItems: 'center' 
+  },
+
+  loginRedirect: { 
+    color: THEME.COLORS.textTertiary 
+  },
+
+  linkText: { 
+    color: THEME.COLORS.champagneGold, 
+    fontWeight: 'bold' 
+  }
 });
+
+export default RegisterPage;

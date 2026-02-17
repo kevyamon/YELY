@@ -1,7 +1,9 @@
 // App.js
 
+import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
+import { useEffect } from 'react';
 import { StyleSheet, View } from 'react-native';
 import 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -14,7 +16,7 @@ import { YelyTheme } from './src/theme/theme';
 
 // Toast Global
 import AppToast from './src/components/ui/AppToast';
-import { hideToast, selectToast } from './src/store/slices/uiSlice';
+import { hideToast, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 // Socket.io — Système nerveux temps réel
 import useSocket from './src/hooks/useSocket';
@@ -31,14 +33,34 @@ const AppContent = () => {
   // Brancher les événements métier (courses, notifs, GPS, etc.)
   useSocketEvents();
 
+  // 📡 ÉCOUTEUR RÉSEAU GLOBAL
+  useEffect(() => {
+    const unsubscribe = NetInfo.addEventListener(state => {
+      if (!state.isConnected) {
+        dispatch(showErrorToast({
+          title: "PAS DE CONNEXION",
+          message: "Veuillez activer vos données mobiles ou le Wi-Fi."
+        }));
+      } else if (state.isConnected && toast.visible && toast.title === "PAS DE CONNEXION") {
+        dispatch(showSuccessToast({ 
+          title: "Connexion rétablie", 
+          message: "Vous êtes de nouveau en ligne." 
+        }));
+      }
+    });
+    return () => unsubscribe();
+  }, [dispatch, toast]);
+
   return (
     <>
       <NavigationContainer>
         <View style={styles.container}>
+          {/* 📱 CORRECTION : LA BARRE D'ÉTAT EST DE RETOUR !
+              Heure, Batterie, Réseau visibles, en blanc (light), sur fond transparent */}
           <StatusBar
             style="light"
-            backgroundColor={YelyTheme.colors.background}
-            translucent
+            backgroundColor="transparent"
+            translucent={true}
           />
           <AppNavigator />
         </View>

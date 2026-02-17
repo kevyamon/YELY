@@ -1,59 +1,67 @@
 // src/screens/home/RiderHome.web.jsx
+// HOME RIDER WEB - Layout Web avec Logique Unifiée
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRef } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import GlassCard from '../../components/ui/GlassCard';
 import useGeolocation from '../../hooks/useGeolocation';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const insets = useSafeAreaInsets();
+  const user = useSelector(selectCurrentUser);
   
-  // UTILISATION DU HOOK UNIFIÉ
   const { location, address } = useGeolocation();
-  
-  // Utilisation directe de l'adresse du hook ou fallback
   const currentAddress = address || 'Localisation en cours...';
 
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
 
-      {/* ═══════ ZONE HAUTE : Adresse + Hamburger ═══════ */}
+      {/* ═══════ ZONE HAUTE : Adresse + Menu ═══════ */}
       <View style={styles.topBar}>
         <View style={styles.locationContainer}>
-          <Ionicons name="radio-button-on" size={16} color={THEME.COLORS.champagneGold} />
+          <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
           <Text numberOfLines={1} style={styles.locationText}>{currentAddress}</Text>
         </View>
 
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
+          onPress={() => navigation.navigate('Menu')}
         >
           <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       </View>
 
-      {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
-      <MapCard
-        ref={mapRef}
-        location={location}
-        showUserMarker
-        showRecenterButton
-        darkMode
-      />
+      {/* ═══════ ZONE CENTRALE : La Carte (Aérée) ═══════ */}
+      <View style={styles.mapWrapper}>
+        {location ? (
+          <MapCard
+            ref={mapRef}
+            location={location}
+            showUserMarker
+            showRecenterButton
+            darkMode
+          />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          </View>
+        )}
+      </View>
 
-      {/* ═══════ ZONE BASSE : Recherche + Forfaits (futur) ═══════ */}
+      {/* ═══════ ZONE BASSE : Recherche & Offres ═══════ */}
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.md }]}>
 
-        {/* Barre de recherche destination */}
-        <TouchableOpacity activeOpacity={0.8}>
-          <GlassCard style={styles.searchCard} withGlow>
+        <TouchableOpacity activeOpacity={0.8} onPress={() => console.log("Recherche...")}>
+          <GlassCard style={styles.searchCard}>
             <View style={styles.searchRow}>
               <View style={styles.searchIconContainer}>
                 <Ionicons name="search" size={20} color={THEME.COLORS.champagneGold} />
@@ -67,8 +75,11 @@ const RiderHome = ({ navigation }) => {
           </GlassCard>
         </TouchableOpacity>
 
-        {/* Placeholder forfaits (Phase 5) */}
         <View style={styles.forfaitsPlaceholder}>
+          <Text style={styles.sectionTitle}>NOS OFFRES</Text>
+          <View style={styles.emptyBox}>
+             <Text style={styles.emptyText}>Sélectionnez une destination</Text>
+          </View>
           <View style={styles.forfaitDots}>
             <View style={[styles.dot, styles.dotActive]} />
             <View style={styles.dot} />
@@ -83,18 +94,14 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt,
+    backgroundColor: THEME.COLORS.background,
   },
-
-  // ─── ZONE HAUTE ───
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: THEME.SPACING.lg,
     paddingVertical: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.deepAsphalt,
-    borderBottomWidth: THEME.BORDERS.width.thin,
-    borderBottomColor: THEME.COLORS.glassBorder,
+    backgroundColor: THEME.COLORS.background,
   },
   locationContainer: {
     flex: 1,
@@ -104,14 +111,14 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.SPACING.md,
     paddingVertical: THEME.SPACING.md,
     borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: THEME.BORDERS.width.thin,
+    borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
     marginRight: THEME.SPACING.md,
   },
   locationText: {
-    color: THEME.COLORS.moonlightWhite,
+    color: THEME.COLORS.textPrimary,
     marginLeft: THEME.SPACING.sm,
-    fontSize: THEME.FONTS.sizes.bodySmall,
+    fontSize: 12,
     flex: 1,
   },
   menuButton: {
@@ -121,32 +128,39 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
   },
-
-  // ─── ZONE BASSE ───
+  mapWrapper: {
+    flex: 1,
+    marginTop: 20, // 🌟 AÉRATION
+  },
+  loadingContainer: {
+    height: 300,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   bottomSection: {
-    backgroundColor: THEME.COLORS.deepAsphalt,
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.lg,
   },
   searchCard: {
     padding: 0,
-    borderRadius: THEME.BORDERS.radius.xl,
+    borderRadius: 16,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
   },
   searchRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.md,
-    gap: THEME.SPACING.md,
+    padding: 16,
+    gap: 12,
   },
   searchIconContainer: {
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -154,36 +168,54 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   searchLabel: {
-    color: THEME.COLORS.moonlightWhite,
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.semiBold,
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   searchHint: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: THEME.FONTS.sizes.caption,
-    marginTop: THEME.SPACING.xxs,
+    color: THEME.COLORS.textSecondary,
+    fontSize: 11,
+    marginTop: 2,
   },
-
-  // ─── FORFAITS PLACEHOLDER ───
   forfaitsPlaceholder: {
-    paddingTop: THEME.SPACING.lg,
-    paddingBottom: THEME.SPACING.sm,
+    marginTop: 25,
     alignItems: 'center',
+  },
+  sectionTitle: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 11,
+    fontWeight: 'bold',
+    alignSelf: 'flex-start',
+    marginBottom: 15,
+    letterSpacing: 1,
+  },
+  emptyBox: {
+    width: '100%',
+    height: 80,
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  emptyText: {
+    color: THEME.COLORS.textTertiary,
+    fontStyle: 'italic',
+    fontSize: 12,
   },
   forfaitDots: {
     flexDirection: 'row',
-    gap: THEME.SPACING.xs,
+    gap: 8,
   },
   dot: {
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: THEME.COLORS.textDisabled,
+    backgroundColor: THEME.COLORS.glassBorder,
   },
   dotActive: {
     backgroundColor: THEME.COLORS.champagneGold,
     width: 18,
-    borderRadius: 3,
   },
 });
 

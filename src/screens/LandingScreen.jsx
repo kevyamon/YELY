@@ -2,7 +2,8 @@
 // LANDING PAGE - LUXURY & IDENTITY
 // CSCSM Level: High-End UI + Smart Back Handler
 
-import { useFocusEffect } from '@react-navigation/native'; // 2. Pour cibler cet écran
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -11,17 +12,17 @@ import {
   Dimensions,
   Image,
   ImageBackground,
-  StatusBar,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
-import { useDispatch } from 'react-redux'; // 3. Pour déclencher ton Toast
+import { useDispatch } from 'react-redux';
 
 import GlassModal from '../components/ui/GlassModal';
 import GoldButton from '../components/ui/GoldButton';
-import { showSuccessToast } from '../store/slices/uiSlice'; // 4. Ton action Toast
+import { showSuccessToast } from '../store/slices/uiSlice';
 import THEME from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -43,38 +44,31 @@ export default function LandingScreen({ navigation }) {
   // --- ANIMATIONS ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
+  const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
   // --- GESTION DU DOUBLE RETOUR (Double Tap to Exit) ---
-  const lastBackPress = useRef(0); // Mémorise le temps du dernier appui
+  const lastBackPress = useRef(0);
 
   useFocusEffect(
     useCallback(() => {
       const onBackPress = () => {
         const currentTimestamp = new Date().getTime();
         
-        // Si l'utilisateur a appuyé il y a moins de 2 secondes
         if (currentTimestamp - lastBackPress.current < 2000) {
-          BackHandler.exitApp(); // On quitte l'application
+          BackHandler.exitApp();
           return true;
         }
 
-        // Sinon, c'est le premier appui
         lastBackPress.current = currentTimestamp;
-        
-        // On affiche ton message via ton système de Toast Redux
         dispatch(showSuccessToast({
           title: "Quitter Yély ?",
-          message: "Faite retour encore pour quitter Yély"
+          message: "Appuyez de nouveau pour quitter Yély"
         }));
 
-        // On bloque le retour par défaut (qui fermerait l'app direct)
         return true; 
       };
 
-      // On active l'écouteur
       const subscription = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-
-      // On nettoie quand on quitte l'écran
       return () => subscription.remove();
     }, [dispatch])
   );
@@ -93,6 +87,14 @@ export default function LandingScreen({ navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
+
+    // Animation de pulsation pour la ligne de séparation
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0.3, duration: 1500, useNativeDriver: true })
+      ])
+    ).start();
   }, []);
 
   const renderBackground = (children) => {
@@ -124,15 +126,11 @@ export default function LandingScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-
       {renderBackground(
         <View style={styles.contentContainer}>
           
           {/* HEADER SECTION */}
           <Animated.View style={[styles.headerSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
-            
-            {/* LOGO CORRIGÉ : Remplissage complet */}
             <View style={styles.logoContainer}>
                <Image 
                  source={require('../../assets/logo.png')} 
@@ -143,6 +141,13 @@ export default function LandingScreen({ navigation }) {
 
             <Text style={styles.brandTitle}>YÉLY</Text>
             <Text style={styles.tagline}>L'EXCELLENCE À MAFÉRÉ</Text>
+          </Animated.View>
+
+          {/* LIGNE ANIMÉE SÉPARATRICE */}
+          <Animated.View style={[styles.animationBox, { opacity: pulseAnim }]}>
+            <View style={styles.animLine} />
+            <Ionicons name="car-sport-outline" size={24} color={THEME.COLORS.champagneGold} style={{ marginHorizontal: 15 }} />
+            <View style={styles.animLine} />
           </Animated.View>
 
           {/* BOTTOM SECTION */}
@@ -178,30 +183,39 @@ export default function LandingScreen({ navigation }) {
         onClose={() => setShowTerms(false)}
         title="CONDITIONS GÉNÉRALES"
       >
-        <Text style={styles.termsContent}>
-          <Text style={styles.boldGold}>1. ACCEPTATION DES CONDITIONS</Text>{"\n"}
-          En utilisant l'application Yély, vous acceptez d'être lié par les présentes conditions d'utilisation.{"\n"}{"\n"}
+        {/* 🌟 CORRECTION ENCOCHE : Conteneur avec ScrollView et hauteur maximale */}
+        <View style={{ maxHeight: height * 0.65, width: '100%' }}>
+          <ScrollView 
+            showsVerticalScrollIndicator={false} 
+            bounces={false}
+            contentContainerStyle={{ flexGrow: 1, paddingBottom: 10 }}
+          >
+            <View style={styles.modalTextBg}>
+              <Text style={styles.termsContent}>
+                <Text style={styles.boldGold}>1. ACCEPTATION DES CONDITIONS</Text>{"\n"}
+                En utilisant l'application Yély, vous acceptez d'être lié par les présentes conditions d'utilisation.{"\n"}{"\n"}
 
-          <Text style={styles.boldGold}>2. SÉCURITÉ ET RESPONSABILITÉ</Text>{"\n"}
-          Yély s'engage à connecter les passagers avec des chauffeurs vérifiés à Maféré. Toutefois, les chauffeurs sont des prestataires indépendants.{"\n"}{"\n"}
+                <Text style={styles.boldGold}>2. SÉCURITÉ ET RESPONSABILITÉ</Text>{"\n"}
+                Yély s'engage à connecter les passagers avec des chauffeurs vérifiés à Maféré. Toutefois, les chauffeurs sont des prestataires indépendants.{"\n"}{"\n"}
 
-          <Text style={styles.boldGold}>3. PAIEMENTS</Text>{"\n"}
-          Les tarifs sont calculés automatiquement en fonction de la distance et de la catégorie de véhicule choisie.{"\n"}{"\n"}
+                <Text style={styles.boldGold}>3. PAIEMENTS</Text>{"\n"}
+                Les tarifs sont calculés automatiquement en fonction de la distance et de la catégorie de véhicule choisie.{"\n"}{"\n"}
 
-          <Text style={styles.boldGold}>4. ANNULATIONS</Text>{"\n"}
-          Des frais peuvent s'appliquer si vous annulez une course plus de 5 minutes après l'acceptation du chauffeur.{"\n"}{"\n"}
+                <Text style={styles.boldGold}>4. ANNULATIONS</Text>{"\n"}
+                Des frais peuvent s'appliquer si vous annulez une course plus de 5 minutes après l'acceptation du chauffeur.{"\n"}{"\n"}
 
-          <Text style={styles.boldGold}>5. CONFIDENTIALITÉ</Text>{"\n"}
-          Vos données personnelles sont protégées et ne sont utilisées que pour le bon fonctionnement du service.
-        </Text>
-        
-        <View style={{ height: 20 }} />
-        
-        <GoldButton 
-          title="J'AI COMPRIS" 
-          onPress={() => setShowTerms(false)}
-          style={{ marginBottom: 10 }}
-        />
+                <Text style={styles.boldGold}>5. CONFIDENTIALITÉ</Text>{"\n"}
+                Vos données personnelles sont protégées et ne sont utilisées que pour le bon fonctionnement du service.
+              </Text>
+            </View>
+            
+            <GoldButton 
+              title="J'AI COMPRIS" 
+              onPress={() => setShowTerms(false)}
+              style={{ marginTop: 20 }}
+            />
+          </ScrollView>
+        </View>
       </GlassModal>
 
     </View>
@@ -211,9 +225,7 @@ export default function LandingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   backgroundImage: { flex: 1, width: width, height: height },
-  gradientOverlay: {
-    ...StyleSheet.absoluteFillObject,
-  },
+  gradientOverlay: { ...StyleSheet.absoluteFillObject },
   contentContainer: {
     flex: 1,
     justifyContent: 'space-between',
@@ -236,10 +248,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.2)'
   },
-  logoImage: {
-    width: '100%',  
-    height: '100%',
-  },
+  logoImage: { width: '100%', height: '100%' },
   brandTitle: {
     fontSize: 42,
     fontWeight: '900',
@@ -257,6 +266,10 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     fontWeight: '300'
   },
+
+  // ANIMATION BOX
+  animationBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 40 },
+  animLine: { flex: 1, height: 1, backgroundColor: THEME.COLORS.champagneGold },
 
   // BOTTOM SECTION
   bottomSection: { width: '100%', alignItems: 'center' },
@@ -280,18 +293,21 @@ const styles = StyleSheet.create({
   },
   termsLink: { padding: 10 },
   termsText: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: 12,
+    color: THEME.COLORS.champagneGold, 
+    fontSize: 13,
     textDecorationLine: 'underline',
-  },
-  copyright: {
-    color: '#555',
-    fontSize: 10,
-    marginTop: 20,
     fontWeight: '500'
   },
+  copyright: { color: '#555', fontSize: 10, marginTop: 20, fontWeight: '500' },
 
   // MODAL STYLES
-  termsContent: { color: '#FFF', lineHeight: 20, fontSize: 14 },
-  boldGold: { color: THEME.COLORS.champagneGold, fontWeight: 'bold', fontSize: 16 }
+  modalTextBg: { 
+    backgroundColor: '#0A0A0A', 
+    padding: 15, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    borderColor: 'rgba(212, 175, 55, 0.3)' 
+  },
+  termsContent: { color: '#FFF', lineHeight: 22, fontSize: 13 },
+  boldGold: { color: THEME.COLORS.champagneGold, fontWeight: 'bold', fontSize: 14 }
 });

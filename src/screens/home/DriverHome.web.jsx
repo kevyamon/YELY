@@ -1,8 +1,9 @@
 // src/screens/home/DriverHome.web.jsx
+// HOME DRIVER WEB - Layout Web avec Logique Unifiée
 
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
-import { Dimensions, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Dimensions, StyleSheet, Switch, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,10 +23,7 @@ const DriverHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   
-  // UTILISATION DU HOOK UNIFIÉ (Plus de useEffect local)
   const { location, address } = useGeolocation();
-  
-  // Utilisation directe de l'adresse du hook ou fallback
   const currentAddress = address || 'Localisation en cours...';
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
@@ -33,23 +31,17 @@ const DriverHome = ({ navigation }) => {
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
-
     try {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
 
       dispatch(showSuccessToast({
-        title: res.isAvailable ? "En ligne !" : "Hors ligne",
-        message: res.message,
+        title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
+        message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
       }));
     } catch (err) {
-      console.error('[AVAILABILITY] Erreur:', err);
-      dispatch(showErrorToast({
-        title: "Erreur",
-        message: err?.data?.message || "Impossible de changer votre statut.",
-      }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Impossible de changer votre statut." }));
     }
   };
 
@@ -60,7 +52,7 @@ const DriverHome = ({ navigation }) => {
   return (
     <View style={[styles.container, { paddingTop: insets.top }]}>
 
-      {/* ═══════ ZONE HAUTE : Adresse + Status + Hamburger ═══════ */}
+      {/* ═══════ ZONE HAUTE : Adresse + Status + Menu ═══════ */}
       <View style={styles.topBar}>
         <View style={styles.locationContainer}>
           <View style={[styles.statusDot, isAvailable && styles.statusDotOnline]} />
@@ -69,28 +61,33 @@ const DriverHome = ({ navigation }) => {
 
         <TouchableOpacity
           style={styles.menuButton}
-          onPress={() => navigation.openDrawer()}
+          onPress={() => navigation.navigate('Menu')}
         >
           <Ionicons name="menu-outline" size={26} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       </View>
 
-      {/* ═══════ ZONE CENTRALE : La Carte ═══════ */}
-      <View style={{ height: mapHeight }}>
-        <MapCard
-          ref={mapRef}
-          location={location}
-          showUserMarker
-          showRecenterButton
-          floating
-          darkMode
-        />
+      {/* ═══════ ZONE CENTRALE : La Carte (Aérée) ═══════ */}
+      <View style={[styles.mapWrapper, { height: mapHeight }]}>
+        {location ? (
+          <MapCard
+            ref={mapRef}
+            location={location}
+            showUserMarker
+            showRecenterButton
+            floating
+            darkMode
+          />
+        ) : (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          </View>
+        )}
       </View>
 
-      {/* ═══════ ZONE BASSE : Switch + Infos ═══════ */}
+      {/* ═══════ ZONE BASSE : Switch + Stats ═══════ */}
       <View style={[styles.bottomSection, { paddingBottom: insets.bottom + THEME.SPACING.sm }]}>
 
-        {/* Carte de disponibilité */}
         <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
           <View style={styles.availabilityContent}>
             <View style={styles.availabilityInfo}>
@@ -100,18 +97,12 @@ const DriverHome = ({ navigation }) => {
                   size={20}
                   color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary}
                 />
-                <Text style={[
-                  styles.availabilityTitle,
-                  isAvailable && styles.availabilityTitleOnline,
-                ]}>
+                <Text style={[styles.availabilityTitle, isAvailable && styles.availabilityTitleOnline]}>
                   {isAvailable ? 'En service' : 'Hors ligne'}
                 </Text>
               </View>
               <Text style={styles.availabilityHint}>
-                {isAvailable
-                  ? 'Vous recevez des courses'
-                  : 'Activez pour recevoir des courses'
-                }
+                {isAvailable ? 'Vous recevez des courses' : 'Passez en ligne pour travailler'}
               </Text>
             </View>
 
@@ -119,53 +110,41 @@ const DriverHome = ({ navigation }) => {
               value={isAvailable}
               onValueChange={handleToggleAvailability}
               disabled={isToggling}
-              trackColor={{
-                false: 'rgba(242, 244, 246, 0.15)',
-                true: 'rgba(46, 204, 113, 0.35)',
-              }}
-              thumbColor={isAvailable ? THEME.COLORS.success : THEME.COLORS.textSecondary}
+              trackColor={{ false: 'rgba(128,128,128,0.2)', true: 'rgba(46, 204, 113, 0.3)' }}
+              thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
             />
           </View>
         </View>
 
-        {/* Stats rapides */}
         <View style={styles.statsRow}>
-          <View style={styles.statCard}>
-            <Ionicons name="car-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0</Text>
-            <Text style={styles.statLabel}>Courses</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="time-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0h</Text>
-            <Text style={styles.statLabel}>En ligne</Text>
-          </View>
-
-          <View style={styles.statCard}>
-            <Ionicons name="wallet-outline" size={20} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>0F</Text>
-            <Text style={styles.statLabel}>Gains</Text>
-          </View>
+          <StatBox icon="car-sport" value="0" label="Courses" />
+          <StatBox icon="time" value="0h" label="Heures" />
+          <StatBox icon="wallet" value="0 F" label="Gains" isGold />
         </View>
       </View>
     </View>
   );
 };
 
+const StatBox = ({ icon, value, label, isGold }) => (
+  <View style={styles.statCard}>
+    <Ionicons name={icon} size={20} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
+    <Text style={[styles.statValue, isGold && { color: THEME.COLORS.champagneGold }]}>{value}</Text>
+    <Text style={styles.statLabel}>{label}</Text>
+  </View>
+);
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt,
+    backgroundColor: THEME.COLORS.background,
   },
-
-  // ─── ZONE HAUTE ───
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: THEME.SPACING.lg,
     paddingVertical: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.deepAsphalt,
+    backgroundColor: THEME.COLORS.background,
   },
   locationContainer: {
     flex: 1,
@@ -189,9 +168,9 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.success,
   },
   locationText: {
-    color: THEME.COLORS.moonlightWhite,
+    color: THEME.COLORS.textPrimary,
     marginLeft: THEME.SPACING.sm,
-    fontSize: THEME.FONTS.sizes.bodySmall,
+    fontSize: 12,
     flex: 1,
   },
   menuButton: {
@@ -201,86 +180,83 @@ const styles = StyleSheet.create({
     borderRadius: 23,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
   },
-
-  // ─── ZONE BASSE ───
+  mapWrapper: {
+    marginTop: 20, // 🌟 AÉRATION
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+  },
   bottomSection: {
     flex: 1,
-    backgroundColor: THEME.COLORS.deepAsphalt,
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.lg,
   },
-
-  // ─── CARTE DISPONIBILITÉ ───
   availabilityCard: {
-    backgroundColor: THEME.COLORS.glassMedium,
-    borderRadius: THEME.BORDERS.radius.xl,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
   },
   availabilityCardOnline: {
-    borderColor: 'rgba(46, 204, 113, 0.30)',
+    borderColor: 'rgba(46, 204, 113, 0.3)',
     backgroundColor: 'rgba(46, 204, 113, 0.08)',
   },
   availabilityContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.lg,
+    padding: 16,
   },
   availabilityInfo: {
     flex: 1,
-    marginRight: THEME.SPACING.md,
   },
   availabilityHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.SPACING.sm,
+    gap: 8,
   },
   availabilityTitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.semiBold,
+    color: THEME.COLORS.textPrimary,
+    fontWeight: 'bold',
   },
   availabilityTitleOnline: {
     color: THEME.COLORS.success,
   },
   availabilityHint: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: THEME.FONTS.sizes.caption,
-    marginTop: THEME.SPACING.xxs,
-    marginLeft: THEME.SPACING.xxl + THEME.SPACING.sm,
+    color: THEME.COLORS.textSecondary,
+    fontSize: 11,
+    marginTop: 4,
   },
-
-  // ─── STATS ───
   statsRow: {
     flexDirection: 'row',
-    gap: THEME.SPACING.sm,
-    marginTop: THEME.SPACING.lg,
+    gap: 10,
+    marginTop: 20,
   },
   statCard: {
     flex: 1,
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassMedium,
-    borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    paddingVertical: THEME.SPACING.lg,
-    gap: THEME.SPACING.xs,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    paddingVertical: 15,
   },
   statValue: {
-    color: THEME.COLORS.moonlightWhite,
-    fontSize: THEME.FONTS.sizes.h4,
-    fontWeight: THEME.FONTS.weights.bold,
+    color: THEME.COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginVertical: 4,
   },
   statLabel: {
     color: THEME.COLORS.textTertiary,
-    fontSize: THEME.FONTS.sizes.micro,
+    fontSize: 10,
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
 });
 

@@ -1,5 +1,5 @@
 // src/screens/auth/LoginPage.jsx
-// PAGE CONNEXION - Design Épuré (Sans Logo) & Navigation Passive
+// PAGE CONNEXION - Design Épuré & Navigation Passive
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -31,7 +31,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
-export default function LoginPage({ navigation }) {
+const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
 
@@ -64,7 +64,6 @@ export default function LoginPage({ navigation }) {
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
-      // UPDATE REDUX -> Déclenche le AppNavigator automatiquement
       dispatch(setCredentials({ user, accessToken, refreshToken }));
 
       dispatch(showSuccessToast({
@@ -80,8 +79,15 @@ export default function LoginPage({ navigation }) {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <KeyboardAvoidingView 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        style={{ flex: 1 }}
+      >
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           
           <TouchableOpacity 
             onPress={() => navigation.navigate('Landing')} 
@@ -92,7 +98,6 @@ export default function LoginPage({ navigation }) {
           </TouchableOpacity>
 
           <View style={styles.headerContainer}>
-            {/* LOGO SUPPRIMÉ ICI */}
             <Text style={styles.welcomeText}>CONNEXION</Text>
             <Text style={styles.subText}>Accédez à votre espace Yély</Text>
           </View>
@@ -104,7 +109,10 @@ export default function LoginPage({ navigation }) {
                    <CountryPicker
                      countryCode={countryCode}
                      withFilter withFlag withCallingCode
-                     onSelect={(c) => { setCountryCode(c.cca2); setCallingCode(c.callingCode[0]); }}
+                     onSelect={(c) => { 
+                       setCountryCode(c.cca2); 
+                       setCallingCode(c.callingCode[0]); 
+                     }}
                    />
                    <Text style={styles.callingCodeText}>+{callingCode}</Text>
                  </View>
@@ -137,11 +145,15 @@ export default function LoginPage({ navigation }) {
             />
           </GlassCard>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Register')} style={styles.footer}>
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Register')} 
+            style={styles.footer}
+          >
             <Text style={styles.footerText}>
               Pas encore de compte ? <Text style={styles.linkText}>Créer un compte</Text>
             </Text>
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -149,19 +161,92 @@ export default function LoginPage({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
-  scrollContent: { flexGrow: 1, justifyContent: 'center', padding: THEME.SPACING.xl },
-  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.xl },
-  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  headerContainer: { marginBottom: THEME.SPACING.xl, marginTop: THEME.SPACING.lg },
-  welcomeText: { color: THEME.COLORS.champagneGold, fontSize: 32, fontWeight: 'bold', letterSpacing: 1 },
-  subText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 8 },
-  card: { padding: THEME.SPACING.lg },
-  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  callingCodeText: { color: '#FFF', marginLeft: 5, fontWeight: 'bold' },
-  loginButton: { marginTop: THEME.SPACING.md },
-  footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
-  footerText: { color: THEME.COLORS.textTertiary },
-  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.deepAsphalt 
+  },
+
+  scrollContent: { 
+    flexGrow: 1, 
+    justifyContent: 'center', 
+    padding: THEME.SPACING.xl 
+  },
+
+  backButton: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginBottom: THEME.SPACING.xl 
+  },
+
+  backText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 8, 
+    fontSize: 16, 
+    fontWeight: '600' 
+  },
+
+  headerContainer: { 
+    marginBottom: THEME.SPACING.xl, 
+    marginTop: THEME.SPACING.lg 
+  },
+
+  welcomeText: { 
+    color: THEME.COLORS.champagneGold, 
+    fontSize: 32, 
+    fontWeight: 'bold', 
+    letterSpacing: 1 
+  },
+
+  subText: { 
+    color: THEME.COLORS.textSecondary, 
+    fontSize: 16, 
+    marginTop: 8 
+  },
+
+  card: { 
+    padding: THEME.SPACING.lg 
+  },
+
+  inputRow: { 
+    flexDirection: 'row', 
+    gap: 8, 
+    alignItems: 'flex-start' 
+  },
+
+  countryPickerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: THEME.COLORS.glassLight, 
+    paddingHorizontal: 10, 
+    borderRadius: 12, 
+    height: 52, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.glassBorder 
+  },
+
+  callingCodeText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 5, 
+    fontWeight: 'bold' 
+  },
+
+  loginButton: { 
+    marginTop: THEME.SPACING.md 
+  },
+
+  footer: { 
+    marginTop: THEME.SPACING.xl, 
+    alignItems: 'center' 
+  },
+
+  footerText: { 
+    color: THEME.COLORS.textTertiary 
+  },
+
+  linkText: { 
+    color: THEME.COLORS.champagneGold, 
+    fontWeight: 'bold' 
+  }
 });
+
+export default LoginPage;

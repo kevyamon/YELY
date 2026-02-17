@@ -1,7 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER
-// Navigation vers 'Menu' activée
-// Export propre en fin de fichier
+// HOME RIDER - UX Aérée & Couleurs Thème
 
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -44,6 +42,7 @@ const RiderHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
+  // Ajustement de l'espacement pour ne pas coller au Header
   const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
 
   return (
@@ -53,9 +52,8 @@ const RiderHome = ({ navigation }) => {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.firstName || "Passager"}
+        userName={user?.name?.split(' ')[0] || "Passager"}
         mode="rider"
-        // ⚠️ NAVIGATION VERS LA PAGE MENU
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => console.log("Ouvrir recherche")}
@@ -66,6 +64,7 @@ const RiderHome = ({ navigation }) => {
         { paddingTop: topPadding, backgroundColor: THEME.COLORS.background }
       ]}>
         
+        {/* SECTION CARTE */}
         <View style={styles.mapSection}>
            {location ? (
              <MapCard 
@@ -76,18 +75,19 @@ const RiderHome = ({ navigation }) => {
            ) : (
              <View style={styles.loadingContainer}>
                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-               <Text style={{color: 'white', marginTop: 10, fontSize: 12}}>Localisation en cours...</Text>
+               <Text style={styles.loadingText}>Localisation en cours...</Text>
              </View>
            )}
         </View>
 
-        <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
+        {/* SECTION OFFRES (Bas de page) */}
+        <View style={styles.bottomSection}>
           
           <View style={styles.forfaitsContainer}>
             <Text style={styles.sectionTitle}>NOS OFFRES</Text>
             
             <View style={styles.emptyCard}>
-               <Text style={{color: THEME.COLORS.textTertiary, fontStyle: 'italic'}}>
+               <Text style={styles.emptyCardText}>
                  Sélectionnez une destination
                </Text>
             </View>
@@ -112,12 +112,13 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
+
   mapSection: {
     flex: 0.55, 
     overflow: 'hidden',
     borderBottomLeftRadius: 24,
     borderBottomRightRadius: 24,
-    backgroundColor: '#1a1a1a', 
+    backgroundColor: THEME.COLORS.surface, 
     zIndex: 1,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
@@ -125,23 +126,34 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 8,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
   },
+
+  loadingText: {
+    color: THEME.COLORS.textSecondary, 
+    marginTop: 10, 
+    fontSize: 12
+  },
+
   bottomSection: {
     flex: 0.45, 
+    backgroundColor: THEME.COLORS.background,
     paddingTop: THEME.SPACING.lg,
     paddingHorizontal: THEME.SPACING.lg,
   },
+
   forfaitsContainer: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'flex-start',
     paddingTop: 10,
   },
+
   sectionTitle: {
     color: THEME.COLORS.textSecondary,
     fontSize: 11,
@@ -150,24 +162,41 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     letterSpacing: 2,
   },
+
   emptyCard: {
     width: '100%',
     height: 110,
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: THEME.COLORS.glassLight,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
+    borderColor: THEME.COLORS.glassBorder,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
   },
+
+  emptyCardText: {
+    color: THEME.COLORS.textTertiary, 
+    fontStyle: 'italic'
+  },
+
   dotsContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
     gap: 8,
   },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.1)' },
-  dotActive: { backgroundColor: THEME.COLORS.champagneGold, width: 20 }
+
+  dot: { 
+    width: 6, 
+    height: 6, 
+    borderRadius: 3, 
+    backgroundColor: THEME.COLORS.glassBorder 
+  },
+
+  dotActive: { 
+    backgroundColor: THEME.COLORS.champagneGold, 
+    width: 20 
+  }
 });
 
 export default RiderHome;

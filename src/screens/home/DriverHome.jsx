@@ -1,7 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER
-// Navigation vers 'Menu' activée
-// Export propre en fin de fichier
+// HOME DRIVER - Espacement GPS & Design Aéré
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -70,7 +68,8 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT;
+  // 🌟 ESPACEMENT AUGMENTÉ (+20) pour aérer la carte sous la localisation
+  const topPadding = insets.top + THEME.LAYOUT.HEADER_MAX_HEIGHT + 20;
 
   return (
     <ScreenWrapper>
@@ -78,9 +77,8 @@ const DriverHome = ({ navigation }) => {
       <SmartHeader 
         scrollY={scrollY}
         address={currentAddress}
-        userName={user?.firstName || "Chauffeur"}
+        userName={user?.name?.split(' ')[0] || "Chauffeur"}
         mode="driver"
-        // ⚠️ NAVIGATION VERS LA PAGE MENU
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
@@ -107,15 +105,14 @@ const DriverHome = ({ navigation }) => {
            )}
         </View>
 
-        {/* SECTION DU BAS */}
-        <View style={[styles.bottomSection, { backgroundColor: THEME.COLORS.background }]}>
+        {/* SECTION DU BAS (Stats & Disponibilité) */}
+        <View style={styles.bottomSection}>
           
           <View style={[
             styles.availabilityCard, 
             { 
               backgroundColor: THEME.COLORS.glassSurface,
               borderColor: THEME.COLORS.border,
-              borderWidth: 1
             }, 
             isAvailable && styles.availabilityCardOnline
           ]}>
@@ -164,7 +161,7 @@ const DriverHome = ({ navigation }) => {
   );
 };
 
-// COMPOSANT STATBOX
+// COMPOSANT STATBOX INTERNE
 const StatBox = ({ icon, value, label, isGold }) => (
   <View style={[
     styles.statBox, 
@@ -200,6 +197,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'column',
   },
+
   mapSection: {
     flex: 0.55,
     overflow: 'hidden',
@@ -212,64 +210,79 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 8,
   },
+
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+
   loadingText: {
     marginTop: 10, 
     fontSize: 12
   },
+
   bottomSection: {
     flex: 0.45,
+    backgroundColor: THEME.COLORS.background,
     paddingTop: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.lg,
   },
+
   availabilityCard: {
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
+    borderWidth: 1,
   },
+
   availabilityCardOnline: {
     backgroundColor: 'rgba(46, 204, 113, 0.08)',
     borderColor: 'rgba(46, 204, 113, 0.3)',
   },
+
   availabilityRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
   },
+
   statusHeader: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 4,
     gap: 8,
   },
+
   statusTitle: {
     fontWeight: '900',
     fontSize: 14,
     letterSpacing: 1,
   },
+
   statusSubtitle: {
     fontSize: 11,
   },
+
   statsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 10,
   },
+
   statBox: {
     flex: 1,
     borderRadius: 12,
     paddingVertical: 15,
     alignItems: 'center',
   },
+
   statValue: {
     fontSize: 18,
     fontWeight: 'bold',
     marginVertical: 4,
   },
+
   statLabel: {
     fontSize: 10,
     textTransform: 'uppercase',
