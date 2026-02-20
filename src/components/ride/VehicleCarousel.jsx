@@ -11,7 +11,7 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
     return (
       <View style={styles.centerContainer}>
         <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-        <Text style={styles.loadingText}>Calcul des tarifs en cours...</Text>
+        <Text style={styles.loadingText}>Analyse du trajet en cours...</Text>
       </View>
     );
   }
@@ -19,7 +19,7 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
   if (error) {
     return (
       <View style={styles.centerContainer}>
-        <Text style={styles.errorText}>Impossible d'estimer le trajet.</Text>
+        <Text style={styles.errorText}>Impossible d'analyser le trajet.</Text>
         <Text style={styles.errorSubtext}>Veuillez réessayer.</Text>
       </View>
     );

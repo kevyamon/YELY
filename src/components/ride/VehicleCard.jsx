@@ -65,7 +65,10 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
 
         <View style={styles.priceContainer}>
           <Text style={[styles.priceText, isSelected && styles.textGold]}>
-            {vehicle.estimatedPrice} F
+            Prix libre
+          </Text>
+          <Text style={[styles.subPriceText, isSelected && styles.textGold]}>
+            Proposé par le chauffeur
           </Text>
         </View>
       </Pressable>
@@ -142,8 +145,13 @@ const styles = StyleSheet.create({
   },
   priceText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 16,
+    fontSize: 13,
     fontWeight: '900',
+  },
+  subPriceText: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 9,
+    marginTop: 2,
   },
   textGold: {
     color: THEME.COLORS.champagneGold,

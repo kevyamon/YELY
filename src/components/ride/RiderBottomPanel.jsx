@@ -57,7 +57,7 @@ const RiderBottomPanel = ({
                {isOrdering 
                  ? 'Recherche en cours...' 
                  : selectedVehicle 
-                   ? `Commander Yély ${selectedVehicle.name || selectedVehicle.label || ''} • ${selectedVehicle.estimatedPrice || selectedVehicle.amount || 0} F`
+                   ? `Commander Yély ${selectedVehicle.name || selectedVehicle.label || ''}`
                    : 'Sélectionnez un véhicule'}
              </Text>
            </TouchableOpacity>
