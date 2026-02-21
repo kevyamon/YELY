@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Dashboard complet avec Overlay de Course
+// HOME DRIVER - Fix du Toggle Availability
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
-import DriverRideOverlay from '../../components/ride/DriverRideOverlay'; // 🚀 NOUVEAU
+import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -32,6 +32,13 @@ const DriverHome = ({ navigation }) => {
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
+  // 🚀 SYNC REDUX : Force l'interrupteur à suivre les vraies données du profil
+  useEffect(() => {
+    if (user?.isAvailable !== undefined) {
+      setIsAvailable(user.isAvailable);
+    }
+  }, [user?.isAvailable]);
+
   useEffect(() => {
     if (location && isAvailable) {
       socketService.emitLocation(location);
@@ -54,20 +61,25 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
+  // 🚀 CORRECTION DU TOGGLE
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
     try {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-      setIsAvailable(res.isAvailable);
-      dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
       
-      if (res.isAvailable && location) {
+      // On extrait la donnée avec sécurité (selon la forme de responseHandler)
+      const actualStatus = res.data?.isAvailable ?? res.isAvailable ?? newStatus;
+      
+      setIsAvailable(actualStatus);
+      dispatch(updateUserInfo({ isAvailable: actualStatus }));
+      
+      if (actualStatus && location) {
         socketService.emitLocation(location);
       }
       
       dispatch(showSuccessToast({
-        title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
-        message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
+        title: actualStatus ? "EN LIGNE" : "HORS LIGNE",
+        message: actualStatus ? "Prêt pour les courses." : "Mode pause activé.",
       }));
     } catch (err) {
       dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
@@ -107,7 +119,6 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 🚀 PANNEAU DE COURSE EN COURS */}
       <DriverRideOverlay />
 
       <SmartFooter 

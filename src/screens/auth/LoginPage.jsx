@@ -1,5 +1,5 @@
 // src/screens/auth/LoginPage.jsx
-// PAGE CONNEXION - Design Épuré & Navigation Passive
+// PAGE CONNEXION - Design Épuré & Auto-Nettoyage des Erreurs
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -17,7 +17,7 @@ import {
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
@@ -25,7 +25,7 @@ import GoldButton from '../../components/ui/GoldButton';
 
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
-import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice'; // 🚀 AJOUT DE CLEAR_ERROR
 import THEME from '../../theme/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -35,6 +35,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const { error } = useSelector((state) => state.ui); // 🚀 RÉCUPÉRATION DE L'ERREUR
 
   const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [countryCode, setCountryCode] = useState('CI');
@@ -48,6 +49,17 @@ const LoginPage = ({ navigation }) => {
       setIsEmailMode(isEmail);
     }
   }, [formData.identifier]);
+
+  // 🚀 LOGIQUE : Dès qu'on tape, on efface l'erreur
+  const handleIdentifierChange = (t) => {
+    setFormData({ ...formData, identifier: t });
+    if (error) dispatch(clearError());
+  };
+
+  const handlePasswordChange = (t) => {
+    setFormData({ ...formData, password: t });
+    if (error) dispatch(clearError());
+  };
 
   const handleLogin = async () => {
     if (!formData.identifier.trim() || !formData.password.trim()) {
@@ -64,7 +76,6 @@ const LoginPage = ({ navigation }) => {
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
       
-      // 🛡️ SÉCURITÉ : L'API ne renvoie plus le refreshToken ici (il est dans le Cookie HTTPOnly)
       const { user, accessToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken }));
@@ -106,6 +117,13 @@ const LoginPage = ({ navigation }) => {
           </View>
 
           <GlassCard style={styles.card}>
+            {/* 🚀 AFFICHAGE DE L'ERREUR */}
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.inputRow}>
                {!isEmailMode && (
                  <View style={styles.countryPickerContainer}>
@@ -126,7 +144,7 @@ const LoginPage = ({ navigation }) => {
                     placeholder="Tél ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
-                    onChangeText={(t) => setFormData({ ...formData, identifier: t })}
+                    onChangeText={handleIdentifierChange} // 🚀 BRANCHÉ ICI
                   />
                </View>
             </View>
@@ -136,7 +154,7 @@ const LoginPage = ({ navigation }) => {
               placeholder="Mot de passe"
               secureTextEntry
               value={formData.password}
-              onChangeText={(t) => setFormData({ ...formData, password: t })}
+              onChangeText={handlePasswordChange} // 🚀 BRANCHÉ ICI
             />
 
             <GoldButton
@@ -172,7 +190,7 @@ const styles = StyleSheet.create({
   welcomeText: { color: THEME.COLORS.champagneGold, fontSize: 32, fontWeight: 'bold', letterSpacing: 1 },
   subText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 8 },
   card: { padding: THEME.SPACING.lg },
-  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
+  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginBottom: 15 },
   countryPickerContainer: { 
     flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, 
     paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder 
@@ -181,7 +199,9 @@ const styles = StyleSheet.create({
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },
-  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
+  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' },
+  errorBox: { backgroundColor: 'rgba(231, 76, 60, 0.1)', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: THEME.COLORS.danger },
+  errorText: { color: THEME.COLORS.danger, fontSize: 13, textAlign: 'center', fontWeight: 'bold' }
 });
 
 export default LoginPage;
