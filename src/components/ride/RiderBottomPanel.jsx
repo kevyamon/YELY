@@ -7,6 +7,15 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import THEME from '../../theme/theme';
 import VehicleCarousel from './VehicleCarousel';
 
+// Fonction de nettoyage pour garantir qu'aucun prix n'est affiché
+const getVehicleName = (type) => {
+  switch(type?.toLowerCase()) {
+    case 'echo': return 'Echo';
+    case 'vip': return 'Premium';
+    default: return 'Standard';
+  }
+};
+
 const RiderBottomPanel = ({
   destination,
   displayVehicles,
@@ -57,7 +66,7 @@ const RiderBottomPanel = ({
                {isOrdering 
                  ? 'Recherche en cours...' 
                  : selectedVehicle 
-                   ? `Commander Yély ${selectedVehicle.name || selectedVehicle.label || ''}`
+                   ? `Commander Yély ${getVehicleName(selectedVehicle.type)}`
                    : 'Sélectionnez un véhicule'}
              </Text>
            </TouchableOpacity>

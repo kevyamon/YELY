@@ -17,10 +17,11 @@ import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
+// CORRECTION : On retire définitivement les "estimatedPrice" en dur ici !
 const MOCK_VEHICLES = [
-  { id: '1', type: 'echo', name: 'Echo', duration: '5', estimatedPrice: 1000 },
-  { id: '2', type: 'standard', name: 'Standard', duration: '3', estimatedPrice: 1500 },
-  { id: '3', type: 'vip', name: 'VIP', duration: '8', estimatedPrice: 3000 }
+  { id: '1', type: 'echo', name: 'Echo', duration: '5' },
+  { id: '2', type: 'standard', name: 'Standard', duration: '3' },
+  { id: '3', type: 'vip', name: 'VIP', duration: '8' }
 ];
 
 const RiderHome = ({ navigation }) => {

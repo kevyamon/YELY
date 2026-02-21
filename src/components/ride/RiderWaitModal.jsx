@@ -1,3 +1,5 @@
+// src/components/ride/RiderWaitModal.jsx
+
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';

@@ -52,9 +52,10 @@ const SmartFooter = ({
                  onPress={onConfirmRide}
                  activeOpacity={0.9}
                >
+                 {/* CORRECTION : On affiche uniquement le nom, sans le prix */}
                  <Text style={[styles.confirmButtonText, !selectedVehicle && styles.confirmButtonTextDisabled]}>
                    {selectedVehicle 
-                      ? `Commander Yély ${selectedVehicle.name} • ${selectedVehicle.estimatedPrice} F`
+                      ? `Commander Yély ${selectedVehicle.name}`
                       : 'Sélectionnez un véhicule'}
                  </Text>
                </TouchableOpacity>
