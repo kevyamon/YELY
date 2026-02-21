@@ -1,12 +1,12 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Fix Crash Annulation (centerOnUser)
+// HOME RIDER WEB - Synchronisation Phase 6 (Connexion Backend & Nettoyage Mocks)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
@@ -15,19 +15,23 @@ import GlassCard from '../../components/ui/GlassCard';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice';
+import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { setCurrentRide } from '../../store/slices/rideSlice';
+import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
+// CORRECTION : Plus de prix en dur, on laisse le chauffeur négocier
 const MOCK_VEHICLES = [
-  { id: '1', type: 'echo', name: 'Echo', duration: '5', estimatedPrice: 1000 },
-  { id: '2', type: 'standard', name: 'Standard', duration: '3', estimatedPrice: 1500 },
-  { id: '3', type: 'vip', name: 'VIP', duration: '8', estimatedPrice: 3000 }
+  { id: '1', type: 'echo', name: 'Echo', duration: '5' },
+  { id: '2', type: 'standard', name: 'Standard', duration: '3' },
+  { id: '3', type: 'vip', name: 'VIP', duration: '8' }
 ];
 
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   
   const { location, address } = useGeolocation();
@@ -39,6 +43,9 @@ const RiderHome = ({ navigation }) => {
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
+
+  // 🚀 NOUVEAU : On importe la mutation pour le Web aussi
+  const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
 
@@ -70,15 +77,46 @@ const RiderHome = ({ navigation }) => {
     setDestination(null);
     setRouteCoords(null);
     setSelectedVehicle(null);
-    // CORRECTION : Appel sécurisé
+    
     if (location && mapRef.current) {
       mapRef.current.centerOnUser();
     }
   };
 
-  const handleConfirmRide = () => {
-    if (!selectedVehicle) return;
-    console.log("🚀 Lancement Web Phase 6 pour :", selectedVehicle.name);
+  // 🚀 L'ACTION PRINCIPALE WEB : Lancement de la course !
+  const handleConfirmRide = async () => {
+    if (!selectedVehicle || !location || !destination) return;
+    
+    try {
+      const payload = {
+        origin: {
+          address: currentAddress || "Position actuelle",
+          coordinates: [location.longitude, location.latitude]
+        },
+        destination: {
+          address: destination.address || "Destination",
+          coordinates: [destination.longitude, destination.latitude]
+        },
+        forfait: selectedVehicle.type?.toUpperCase() || 'STANDARD'
+      };
+      
+      const res = await requestRideApi(payload).unwrap();
+      const rideData = res.data || res; 
+      
+      dispatch(setCurrentRide({
+        rideId: rideData.rideId,
+        status: rideData.status || 'searching',
+        origin: payload.origin.address,
+        destination: payload.destination.address,
+        forfait: payload.forfait
+      }));
+      
+    } catch (error) {
+      dispatch(showErrorToast({ 
+        title: 'Erreur', 
+        message: error?.data?.message || 'Impossible de lancer la commande sur le Web.' 
+      }));
+    }
   };
 
   const mapMarkers = destination ? [{
@@ -154,6 +192,7 @@ const RiderHome = ({ navigation }) => {
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}
+        isOrdering={isOrdering} // 🚀 On passe l'état de chargement
         topContent={renderWebSearchControls()} 
       />
 

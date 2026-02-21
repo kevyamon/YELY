@@ -1,3 +1,6 @@
+// src/hooks/useSocketEvents.js
+// ÉCOUTEURS SOCKET - Séparation stricte des rôles (Rider vs Driver)
+
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
@@ -17,6 +20,10 @@ const useSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // ==========================================
+    // 🚖 ÉVÉNEMENTS REÇUS PAR LE CHAUFFEUR
+    // ==========================================
+
     const handleNewRideRequest = (data) => {
       dispatch(setIncomingRide(data));
     };
@@ -24,6 +31,29 @@ const useSocketEvents = () => {
     const handleRideTakenByOther = () => {
       dispatch(clearIncomingRide());
     };
+
+    const handleProposalAccepted = (data) => {
+      // Le client a dit OUI. Le chauffeur passe en course active.
+      dispatch(setCurrentRide({ ...data, status: 'accepted' }));
+      dispatch(clearIncomingRide());
+      dispatch(showSuccessToast({ 
+        title: 'Course confirmée', 
+        message: 'Le client a accepté votre tarif. En route !' 
+      }));
+    };
+
+    const handleProposalRejected = () => {
+      // Le client a dit NON. On nettoie juste l'écran du chauffeur.
+      dispatch(clearIncomingRide());
+      dispatch(showErrorToast({ 
+        title: 'Prix refusé', 
+        message: 'Le client a décliné votre proposition.' 
+      }));
+    };
+
+    // ==========================================
+    // 👤 ÉVÉNEMENTS REÇUS PAR LE PASSAGER (CLIENT)
+    // ==========================================
 
     const handleDriverFound = (data) => {
       dispatch(updateRideStatus({ 
@@ -37,24 +67,6 @@ const useSocketEvents = () => {
         proposedPrice: data.amount, 
         driverName: data.driverName, 
         status: 'negotiating' 
-      }));
-    };
-
-    const handleProposalAccepted = (data) => {
-      dispatch(setCurrentRide({ ...data, status: 'accepted' }));
-      dispatch(clearIncomingRide());
-      dispatch(showSuccessToast({ 
-        title: 'Course confirmée', 
-        message: 'Le client a accepté votre tarif.' 
-      }));
-    };
-
-    const handleProposalRejected = () => {
-      dispatch(clearIncomingRide());
-      dispatch(updateRideStatus({ status: 'searching' }));
-      dispatch(showErrorToast({ 
-        title: 'Prix refusé', 
-        message: 'Le client a décliné votre proposition.' 
       }));
     };
 
@@ -72,6 +84,7 @@ const useSocketEvents = () => {
       }));
     };
 
+    // --- ABONNEMENTS ---
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('driver_found', handleDriverFound);

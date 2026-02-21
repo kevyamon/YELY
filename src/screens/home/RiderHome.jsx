@@ -1,10 +1,10 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Fix Crash Annulation (centerOnUser)
+// HOME RIDER - Connexion de la commande avec le Backend (Phase 6)
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
@@ -13,11 +13,12 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import { useLazyEstimateRideQuery } from '../../store/api/ridesApiSlice';
+import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { setCurrentRide } from '../../store/slices/rideSlice';
+import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// CORRECTION : On retire définitivement les "estimatedPrice" en dur ici !
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5' },
   { id: '2', type: 'standard', name: 'Standard', duration: '3' },
@@ -25,6 +26,7 @@ const MOCK_VEHICLES = [
 ];
 
 const RiderHome = ({ navigation }) => {
+  const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   
   const { location, errorMsg } = useGeolocation(); 
@@ -36,6 +38,9 @@ const RiderHome = ({ navigation }) => {
   
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
+  
+  // 🚀 NOUVEAU : On importe la mutation pour créer la course
+  const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
   
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
@@ -87,20 +92,52 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleCancelDestination = () => {
-    // 1. On vide les états
     setDestination(null);
     setRouteCoords(null);
     setSelectedVehicle(null);
     
-    // 2. CORRECTION : On utilise centerOnUser() qui est fait pour ça, au lieu de fitToCoordinates
     if (location && mapRef.current) {
       mapRef.current.centerOnUser();
     }
   };
 
-  const handleConfirmRide = () => {
-    if (!selectedVehicle) return;
-    console.log("🚀 Lancement de la Phase 6 (Dispatch) pour :", selectedVehicle.name);
+  // 🚀 L'ACTION PRINCIPALE : Lancement de la course !
+  const handleConfirmRide = async () => {
+    if (!selectedVehicle || !location || !destination) return;
+    
+    try {
+      // 1. On prépare les données selon le format exigé par ton backend (Zod)
+      const payload = {
+        origin: {
+          address: currentAddress || "Position actuelle",
+          coordinates: [location.longitude, location.latitude]
+        },
+        destination: {
+          address: destination.address || "Destination",
+          coordinates: [destination.longitude, destination.latitude]
+        },
+        forfait: selectedVehicle.type?.toUpperCase() || 'STANDARD'
+      };
+      
+      // 2. On tire la requête
+      const res = await requestRideApi(payload).unwrap();
+      const rideData = res.data || res; // S'adapte au responseHandler de ton backend
+      
+      // 3. On enregistre la course en cours dans Redux (ce qui fera apparaître la modale d'attente)
+      dispatch(setCurrentRide({
+        rideId: rideData.rideId,
+        status: rideData.status || 'searching',
+        origin: payload.origin.address,
+        destination: payload.destination.address,
+        forfait: payload.forfait
+      }));
+      
+    } catch (error) {
+      dispatch(showErrorToast({ 
+        title: 'Erreur', 
+        message: error?.data?.message || 'Impossible de lancer la commande.' 
+      }));
+    }
   };
 
   const mapMarkers = destination ? [{
@@ -149,7 +186,8 @@ const RiderHome = ({ navigation }) => {
         displayVehicles={displayVehicles}
         selectedVehicle={selectedVehicle}
         onSelectVehicle={setSelectedVehicle}
-        isEstimating={isEstimating}
+        // Astuce : on cumule les états de chargement pour bloquer le bouton pendant la commande
+        isEstimating={isEstimating || isOrdering} 
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}

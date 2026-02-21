@@ -1,5 +1,5 @@
-// src/screens/home/DriverHome.jsx
-// HOME DRIVER - Carte claire (contraste avec le thème sombre)
+// src/screens/home/DriverHome.web.jsx
+// HOME DRIVER WEB - Sécurisation de la carte
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -73,8 +73,10 @@ const DriverHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true} 
-             darkMode={false} // CORRECTION : Carte claire !
+             darkMode={false} // On garde la carte claire pour le Web
              floating={false} 
+             markers={[]} // 🛡️ SÉCURITÉ : Empêche le crash si 'markers' est undefined
+             route={null} // 🛡️ SÉCURITÉ : Empêche le crash
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (

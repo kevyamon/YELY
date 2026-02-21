@@ -1,3 +1,4 @@
+// src/store/slices/rideSlice.js
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
@@ -16,6 +17,7 @@ const rideSlice = createSlice({
       state.incomingRide = null;
     },
     setCurrentRide: (state, action) => {
+      // Merge intelligent pour ne pas perdre les données précédentes (comme l'ID)
       state.currentRide = { ...state.currentRide, ...action.payload };
     },
     updateRideStatus: (state, action) => {
