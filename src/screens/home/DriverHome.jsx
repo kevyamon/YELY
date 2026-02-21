@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - UX Immersion Totale & Carte Auto-Intelligente
+// HOME DRIVER - UX Immersion Totale & Balise Radar (Socket)
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -12,6 +12,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import socketService from '../../services/socketService'; // 🚀 NOUVEAU : Import du radar
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -28,6 +29,13 @@ const DriverHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+
+  // 🚀 NOUVEAU : La Balise Radar. Dès que le GPS bouge et qu'on est en ligne, on prévient le serveur !
+  useEffect(() => {
+    if (location && isAvailable) {
+      socketService.emitLocation(location);
+    }
+  }, [location, isAvailable]);
 
   useEffect(() => {
     if (location) {
@@ -52,6 +60,11 @@ const DriverHome = ({ navigation }) => {
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
       
+      // Si on passe en ligne, on force l'envoi de la position immédiatement
+      if (res.isAvailable && location) {
+        socketService.emitLocation(location);
+      }
+      
       dispatch(showSuccessToast({
         title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
         message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
@@ -74,10 +87,9 @@ const DriverHome = ({ navigation }) => {
              showUserMarker={true}
              showRecenterButton={true} 
              floating={false} // Immersion Totale
-             markers={[]} // Sécurité anti-crash : tableau vide explicite
+             markers={[]} // Sécurité anti-crash
              route={null} // Sécurité anti-crash
              recenterBottomPadding={mapBottomPadding} 
-             // Note: plus de prop 'darkMode', la carte est autonome !
            />
          ) : (
            <View style={styles.loadingContainer}>

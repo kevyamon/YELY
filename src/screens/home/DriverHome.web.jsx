@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Sécurisation de la carte
+// HOME DRIVER WEB - Carte claire & Balise Radar (Socket)
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -12,6 +12,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import socketService from '../../services/socketService'; // 🚀 NOUVEAU : Import du radar
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -28,6 +29,13 @@ const DriverHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+
+  // 🚀 NOUVEAU : La Balise Radar pour le Web aussi
+  useEffect(() => {
+    if (location && isAvailable) {
+      socketService.emitLocation(location);
+    }
+  }, [location, isAvailable]);
 
   useEffect(() => {
     if (location) {
@@ -52,6 +60,11 @@ const DriverHome = ({ navigation }) => {
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
       
+      // Si on passe en ligne, on force l'envoi de la position immédiatement
+      if (res.isAvailable && location) {
+        socketService.emitLocation(location);
+      }
+      
       dispatch(showSuccessToast({
         title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
         message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
@@ -73,10 +86,10 @@ const DriverHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true} 
-             darkMode={false} // On garde la carte claire pour le Web
+             darkMode={false} // Carte claire pour le Web
              floating={false} 
-             markers={[]} // 🛡️ SÉCURITÉ : Empêche le crash si 'markers' est undefined
-             route={null} // 🛡️ SÉCURITÉ : Empêche le crash
+             markers={[]} // Sécurité anti-crash
+             route={null} // Sécurité anti-crash
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
@@ -112,7 +125,7 @@ const styles = StyleSheet.create({
   },
   mapContainer: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F5F5F5', // Fond gris très clair avant chargement
+    backgroundColor: '#F5F5F5', 
     zIndex: 1,
   },
   loadingContainer: {
