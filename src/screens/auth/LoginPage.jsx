@@ -1,6 +1,5 @@
 // src/screens/auth/LoginPage.jsx
-// PAGE CONNEXION - Design Épuré & Fix de frappe
-// CSCSM Level: Bank Grade
+// PAGE CONNEXION - Design Épuré & Auto-Nettoyage des erreurs
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -17,7 +16,7 @@ import {
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux'; // 🚀 CORRECTION : Ajout de useSelector
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
@@ -25,7 +24,7 @@ import GoldButton from '../../components/ui/GoldButton';
 
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
-import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice'; // 🚀 CORRECTION : Ajout de clearError
 import THEME from '../../theme/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -34,7 +33,8 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
-  const [login, { isLoading, reset }] = useLoginMutation(); // 🚀 NOUVEAU: reset pour RTK Query
+  const [login, { isLoading }] = useLoginMutation();
+  const { error } = useSelector((state) => state.ui); // 🚀 CORRECTION : On récupère l'erreur globale
 
   const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [countryCode, setCountryCode] = useState('CI');
@@ -49,15 +49,15 @@ const LoginPage = ({ navigation }) => {
     }
   }, [formData.identifier]);
 
-  // 🚀 CORRECTION : Utilisation de (prev) pour éviter que React ne perde des lettres
+  // 🚀 LOGIQUE MÉTIER : Dès qu'on touche au texte, on nettoie l'erreur rouge
   const handleIdentifierChange = (t) => {
-    setFormData(prev => ({ ...prev, identifier: t }));
-    reset(); // On nettoie toute erreur précédente en mémoire
+    setFormData({ ...formData, identifier: t });
+    if (error) dispatch(clearError());
   };
 
   const handlePasswordChange = (t) => {
-    setFormData(prev => ({ ...prev, password: t }));
-    reset(); // On nettoie toute erreur précédente en mémoire
+    setFormData({ ...formData, password: t });
+    if (error) dispatch(clearError());
   };
 
   const handleLogin = async () => {
@@ -116,6 +116,13 @@ const LoginPage = ({ navigation }) => {
           </View>
 
           <GlassCard style={styles.card}>
+            {/* 🚀 AFFICHAGE DE L'ERREUR SI ELLE EXISTE */}
+            {error ? (
+              <View style={styles.errorBox}>
+                <Text style={styles.errorText}>{error}</Text>
+              </View>
+            ) : null}
+
             <View style={styles.inputRow}>
                {!isEmailMode && (
                  <View style={styles.countryPickerContainer}>
@@ -136,7 +143,7 @@ const LoginPage = ({ navigation }) => {
                     placeholder="Tél ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
-                    onChangeText={handleIdentifierChange} // 🚀 BRANCHÉ ICI
+                    onChangeText={handleIdentifierChange} // 🚀 CORRECTION BRANCHÉE
                   />
                </View>
             </View>
@@ -146,7 +153,7 @@ const LoginPage = ({ navigation }) => {
               placeholder="Mot de passe"
               secureTextEntry
               value={formData.password}
-              onChangeText={handlePasswordChange} // 🚀 BRANCHÉ ICI
+              onChangeText={handlePasswordChange} // 🚀 CORRECTION BRANCHÉE
             />
 
             <GoldButton
@@ -191,7 +198,9 @@ const styles = StyleSheet.create({
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },
-  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
+  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' },
+  errorBox: { backgroundColor: 'rgba(231, 76, 60, 0.1)', padding: 12, borderRadius: 8, marginBottom: 16, borderWidth: 1, borderColor: THEME.COLORS.error },
+  errorText: { color: THEME.COLORS.error, fontSize: 13, textAlign: 'center', fontWeight: 'bold' }
 });
 
 export default LoginPage;
