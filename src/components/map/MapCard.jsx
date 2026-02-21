@@ -1,17 +1,64 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Intégration Dynamique KML
+// COMPOSANT CARTE - Avec Marqueur de Destination Animé (Pulsation)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+// 🚀 AJOUT DE Animated et Easing
+import { Animated, Easing, StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
 import MapView, { Marker, Polygon, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
-import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone'; // 🚀 IMPORT DU FICHIER KML
+import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+// 🚀 NOUVEAU COMPOSANT : Le marqueur de destination animé
+const AnimatedDestinationMarker = ({ color }) => {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0,
+          duration: 1500,
+          easing: Easing.inOut(Easing.ease),
+          useNativeDriver: true,
+        })
+      ])
+    ).start();
+  }, []);
+
+  const scale = pulseAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0.8, 1.2]
+  });
+
+  const opacity = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.3, 0.7, 0.3]
+  });
+
+  return (
+    <View style={styles.animatedMarkerContainer}>
+      {/* Le halo qui pulse derrière */}
+      <Animated.View style={[
+        styles.pulseHalo, 
+        { backgroundColor: color, transform: [{ scale }], opacity }
+      ]} />
+      {/* L'icône fixe devant */}
+      <Ionicons name="flag" size={28} color={color} style={styles.markerIconShadow} />
+    </View>
+  );
+};
 
 const MapCard = forwardRef(({
   location,
@@ -35,7 +82,6 @@ const MapCard = forwardRef(({
   const isAppDark = colorScheme === 'dark';
   const isMapDark = autoContrast ? !isAppDark : isAppDark;
 
-  // Utilisation du centre défini dans le fichier mafereZone.js
   const safeLocation = location?.latitude && location?.longitude 
     ? location 
     : MAFERE_CENTER;
@@ -119,7 +165,6 @@ const MapCard = forwardRef(({
             fadeDuration={0} 
           />
 
-          {/* 🚀 LECTURE DU KML DEPUIS LE FICHIER EXTERNE */}
           {MAFERE_KML_ZONE && MAFERE_KML_ZONE.length > 0 && (
             <Polygon
               coordinates={MAFERE_KML_ZONE}
@@ -143,24 +188,34 @@ const MapCard = forwardRef(({
           )}
 
           {markers.map((marker, index) => {
-            if (!marker.latitude || !marker.longitude) return null; 
+            if (!marker.latitude || !marker.longitude) return null;
+
+            // 🚀 LOGIQUE D'AFFICHAGE : Si c'est la destination, on met l'animation
+            const isDestination = marker.type === 'destination';
+            const anchor = isDestination ? { x: 0.5, y: 0.8 } : { x: 0.5, y: 0.5 }; // On ancre le bas du drapeau
+
             return (
               <Marker
                 key={marker.id || `marker-${index}`}
                 coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                 title={marker.title || ''}
                 description={marker.description || ''}
-                anchor={{ x: 0.5, y: 0.5 }}
+                anchor={anchor} 
                 onPress={() => onMarkerPress?.(marker)}
               >
-                {marker.customView || (
-                  <View style={[styles.defaultMarker, marker.style]}>
-                    <Ionicons
-                      name={marker.icon || 'location'}
-                      size={marker.iconSize || 20}
-                      color={marker.iconColor || THEME.COLORS.champagneGold}
-                    />
-                  </View>
+                {isDestination ? (
+                  // 🚀 Rendu du marqueur animé
+                  <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
+                ) : (
+                  marker.customView || (
+                    <View style={[styles.defaultMarker, marker.style]}>
+                      <Ionicons
+                        name={marker.icon || 'location'}
+                        size={marker.iconSize || 20}
+                        color={marker.iconColor || THEME.COLORS.champagneGold}
+                      />
+                    </View>
+                  )
                 )}
               </Marker>
             );
@@ -213,6 +268,11 @@ const styles = StyleSheet.create({
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
+  
+  // 🚀 STYLES POUR L'ANIMATION
+  animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
+  pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
+  markerIconShadow: { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 2, elevation: 5 }
 });
 
 export default React.memo(MapCard);

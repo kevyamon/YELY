@@ -1,5 +1,6 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Fix du Toggle Availability
+// HOME DRIVER - Intelligence Spatiale (KML) branchée !
+// CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -20,6 +21,8 @@ import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice'
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
+import { isLocationInMafereZone } from '../../utils/mafereZone'; // 🚀 IMPORT DU CERVEAU KML
+
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const dispatch = useDispatch();
@@ -32,7 +35,9 @@ const DriverHome = ({ navigation }) => {
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
-  // 🚀 SYNC REDUX : Force l'interrupteur à suivre les vraies données du profil
+  // 🚀 INTELLIGENCE : Vérifie si le chauffeur est dans la zone autorisée
+  const isDriverInZone = isLocationInMafereZone(location);
+
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
       setIsAvailable(user.isAvailable);
@@ -61,14 +66,21 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
-  // 🚀 CORRECTION DU TOGGLE
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
+    
+    // 🚀 SÉCURITÉ : Bloquer le passage en ligne si le chauffeur n'est pas à Maféré
+    if (newStatus && !isDriverInZone) {
+      dispatch(showErrorToast({ 
+        title: 'Accès Refusé', 
+        message: 'Vous devez être dans la zone de Maféré pour vous mettre en service.' 
+      }));
+      return;
+    }
+
     try {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-      
-      // On extrait la donnée avec sécurité (selon la forme de responseHandler)
-      const actualStatus = res.data?.isAvailable ?? res.isAvailable ?? newStatus;
+      const actualStatus = res.data ? res.data.isAvailable : newStatus;
       
       setIsAvailable(actualStatus);
       dispatch(updateUserInfo({ isAvailable: actualStatus }));
@@ -134,26 +146,10 @@ const DriverHome = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
-  mapContainer: {
-    ...StyleSheet.absoluteFillObject,
-    flex: 1, 
-    zIndex: 1,
-  },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  loadingText: {
-    marginTop: 10, 
-    fontSize: 12,
-    color: THEME.COLORS.textSecondary,
-  }
+  screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
+  mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
+  loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary }
 });
 
 export default DriverHome;

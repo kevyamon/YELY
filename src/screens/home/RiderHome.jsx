@@ -1,7 +1,8 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Carte Libre & Commandes restreintes au KML
+// HOME RIDER - Cadrage Caméra Centré & Équilibré
+// CSCSM Level: Bank Grade
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
@@ -20,7 +21,7 @@ import { setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-import { isLocationInMafereZone } from '../../utils/mafereZone'; // 🚀 IMPORT DE L'INTELLIGENCE
+import { isLocationInMafereZone } from '../../utils/mafereZone';
 
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5' },
@@ -47,7 +48,6 @@ const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
 
-  // 🚀 VÉRIFICATION : L'utilisateur est-il dans la zone de couverture ?
   const isUserInZone = isLocationInMafereZone(location);
 
   useEffect(() => {
@@ -76,7 +76,6 @@ const RiderHome = ({ navigation }) => {
   }, [destination, displayVehicles, selectedVehicle]);
 
   const handleDestinationSelect = async (selectedPlace) => {
-    // 🚀 SÉCURITÉ : La destination doit aussi être dans la zone de Maféré !
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
@@ -91,10 +90,20 @@ const RiderHome = ({ navigation }) => {
     
     if (location && mapRef.current) {
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
+      
       if (coords && coords.length > 0) {
-        setRouteCoords(coords);
-        mapRef.current.fitToCoordinates(coords, {
-          edgePadding: { top: 120, right: 50, bottom: 50, left: 50 },
+        const visualRoute = [
+          { latitude: location.latitude, longitude: location.longitude },
+          ...coords,
+          { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
+        ];
+
+        setRouteCoords(visualRoute);
+        
+        // 🚀 CORRECTION UI : On a réduit le "bottom" et augmenté le reste.
+        // La carte va donc "dézoomer" un peu plus et centrer le tracé proprement.
+        mapRef.current.fitToCoordinates(visualRoute, {
+          edgePadding: { top: 200, right: 80, bottom: 280, left: 80 },
           animated: true,
         });
       }
@@ -151,12 +160,20 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  const mapMarkers = destination ? [{
-    id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
-    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger 
-  }] : [];
+  const mapMarkers = useMemo(() => {
+    if (!destination) return [];
+    return [{
+      id: 'destination', 
+      latitude: destination.latitude, 
+      longitude: destination.longitude,
+      title: destination.address, 
+      icon: 'flag', 
+      iconColor: THEME.COLORS.danger,
+      type: 'destination' 
+    }];
+  }, [destination]);
 
-  const mapBottomPadding = 240; 
+  const mapBottomPadding = destination ? 320 : 240; 
 
   return (
     <View style={styles.screenWrapper}>
@@ -201,7 +218,7 @@ const RiderHome = ({ navigation }) => {
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}
-        isUserInZone={isUserInZone} // 🚀 ON PASSE L'INFO AU FOOTER
+        isUserInZone={isUserInZone} 
       />
 
       <DestinationSearchModal 

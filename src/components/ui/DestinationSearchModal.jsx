@@ -1,194 +1,106 @@
 // src/components/ui/DestinationSearchModal.jsx
-// MODALE DE RECHERCHE - Phase 4 (UX Pivot : Remplacement du BottomSheet)
+// MODALE DE RECHERCHE - Connectée aux POI de Maféré
 
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
-import MapService from '../../services/mapService';
+import React, { useState } from 'react';
+import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
-import GlassInput from './GlassInput';
-import GlassModal from './GlassModal'; // Utilisation de ton composant premium
+import { MAFERE_POIS } from '../../utils/maferePOIs'; // 🚀 IMPORT DU NOUVEAU FICHIER
 
 const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
-  const [searchQuery, setSearchQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [searchText, setSearchText] = useState('');
 
-  // Fonction de recherche via OpenStreetMap
-  const handleTextChange = async (text) => {
-    setSearchQuery(text);
-    if (text.length > 2) {
-      setIsLoading(true);
-      try {
-        const results = await MapService.getPlaceSuggestions(text);
-        setSuggestions(results);
-      } catch (error) {
-        console.error("Erreur Autocomplete:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    } else {
-      setSuggestions([]); 
-    }
-  };
+  // 🚀 LOGIQUE : Filtre les POIs en fonction de la recherche du client
+  const filteredPOIs = MAFERE_POIS.filter(poi =>
+    poi.name.toLowerCase().includes(searchText.toLowerCase())
+  );
 
-  // Lors de la sélection d'une adresse
-  const handleSelectPlace = (item) => {
-    Keyboard.dismiss(); // Baisse le clavier
-    
-    // Ferme la modale via le parent
-    onClose(); 
-    
-    // Envoie les données au parent pour tracer la route
-    onDestinationSelect({
-      address: item.mainText,
-      fullAddress: item.description,
-      latitude: item.latitude,
-      longitude: item.longitude
-    });
-    
-    // Nettoyage pour la prochaine ouverture
-    setSearchQuery('');
-    setSuggestions([]);
-  };
-
-  const renderSuggestionItem = useCallback(({ item }) => (
-    <TouchableOpacity 
-      style={styles.suggestionItem} 
-      onPress={() => handleSelectPlace(item)}
+  const renderItem = ({ item }) => (
+    <TouchableOpacity
+      style={styles.poiItem}
+      onPress={() => {
+        onDestinationSelect({
+          address: item.name,
+          latitude: item.latitude,
+          longitude: item.longitude
+        });
+        setSearchText(''); // On nettoie pour la prochaine fois
+        onClose();
+      }}
     >
-      <View style={styles.suggestionIcon}>
-        <Ionicons name="location" size={20} color={THEME.COLORS.champagneGold} />
+      <View style={[styles.iconContainer, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
+        <Ionicons name={item.icon || "location"} size={22} color={item.iconColor || THEME.COLORS.champagneGold} />
       </View>
-      <View style={styles.suggestionTextContainer}>
-        <Text style={styles.mainText} numberOfLines={1}>{item.mainText}</Text>
-        <Text style={styles.secondaryText} numberOfLines={1}>{item.secondaryText}</Text>
+      <View style={styles.poiInfo}>
+        <Text style={styles.poiName}>{item.name}</Text>
+        <Text style={styles.poiSub}>Maféré, Côte d'Ivoire</Text>
       </View>
+      <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
     </TouchableOpacity>
-  ), []);
+  );
 
   return (
-    <GlassModal
-      visible={visible}
-      onClose={onClose}
-      position="top" // S'affiche en haut pour éviter le clavier
-      fullWidth={true}
-      style={styles.modalStyle}
-    >
-      <View style={styles.header}>
-        <Text style={styles.title}>Où allons-nous ?</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close-circle" size={28} color={THEME.COLORS.textSecondary} />
-        </TouchableOpacity>
-      </View>
+    <Modal visible={visible} animationType="slide" transparent={true} onRequestClose={onClose}>
+      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.modalContainer}>
+        <View style={styles.modalContent}>
+          
+          <View style={styles.header}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.headerTitle}>Où allez-vous ?</Text>
+            <View style={{ width: 28 }} />
+          </View>
 
-      <View style={styles.inputWrapper}>
-        <GlassInput
-          placeholder="Rechercher une destination..."
-          value={searchQuery}
-          onChangeText={handleTextChange}
-          autoFocus={true} // Ouvre le clavier directement
-          icon="search-outline"
-        />
-        {isLoading && (
-           <ActivityIndicator 
-             style={styles.loader} 
-             size="small" 
-             color={THEME.COLORS.champagneGold} 
-           />
-        )}
-      </View>
+          <View style={styles.searchBarContainer}>
+            <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} style={styles.searchIcon} />
+            <TextInput
+              style={styles.searchInput}
+              placeholder="Ex: Marché de Maféré..."
+              placeholderTextColor={THEME.COLORS.textTertiary}
+              value={searchText}
+              onChangeText={setSearchText}
+              autoFocus
+            />
+          </View>
 
-      <FlatList
-        data={suggestions}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSuggestionItem}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled" // Permet de cliquer même si le clavier est ouvert
-        style={styles.listContainer}
-        ListEmptyComponent={() => (
-          searchQuery.length > 2 && !isLoading ? (
-            <Text style={styles.emptyText}>Aucun résultat trouvé.</Text>
-          ) : null
-        )}
-      />
-    </GlassModal>
+          <View style={styles.listContainer}>
+            <Text style={styles.sectionTitle}>Lieux connus à Maféré</Text>
+            <FlatList
+              data={filteredPOIs}
+              keyExtractor={(item) => item.id}
+              renderItem={renderItem}
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ paddingBottom: 20 }}
+              ListEmptyComponent={() => (
+                <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchText}"</Text>
+              )}
+            />
+          </View>
+
+        </View>
+      </KeyboardAvoidingView>
+    </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalStyle: {
-    padding: THEME.LAYOUT.spacing.md,
-    maxHeight: '80%', // Empêche la modale de prendre tout l'écran
-    marginTop: 50, // Laisse un peu de place en haut
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: THEME.LAYOUT.spacing.md,
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
-  },
-  closeButton: {
-    padding: 4,
-  },
-  inputWrapper: {
-    position: 'relative',
-    marginBottom: THEME.LAYOUT.spacing.md,
-  },
-  loader: {
-    position: 'absolute',
-    right: 15,
-    top: 15,
-  },
-  listContainer: {
-    // Si la liste est longue, on limite sa taille pour garder le scroll interne propre
-    maxHeight: 400, 
-  },
-  listContent: {
-    paddingBottom: 20,
-  },
-  suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.glassBorder,
-  },
-  suggestionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  suggestionTextContainer: {
-    flex: 1,
-  },
-  mainText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  secondaryText: {
-    fontSize: 13,
-    color: THEME.COLORS.textSecondary,
-  },
-  emptyText: {
-    textAlign: 'center',
-    color: THEME.COLORS.textTertiary,
-    marginTop: 20,
-    fontStyle: 'italic',
-  }
+  modalContainer: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end' },
+  modalContent: { backgroundColor: THEME.COLORS.background, height: '85%', borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: THEME.SPACING.lg },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: THEME.SPACING.xl },
+  closeButton: { padding: 4 },
+  headerTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  searchBarContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, borderRadius: 12, paddingHorizontal: 12, height: 50, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.lg },
+  searchIcon: { marginRight: 8 },
+  searchInput: { flex: 1, color: THEME.COLORS.textPrimary, fontSize: 16 },
+  listContainer: { flex: 1 },
+  sectionTitle: { fontSize: 12, fontWeight: 'bold', color: THEME.COLORS.textSecondary, letterSpacing: 1, marginBottom: 12, textTransform: 'uppercase' },
+  poiItem: { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, borderBottomWidth: 1, borderBottomColor: THEME.COLORS.glassBorder },
+  iconContainer: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginRight: 12 },
+  poiInfo: { flex: 1 },
+  poiName: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 2 },
+  poiSub: { fontSize: 12, color: THEME.COLORS.textTertiary },
+  emptyText: { textAlign: 'center', color: THEME.COLORS.textTertiary, marginTop: 20, fontStyle: 'italic' }
 });
 
 export default DestinationSearchModal;

@@ -1,23 +1,37 @@
 // src/utils/mafereZone.js
-// DONNÉES GÉOSPATIALES & INTELLIGENCE - Zone de couverture Yély
+// DONNÉES GÉOSPATIALES & INTELLIGENCE - Zone de couverture Yély (Maféré)
 // CSCSM Level: Bank Grade
 
+// Le centre de Maféré (récupéré depuis ton point KML exact : Placemark 0710D915EA3DB5A02706)
 export const MAFERE_CENTER = {
-  latitude: 5.4053,
-  longitude: -3.0531
+  latitude: 5.4125925,
+  longitude: -3.0325855
 };
 
-// 🚀 ZONE KML MAFÉRÉ (Remplace ces points par ton vrai tracé Google Earth)
+// 🚀 ZONE KML MAFÉRÉ (Polygone extrait de ton fichier Google Earth)
+// L'application va tracer une ligne entre chaque point pour dessiner le périmètre
 export const MAFERE_KML_ZONE = [
-  { latitude: 5.4350, longitude: -3.0750 },
-  { latitude: 5.4300, longitude: -3.0350 },
-  { latitude: 5.3850, longitude: -3.0300 },
-  { latitude: 5.3800, longitude: -3.0800 },
+  { latitude: 5.397270619269481, longitude: -3.040652168545819 },
+  { latitude: 5.397668188115847, longitude: -3.038715772727267 },
+  { latitude: 5.406008760511635, longitude: -3.01928973350801 },
+  { latitude: 5.410226011548936, longitude: -3.011328744569358 },
+  { latitude: 5.417752156206156, longitude: -3.014210822997271 },
+  { latitude: 5.425374885210843, longitude: -3.016555528345999 },
+  { latitude: 5.432107025364943, longitude: -3.023175079427676 },
+  { latitude: 5.432588116161526, longitude: -3.039256911883392 },
+  { latitude: 5.425508636610378, longitude: -3.044358393789674 },
+  { latitude: 5.416045751938407, longitude: -3.047970409295107 },
+  { latitude: 5.406546901540048, longitude: -3.053424900375111 },
+  { latitude: 5.397762357815283, longitude: -3.052274362850119 },
+  { latitude: 5.397270619269481, longitude: -3.040652168545819 } // Le dernier point rejoint le premier pour fermer la boucle
 ];
 
 /**
  * 🧠 Algorithme de Ray-Casting :
- * Vérifie si des coordonnées GPS se trouvent STRICTEMENT à l'intérieur du polygone (KML)
+ * LOGIQUE MÉTIER : C'est le videur de la boîte de nuit. 
+ * Il trace une ligne droite imaginaire depuis ta position. 
+ * S'il coupe les bords de la zone de Maféré un nombre impair de fois, 
+ * ça veut dire que tu es À L'INTÉRIEUR. Sinon, tu es À L'EXTÉRIEUR (ex: Abobo).
  */
 export const isLocationInMafereZone = (location) => {
   if (!location || !location.latitude || !location.longitude) return false;
