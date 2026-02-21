@@ -1,5 +1,6 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Auto-Contraste Intelligent & Anti-Flash Zoom
+// COMPOSANT CARTE - Spécial Maféré (Centrage & Frontières)
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -11,6 +12,15 @@ import THEME from '../../theme/theme';
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
+// 🚀 NOUVEAU : Les coordonnées exactes de Maféré, Côte d'Ivoire
+const MAFERE_COORDS = { latitude: 5.4053, longitude: -3.0531 };
+
+// 🚀 NOUVEAU : Frontières pour empêcher de quitter la zone de Maféré/Aboisso
+const MAP_BOUNDARIES = {
+  northEast: { latitude: 5.6000, longitude: -2.8000 },
+  southWest: { latitude: 5.2000, longitude: -3.3000 }
+};
+
 const MapCard = forwardRef(({
   location,
   markers = [],
@@ -18,7 +28,7 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   floating = false, 
-  autoContrast = true, // NOUVEAU : La carte gère son propre contraste !
+  autoContrast = true, 
   onMapReady,
   onPress,
   onMarkerPress,
@@ -29,18 +39,14 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
-  // 🧠 INTELLIGENCE DU THÈMES : Lecture du thème système
   const colorScheme = useColorScheme();
   const isAppDark = colorScheme === 'dark';
-  
-  // Si autoContrast est activé, la carte inverse le thème de l'application !
-  // Si l'app est sombre (Arrière-plan noir) -> Carte claire
-  // Si l'app est claire (Arrière-plan blanc) -> Carte sombre
   const isMapDark = autoContrast ? !isAppDark : isAppDark;
 
+  // 🚀 LOGIQUE : Si pas de GPS, on centre sur Maféré par défaut
   const safeLocation = location?.latitude && location?.longitude 
     ? location 
-    : { latitude: 5.3600, longitude: -4.0083 };
+    : MAFERE_COORDS;
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 800) => {
@@ -54,8 +60,8 @@ const MapCard = forwardRef(({
         mapRef.current?.animateToRegion({
           latitude: safeLocation.latitude,
           longitude: safeLocation.longitude,
-          latitudeDelta: 0.005,
-          longitudeDelta: 0.005,
+          latitudeDelta: 0.01,
+          longitudeDelta: 0.01,
         }, 800);
       }
     },
@@ -66,25 +72,28 @@ const MapCard = forwardRef(({
       mapRef.current?.animateToRegion({
         latitude: safeLocation.latitude,
         longitude: safeLocation.longitude,
-        latitudeDelta: 0.005,
-        longitudeDelta: 0.005,
+        latitudeDelta: 0.01,
+        longitudeDelta: 0.01,
       }, 1000);
     }
   }, [location, isMapReady]);
 
   const handleMapReady = () => {
     setIsMapReady(true);
+    // 🚀 NOUVEAU : On applique les frontières dès que la carte est prête
+    if (mapRef.current) {
+      mapRef.current.setMapBoundaries(MAP_BOUNDARIES.northEast, MAP_BOUNDARIES.southWest);
+    }
     if (onMapReady) onMapReady();
   };
 
   const initialRegion = {
     latitude: safeLocation.latitude,
     longitude: safeLocation.longitude,
-    latitudeDelta: 0.01,
-    longitudeDelta: 0.01,
+    latitudeDelta: 0.02, // Un peu plus large pour voir la ville
+    longitudeDelta: 0.02,
   };
 
-  // Les couleurs exactes de fond de CartoDB pour éviter la moindre nuance de flash
   const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
 
   return (
@@ -102,7 +111,7 @@ const MapCard = forwardRef(({
       ]}>
         <MapView
           ref={mapRef}
-          style={[styles.map, { backgroundColor: mapBackgroundColor }]} // On force le fond natif
+          style={[styles.map, { backgroundColor: mapBackgroundColor }]} 
           initialRegion={initialRegion}
           mapType="none" 
           showsUserLocation={false}
@@ -110,6 +119,7 @@ const MapCard = forwardRef(({
           showsCompass={false}
           rotateEnabled={false}
           pitchEnabled={false} 
+          minZoomLevel={12} // 🚀 NOUVEAU : Empêche de dézoomer trop loin
           onMapReady={handleMapReady} 
           onPress={onPress}
         >
@@ -119,7 +129,7 @@ const MapCard = forwardRef(({
             flipY={false}
             shouldReplaceMapContent={true} 
             tileSize={256}
-            fadeDuration={0} // ⚡ LE BLINDAGE ULTIME : 0 milliseconde de fondu blanc au zoom !
+            fadeDuration={0} 
           />
 
           {showUserMarker && location && (
@@ -180,8 +190,8 @@ const MapCard = forwardRef(({
               mapRef.current?.animateToRegion({
                 latitude: safeLocation.latitude,
                 longitude: safeLocation.longitude,
-                latitudeDelta: 0.005,
-                longitudeDelta: 0.005,
+                latitudeDelta: 0.01,
+                longitudeDelta: 0.01,
               }, 800);
             }
           }}

@@ -1,4 +1,5 @@
 // src/components/map/MapCard.web.jsx
+// COMPOSANT CARTE WEB - Spécial Maféré
 
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
@@ -6,17 +7,23 @@ import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import THEME from '../../theme/theme';
 
-// Import Leaflet CSS (obligatoire pour le rendu correct)
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Polyline, TileLayer, useMap } from 'react-leaflet';
 
-// Tuiles sombres gratuites (CartoDB Dark Matter)
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const LIGHT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a>';
 
-// Icône personnalisée pour le marqueur utilisateur
+// 🚀 NOUVEAU : Coordonnées de Maféré
+const MAFERE_COORDS = [5.4053, -3.0531];
+
+// 🚀 NOUVEAU : Limites pour bloquer la carte sur la région
+const MAP_BOUNDS = L.latLngBounds(
+  L.latLng(5.2000, -3.3000), // Sud-Ouest
+  L.latLng(5.6000, -2.8000)  // Nord-Est
+);
+
 const userIcon = L.divIcon({
   className: 'yely-user-marker',
   html: `
@@ -40,7 +47,6 @@ const userIcon = L.divIcon({
   iconAnchor: [17, 17],
 });
 
-// Icône par défaut pour les marqueurs
 const defaultIcon = L.divIcon({
   className: 'yely-default-marker',
   html: `
@@ -57,13 +63,12 @@ const defaultIcon = L.divIcon({
   iconAnchor: [18, 18],
 });
 
-// Composant helper pour centrer la carte dynamiquement
 const MapCenterUpdater = ({ location }) => {
   const map = useMap();
 
   useEffect(() => {
     if (location) {
-      map.flyTo([location.latitude, location.longitude], 16, {
+      map.flyTo([location.latitude, location.longitude], 15, {
         duration: 1,
       });
     }
@@ -87,13 +92,12 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapInstanceRef = useRef(null);
 
-  // Exposer les méthodes au parent via ref
   useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
       if (mapInstanceRef.current) {
         mapInstanceRef.current.flyTo(
           [region.latitude, region.longitude],
-          16,
+          15,
           { duration: 0.8 }
         );
       }
@@ -110,23 +114,27 @@ const MapCard = forwardRef(({
       if (location && mapInstanceRef.current) {
         mapInstanceRef.current.flyTo(
           [location.latitude, location.longitude],
-          16,
+          15,
           { duration: 0.8 }
         );
       }
     },
   }));
 
+  // 🚀 LOGIQUE : Utilise Maféré si le GPS n'est pas encore là
   const center = [
-    location?.latitude || 5.3600,
-    location?.longitude || -4.0083,
+    location?.latitude || MAFERE_COORDS[0],
+    location?.longitude || MAFERE_COORDS[1],
   ];
 
   return (
     <View style={[styles.container, style]}>
       <MapContainer
         center={center}
-        zoom={16}
+        zoom={15} // Zoom adapté pour voir une ville moyenne
+        minZoom={12} // 🚀 Empêche de dézoomer trop loin
+        maxBounds={MAP_BOUNDS} // 🚀 Bloque la carte sur la région
+        maxBoundsViscosity={1.0} // Rebondit sur les bords
         style={{ width: '100%', height: '100%' }}
         zoomControl={false}
         attributionControl={false}
@@ -145,7 +153,6 @@ const MapCard = forwardRef(({
 
         <MapCenterUpdater location={location} />
 
-        {/* Marqueur utilisateur */}
         {showUserMarker && location && (
           <Marker
             position={[location.latitude, location.longitude]}
@@ -153,7 +160,6 @@ const MapCard = forwardRef(({
           />
         )}
 
-        {/* Marqueurs dynamiques */}
         {markers.map((marker, index) => (
           <Marker
             key={marker.id || `marker-${index}`}
@@ -165,7 +171,6 @@ const MapCard = forwardRef(({
           />
         ))}
 
-        {/* Tracé de l'itinéraire */}
         {route && route.coordinates && route.coordinates.length > 0 && (
           <Polyline
             positions={route.coordinates.map((c) => [c.latitude, c.longitude])}
@@ -178,7 +183,6 @@ const MapCard = forwardRef(({
         )}
       </MapContainer>
 
-      {/* Bouton recentrer */}
       {showRecenterButton && (
         <TouchableOpacity
           style={styles.recenterButton}
@@ -186,7 +190,7 @@ const MapCard = forwardRef(({
             if (location && mapInstanceRef.current) {
               mapInstanceRef.current.flyTo(
                 [location.latitude, location.longitude],
-                16,
+                15,
                 { duration: 0.8 }
               );
             }
