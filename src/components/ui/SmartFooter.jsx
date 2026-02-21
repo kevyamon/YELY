@@ -1,13 +1,14 @@
 // src/components/ui/SmartFooter.jsx
-// FOOTER INTELLIGENT - Tracé de courbe complet (Full Contour)
+// FOOTER INTELLIGENT - Tracé de courbe complet (Full Contour) - Dashboard Chauffeur Connecté
 
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import VehicleCarousel from '../ride/VehicleCarousel';
+import AvailabilityCard from './AvailabilityCard'; // 🚀 NOUVEAU
 
 const SmartFooter = ({
   destination,
@@ -68,38 +69,31 @@ const SmartFooter = ({
         </>
       ) : (
         <>
-          <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
-            <View style={styles.availabilityRow}>
-              <View style={styles.statusInfo}>
-                <View style={styles.statusHeader}>
-                  <Ionicons 
-                    name={isAvailable ? "radio-button-on" : "radio-button-off"} 
-                    size={18} 
-                    color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary} 
-                  />
-                  <Text style={[styles.statusTitle, isAvailable && { color: THEME.COLORS.success }]}>
-                    {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
-                  </Text>
-                </View>
-                <Text style={styles.statusSubtitle}>
-                  {isAvailable ? 'En attente de courses...' : 'Passez en ligne pour travailler'}
-                </Text>
-              </View>
+          {/* 🚀 COMPOSANT RÉUTILISABLE : Toggle de service */}
+          <AvailabilityCard 
+            isAvailable={isAvailable} 
+            onToggle={onToggle} 
+            isLoading={isToggling} 
+          />
 
-              <Switch
-                value={isAvailable}
-                onValueChange={onToggle}
-                disabled={isToggling}
-                trackColor={{ false: 'rgba(128,128,128,0.3)', true: 'rgba(46, 204, 113, 0.3)' }}
-                thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
-              />
-            </View>
-          </View>
-
+          {/* 🚀 DASHBOARD STATS CONNECTÉ AUX DONNÉES UTILISATEUR */}
           <View style={styles.statsContainer}>
-            <StatBox icon="car-sport" value="0" label="Courses" />
-            <StatBox icon="time" value="0h" label="Heures" />
-            <StatBox icon="wallet" value="0 F" label="Gains" isGold />
+            <StatBox 
+              icon="car-sport" 
+              value={user?.totalRides || 0} 
+              label="Courses" 
+            />
+            <StatBox 
+              icon="star" 
+              value={user?.rating?.toFixed(1) || "5.0"} 
+              label="Note" 
+            />
+            <StatBox 
+              icon="wallet" 
+              value={`${user?.totalEarnings || 0} F`} 
+              label="Gains" 
+              isGold 
+            />
           </View>
         </>
       )}
@@ -201,42 +195,6 @@ const styles = StyleSheet.create({
   },
   confirmButtonTextDisabled: {
     color: THEME.COLORS.textTertiary,
-  },
-  availabilityCard: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderColor: THEME.COLORS.border,
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-  },
-  availabilityCardOnline: {
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
-    borderColor: 'rgba(46, 204, 113, 0.3)',
-  },
-  availabilityRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  statusInfo: {
-    flex: 1,
-  },
-  statusHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 4,
-    gap: 8,
-  },
-  statusTitle: {
-    color: THEME.COLORS.textPrimary,
-    fontWeight: '900',
-    fontSize: 14,
-    letterSpacing: 1,
-  },
-  statusSubtitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
   },
   statsContainer: {
     flexDirection: 'row',
