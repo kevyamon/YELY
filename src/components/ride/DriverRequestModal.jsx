@@ -1,3 +1,6 @@
+// src/components/ride/DriverRequestModal.jsx
+// MODAL CHAUFFEUR - Glow Up UI & Séquençage de Négociation
+
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -5,7 +8,7 @@ import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLockRideMutation, useSubmitPriceMutation } from '../../store/api/ridesApiSlice';
 import { clearIncomingRide, selectIncomingRide } from '../../store/slices/rideSlice';
-import { showErrorToast } from '../../store/slices/uiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassModal from '../ui/GlassModal';
 import GoldButton from '../ui/GoldButton';
@@ -18,7 +21,7 @@ const DriverRequestModal = () => {
   const [submitPrice] = useSubmitPriceMutation();
   
   const [selectedAmount, setSelectedAmount] = useState(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [loadingStep, setLoadingStep] = useState(null); // null | 'locking' | 'submitting'
 
   if (!incomingRide) return null;
 
@@ -35,42 +38,90 @@ const DriverRequestModal = () => {
       return;
     }
 
-    setIsLoading(true);
     try {
+      // Étape 1 : Le chauffeur bloque la course pour lui tout seul
+      setLoadingStep('locking');
       await lockRide({ rideId: incomingRide.rideId }).unwrap();
+      
+      // Étape 2 : Il envoie sa proposition de prix au client
+      setLoadingStep('submitting');
       await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
+      
+      dispatch(showSuccessToast({ 
+        title: 'Offre envoyée !', 
+        message: 'En attente de la réponse du client.' 
+      }));
+      
+      // On ferme la modale. La suite dépendra du Socket (Accepté ou Refusé par le client)
+      dispatch(clearIncomingRide()); 
+
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Erreur', 
-        message: error?.data?.message || 'Impossible de confirmer la course.' 
+        title: 'Course manquée', 
+        message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou le client a annulé.' 
       }));
       dispatch(clearIncomingRide());
     } finally {
-      setIsLoading(false);
+      setLoadingStep(null);
     }
   };
 
+  // UI Helpers pour le design dynamique du Forfait
+  const getForfaitLabel = (forfait) => {
+    switch(forfait?.toUpperCase()) {
+      case 'VIP': return 'Premium';
+      case 'ECHO': return 'Echo';
+      default: return 'Standard';
+    }
+  };
+
+  const getForfaitColor = (forfait) => {
+    switch(forfait?.toUpperCase()) {
+      case 'VIP': return THEME.COLORS.champagneGold;
+      case 'ECHO': return THEME.COLORS.success;
+      default: return THEME.COLORS.textSecondary;
+    }
+  };
+
+  const forfaitColor = getForfaitColor(incomingRide.forfait);
+
   return (
-    <GlassModal visible={!!incomingRide} onDismiss={handleIgnore}>
+    <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
+      
+      {/* En-tête avec Badge de Forfait */}
       <View style={styles.header}>
-        <Text style={styles.title}>Nouvelle Course</Text>
+        <View>
+          <Text style={styles.title}>Nouvelle Demande</Text>
+          <View style={[styles.badge, { backgroundColor: forfaitColor + '20' }]}>
+             <Ionicons 
+               name={incomingRide.forfait?.toUpperCase() === 'VIP' ? 'star' : 'car'} 
+               size={10} 
+               color={forfaitColor} 
+             />
+             <Text style={[styles.badgeText, { color: forfaitColor }]}>
+               Yély {getForfaitLabel(incomingRide.forfait)}
+             </Text>
+          </View>
+        </View>
         <Text style={styles.distance}>{incomingRide.distance} km</Text>
       </View>
 
+      {/* Trajet */}
       <View style={styles.addressContainer}>
         <View style={styles.addressRow}>
-          <Ionicons name="location-outline" size={20} color={THEME.COLORS.champagneGold} />
+          <View style={styles.dotStart} />
           <Text style={styles.addressText} numberOfLines={2}>{incomingRide.origin}</Text>
         </View>
         <View style={styles.addressDivider} />
         <View style={styles.addressRow}>
-          <Ionicons name="flag-outline" size={20} color={THEME.COLORS.error} />
+          <View style={styles.dotEnd} />
           <Text style={styles.addressText} numberOfLines={2}>{incomingRide.destination}</Text>
         </View>
       </View>
 
-      <Text style={styles.subtitle}>Choisissez votre proposition :</Text>
+      <Text style={styles.subtitle}>Votre proposition de prix :</Text>
       
+      {/* Les boutons de prix (Glow Up UI) */}
       <View style={styles.optionsContainer}>
         {incomingRide.priceOptions?.map((option, index) => {
           const isSelected = selectedAmount === option.amount;
@@ -80,32 +131,38 @@ const DriverRequestModal = () => {
               style={[styles.optionCard, isSelected && styles.optionCardSelected]}
               onPress={() => setSelectedAmount(option.amount)}
               activeOpacity={0.7}
+              disabled={!!loadingStep}
             >
               <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
                 {option.label}
               </Text>
               <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
-                {option.amount} FCFA
+                {option.amount} F
               </Text>
             </TouchableOpacity>
           );
         })}
       </View>
 
+      {/* Actions */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
           style={styles.ignoreButton} 
           onPress={handleIgnore}
-          disabled={isLoading}
+          disabled={!!loadingStep}
         >
           <Text style={styles.ignoreText}>Ignorer</Text>
         </TouchableOpacity>
         
         <GoldButton
-          title={isLoading ? "Envoi..." : "Proposer"}
+          title={
+            loadingStep === 'locking' ? "Verrouillage..." : 
+            loadingStep === 'submitting' ? "Envoi du prix..." : 
+            "Proposer"
+          }
           onPress={handleAcceptAndPropose}
           style={styles.acceptButton}
-          disabled={isLoading || !selectedAmount}
+          disabled={!!loadingStep || !selectedAmount}
         />
       </View>
     </GlassModal>
@@ -120,79 +177,121 @@ const styles = StyleSheet.create({
     marginBottom: THEME.SPACING.lg,
   },
   title: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    fontSize: 22,
+    fontWeight: '900',
     color: THEME.COLORS.textPrimary,
+    letterSpacing: 0.5,
+  },
+  badge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginTop: 4,
+    gap: 4,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   distance: {
     fontSize: 16,
-    fontWeight: 'bold',
+    fontWeight: '900',
     color: THEME.COLORS.champagneGold,
-    backgroundColor: THEME.COLORS.glassLight,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 12,
   },
   addressContainer: {
-    backgroundColor: THEME.COLORS.glassLight,
-    borderRadius: 12,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
     padding: THEME.SPACING.md,
-    marginBottom: THEME.SPACING.lg,
+    marginBottom: THEME.SPACING.xl,
   },
   addressRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
   },
+  dotStart: {
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: THEME.COLORS.champagneGold,
+  },
+  dotEnd: {
+    width: 12,
+    height: 12,
+    borderRadius: 2, // Carré pour l'arrivée
+    backgroundColor: THEME.COLORS.error,
+  },
   addressDivider: {
     width: 2,
-    height: 15,
+    height: 20,
     backgroundColor: THEME.COLORS.glassBorder,
-    marginLeft: 9,
+    marginLeft: 5,
     marginVertical: 4,
   },
   addressText: {
     flex: 1,
-    color: THEME.COLORS.textSecondary,
+    color: THEME.COLORS.textPrimary,
     fontSize: 14,
+    fontWeight: '500',
   },
   subtitle: {
-    fontSize: 16,
-    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    color: THEME.COLORS.textSecondary,
     marginBottom: THEME.SPACING.md,
     fontWeight: '600',
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   optionsContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 10,
     marginBottom: THEME.SPACING.xl,
   },
   optionCard: {
     flex: 1,
     borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    borderRadius: 12,
-    padding: THEME.SPACING.sm,
+    borderRadius: 16,
+    paddingVertical: THEME.SPACING.md,
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassLight,
   },
   optionCardSelected: {
     borderColor: THEME.COLORS.champagneGold,
     backgroundColor: THEME.COLORS.champagneGold,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    elevation: 6,
   },
   optionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.COLORS.textTertiary,
     marginBottom: 4,
+    fontWeight: '600',
   },
   optionAmount: {
-    fontSize: 14,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '900',
     color: THEME.COLORS.textPrimary,
   },
   textSelected: {
-    color: THEME.COLORS.deepAsphalt,
+    color: '#121418', // Texte sombre pour contraster avec le fond or
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -201,11 +300,12 @@ const styles = StyleSheet.create({
   },
   ignoreButton: {
     flex: 1,
-    paddingVertical: THEME.SPACING.md,
+    paddingVertical: 15,
     alignItems: 'center',
     borderRadius: 25,
     borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
+    borderColor: THEME.COLORS.border,
+    backgroundColor: THEME.COLORS.glassSurface,
   },
   ignoreText: {
     color: THEME.COLORS.textSecondary,
