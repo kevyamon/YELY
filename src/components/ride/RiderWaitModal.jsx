@@ -1,11 +1,12 @@
 // src/components/ride/RiderWaitModal.jsx
+// MODALE PASSAGER - Annulation fonctionnelle et connectée
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
-import { useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
+import { useCancelRideMutation, useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
 import { clearCurrentRide, selectCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -15,8 +16,12 @@ import GoldButton from '../ui/GoldButton';
 const RiderWaitModal = () => {
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
+  
   const [finalizeRide] = useFinalizeRideMutation();
+  const [cancelRideApi] = useCancelRideMutation(); // 🚀 NOUVEAU : Mutation d'annulation
+  
   const [isLoading, setIsLoading] = useState(false);
+  const [isCancelling, setIsCancelling] = useState(false);
 
   if (!currentRide || currentRide.status === 'accepted' || currentRide.status === 'ongoing' || currentRide.status === 'completed') {
     return null;
@@ -25,24 +30,34 @@ const RiderWaitModal = () => {
   const handleDecision = async (decision) => {
     setIsLoading(true);
     try {
-      const res = await finalizeRide({ rideId: currentRide.rideId, decision }).unwrap();
-      
+      await finalizeRide({ rideId: currentRide.rideId, decision }).unwrap();
       if (decision === 'REJECTED') {
         dispatch(updateRideStatus({ status: 'searching' }));
       }
-      
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Erreur', 
-        message: error?.data?.message || 'Erreur lors de la communication avec le serveur.' 
+        message: error?.data?.message || 'Erreur lors de la communication.' 
       }));
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleCancelSearch = () => {
-    dispatch(clearCurrentRide());
+  // 🚀 NOUVEAU : L'annulation prévient le serveur !
+  const handleCancelSearch = async () => {
+    setIsCancelling(true);
+    try {
+      await cancelRideApi({ 
+        rideId: currentRide.rideId, 
+        reason: "Annulé par le passager" 
+      }).unwrap();
+    } catch (error) {
+      console.log("Erreur annulation (peut-être déjà annulée par timeout) :", error);
+    } finally {
+      setIsCancelling(false);
+      dispatch(clearCurrentRide()); // On ferme la modale
+    }
   };
 
   const renderContent = () => {
@@ -53,8 +68,14 @@ const RiderWaitModal = () => {
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
           <Text style={styles.subtitle}>Nous interrogeons les véhicules à proximité.</Text>
           
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancelSearch}>
-            <Text style={styles.cancelText}>Annuler</Text>
+          <TouchableOpacity 
+            style={styles.cancelButton} 
+            onPress={handleCancelSearch}
+            disabled={isCancelling}
+          >
+            <Text style={styles.cancelText}>
+              {isCancelling ? "Annulation..." : "Annuler la demande"}
+            </Text>
           </TouchableOpacity>
         </View>
       );
@@ -152,16 +173,18 @@ const styles = StyleSheet.create({
     letterSpacing: 1,
   },
   cancelButton: {
-    paddingVertical: THEME.SPACING.md,
-    paddingHorizontal: THEME.SPACING.xl,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 25,
     borderWidth: 1,
     borderColor: THEME.COLORS.error,
     marginTop: THEME.SPACING.md,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
   },
   cancelText: {
     color: THEME.COLORS.error,
     fontWeight: 'bold',
+    fontSize: 14,
   },
   actionsContainer: {
     flexDirection: 'row',

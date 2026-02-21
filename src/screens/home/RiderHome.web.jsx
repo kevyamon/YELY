@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Synchronisation Phase 6 (Connexion Backend & Nettoyage Mocks)
+// HOME RIDER WEB - Modale d'attente branchée !
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
+import RiderWaitModal from '../../components/ride/RiderWaitModal'; // 🚀 NOUVEAU
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
 
@@ -21,7 +22,6 @@ import { setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// CORRECTION : Plus de prix en dur, on laisse le chauffeur négocier
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5' },
   { id: '2', type: 'standard', name: 'Standard', duration: '3' },
@@ -44,7 +44,6 @@ const RiderHome = ({ navigation }) => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
 
-  // 🚀 NOUVEAU : On importe la mutation pour le Web aussi
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
@@ -83,7 +82,6 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // 🚀 L'ACTION PRINCIPALE WEB : Lancement de la course !
   const handleConfirmRide = async () => {
     if (!selectedVehicle || !location || !destination) return;
     
@@ -192,7 +190,7 @@ const RiderHome = ({ navigation }) => {
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}
-        isOrdering={isOrdering} // 🚀 On passe l'état de chargement
+        isOrdering={isOrdering} 
         topContent={renderWebSearchControls()} 
       />
 
@@ -201,6 +199,9 @@ const RiderHome = ({ navigation }) => {
         onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
       />
+
+      {/* 🚀 L'ÉCRAN GÉANT EST ENFIN PLACÉ ICI ! */}
+      <RiderWaitModal />
 
     </View>
   );

@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - UX Immersion Totale & Balise Radar (Socket)
+// HOME DRIVER - Modale de réception de course branchée !
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -7,12 +7,13 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import DriverRequestModal from '../../components/ride/DriverRequestModal'; // 🚀 NOUVEAU : La modale du chauffeur !
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import socketService from '../../services/socketService'; // 🚀 NOUVEAU : Import du radar
+import socketService from '../../services/socketService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -30,7 +31,6 @@ const DriverHome = ({ navigation }) => {
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
-  // 🚀 NOUVEAU : La Balise Radar. Dès que le GPS bouge et qu'on est en ligne, on prévient le serveur !
   useEffect(() => {
     if (location && isAvailable) {
       socketService.emitLocation(location);
@@ -60,7 +60,6 @@ const DriverHome = ({ navigation }) => {
       setIsAvailable(res.isAvailable);
       dispatch(updateUserInfo({ isAvailable: res.isAvailable }));
       
-      // Si on passe en ligne, on force l'envoi de la position immédiatement
       if (res.isAvailable && location) {
         socketService.emitLocation(location);
       }
@@ -86,9 +85,9 @@ const DriverHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true} 
-             floating={false} // Immersion Totale
-             markers={[]} // Sécurité anti-crash
-             route={null} // Sécurité anti-crash
+             floating={false} 
+             markers={[]} 
+             route={null} 
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
@@ -112,6 +111,9 @@ const DriverHome = ({ navigation }) => {
         onToggle={handleToggleAvailability}
         isToggling={isToggling}
       />
+
+      {/* 🚀 LA MODALE DE RÉCEPTION DU CHAUFFEUR EST LÀ ! */}
+      <DriverRequestModal />
 
     </View>
   );

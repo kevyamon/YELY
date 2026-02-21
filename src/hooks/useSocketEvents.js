@@ -1,11 +1,12 @@
 // src/hooks/useSocketEvents.js
-// ÉCOUTEURS SOCKET - Séparation stricte des rôles (Rider vs Driver)
+// ÉCOUTEURS SOCKET - Gestion du Timeout (1m30) branchée !
 
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { selectIsAuthenticated } from '../store/slices/authSlice';
 import {
+  clearCurrentRide, // 🚀 NOUVEAU : Importé pour fermer la modale du passager
   clearIncomingRide,
   setCurrentRide,
   setIncomingRide,
@@ -33,7 +34,6 @@ const useSocketEvents = () => {
     };
 
     const handleProposalAccepted = (data) => {
-      // Le client a dit OUI. Le chauffeur passe en course active.
       dispatch(setCurrentRide({ ...data, status: 'accepted' }));
       dispatch(clearIncomingRide());
       dispatch(showSuccessToast({ 
@@ -43,7 +43,6 @@ const useSocketEvents = () => {
     };
 
     const handleProposalRejected = () => {
-      // Le client a dit NON. On nettoie juste l'écran du chauffeur.
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({ 
         title: 'Prix refusé', 
@@ -84,6 +83,15 @@ const useSocketEvents = () => {
       }));
     };
 
+    // 🚀 NOUVEAU : Le passager écoute la fin du compte à rebours
+    const handleSearchTimeout = (data) => {
+      dispatch(clearCurrentRide()); // Ferme la salle d'attente (la modale)
+      dispatch(showErrorToast({ 
+        title: 'Recherche expirée', 
+        message: data.message || "Aucun chauffeur n'est disponible pour le moment." 
+      }));
+    };
+
     // --- ABONNEMENTS ---
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
@@ -93,6 +101,7 @@ const useSocketEvents = () => {
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_completed', handleRideCompleted);
+    socketService.on('search_timeout', handleSearchTimeout); // 🚀 NOUVEAU BRANCHEMENT
 
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
@@ -103,6 +112,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_completed', handleRideCompleted);
+      socketService.off('search_timeout', handleSearchTimeout); // 🚀 NOUVEAU NETTOYAGE
     };
   }, [isAuthenticated, dispatch]);
 };

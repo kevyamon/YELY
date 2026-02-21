@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Connexion de la commande avec le Backend (Phase 6)
+// HOME RIDER - Modale d'attente branchée !
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +7,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import RiderWaitModal from '../../components/ride/RiderWaitModal'; // 🚀 NOUVEAU : Le câble HDMI est branché
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -39,7 +40,6 @@ const RiderHome = ({ navigation }) => {
   const [selectedVehicle, setSelectedVehicle] = useState(null);
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   
-  // 🚀 NOUVEAU : On importe la mutation pour créer la course
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
   
   const mapRef = useRef(null);
@@ -101,12 +101,10 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // 🚀 L'ACTION PRINCIPALE : Lancement de la course !
   const handleConfirmRide = async () => {
     if (!selectedVehicle || !location || !destination) return;
     
     try {
-      // 1. On prépare les données selon le format exigé par ton backend (Zod)
       const payload = {
         origin: {
           address: currentAddress || "Position actuelle",
@@ -119,11 +117,9 @@ const RiderHome = ({ navigation }) => {
         forfait: selectedVehicle.type?.toUpperCase() || 'STANDARD'
       };
       
-      // 2. On tire la requête
       const res = await requestRideApi(payload).unwrap();
-      const rideData = res.data || res; // S'adapte au responseHandler de ton backend
+      const rideData = res.data || res; 
       
-      // 3. On enregistre la course en cours dans Redux (ce qui fera apparaître la modale d'attente)
       dispatch(setCurrentRide({
         rideId: rideData.rideId,
         status: rideData.status || 'searching',
@@ -186,7 +182,6 @@ const RiderHome = ({ navigation }) => {
         displayVehicles={displayVehicles}
         selectedVehicle={selectedVehicle}
         onSelectVehicle={setSelectedVehicle}
-        // Astuce : on cumule les états de chargement pour bloquer le bouton pendant la commande
         isEstimating={isEstimating || isOrdering} 
         estimationData={estimationData}
         estimateError={estimateError}
@@ -198,6 +193,9 @@ const RiderHome = ({ navigation }) => {
         onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
       />
+
+      {/* 🚀 L'ÉCRAN GÉANT EST ENFIN PLACÉ ICI ! */}
+      <RiderWaitModal />
 
     </View>
   );
