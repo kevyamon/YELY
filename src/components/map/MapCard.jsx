@@ -1,25 +1,17 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Spécial Maféré (Centrage & Frontières)
+// COMPOSANT CARTE - Intégration Dynamique KML
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
+import MapView, { Marker, Polygon, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
+import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone'; // 🚀 IMPORT DU FICHIER KML
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-// 🚀 NOUVEAU : Les coordonnées exactes de Maféré, Côte d'Ivoire
-const MAFERE_COORDS = { latitude: 5.4053, longitude: -3.0531 };
-
-// 🚀 NOUVEAU : Frontières pour empêcher de quitter la zone de Maféré/Aboisso
-const MAP_BOUNDARIES = {
-  northEast: { latitude: 5.6000, longitude: -2.8000 },
-  southWest: { latitude: 5.2000, longitude: -3.3000 }
-};
 
 const MapCard = forwardRef(({
   location,
@@ -43,10 +35,10 @@ const MapCard = forwardRef(({
   const isAppDark = colorScheme === 'dark';
   const isMapDark = autoContrast ? !isAppDark : isAppDark;
 
-  // 🚀 LOGIQUE : Si pas de GPS, on centre sur Maféré par défaut
+  // Utilisation du centre défini dans le fichier mafereZone.js
   const safeLocation = location?.latitude && location?.longitude 
     ? location 
-    : MAFERE_COORDS;
+    : MAFERE_CENTER;
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 800) => {
@@ -80,17 +72,13 @@ const MapCard = forwardRef(({
 
   const handleMapReady = () => {
     setIsMapReady(true);
-    // 🚀 NOUVEAU : On applique les frontières dès que la carte est prête
-    if (mapRef.current) {
-      mapRef.current.setMapBoundaries(MAP_BOUNDARIES.northEast, MAP_BOUNDARIES.southWest);
-    }
     if (onMapReady) onMapReady();
   };
 
   const initialRegion = {
     latitude: safeLocation.latitude,
     longitude: safeLocation.longitude,
-    latitudeDelta: 0.02, // Un peu plus large pour voir la ville
+    latitudeDelta: 0.02,
     longitudeDelta: 0.02,
   };
 
@@ -119,7 +107,6 @@ const MapCard = forwardRef(({
           showsCompass={false}
           rotateEnabled={false}
           pitchEnabled={false} 
-          minZoomLevel={12} // 🚀 NOUVEAU : Empêche de dézoomer trop loin
           onMapReady={handleMapReady} 
           onPress={onPress}
         >
@@ -131,6 +118,17 @@ const MapCard = forwardRef(({
             tileSize={256}
             fadeDuration={0} 
           />
+
+          {/* 🚀 LECTURE DU KML DEPUIS LE FICHIER EXTERNE */}
+          {MAFERE_KML_ZONE && MAFERE_KML_ZONE.length > 0 && (
+            <Polygon
+              coordinates={MAFERE_KML_ZONE}
+              fillColor="rgba(212, 175, 55, 0.15)"
+              strokeColor={THEME.COLORS.champagneGold}
+              strokeWidth={2}
+              lineDashPattern={[10, 5]}
+            />
+          )}
 
           {showUserMarker && location && (
             <Marker
@@ -173,7 +171,6 @@ const MapCard = forwardRef(({
               coordinates={route.coordinates}
               strokeColor={route.color || THEME.COLORS.champagneGold}
               strokeWidth={route.width || 4}
-              lineDashPattern={route.dashed ? [10, 5] : undefined}
             />
           )}
 
@@ -206,81 +203,16 @@ const MapCard = forwardRef(({
 MapCard.displayName = 'MapCard';
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: 'relative', 
-  },
-  floating: {
-    marginHorizontal: THEME.SPACING.md,
-    marginVertical: THEME.SPACING.sm,
-    borderRadius: THEME.BORDERS.radius.xxl,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    overflow: 'hidden',
-    ...THEME.SHADOWS.medium,
-  },
-  mapClip: {
-    ...StyleSheet.absoluteFillObject, 
-    borderRadius: THEME.BORDERS.radius.xxl,
-    overflow: 'hidden',
-    zIndex: 1, 
-  },
-  mapClipEdge: {
-    borderRadius: 0, 
-  },
-  map: {
-    width: '100%',
-    height: '100%',
-  },
-  userMarker: {
-    width: 34,
-    height: 34,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  userMarkerPulse: {
-    position: 'absolute',
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-  },
-  userMarkerInner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: THEME.COLORS.champagneGold,
-    borderWidth: 2.5,
-    borderColor: '#FFFFFF',
-  },
-  defaultMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.COLORS.glassDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-  },
-  recenterButton: {
-    position: 'absolute',
-    right: THEME.SPACING.lg, 
-    width: 52,
-    height: 52,
-    borderRadius: 26, 
-    backgroundColor: THEME.COLORS.glassDark, 
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.champagneGold, 
-    zIndex: 999, 
-    elevation: 999, 
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 6,
-  },
+  container: { flex: 1, position: 'relative' },
+  floating: { marginHorizontal: THEME.SPACING.md, marginVertical: THEME.SPACING.sm, borderRadius: THEME.BORDERS.radius.xxl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder, overflow: 'hidden', ...THEME.SHADOWS.medium },
+  mapClip: { ...StyleSheet.absoluteFillObject, borderRadius: THEME.BORDERS.radius.xxl, overflow: 'hidden', zIndex: 1 },
+  mapClipEdge: { borderRadius: 0 },
+  map: { width: '100%', height: '100%' },
+  userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
+  userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.15)' },
+  userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
+  defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
+  recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 6 },
 });
 
 export default React.memo(MapCard);

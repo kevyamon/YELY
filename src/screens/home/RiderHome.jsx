@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Modale d'attente branchée !
+// HOME RIDER - Carte Libre & Commandes restreintes au KML
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +7,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import RiderWaitModal from '../../components/ride/RiderWaitModal'; // 🚀 NOUVEAU : Le câble HDMI est branché
+import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -19,6 +19,8 @@ import { selectCurrentUser } from '../../store/slices/authSlice';
 import { setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+
+import { isLocationInMafereZone } from '../../utils/mafereZone'; // 🚀 IMPORT DE L'INTELLIGENCE
 
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5' },
@@ -44,6 +46,9 @@ const RiderHome = ({ navigation }) => {
   
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
+
+  // 🚀 VÉRIFICATION : L'utilisateur est-il dans la zone de couverture ?
+  const isUserInZone = isLocationInMafereZone(location);
 
   useEffect(() => {
     if (location) {
@@ -71,6 +76,16 @@ const RiderHome = ({ navigation }) => {
   }, [destination, displayVehicles, selectedVehicle]);
 
   const handleDestinationSelect = async (selectedPlace) => {
+    // 🚀 SÉCURITÉ : La destination doit aussi être dans la zone de Maféré !
+    if (!isLocationInMafereZone(selectedPlace)) {
+      dispatch(showErrorToast({ 
+        title: 'Hors Zone', 
+        message: 'Yély ne dessert que la ville de Maféré pour le moment.' 
+      }));
+      setIsSearchModalVisible(false);
+      return;
+    }
+
     setDestination(selectedPlace);
     setSelectedVehicle(null);
     
@@ -102,7 +117,7 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleConfirmRide = async () => {
-    if (!selectedVehicle || !location || !destination) return;
+    if (!selectedVehicle || !location || !destination || !isUserInZone) return;
     
     try {
       const payload = {
@@ -186,6 +201,7 @@ const RiderHome = ({ navigation }) => {
         estimationData={estimationData}
         estimateError={estimateError}
         onConfirmRide={handleConfirmRide}
+        isUserInZone={isUserInZone} // 🚀 ON PASSE L'INFO AU FOOTER
       />
 
       <DestinationSearchModal 
@@ -194,7 +210,6 @@ const RiderHome = ({ navigation }) => {
         onDestinationSelect={handleDestinationSelect}
       />
 
-      {/* 🚀 L'ÉCRAN GÉANT EST ENFIN PLACÉ ICI ! */}
       <RiderWaitModal />
 
     </View>
@@ -202,25 +217,10 @@ const RiderHome = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background, 
-  },
-  mapContainer: {
-    ...StyleSheet.absoluteFillObject,
-    zIndex: 1,
-  },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  loadingText: {
-    color: THEME.COLORS.textSecondary, 
-    marginTop: 10, 
-    fontSize: 12
-  }
+  screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
+  mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
+  loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
+  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12 }
 });
 
 export default RiderHome;
