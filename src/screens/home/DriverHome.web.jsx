@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Modale de réception de course branchée !
+// HOME DRIVER WEB - Dashboard complet avec Overlay de Course
 
 import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -7,7 +7,8 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
-import DriverRequestModal from '../../components/ride/DriverRequestModal'; // 🚀 NOUVEAU : La modale du chauffeur !
+import DriverRequestModal from '../../components/ride/DriverRequestModal';
+import DriverRideOverlay from '../../components/ride/DriverRideOverlay'; // 🚀 NOUVEAU
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -85,7 +86,7 @@ const DriverHome = ({ navigation }) => {
              location={location}
              showUserMarker={true}
              showRecenterButton={true} 
-             darkMode={false} // Carte claire pour le Web
+             darkMode={false} 
              floating={false} 
              markers={[]} 
              route={null} 
@@ -107,13 +108,15 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
+      {/* 🚀 PANNEAU DE COURSE EN COURS (WEB) */}
+      <DriverRideOverlay />
+
       <SmartFooter 
         isAvailable={isAvailable}
         onToggle={handleToggleAvailability}
         isToggling={isToggling}
       />
 
-      {/* 🚀 LA MODALE DE RÉCEPTION DU CHAUFFEUR EST LÀ ! */}
       <DriverRequestModal />
 
     </View>
