@@ -1,5 +1,5 @@
 // src/components/ride/RiderWaitModal.jsx
-// MODALE PASSAGER - Annulation fonctionnelle et connectée
+// MODALE PASSAGER - Bouton Annuler haute visibilité avec confirmation de sécurité
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -18,10 +18,12 @@ const RiderWaitModal = () => {
   const currentRide = useSelector(selectCurrentRide);
   
   const [finalizeRide] = useFinalizeRideMutation();
-  const [cancelRideApi] = useCancelRideMutation(); // 🚀 NOUVEAU : Mutation d'annulation
+  const [cancelRideApi] = useCancelRideMutation();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
+  // 🚀 NOUVEAU : État pour gérer l'étape de confirmation
+  const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   if (!currentRide || currentRide.status === 'accepted' || currentRide.status === 'ongoing' || currentRide.status === 'completed') {
     return null;
@@ -44,8 +46,8 @@ const RiderWaitModal = () => {
     }
   };
 
-  // 🚀 NOUVEAU : L'annulation prévient le serveur !
-  const handleCancelSearch = async () => {
+  // L'action finale d'annulation (quand on a dit "Oui")
+  const handleFinalCancel = async () => {
     setIsCancelling(true);
     try {
       await cancelRideApi({ 
@@ -56,9 +58,57 @@ const RiderWaitModal = () => {
       console.log("Erreur annulation (peut-être déjà annulée par timeout) :", error);
     } finally {
       setIsCancelling(false);
-      dispatch(clearCurrentRide()); // On ferme la modale
+      setShowCancelConfirmation(false); // Reset de l'état
+      dispatch(clearCurrentRide());
     }
   };
+
+  // 🚀 NOUVEAU : Gère l'affichage de la zone de confirmation
+  const renderCancelSection = () => {
+    if (showCancelConfirmation) {
+      // ÉTAPE 2 : La demande de confirmation
+      return (
+        <View style={styles.confirmationContainer}>
+          <Text style={styles.confirmationTitle}>Voulez-vous vraiment annuler ?</Text>
+          <Text style={styles.confirmationSubtitle}>Votre demande sera retirée des chauffeurs.</Text>
+          
+          <View style={styles.confirmationButtonsRow}>
+            <TouchableOpacity 
+              style={styles.secondaryButton} 
+              onPress={() => setShowCancelConfirmation(false)} // Retour en arrière
+              disabled={isCancelling}
+            >
+              <Text style={styles.secondaryButtonText}>Non, attendre</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              style={styles.solidCancelButton} 
+              onPress={handleFinalCancel} // Annulation réelle
+              disabled={isCancelling}
+            >
+              {isCancelling ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <Text style={styles.solidCancelButtonText}>Oui, annuler</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      );
+    }
+
+    // ÉTAPE 1 : Le gros bouton rouge très visible
+    return (
+      <TouchableOpacity 
+        style={styles.bigCancelButton} 
+        onPress={() => setShowCancelConfirmation(true)}
+      >
+        <Ionicons name="close-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
+        <Text style={styles.bigCancelButtonText}>Annuler la recherche</Text>
+      </TouchableOpacity>
+    );
+  };
+
 
   const renderContent = () => {
     if (currentRide.status === 'searching') {
@@ -68,15 +118,8 @@ const RiderWaitModal = () => {
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
           <Text style={styles.subtitle}>Nous interrogeons les véhicules à proximité.</Text>
           
-          <TouchableOpacity 
-            style={styles.cancelButton} 
-            onPress={handleCancelSearch}
-            disabled={isCancelling}
-          >
-            <Text style={styles.cancelText}>
-              {isCancelling ? "Annulation..." : "Annuler la demande"}
-            </Text>
-          </TouchableOpacity>
+          {/* Remplacement de l'ancien bouton par la nouvelle section dynamique */}
+          {renderCancelSection()}
         </View>
       );
     }
@@ -172,20 +215,6 @@ const styles = StyleSheet.create({
     marginBottom: THEME.SPACING.xl,
     letterSpacing: 1,
   },
-  cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 25,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.error,
-    marginTop: THEME.SPACING.md,
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-  },
-  cancelText: {
-    color: THEME.COLORS.error,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
   actionsContainer: {
     flexDirection: 'row',
     gap: THEME.SPACING.md,
@@ -207,7 +236,84 @@ const styles = StyleSheet.create({
   acceptButton: {
     flex: 1,
     marginTop: 0,
-  }
+  },
+
+  // --- NOUVEAUX STYLES POUR L'ANNULATION ---
+  
+  // Le gros bouton rouge initial
+  bigCancelButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.danger, // Rouge uni
+    paddingVertical: 14,
+    paddingHorizontal: 30,
+    borderRadius: 30,
+    marginTop: THEME.SPACING.md,
+    shadowColor: THEME.COLORS.danger,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 6,
+  },
+  bigCancelButtonText: {
+    color: '#FFF', // Texte blanc sur fond rouge
+    fontWeight: 'bold',
+    fontSize: 16,
+  },
+
+  // Le conteneur de confirmation
+  confirmationContainer: {
+    width: '100%',
+    alignItems: 'center',
+    backgroundColor: 'rgba(231, 76, 60, 0.05)', // Fond rouge très léger
+    padding: THEME.SPACING.md,
+    borderRadius: 16,
+    marginTop: THEME.SPACING.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.2)',
+  },
+  confirmationTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME.COLORS.danger,
+    marginBottom: 4,
+  },
+  confirmationSubtitle: {
+    fontSize: 12,
+    color: THEME.COLORS.textSecondary,
+    marginBottom: THEME.SPACING.md,
+  },
+  confirmationButtonsRow: {
+    flexDirection: 'row',
+    gap: THEME.SPACING.md,
+    width: '100%',
+  },
+  secondaryButton: {
+    flex: 1,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    backgroundColor: THEME.COLORS.glassSurface,
+  },
+  secondaryButtonText: {
+    color: THEME.COLORS.textPrimary,
+    fontWeight: '600',
+  },
+  solidCancelButton: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.danger,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 25,
+  },
+  solidCancelButtonText: {
+    color: '#FFF',
+    fontWeight: 'bold',
+  },
 });
 
 export default RiderWaitModal;
