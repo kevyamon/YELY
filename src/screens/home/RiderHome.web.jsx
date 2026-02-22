@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Modale d'attente branchée !
+// HOME RIDER WEB - Cadrage Route & Destination Corrigés
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
-import RiderWaitModal from '../../components/ride/RiderWaitModal'; // 🚀 NOUVEAU
+import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
 
@@ -62,8 +62,15 @@ const RiderHome = ({ navigation }) => {
     if (location && mapRef.current) {
       const coords = await MapService.getRouteCoordinates(location, selectedPlace);
       if (coords && coords.length > 0) {
-        setRouteCoords(coords);
-        mapRef.current.fitToCoordinates(coords); 
+        // 🚀 CORRECTION : On soude le point de départ, la route OSRM, et le point d'arrivée
+        const visualRoute = [
+          { latitude: location.latitude, longitude: location.longitude },
+          ...coords,
+          { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
+        ];
+        
+        setRouteCoords(visualRoute);
+        mapRef.current.fitToCoordinates(visualRoute); 
       }
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -117,9 +124,10 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
+  // 🚀 CORRECTION : Ajout de la propriété "type: 'destination'" pour activer le bon marqueur
   const mapMarkers = destination ? [{
     id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
-    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger
+    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger, type: 'destination'
   }] : [];
 
   const renderWebSearchControls = () => {
@@ -200,7 +208,6 @@ const RiderHome = ({ navigation }) => {
         onDestinationSelect={handleDestinationSelect}
       />
 
-      {/* 🚀 L'ÉCRAN GÉANT EST ENFIN PLACÉ ICI ! */}
       <RiderWaitModal />
 
     </View>

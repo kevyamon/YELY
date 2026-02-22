@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Cadrage Caméra Centré & Équilibré
+// HOME RIDER - Cadrage Caméra Intelligent (Smart Padding)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -100,10 +100,10 @@ const RiderHome = ({ navigation }) => {
 
         setRouteCoords(visualRoute);
         
-        // 🚀 CORRECTION UI : On a réduit le "bottom" et augmenté le reste.
-        // La carte va donc "dézoomer" un peu plus et centrer le tracé proprement.
+        // 🚀 L'ASTUCE CAMÉRA EST ICI : On ajoute 380 pixels de marge en bas (bottom) 
+        // pour esquiver le SmartFooter, et on laisse respirer les bords (top, right, left)
         mapRef.current.fitToCoordinates(visualRoute, {
-          edgePadding: { top: 200, right: 80, bottom: 280, left: 80 },
+          edgePadding: { top: 120, right: 60, bottom: 380, left: 60 },
           animated: true,
         });
       }
@@ -173,7 +173,14 @@ const RiderHome = ({ navigation }) => {
     }];
   }, [destination]);
 
-  const mapBottomPadding = destination ? 320 : 240; 
+  // Stabiliser l'objet "route" pour éviter les re-rendus de la carte à chaque maj GPS
+  const memoizedRoute = useMemo(() => {
+    if (!routeCoords) return null;
+    return { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 };
+  }, [routeCoords]);
+
+  // On remonte un peu le bouton GPS pour ne pas qu'il soit mangé par le Footer
+  const mapBottomPadding = destination ? 360 : 240; 
 
   return (
     <View style={styles.screenWrapper}>
@@ -187,7 +194,7 @@ const RiderHome = ({ navigation }) => {
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
+             route={memoizedRoute}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (

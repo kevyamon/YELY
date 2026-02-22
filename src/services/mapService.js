@@ -94,8 +94,8 @@ class MapService {
       const response = await fetch(url);
       const data = await response.json();
 
-      // 🚀 CORRECTION : OSRM renvoie "OK" en majuscules
-      if (data.code === 'OK' && data.routes.length > 0) {
+      // 🚀 CORRECTION : Restauration de 'Ok' (norme OSRM, contrairement à Google Maps qui utilise 'OK')
+      if (data.code === 'Ok' && data.routes.length > 0) {
         // OSRM renvoie un tableau [longitude, latitude], MapView veut {latitude, longitude}
         return data.routes[0].geometry.coordinates.map(coord => ({
           latitude: coord[1],

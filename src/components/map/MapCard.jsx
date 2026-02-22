@@ -25,15 +25,13 @@ const AnimatedDestinationMarker = ({ color }) => {
           toValue: 1,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
-          // 🚀 CORRECTION : Désactivation du driver natif pour forcer le rafraîchissement continu sur React Native Maps
-          useNativeDriver: false,
+          useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
           toValue: 0,
           duration: 1500,
           easing: Easing.inOut(Easing.ease),
-          // 🚀 CORRECTION : Désactivation du driver natif
-          useNativeDriver: false,
+          useNativeDriver: true,
         })
       ])
     ).start();
@@ -158,7 +156,6 @@ const MapCard = forwardRef(({
           onMapReady={handleMapReady} 
           onPress={onPress}
         >
-          {/* 🚀 CORRECTION : Ajout de zIndex={-1} pour forcer les tuiles sous les tracés vectoriels */}
           <UrlTile
             urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
             maximumZ={19}
@@ -166,7 +163,6 @@ const MapCard = forwardRef(({
             shouldReplaceMapContent={true} 
             tileSize={256}
             fadeDuration={0} 
-            zIndex={-1}
           />
 
           {MAFERE_KML_ZONE && MAFERE_KML_ZONE.length > 0 && (
@@ -225,13 +221,11 @@ const MapCard = forwardRef(({
             );
           })}
 
-          {/* 🚀 CORRECTION : Ajout du zIndex={1} pour forcer l'affichage de l'itinéraire au-dessus des tuiles */}
           {route && route.coordinates && route.coordinates.length > 0 && (
             <Polyline
               coordinates={route.coordinates}
               strokeColor={route.color || THEME.COLORS.champagneGold}
               strokeWidth={route.width || 4}
-              zIndex={1}
             />
           )}
 

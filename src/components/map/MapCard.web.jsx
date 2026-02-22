@@ -1,12 +1,12 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT CARTE WEB - Intégration Dynamique KML
+// COMPOSANT CARTE WEB - Intégration Dynamique KML & Marqueur Animé
 
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import THEME from '../../theme/theme';
-import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone'; // 🚀 IMPORT DU FICHIER KML
+import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -39,13 +39,34 @@ const defaultIcon = L.divIcon({
   iconAnchor: [18, 18],
 });
 
-const MapCenterUpdater = ({ location }) => {
+// 🚀 NOUVEAU : Icône de destination Web avec animation CSS de pulsation
+const destinationIcon = L.divIcon({
+  className: 'yely-destination-marker',
+  html: `
+    <div style="width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; position: relative;">
+      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #E74C3C; animation: yely-pulse 1.5s infinite ease-in-out;"></div>
+      <span style="color: #E74C3C; font-size: 28px; z-index: 1; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);">🚩</span>
+      <style>
+        @keyframes yely-pulse {
+          0% { transform: scale(0.8); opacity: 0.3; }
+          50% { transform: scale(1.2); opacity: 0.7; }
+          100% { transform: scale(0.8); opacity: 0.3; }
+        }
+      </style>
+    </div>
+  `,
+  iconSize: [50, 50],
+  iconAnchor: [25, 45], // On ancre le bas du drapeau au point GPS
+});
+
+// 🚀 CORRECTION : Le composant ne force le recentrage QUE s'il n'y a pas d'itinéraire en cours
+const MapCenterUpdater = ({ location, hasRoute }) => {
   const map = useMap();
   useEffect(() => {
-    if (location) {
+    if (location && !hasRoute) {
       map.flyTo([location.latitude, location.longitude], 15, { duration: 1 });
     }
-  }, [location, map]);
+  }, [location, map, hasRoute]);
   return null;
 };
 
@@ -73,7 +94,7 @@ const MapCard = forwardRef(({
     fitToCoordinates: (coords) => {
       if (mapInstanceRef.current && coords.length > 0) {
         const bounds = L.latLngBounds(coords.map((c) => [c.latitude, c.longitude]));
-        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50] });
+        mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], duration: 1 });
       }
     },
     centerOnUser: () => {
@@ -88,7 +109,6 @@ const MapCard = forwardRef(({
     location?.longitude || MAFERE_CENTER.longitude,
   ];
 
-  // 🚀 CONVERSION : Leaflet demande un tableau [lat, lng], on convertit dynamiquement ton objet KML
   const leafletKmlPositions = MAFERE_KML_ZONE.map(coord => [coord.latitude, coord.longitude]);
 
   return (
@@ -104,9 +124,9 @@ const MapCard = forwardRef(({
       >
         <TileLayer url={darkMode ? DARK_TILE_URL : LIGHT_TILE_URL} attribution={ATTRIBUTION} maxZoom={19} />
 
-        <MapCenterUpdater location={location} />
+        {/* 🚀 CORRECTION : On passe l'information de l'itinéraire pour brider l'auto-centrage */}
+        <MapCenterUpdater location={location} hasRoute={!!route} />
 
-        {/* 🚀 L'INTÉGRATION DU KML WEB */}
         {leafletKmlPositions.length > 0 && (
           <Polygon 
             positions={leafletKmlPositions} 
@@ -124,9 +144,18 @@ const MapCard = forwardRef(({
           <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
         )}
 
-        {markers.map((marker, index) => (
-          <Marker key={marker.id || `marker-${index}`} position={[marker.latitude, marker.longitude]} icon={defaultIcon} eventHandlers={{ click: () => onMarkerPress?.(marker) }} />
-        ))}
+        {/* 🚀 CORRECTION : Application dynamique de l'icône de destination animée */}
+        {markers.map((marker, index) => {
+          const isDestination = marker.type === 'destination';
+          return (
+            <Marker 
+              key={marker.id || `marker-${index}`} 
+              position={[marker.latitude, marker.longitude]} 
+              icon={isDestination ? destinationIcon : defaultIcon} 
+              eventHandlers={{ click: () => onMarkerPress?.(marker) }} 
+            />
+          );
+        })}
 
         {route && route.coordinates && route.coordinates.length > 0 && (
           <Polyline
