@@ -36,7 +36,6 @@ const RiderHome = ({ navigation }) => {
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
   const [destination, setDestination] = useState(null);
-  // 🚀 NOUVEAU : On stocke l'arc au lieu des coordonnées OSRM
   const [arcRoute, setArcRoute] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   
@@ -89,23 +88,13 @@ const RiderHome = ({ navigation }) => {
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      // 🚀 RÉVOLUTION UX : Fini l'appel réseau OSRM ! On prépare l'arc instantanément.
       setArcRoute({
-        start: location,
-        end: selectedPlace
+        start: { latitude: Number(location.latitude), longitude: Number(location.longitude) },
+        end: { latitude: Number(selectedPlace.latitude), longitude: Number(selectedPlace.longitude) }
       });
       
-      // On encadre la vue sur le départ et l'arrivée
-      mapRef.current.fitToCoordinates(
-        [
-          { latitude: location.latitude, longitude: location.longitude },
-          { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
-        ], 
-        {
-          edgePadding: { top: 200, right: 80, bottom: 280, left: 80 },
-          animated: true,
-        }
-      );
+      // 🚀 PLUS BESOIN DE GERER LE ZOOM ICI !
+      // MapCard s'en occupe tout seul dès que la destination est mise à jour.
 
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -163,18 +152,14 @@ const RiderHome = ({ navigation }) => {
     if (!destination) return [];
     return [{
       id: 'destination', 
-      latitude: destination.latitude, 
-      longitude: destination.longitude,
+      latitude: Number(destination.latitude), 
+      longitude: Number(destination.longitude),
       title: destination.address, 
       icon: 'flag', 
       iconColor: THEME.COLORS.danger,
       type: 'destination' 
     }];
   }, [destination]);
-
-  const mapRoute = useMemo(() => {
-    return arcRoute ? arcRoute : null;
-  }, [arcRoute]);
 
   const mapBottomPadding = destination ? 320 : 240; 
 
@@ -190,7 +175,7 @@ const RiderHome = ({ navigation }) => {
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             route={mapRoute}
+             route={arcRoute}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (

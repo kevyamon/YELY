@@ -1,51 +1,50 @@
 // src/components/map/MapCard.jsx
+// COMPOSANT CARTE - ZOOM GRAND ANGLE & ANCRAGE PRÉCIS
+
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
-// 🚀 On remet Animated !
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
-import MapView, { Marker, Polygon, Polyline, UrlTile } from 'react-native-maps';
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
-import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone';
+import { MAFERE_CENTER } from '../../utils/mafereZone';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-// 🚀 GÉNÉRATEUR MATHÉMATIQUE (Blindé avec Number() pour contrer le texte)
 const generateBezierCurve = (start, end) => {
   if (!start || !end) return [];
-
-  const sLat = Number(start.latitude);
-  const sLng = Number(start.longitude);
-  const eLat = Number(end.latitude);
-  const eLng = Number(end.longitude);
-
+  const sLat = Number(start.latitude), sLng = Number(start.longitude);
+  const eLat = Number(end.latitude), eLng = Number(end.longitude);
   if (isNaN(sLat) || isNaN(sLng) || isNaN(eLat) || isNaN(eLng)) return [];
 
   const points = [];
-  const midLat = (sLat + eLat) / 2;
-  const midLng = (sLng + eLng) / 2;
-  const dLat = eLat - sLat;
-  const dLng = eLng - sLng;
+  const midLat = (sLat + eLat) / 2, midLng = (sLng + eLng) / 2;
+  const dLat = eLat - sLat, dLng = eLng - sLng;
   const curveFactor = 0.2; 
-  const ctrlLat = midLat - (dLng * curveFactor); 
-  const ctrlLng = midLng + (dLat * curveFactor);
+  const ctrlLat = midLat - (dLng * curveFactor), ctrlLng = midLng + (dLat * curveFactor);
 
   for (let t = 0; t <= 1; t += 0.02) {
-    const u = 1 - t;
-    const tt = t * t;
-    const uu = u * u;
-    const pLat = uu * sLat + 2 * u * t * ctrlLat + tt * eLat;
-    const pLng = uu * sLng + 2 * u * t * ctrlLng + tt * eLng;
-    points.push({ latitude: pLat, longitude: pLng }); 
+    const u = 1 - t, tt = t * t, uu = u * u;
+    points.push({ 
+      latitude: uu * sLat + 2 * u * t * ctrlLat + tt * eLat, 
+      longitude: uu * sLng + 2 * u * t * ctrlLng + tt * eLng 
+    }); 
   }
   return points;
 };
 
-// 🚀 TON COMPOSANT ANIMÉ D'ORIGINE (Restauré)
+const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => {
+  const [tracks, setTracks] = useState(true);
+  useEffect(() => {
+    const timer = setTimeout(() => setTracks(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+  return <Marker identifier={identifier} coordinate={coordinate} anchor={anchor} tracksViewChanges={tracks} zIndex={zIndex}>{children}</Marker>;
+};
+
 const AnimatedDestinationMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
-
   useEffect(() => {
     Animated.loop(
       Animated.sequence([
@@ -61,81 +60,70 @@ const AnimatedDestinationMarker = ({ color }) => {
   return (
     <View style={styles.animatedMarkerContainer}>
       <Animated.View style={[styles.pulseHalo, { backgroundColor: color, transform: [{ scale }], opacity }]} />
-      <Ionicons name="flag" size={28} color={color} style={styles.markerIconShadow} />
+      <Ionicons name="flag" size={32} color={color} style={styles.markerIconShadow} />
     </View>
   );
 };
 
 const MapCard = forwardRef(({
-  location,
-  markers = [],
-  route = null,
-  showUserMarker = true,
-  showRecenterButton = true,
-  floating = false, 
-  autoContrast = true, 
-  onMapReady,
-  onPress,
-  onMarkerPress,
-  style,
-  children,
+  location, markers = [], route = null, showUserMarker = true, showRecenterButton = true,
+  floating = false, autoContrast = true, onMapReady, onPress, onMarkerPress, style, children,
   recenterBottomPadding = THEME.SPACING.lg 
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
   const colorScheme = useColorScheme();
-  const isAppDark = colorScheme === 'dark';
-  const isMapDark = autoContrast ? !isAppDark : isAppDark;
-
+  const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
+  const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
+  
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // 🚀 CORRECTION : Fonction de recentrage propre
+  // 🚀 ZOOM GRAND ANGLE (Correction pour le Header)
+  useEffect(() => {
+    const destinationMarker = markers.find(m => m.type === 'destination');
+    
+    if (isMapReady && location && destinationMarker) {
+      const timer = setTimeout(() => {
+        mapRef.current?.fitToCoordinates(
+          [
+            { latitude: location.latitude, longitude: location.longitude },
+            { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude }
+          ],
+          {
+            // 🚀 RÉGLAGES :
+            // top: 200 -> Pousse le tout vers le bas pour dégager le Header
+            // bottom: padding + 40 -> Dégage le menu du bas
+            // left/right: 70 -> Force le dézoom pour voir les côtés
+            edgePadding: { 
+              top: 280, 
+              right: 70, 
+              bottom: recenterBottomPadding + 40, 
+              left: 70 
+            },
+            animated: true,
+          }
+        );
+      }, 600); 
+      return () => clearTimeout(timer);
+    }
+  }, [markers, isMapReady, location, recenterBottomPadding]);
+
   const handleRecenter = () => {
     if (isMapReady && location) {
-      mapRef.current?.animateToRegion({
-        latitude: safeLocation.latitude,
-        longitude: safeLocation.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 800);
+      mapRef.current?.animateToRegion({ latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 }, 800);
     }
   };
 
   useImperativeHandle(ref, () => ({
-    animateToRegion: (region, duration = 800) => {
-      if (isMapReady) mapRef.current?.animateToRegion(region, duration);
-    },
-    fitToCoordinates: (coords, options) => {
-      if (isMapReady) mapRef.current?.fitToCoordinates(coords, options);
-    },
-    centerOnUser: handleRecenter, // Lié proprement
+    animateToRegion: (region, duration = 800) => { if (isMapReady) mapRef.current?.animateToRegion(region, duration); },
+    fitToCoordinates: (coords, options) => { if (isMapReady) mapRef.current?.fitToCoordinates(coords, options); },
+    centerOnUser: handleRecenter,
   }));
 
-  useEffect(() => {
-    if (isMapReady && location) {
-      mapRef.current?.animateToRegion({
-        latitude: safeLocation.latitude,
-        longitude: safeLocation.longitude,
-        latitudeDelta: 0.01,
-        longitudeDelta: 0.01,
-      }, 1000);
-    }
-  }, [location, isMapReady]);
-
-  const handleMapReady = () => {
-    setIsMapReady(true);
-    if (onMapReady) onMapReady();
-  };
-
-  const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
-
-  const arcCoordinates = useMemo(() => {
-    if (route && route.start && route.end) {
-      return generateBezierCurve(route.start, route.end);
-    }
-    return [];
-  }, [route]);
+  const handleMapReady = () => { setIsMapReady(true); if (onMapReady) onMapReady(); };
+  const destinationMarker = markers.find(m => m.type === 'destination');
+  const arcCoordinates = (location && destinationMarker) ? generateBezierCurve(location, destinationMarker) : [];
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
@@ -143,12 +131,7 @@ const MapCard = forwardRef(({
         <MapView
           ref={mapRef}
           style={[styles.map, { backgroundColor: mapBackgroundColor }]} 
-          initialRegion={{
-            latitude: safeLocation.latitude,
-            longitude: safeLocation.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
+          initialRegion={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.02, longitudeDelta: 0.02 }}
           mapType="none" 
           showsUserLocation={false}
           showsMyLocationButton={false}
@@ -158,85 +141,54 @@ const MapCard = forwardRef(({
           onMapReady={handleMapReady} 
           onPress={onPress}
         >
-          <UrlTile
-            urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
-            maximumZ={19}
-            flipY={false}
-            shouldReplaceMapContent={true} 
-            tileSize={256}
-            fadeDuration={0} 
-          />
+          <UrlTile urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL} maximumZ={19} flipY={false} shouldReplaceMapContent={true} tileSize={256} fadeDuration={0} zIndex={-1} />
 
-          {MAFERE_KML_ZONE && MAFERE_KML_ZONE.length > 0 && (
-            <Polygon
-              coordinates={MAFERE_KML_ZONE}
-              fillColor="rgba(212, 175, 55, 0.15)"
-              strokeColor={THEME.COLORS.champagneGold}
-              strokeWidth={2}
-              lineDashPattern={[10, 5]}
-            />
+          {arcCoordinates.length > 0 && (
+            <Polyline coordinates={arcCoordinates} strokeColor="#D4AF37" strokeWidth={4} zIndex={50} />
           )}
 
-          {/* 🚀 ON A SUPPRIMÉ tracksViewChanges QUI CACHAIT LES POINTS */}
           {showUserMarker && location && (
-            <Marker
-              coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
-              anchor={{ x: 0.5, y: 0.5 }}
-            >
+            <TrackedMarker identifier="user_loc" coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }} anchor={{ x: 0.5, y: 0.5 }} zIndex={100}>
               <View style={styles.userMarker}>
                 <View style={styles.userMarkerPulse} />
                 <View style={styles.userMarkerInner} />
               </View>
-            </Marker>
+            </TrackedMarker>
           )}
 
           {markers.map((marker, index) => {
             if (!marker.latitude || !marker.longitude) return null;
             const isDestination = marker.type === 'destination';
-            const anchor = isDestination ? { x: 0.5, y: 0.8 } : { x: 0.5, y: 0.5 }; 
+            
+            if (isDestination) {
+              return (
+                <Marker
+                  identifier="dest_loc" 
+                  key={marker.id || `marker-${index}`}
+                  coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                  anchor={{ x: 0.28, y: 0.85 }} 
+                  zIndex={110}
+                  tracksViewChanges={true} 
+                >
+                  <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
+                </Marker>
+              );
+            }
 
             return (
-              <Marker
-                key={marker.id || `marker-${index}`}
-                coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                anchor={anchor} 
-                onPress={() => onMarkerPress?.(marker)}
-              >
-                {isDestination ? (
-                  <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
-                ) : (
-                  marker.customView || (
-                    <View style={[styles.defaultMarker, marker.style]}>
-                      <Ionicons name={marker.icon || 'location'} size={marker.iconSize || 20} color={marker.iconColor || THEME.COLORS.champagneGold} />
-                    </View>
-                  )
-                )}
-              </Marker>
+              <TrackedMarker key={marker.id || `marker-${index}`} coordinate={{ latitude: marker.latitude, longitude: marker.longitude }} anchor={{ x: 0.5, y: 0.5 }} zIndex={90}>
+                <View onTouchEnd={() => onMarkerPress?.(marker)}>
+                  {marker.customView || <View style={[styles.defaultMarker, marker.style]}><Ionicons name={marker.icon || 'location'} size={marker.iconSize || 20} color={marker.iconColor || THEME.COLORS.champagneGold} /></View>}
+                </View>
+              </TrackedMarker>
             );
           })}
-
-          {/* 🚀 L'ARC AVEC SÉCURITÉ FORMAT DE DONNÉES */}
-          {arcCoordinates.length > 0 && (
-            <Polyline
-              key={`arc-${arcCoordinates.length}`}
-              coordinates={arcCoordinates}
-              strokeColor={route?.color || THEME.COLORS.champagneGold}
-              strokeWidth={4}
-              geodesic={true}
-              zIndex={100}
-            />
-          )}
-
           {children}
         </MapView>
       </View>
 
       {showRecenterButton && (
-        <TouchableOpacity
-          style={[styles.recenterButton, { bottom: recenterBottomPadding }]}
-          activeOpacity={0.8}
-          onPress={handleRecenter} /* 🚀 L'APPEL CORRIGÉ ICI */
-        >
+        <TouchableOpacity style={[styles.recenterButton, { bottom: recenterBottomPadding }]} activeOpacity={0.8} onPress={handleRecenter}>
           <Ionicons name="locate-outline" size={24} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       )}
@@ -253,7 +205,7 @@ const styles = StyleSheet.create({
   mapClipEdge: { borderRadius: 0 },
   map: { width: '100%', height: '100%' },
   userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
-  userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.4)' },
+  userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' }, 
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
