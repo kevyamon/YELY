@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Cadrage Route & Destination Corrigés
+// HOME RIDER WEB - Architecture de l'Arc Doré Balistique
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -15,7 +15,6 @@ import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
 
 import useGeolocation from '../../hooks/useGeolocation';
-import MapService from '../../services/mapService';
 import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { setCurrentRide } from '../../store/slices/rideSlice';
@@ -38,7 +37,8 @@ const RiderHome = ({ navigation }) => {
   const currentAddress = address || 'Localisation en cours...';
   
   const [destination, setDestination] = useState(null);
-  const [routeCoords, setRouteCoords] = useState(null); 
+  // 🚀 NOUVEAU : On stocke l'arc au lieu des coordonnées OSRM complexes
+  const [arcRoute, setArcRoute] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
 
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -60,18 +60,16 @@ const RiderHome = ({ navigation }) => {
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      const coords = await MapService.getRouteCoordinates(location, selectedPlace);
-      if (coords && coords.length > 0) {
-        // 🚀 CORRECTION : On soude le point de départ, la route OSRM, et le point d'arrivée
-        const visualRoute = [
-          { latitude: location.latitude, longitude: location.longitude },
-          ...coords,
-          { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
-        ];
-        
-        setRouteCoords(visualRoute);
-        mapRef.current.fitToCoordinates(visualRoute); 
-      }
+      // 🚀 RÉVOLUTION UX : Fini l'appel réseau vers OSRM !
+      // On configure instantanément l'arc entre le point A et le point B
+      setArcRoute({
+        start: location,
+        end: selectedPlace
+      });
+
+      // On dézoome pour englober le départ et l'arrivée
+      mapRef.current.fitToCoordinates([location, selectedPlace]); 
+      
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
         dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
@@ -81,7 +79,7 @@ const RiderHome = ({ navigation }) => {
 
   const handleCancelDestination = () => {
     setDestination(null);
-    setRouteCoords(null);
+    setArcRoute(null);
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
@@ -124,7 +122,6 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // 🚀 CORRECTION : Ajout de la propriété "type: 'destination'" pour activer le bon marqueur
   const mapMarkers = destination ? [{
     id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
     title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger, type: 'destination'
@@ -169,7 +166,7 @@ const RiderHome = ({ navigation }) => {
             showUserMarker showRecenterButton 
             floating={false}
             markers={mapMarkers} 
-            route={routeCoords ? { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 } : null}
+            route={arcRoute} // 🚀 On transmet notre objet Arc
           />
         ) : (
           <View style={styles.loadingContainer}>

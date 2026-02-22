@@ -1,6 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Cadrage Caméra Intelligent (Smart Padding)
-// CSCSM Level: Bank Grade
+// HOME RIDER MOBILE - Architecture de l'Arc Doré Balistique
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -37,7 +36,8 @@ const RiderHome = ({ navigation }) => {
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
   const [destination, setDestination] = useState(null);
-  const [routeCoords, setRouteCoords] = useState(null); 
+  // 🚀 NOUVEAU : On stocke l'arc au lieu des coordonnées OSRM
+  const [arcRoute, setArcRoute] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -89,24 +89,23 @@ const RiderHome = ({ navigation }) => {
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      const coords = await MapService.getRouteCoordinates(location, selectedPlace);
+      // 🚀 RÉVOLUTION UX : Fini l'appel réseau OSRM ! On prépare l'arc instantanément.
+      setArcRoute({
+        start: location,
+        end: selectedPlace
+      });
       
-      if (coords && coords.length > 0) {
-        const visualRoute = [
+      // On encadre la vue sur le départ et l'arrivée
+      mapRef.current.fitToCoordinates(
+        [
           { latitude: location.latitude, longitude: location.longitude },
-          ...coords,
           { latitude: selectedPlace.latitude, longitude: selectedPlace.longitude }
-        ];
-
-        setRouteCoords(visualRoute);
-        
-        // 🚀 L'ASTUCE CAMÉRA EST ICI : On ajoute 380 pixels de marge en bas (bottom) 
-        // pour esquiver le SmartFooter, et on laisse respirer les bords (top, right, left)
-        mapRef.current.fitToCoordinates(visualRoute, {
-          edgePadding: { top: 120, right: 60, bottom: 380, left: 60 },
+        ], 
+        {
+          edgePadding: { top: 200, right: 80, bottom: 280, left: 80 },
           animated: true,
-        });
-      }
+        }
+      );
 
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -117,7 +116,7 @@ const RiderHome = ({ navigation }) => {
 
   const handleCancelDestination = () => {
     setDestination(null);
-    setRouteCoords(null);
+    setArcRoute(null);
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
@@ -173,14 +172,11 @@ const RiderHome = ({ navigation }) => {
     }];
   }, [destination]);
 
-  // Stabiliser l'objet "route" pour éviter les re-rendus de la carte à chaque maj GPS
-  const memoizedRoute = useMemo(() => {
-    if (!routeCoords) return null;
-    return { coordinates: routeCoords, color: THEME.COLORS.champagneGold, width: 4 };
-  }, [routeCoords]);
+  const mapRoute = useMemo(() => {
+    return arcRoute ? arcRoute : null;
+  }, [arcRoute]);
 
-  // On remonte un peu le bouton GPS pour ne pas qu'il soit mangé par le Footer
-  const mapBottomPadding = destination ? 360 : 240; 
+  const mapBottomPadding = destination ? 320 : 240; 
 
   return (
     <View style={styles.screenWrapper}>
@@ -194,7 +190,7 @@ const RiderHome = ({ navigation }) => {
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             route={memoizedRoute}
+             route={mapRoute}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
