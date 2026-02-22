@@ -1,5 +1,6 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Architecture de l'Arc Doré Balistique
+// HOME RIDER WEB - Architecture de l'Arc Doré Balistique & Zoom Autonome
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useRef, useState } from 'react';
@@ -37,7 +38,6 @@ const RiderHome = ({ navigation }) => {
   const currentAddress = address || 'Localisation en cours...';
   
   const [destination, setDestination] = useState(null);
-  // 🚀 NOUVEAU : On stocke l'arc au lieu des coordonnées OSRM complexes
   const [arcRoute, setArcRoute] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
 
@@ -60,15 +60,13 @@ const RiderHome = ({ navigation }) => {
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      // 🚀 RÉVOLUTION UX : Fini l'appel réseau vers OSRM !
-      // On configure instantanément l'arc entre le point A et le point B
       setArcRoute({
         start: location,
         end: selectedPlace
       });
 
-      // On dézoome pour englober le départ et l'arrivée
-      mapRef.current.fitToCoordinates([location, selectedPlace]); 
+      // 🚀 SUPPRESSION du zoom forcé ici. 
+      // La MapCard Web gère maintenant son propre recadrage fluide (MapAutoFitter).
       
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -82,9 +80,7 @@ const RiderHome = ({ navigation }) => {
     setArcRoute(null);
     setSelectedVehicle(null);
     
-    if (location && mapRef.current) {
-      mapRef.current.centerOnUser();
-    }
+    // Le retour à la position initiale est géré par la disparition du marqueur de destination.
   };
 
   const handleConfirmRide = async () => {
@@ -166,7 +162,7 @@ const RiderHome = ({ navigation }) => {
             showUserMarker showRecenterButton 
             floating={false}
             markers={mapMarkers} 
-            route={arcRoute} // 🚀 On transmet notre objet Arc
+            route={arcRoute} 
           />
         ) : (
           <View style={styles.loadingContainer}>
