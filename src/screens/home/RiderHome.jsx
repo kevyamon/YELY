@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER MOBILE - Architecture de l'Arc Doré Balistique
+// HOME RIDER MOBILE - Architecture de l'Arc Doré Balistique & Payload Blindé
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -92,9 +92,6 @@ const RiderHome = ({ navigation }) => {
         start: { latitude: Number(location.latitude), longitude: Number(location.longitude) },
         end: { latitude: Number(selectedPlace.latitude), longitude: Number(selectedPlace.longitude) }
       });
-      
-      // 🚀 PLUS BESOIN DE GERER LE ZOOM ICI !
-      // MapCard s'en occupe tout seul dès que la destination est mise à jour.
 
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -117,16 +114,31 @@ const RiderHome = ({ navigation }) => {
     if (!selectedVehicle || !location || !destination || !isUserInZone) return;
     
     try {
+      // 🛡️ SÉCURITÉ ABSOLUE : Typage strict avant de parler à Zod
+      const origLng = Number(location.longitude || location.lng || 0);
+      const origLat = Number(location.latitude || location.lat || 0);
+      const destLng = Number(destination.longitude || destination.lng || 0);
+      const destLat = Number(destination.latitude || destination.lat || 0);
+
+      // Force le type String et nettoie les adresses pour respecter min(5) et max(200)
+      let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
+      if (safeOriginAddress.length < 5) safeOriginAddress += " (Départ)";
+      if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
+
+      let safeDestAddress = String(destination.address || destination.name || "Destination").trim();
+      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivée)";
+      if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
+
       const payload = {
         origin: {
-          address: currentAddress || "Position actuelle",
-          coordinates: [location.longitude, location.latitude]
+          address: safeOriginAddress,
+          coordinates: [origLng, origLat] // Ordre strict [Longitude, Latitude]
         },
         destination: {
-          address: destination.address || "Destination",
-          coordinates: [destination.longitude, destination.latitude]
+          address: safeDestAddress,
+          coordinates: [destLng, destLat] // Ordre strict [Longitude, Latitude]
         },
-        forfait: selectedVehicle.type?.toUpperCase() || 'STANDARD'
+        forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase()
       };
       
       const res = await requestRideApi(payload).unwrap();
@@ -141,9 +153,20 @@ const RiderHome = ({ navigation }) => {
       }));
       
     } catch (error) {
+      // 🛡️ VACCIN ANTI-AVEUGLEMENT POUR LE MOBILE
+      const errorData = error?.data;
+      let errorMessage = errorData?.message || 'Impossible de lancer la commande.';
+      
+      // Extraction chirurgicale des erreurs Zod pour les afficher dans le Toast
+      if (errorData?.errors && Array.isArray(errorData.errors)) {
+        errorMessage = errorData.errors.map(e => `${e.field} : ${e.message}`).join('\n');
+      } else if (error?.error) {
+         errorMessage = error.error; // Erreur réseau pure (CORS, offline, etc.)
+      }
+
       dispatch(showErrorToast({ 
-        title: 'Erreur', 
-        message: error?.data?.message || 'Impossible de lancer la commande.' 
+        title: 'Détail de l\'erreur', 
+        message: errorMessage
       }));
     }
   };
