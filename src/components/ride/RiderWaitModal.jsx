@@ -1,5 +1,6 @@
 // src/components/ride/RiderWaitModal.jsx
-// MODALE PASSAGER - Bouton Annuler haute visibilité avec confirmation de sécurité
+// MODALE PASSAGER - Interface centralisée de la salle d'attente
+// CSCSM Level: Bank Grade (Intégrité des états Redux & Fusion UI)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -7,11 +8,12 @@ import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCancelRideMutation, useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
-import { clearCurrentRide, selectCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
+import { clearCurrentRide, selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassModal from '../ui/GlassModal';
 import GoldButton from '../ui/GoldButton';
+import SearchingRadar from './SearchingRadar'; // 🚀 IMPORT DU RADAR PURIFIÉ
 
 const RiderWaitModal = () => {
   const dispatch = useDispatch();
@@ -22,7 +24,6 @@ const RiderWaitModal = () => {
   
   const [isLoading, setIsLoading] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
-  // 🚀 NOUVEAU : État pour gérer l'étape de confirmation
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   if (!currentRide || currentRide.status === 'accepted' || currentRide.status === 'ongoing' || currentRide.status === 'completed') {
@@ -34,7 +35,13 @@ const RiderWaitModal = () => {
     try {
       await finalizeRide({ rideId: currentRide.rideId, decision }).unwrap();
       if (decision === 'REJECTED') {
-        dispatch(updateRideStatus({ status: 'searching' }));
+        // 🛡️ CORRECTION CRITIQUE : On purge explicitement les données du chauffeur refusé
+        // pour éviter l'effet "zombie" (afficher l'ancien prix) pendant la nouvelle recherche.
+        dispatch(setCurrentRide({ 
+          status: 'searching', 
+          proposedPrice: null, 
+          driverName: null 
+        }));
       }
     } catch (error) {
       dispatch(showErrorToast({ 
@@ -46,7 +53,6 @@ const RiderWaitModal = () => {
     }
   };
 
-  // L'action finale d'annulation (quand on a dit "Oui")
   const handleFinalCancel = async () => {
     setIsCancelling(true);
     try {
@@ -55,18 +61,16 @@ const RiderWaitModal = () => {
         reason: "Annulé par le passager" 
       }).unwrap();
     } catch (error) {
-      console.log("Erreur annulation (peut-être déjà annulée par timeout) :", error);
+      console.log("Erreur annulation :", error);
     } finally {
       setIsCancelling(false);
-      setShowCancelConfirmation(false); // Reset de l'état
+      setShowCancelConfirmation(false); 
       dispatch(clearCurrentRide());
     }
   };
 
-  // 🚀 NOUVEAU : Gère l'affichage de la zone de confirmation
   const renderCancelSection = () => {
     if (showCancelConfirmation) {
-      // ÉTAPE 2 : La demande de confirmation
       return (
         <View style={styles.confirmationContainer}>
           <Text style={styles.confirmationTitle}>Voulez-vous vraiment annuler ?</Text>
@@ -75,7 +79,7 @@ const RiderWaitModal = () => {
           <View style={styles.confirmationButtonsRow}>
             <TouchableOpacity 
               style={styles.secondaryButton} 
-              onPress={() => setShowCancelConfirmation(false)} // Retour en arrière
+              onPress={() => setShowCancelConfirmation(false)} 
               disabled={isCancelling}
             >
               <Text style={styles.secondaryButtonText}>Non, attendre</Text>
@@ -83,7 +87,7 @@ const RiderWaitModal = () => {
 
             <TouchableOpacity 
               style={styles.solidCancelButton} 
-              onPress={handleFinalCancel} // Annulation réelle
+              onPress={handleFinalCancel} 
               disabled={isCancelling}
             >
               {isCancelling ? (
@@ -97,7 +101,6 @@ const RiderWaitModal = () => {
       );
     }
 
-    // ÉTAPE 1 : Le gros bouton rouge très visible
     return (
       <TouchableOpacity 
         style={styles.bigCancelButton} 
@@ -109,16 +112,15 @@ const RiderWaitModal = () => {
     );
   };
 
-
   const renderContent = () => {
     if (currentRide.status === 'searching') {
       return (
         <View style={styles.centerContent}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
+          {/* 🚀 UTILISATION DU RADAR AU LIEU DU SPINNER BASIQUE */}
+          <SearchingRadar />
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
           <Text style={styles.subtitle}>Nous interrogeons les véhicules à proximité.</Text>
           
-          {/* Remplacement de l'ancien bouton par la nouvelle section dynamique */}
           {renderCancelSection()}
         </View>
       );
@@ -237,14 +239,10 @@ const styles = StyleSheet.create({
     flex: 1,
     marginTop: 0,
   },
-
-  // --- NOUVEAUX STYLES POUR L'ANNULATION ---
-  
-  // Le gros bouton rouge initial
   bigCancelButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.danger, // Rouge uni
+    backgroundColor: THEME.COLORS.danger,
     paddingVertical: 14,
     paddingHorizontal: 30,
     borderRadius: 30,
@@ -256,16 +254,14 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   bigCancelButtonText: {
-    color: '#FFF', // Texte blanc sur fond rouge
+    color: '#FFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
-
-  // Le conteneur de confirmation
   confirmationContainer: {
     width: '100%',
     alignItems: 'center',
-    backgroundColor: 'rgba(231, 76, 60, 0.05)', // Fond rouge très léger
+    backgroundColor: 'rgba(231, 76, 60, 0.05)',
     padding: THEME.SPACING.md,
     borderRadius: 16,
     marginTop: THEME.SPACING.sm,
