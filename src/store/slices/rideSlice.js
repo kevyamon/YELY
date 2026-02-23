@@ -1,9 +1,11 @@
 // src/store/slices/rideSlice.js
+// STORE RIDE - Séparation stricte Client/Chauffeur
+
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  currentRide: null, 
-  incomingRide: null, 
+  currentRide: null,   // Course en cours (Passager ou Chauffeur ayant accepté)
+  incomingRide: null,  // Demande entrante (Uniquement Chauffeur)
 };
 
 const rideSlice = createSlice({
@@ -17,7 +19,7 @@ const rideSlice = createSlice({
       state.incomingRide = null;
     },
     setCurrentRide: (state, action) => {
-      // Merge intelligent pour ne pas perdre les données précédentes (comme l'ID)
+      // Merge intelligent pour sécuriser l'ID et les données racines
       state.currentRide = { ...state.currentRide, ...action.payload };
     },
     updateRideStatus: (state, action) => {

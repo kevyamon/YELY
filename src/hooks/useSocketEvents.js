@@ -1,12 +1,13 @@
 // src/hooks/useSocketEvents.js
-// ÉCOUTEURS SOCKET - Gestion du Timeout (1m30) branchée !
+// ÉCOUTEURS SOCKET - Gestion stricte des flux et Timeouts
+// CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { selectIsAuthenticated } from '../store/slices/authSlice';
 import {
-  clearCurrentRide, // 🚀 NOUVEAU : Importé pour fermer la modale du passager
+  clearCurrentRide,
   clearIncomingRide,
   setCurrentRide,
   setIncomingRide,
@@ -26,7 +27,10 @@ const useSocketEvents = () => {
     // ==========================================
 
     const handleNewRideRequest = (data) => {
-      dispatch(setIncomingRide(data));
+      // Sécurité : On s'assure que la payload est valide avant d'afficher la modale
+      if (data && data.rideId && data.origin && data.destination) {
+        dispatch(setIncomingRide(data));
+      }
     };
 
     const handleRideTakenByOther = () => {
@@ -57,7 +61,7 @@ const useSocketEvents = () => {
     const handleDriverFound = (data) => {
       dispatch(updateRideStatus({ 
         status: 'negotiating', 
-        driverName: data.driverName 
+        driverName: data?.driverName || 'Un chauffeur' 
       }));
     };
 
@@ -83,16 +87,15 @@ const useSocketEvents = () => {
       }));
     };
 
-    // 🚀 NOUVEAU : Le passager écoute la fin du compte à rebours
     const handleSearchTimeout = (data) => {
-      dispatch(clearCurrentRide()); // Ferme la salle d'attente (la modale)
+      dispatch(clearCurrentRide()); 
       dispatch(showErrorToast({ 
         title: 'Recherche expirée', 
-        message: data.message || "Aucun chauffeur n'est disponible pour le moment." 
+        message: data?.message || "Aucun chauffeur n'est disponible dans votre zone." 
       }));
     };
 
-    // --- ABONNEMENTS ---
+    // --- ENREGISTREMENT DES ÉCOUTEURS ---
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('driver_found', handleDriverFound);
@@ -101,8 +104,9 @@ const useSocketEvents = () => {
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_completed', handleRideCompleted);
-    socketService.on('search_timeout', handleSearchTimeout); // 🚀 NOUVEAU BRANCHEMENT
+    socketService.on('search_timeout', handleSearchTimeout);
 
+    // --- NETTOYAGE ---
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
       socketService.off('ride_taken_by_other', handleRideTakenByOther);
@@ -112,7 +116,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_completed', handleRideCompleted);
-      socketService.off('search_timeout', handleSearchTimeout); // 🚀 NOUVEAU NETTOYAGE
+      socketService.off('search_timeout', handleSearchTimeout);
     };
   }, [isAuthenticated, dispatch]);
 };

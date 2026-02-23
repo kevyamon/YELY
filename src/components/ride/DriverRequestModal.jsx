@@ -1,5 +1,5 @@
 // src/components/ride/DriverRequestModal.jsx
-// MODAL CHAUFFEUR - Glow Up UI & Séquençage de Négociation
+// MODAL CHAUFFEUR - Glow Up UI, Séquençage & Prévention de Crash
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -26,6 +26,7 @@ const DriverRequestModal = () => {
   if (!incomingRide) return null;
 
   const handleIgnore = () => {
+    if (loadingStep) return;
     dispatch(clearIncomingRide());
   };
 
@@ -39,11 +40,9 @@ const DriverRequestModal = () => {
     }
 
     try {
-      // Étape 1 : Le chauffeur bloque la course pour lui tout seul
       setLoadingStep('locking');
       await lockRide({ rideId: incomingRide.rideId }).unwrap();
       
-      // Étape 2 : Il envoie sa proposition de prix au client
       setLoadingStep('submitting');
       await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
       
@@ -52,12 +51,11 @@ const DriverRequestModal = () => {
         message: 'En attente de la réponse du client.' 
       }));
       
-      // On ferme la modale. La suite dépendra du Socket (Accepté ou Refusé par le client)
       dispatch(clearIncomingRide()); 
 
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Course manquée', 
+        title: 'Course indisponible', 
         message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou le client a annulé.' 
       }));
       dispatch(clearIncomingRide());
@@ -66,7 +64,6 @@ const DriverRequestModal = () => {
     }
   };
 
-  // UI Helpers pour le design dynamique du Forfait
   const getForfaitLabel = (forfait) => {
     switch(forfait?.toUpperCase()) {
       case 'VIP': return 'Premium';
@@ -88,7 +85,6 @@ const DriverRequestModal = () => {
   return (
     <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
       
-      {/* En-tête avec Badge de Forfait */}
       <View style={styles.header}>
         <View>
           <Text style={styles.title}>Nouvelle Demande</Text>
@@ -106,22 +102,26 @@ const DriverRequestModal = () => {
         <Text style={styles.distance}>{incomingRide.distance} km</Text>
       </View>
 
-      {/* Trajet */}
       <View style={styles.addressContainer}>
         <View style={styles.addressRow}>
           <View style={styles.dotStart} />
-          <Text style={styles.addressText} numberOfLines={2}>{incomingRide.origin}</Text>
+          {/* 🛡️ CORRECTION CRITIQUE : on accède à .address car l'objet vient du GeoJSON */}
+          <Text style={styles.addressText} numberOfLines={2}>
+            {incomingRide.origin?.address || 'Point de départ inconnu'}
+          </Text>
         </View>
         <View style={styles.addressDivider} />
         <View style={styles.addressRow}>
           <View style={styles.dotEnd} />
-          <Text style={styles.addressText} numberOfLines={2}>{incomingRide.destination}</Text>
+          {/* 🛡️ CORRECTION CRITIQUE : accès .address */}
+          <Text style={styles.addressText} numberOfLines={2}>
+            {incomingRide.destination?.address || 'Destination inconnue'}
+          </Text>
         </View>
       </View>
 
       <Text style={styles.subtitle}>Votre proposition de prix :</Text>
       
-      {/* Les boutons de prix (Glow Up UI) */}
       <View style={styles.optionsContainer}>
         {incomingRide.priceOptions?.map((option, index) => {
           const isSelected = selectedAmount === option.amount;
@@ -144,7 +144,6 @@ const DriverRequestModal = () => {
         })}
       </View>
 
-      {/* Actions */}
       <View style={styles.actionsContainer}>
         <TouchableOpacity 
           style={styles.ignoreButton} 
@@ -231,7 +230,7 @@ const styles = StyleSheet.create({
   dotEnd: {
     width: 12,
     height: 12,
-    borderRadius: 2, // Carré pour l'arrivée
+    borderRadius: 2,
     backgroundColor: THEME.COLORS.error,
   },
   addressDivider: {
@@ -291,7 +290,7 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textPrimary,
   },
   textSelected: {
-    color: '#121418', // Texte sombre pour contraster avec le fond or
+    color: '#121418', 
   },
   actionsContainer: {
     flexDirection: 'row',
