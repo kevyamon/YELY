@@ -1,10 +1,11 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - ZOOM GRAND ANGLE & ANCRAGE PRÉCIS
+// COMPOSANT CARTE - Lissage GPS & Architecture Autonome Stricte
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, Easing, StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
+import MapView, { AnimatedRegion, Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
@@ -52,7 +53,7 @@ const AnimatedDestinationMarker = ({ color }) => {
         Animated.timing(pulseAnim, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
     ).start();
-  }, []);
+  }, [pulseAnim]);
 
   const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] });
   const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.7, 0.3] });
@@ -65,13 +66,60 @@ const AnimatedDestinationMarker = ({ color }) => {
   );
 };
 
+const SmoothDriverMarker = ({ coordinate, heading }) => {
+  const [markerCoordinate] = useState(
+    new AnimatedRegion({
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+      latitudeDelta: 0,
+      longitudeDelta: 0,
+    })
+  );
+
+  useEffect(() => {
+    markerCoordinate.timing({
+      latitude: coordinate.latitude,
+      longitude: coordinate.longitude,
+      duration: 1000, 
+      useNativeDriver: false, 
+    }).start();
+  }, [coordinate, markerCoordinate]);
+
+  return (
+    <Marker.Animated
+      coordinate={markerCoordinate}
+      anchor={{ x: 0.5, y: 0.5 }}
+      zIndex={200}
+      flat={true} 
+      rotation={heading || 0}
+    >
+      <View style={styles.carMarkerContainer}>
+        <View style={styles.carMarkerBg}>
+          <Ionicons name="car-sport" size={20} color={THEME.COLORS.champagneGold} />
+        </View>
+      </View>
+    </Marker.Animated>
+  );
+};
+
 const MapCard = forwardRef(({
-  location, markers = [], route = null, showUserMarker = true, showRecenterButton = true,
-  floating = false, autoContrast = true, onMapReady, onPress, onMarkerPress, style, children,
+  location, 
+  driverLocation, 
+  markers = [], 
+  showUserMarker = true, 
+  showRecenterButton = true,
+  floating = false, 
+  autoContrast = true, 
+  onMapReady, 
+  onPress, 
+  onMarkerPress, 
+  style, 
+  children,
   recenterBottomPadding = THEME.SPACING.lg 
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  const [arcCoordinates, setArcCoordinates] = useState([]);
   
   const colorScheme = useColorScheme();
   const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
@@ -79,35 +127,48 @@ const MapCard = forwardRef(({
   
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // 🚀 ZOOM GRAND ANGLE (Correction pour le Header)
+  // BOUCLIER ANTI-RACE CONDITION ANDROID : Calcul isolé et asynchrone de l'Arc Doré.
+  useEffect(() => {
+    const destMarker = markers.find(m => m.type === 'destination');
+    
+    if (location && destMarker) {
+      const timer = setTimeout(() => {
+        setArcCoordinates(generateBezierCurve(location, destMarker));
+      }, 150); 
+      return () => clearTimeout(timer);
+    } else {
+      setArcCoordinates([]);
+    }
+  }, [location, markers]);
+
   useEffect(() => {
     const destinationMarker = markers.find(m => m.type === 'destination');
     
-    if (isMapReady && location && destinationMarker) {
+    if (isMapReady && location && driverLocation) {
+      const timer = setTimeout(() => {
+        mapRef.current?.fitToCoordinates(
+          [
+            { latitude: location.latitude, longitude: location.longitude },
+            { latitude: driverLocation.latitude, longitude: driverLocation.longitude }
+          ],
+          { edgePadding: { top: 150, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
+        );
+      }, 600); 
+      return () => clearTimeout(timer);
+    }
+    else if (isMapReady && location && destinationMarker) {
       const timer = setTimeout(() => {
         mapRef.current?.fitToCoordinates(
           [
             { latitude: location.latitude, longitude: location.longitude },
             { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude }
           ],
-          {
-            // 🚀 RÉGLAGES :
-            // top: 200 -> Pousse le tout vers le bas pour dégager le Header
-            // bottom: padding + 40 -> Dégage le menu du bas
-            // left/right: 70 -> Force le dézoom pour voir les côtés
-            edgePadding: { 
-              top: 280, 
-              right: 70, 
-              bottom: recenterBottomPadding + 40, 
-              left: 70 
-            },
-            animated: true,
-          }
+          { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
         );
       }, 600); 
       return () => clearTimeout(timer);
     }
-  }, [markers, isMapReady, location, recenterBottomPadding]);
+  }, [markers, isMapReady, location, driverLocation, recenterBottomPadding]);
 
   const handleRecenter = () => {
     if (isMapReady && location) {
@@ -122,8 +183,6 @@ const MapCard = forwardRef(({
   }));
 
   const handleMapReady = () => { setIsMapReady(true); if (onMapReady) onMapReady(); };
-  const destinationMarker = markers.find(m => m.type === 'destination');
-  const arcCoordinates = (location && destinationMarker) ? generateBezierCurve(location, destinationMarker) : [];
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
@@ -156,11 +215,15 @@ const MapCard = forwardRef(({
             </TrackedMarker>
           )}
 
+          {driverLocation && (
+            <SmoothDriverMarker coordinate={driverLocation} heading={driverLocation.heading} />
+          )}
+
           {markers.map((marker, index) => {
             if (!marker.latitude || !marker.longitude) return null;
             const isDestination = marker.type === 'destination';
             
-            if (isDestination) {
+            if (isDestination && !driverLocation) { 
               return (
                 <Marker
                   identifier="dest_loc" 
@@ -174,6 +237,8 @@ const MapCard = forwardRef(({
                 </Marker>
               );
             }
+
+            if (isDestination) return null;
 
             return (
               <TrackedMarker key={marker.id || `marker-${index}`} coordinate={{ latitude: marker.latitude, longitude: marker.longitude }} anchor={{ x: 0.5, y: 0.5 }} zIndex={90}>
@@ -211,7 +276,9 @@ const styles = StyleSheet.create({
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
   animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
   pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
-  markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 }
+  markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 },
+  carMarkerContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  carMarkerBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E1E1E', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
 });
 
 export default React.memo(MapCard);

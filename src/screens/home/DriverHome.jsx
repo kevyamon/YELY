@@ -1,8 +1,8 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Auto-Online & Intelligence Spatiale (KML)
+// HOME DRIVER - Auto-Online & Arc Doré Autonome
 // CSCSM Level: Bank Grade
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
@@ -18,6 +18,7 @@ import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -25,10 +26,11 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
-  const hasAutoConnected = useRef(false); // Verrou pour éviter les boucles d'auto-connexion
+  const hasAutoConnected = useRef(false); 
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
+  const currentRide = useSelector(selectCurrentRide);
   const { location, errorMsg } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
@@ -37,6 +39,7 @@ const DriverHome = ({ navigation }) => {
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
   const isDriverInZone = isLocationInMafereZone(location);
+  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
@@ -44,11 +47,10 @@ const DriverHome = ({ navigation }) => {
     }
   }, [user?.isAvailable]);
 
-  // LOGIQUE D'AUTO-CONNEXION (Une seule fois par session d'ouverture)
   useEffect(() => {
     const processAutoConnect = async () => {
       if (!hasAutoConnected.current && location && !isAvailable) {
-        hasAutoConnected.current = true; // On verrouille immédiatement
+        hasAutoConnected.current = true; 
 
         if (isDriverInZone) {
           try {
@@ -126,7 +128,31 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  const mapBottomPadding = 320; 
+  // 🛡️ ALIGNEMENT DES MARQUEURS - DECLENCHE L'ARC DORÉ DANS MAPCARD
+  const mapMarkers = useMemo(() => {
+    if (!isRideActive || !currentRide) return [];
+    
+    const isOngoing = currentRide.status === 'ongoing';
+    // Si en route vers client, cible = origin. Si client à bord, cible = destination.
+    const target = isOngoing ? currentRide.destination : currentRide.origin;
+    
+    const lat = target?.coordinates?.[1] || target?.latitude;
+    const lng = target?.coordinates?.[0] || target?.longitude;
+
+    if (lat && lng) {
+      return [{
+        id: 'destination', 
+        latitude: Number(lat), 
+        longitude: Number(lng),
+        title: target.address || "Destination", 
+        iconColor: THEME.COLORS.danger,
+        type: 'destination' // 🔑 TRIGGER POUR LE BYPASS AUTONOME
+      }];
+    }
+    return [];
+  }, [isRideActive, currentRide]);
+
+  const mapBottomPadding = isRideActive ? 300 : 320; 
 
   return (
     <View style={styles.screenWrapper}>
@@ -139,8 +165,7 @@ const DriverHome = ({ navigation }) => {
              showUserMarker={true}
              showRecenterButton={true} 
              floating={false} 
-             markers={[]} 
-             route={null} 
+             markers={mapMarkers} 
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
@@ -159,13 +184,15 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      <DriverRideOverlay />
-
-      <SmartFooter 
-        isAvailable={isAvailable}
-        onToggle={handleToggleAvailability}
-        isToggling={isToggling}
-      />
+      {isRideActive ? (
+        <DriverRideOverlay />
+      ) : (
+        <SmartFooter 
+          isAvailable={isAvailable}
+          onToggle={handleToggleAvailability}
+          isToggling={isToggling}
+        />
+      )}
 
       <DriverRequestModal />
 

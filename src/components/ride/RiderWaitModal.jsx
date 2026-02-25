@@ -1,5 +1,5 @@
 // src/components/ride/RiderWaitModal.jsx
-// MODALE PASSAGER - Interface centralisée & Verrouillage Anti-Conflit
+// MODALE PASSAGER - Interface centralisée & Auto-Guérison (Ghost State)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -42,15 +42,18 @@ const RiderWaitModal = () => {
           driverName: null 
         }));
       } else if (decision === 'ACCEPTED') {
-        // FERMETURE IMMEDIATE : On met à jour le statut Redux localement 
-        // pour démonter la modale sans attendre le retour Socket, évitant le double clic.
         dispatch(updateRideStatus({ status: 'accepted' }));
       }
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Erreur', 
-        message: error?.data?.message || 'Erreur lors de la communication.' 
+        title: 'Information expirée', 
+        message: error?.data?.message || 'La session avec ce chauffeur a expiré ou été annulée.' 
       }));
+      
+      // AUTO-GUÉRISON : Si le backend dit que la session n'existe plus (404), on libère l'utilisateur
+      if (error?.status === 404 || error?.status === 400) {
+        dispatch(clearCurrentRide());
+      }
     } finally {
       setIsLoading(false);
     }

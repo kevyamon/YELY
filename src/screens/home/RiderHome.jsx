@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER MOBILE - Architecture de l'Arc Doré Balistique & Payload Blindé
+// HOME RIDER MOBILE - Routage UI Dynamique & Purge Prop "route"
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -7,6 +7,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import SmartFooter from '../../components/ui/SmartFooter';
@@ -16,7 +17,7 @@ import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { setCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -31,12 +32,12 @@ const MOCK_VEHICLES = [
 const RiderHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
+  const currentRide = useSelector(selectCurrentRide);
   
   const { location, errorMsg } = useGeolocation(); 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
   const [destination, setDestination] = useState(null);
-  const [arcRoute, setArcRoute] = useState(null); 
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   
   const [selectedVehicle, setSelectedVehicle] = useState(null);
@@ -48,6 +49,7 @@ const RiderHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
 
   const isUserInZone = isLocationInMafereZone(location);
+  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
   useEffect(() => {
     if (location) {
@@ -88,11 +90,6 @@ const RiderHome = ({ navigation }) => {
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
-      setArcRoute({
-        start: { latitude: Number(location.latitude), longitude: Number(location.longitude) },
-        end: { latitude: Number(selectedPlace.latitude), longitude: Number(selectedPlace.longitude) }
-      });
-
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
         dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
@@ -102,7 +99,6 @@ const RiderHome = ({ navigation }) => {
 
   const handleCancelDestination = () => {
     setDestination(null);
-    setArcRoute(null);
     setSelectedVehicle(null);
     
     if (location && mapRef.current) {
@@ -111,29 +107,9 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleConfirmRide = async () => {
-    // VACCIN ANTI-SILENCE : Alertes strictes pour chaque blocage
-    if (!location) {
-      dispatch(showErrorToast({ title: 'Erreur GPS', message: 'Position actuelle introuvable.' }));
-      return;
-    }
-    if (!destination) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Veuillez choisir une destination.' }));
-      return;
-    }
-    if (!selectedVehicle) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Veuillez sélectionner un forfait Yély.' }));
-      return;
-    }
-    if (!isUserInZone) {
-      dispatch(showErrorToast({ 
-        title: 'Accès Refusé (Geofencing)', 
-        message: 'Votre GPS indique que vous n\'êtes pas à Maféré. (Placez votre Fake GPS sur Maféré pour tester).' 
-      }));
-      return;
-    }
+    if (!selectedVehicle || !location || !destination || !isUserInZone) return;
     
     try {
-      // SÉCURITÉ ABSOLUE : Typage strict avant de parler à Zod
       const origLng = Number(location.longitude || location.lng || 0);
       const origLat = Number(location.latitude || location.lat || 0);
       const destLng = Number(destination.longitude || destination.lng || 0);
@@ -148,14 +124,8 @@ const RiderHome = ({ navigation }) => {
       if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
 
       const payload = {
-        origin: {
-          address: safeOriginAddress,
-          coordinates: [origLng, origLat]
-        },
-        destination: {
-          address: safeDestAddress,
-          coordinates: [destLng, destLat]
-        },
+        origin: { address: safeOriginAddress, coordinates: [origLng, origLat] },
+        destination: { address: safeDestAddress, coordinates: [destLng, destLat] },
         forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase()
       };
       
@@ -181,7 +151,7 @@ const RiderHome = ({ navigation }) => {
       }
 
       dispatch(showErrorToast({ 
-        title: 'Détail de l\'erreur API', 
+        title: 'Information', 
         message: errorMessage
       }));
     }
@@ -194,13 +164,12 @@ const RiderHome = ({ navigation }) => {
       latitude: Number(destination.latitude), 
       longitude: Number(destination.longitude),
       title: destination.address, 
-      icon: 'flag', 
       iconColor: THEME.COLORS.danger,
       type: 'destination' 
     }];
   }, [destination]);
 
-  const mapBottomPadding = destination ? 320 : 240; 
+  const mapBottomPadding = isRideActive ? 280 : (destination ? 320 : 240); 
 
   return (
     <View style={styles.screenWrapper}>
@@ -210,11 +179,11 @@ const RiderHome = ({ navigation }) => {
            <MapCard 
              ref={mapRef}
              location={location}
+             driverLocation={currentRide?.driverLocation} 
              showUserMarker={true}
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             route={arcRoute}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
@@ -232,21 +201,25 @@ const RiderHome = ({ navigation }) => {
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={() => setIsSearchModalVisible(true)}
-        hasDestination={!!destination}
+        hasDestination={!!destination && !isRideActive} 
         onCancelDestination={handleCancelDestination}
       />
 
-      <SmartFooter 
-        destination={destination}
-        displayVehicles={displayVehicles}
-        selectedVehicle={selectedVehicle}
-        onSelectVehicle={setSelectedVehicle}
-        isEstimating={isEstimating || isOrdering} 
-        estimationData={estimationData}
-        estimateError={estimateError}
-        onConfirmRide={handleConfirmRide}
-        isUserInZone={isUserInZone} 
-      />
+      {isRideActive ? (
+        <RiderRideOverlay />
+      ) : (
+        <SmartFooter 
+          destination={destination}
+          displayVehicles={displayVehicles}
+          selectedVehicle={selectedVehicle}
+          onSelectVehicle={setSelectedVehicle}
+          isEstimating={isEstimating || isOrdering} 
+          estimationData={estimationData}
+          estimateError={estimateError}
+          onConfirmRide={handleConfirmRide}
+          isUserInZone={isUserInZone} 
+        />
+      )}
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
