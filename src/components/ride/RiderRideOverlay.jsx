@@ -1,24 +1,28 @@
-// src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage & Pont de Navigation Externe
+// src/components/ride/RiderRideOverlay.jsx
+// PANNEAU PASSAGER - Suivi du Chauffeur en Temps Réel
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
-import { Dimensions, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { useCancelRideMutation } from '../../store/api/ridesApiSlice';
+import { clearCurrentRide, selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
-const DriverRideOverlay = () => {
+const RiderRideOverlay = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
-  const translateY = useSharedValue(300); 
+  
+  const [cancelRideApi] = useCancelRideMutation();
+  const translateY = useSharedValue(300);
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -29,40 +33,30 @@ const DriverRideOverlay = () => {
 
   if (!currentRide) return null;
 
-  const isOngoing = currentRide.status === 'ongoing';
-  const target = isOngoing ? currentRide.destination : currentRide.origin;
-
-  const handleCallRider = () => {
-    const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
-    Linking.openURL(phoneUrl).catch(() => {
-       dispatch(showErrorToast({ title: "Erreur", message: "Impossible de lancer l'appel." }));
-    });
+  const handleCancel = async () => {
+    try {
+      await cancelRideApi({ 
+        rideId: currentRide.rideId, 
+        reason: "Annulé manuellement par le passager en cours d'approche" 
+      }).unwrap();
+      dispatch(clearCurrentRide());
+    } catch (error) {
+      dispatch(showErrorToast({ title: "Erreur", message: "Impossible d'annuler la course." }));
+    }
   };
 
-  const handleOpenGPS = () => {
-    // 🌍 Ouvre Google Maps / Apple Maps pour la navigation vocale
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
-    
-    if (!lat || !lng) {
-      dispatch(showErrorToast({ title: "Erreur GPS", message: "Destination introuvable." }));
-      return;
-    }
-
-    const label = encodeURIComponent("Course Yély");
-    const url = Platform.select({
-      ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
-      android: `geo:0,0?q=${lat},${lng}(${label})`
-    });
-
-    Linking.openURL(url).catch(() => {
-       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+  const handleCallDriver = () => {
+    const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
+    Linking.openURL(phoneUrl).catch(() => {
+       dispatch(showErrorToast({ title: "Erreur", message: "Impossible de lancer l'appel." }));
     });
   };
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
+
+  const isOngoing = currentRide.status === 'ongoing';
 
   return (
     <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
@@ -72,49 +66,51 @@ const DriverRideOverlay = () => {
            <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
         </View>
         <Text style={styles.statusText}>
-          {isOngoing ? "Direction Destination" : "Aller chercher le client"}
+          {isOngoing ? "Le chauffeur est arrivé !" : "Le chauffeur est en route"}
         </Text>
       </View>
 
-      <View style={styles.riderInfoCard}>
+      <View style={styles.driverInfoCard}>
         <View style={styles.avatarPlaceholder}>
           <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
         </View>
         
-        <View style={styles.riderDetails}>
-          <Text style={styles.riderName}>{currentRide.riderName || 'Client Yély'}</Text>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.ratingText}>5.0 • Client vérifié</Text>
+        <View style={styles.driverDetails}>
+          <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yély'}</Text>
+          <View style={styles.carBadge}>
+            <Text style={styles.carText}>Toyota Corolla • Grise</Text>
           </View>
+          <Text style={styles.plateText}>CI-1234-XY</Text>
         </View>
 
-        <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
+        <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
           <Ionicons name="call" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       <View style={styles.routeContainer}>
         <View style={styles.routeRow}>
-          <Ionicons name="navigate-circle" size={20} color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger} />
-          <Text style={styles.routeText} numberOfLines={2}>
-            {target?.address || 'Adresse de rencontre'}
-          </Text>
+          <Ionicons name="location" size={16} color={THEME.COLORS.textSecondary} />
+          <Text style={styles.routeText} numberOfLines={1}>{currentRide.origin || 'Votre position'}</Text>
+        </View>
+        <View style={styles.routeDots} />
+        <View style={styles.routeRow}>
+          <Ionicons name="flag" size={16} color={THEME.COLORS.danger} />
+          <Text style={styles.routeText} numberOfLines={1}>{currentRide.destination || 'Destination'}</Text>
         </View>
       </View>
 
       <View style={styles.actionsContainer}>
-        {/* BOUTON GPS : Secondaire pour la navigation vocale externe */}
-        <TouchableOpacity style={styles.gpsButton} onPress={handleOpenGPS}>
-          <Ionicons name="navigate" size={20} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceLabel}>Tarif convenu</Text>
+          <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
+        </View>
 
-        {/* BOUTON PRINCIPAL : Pour la Phase 8 */}
-        <TouchableOpacity style={styles.primaryActionButton} disabled={true}>
-          <Text style={styles.primaryActionText}>
-            {isOngoing ? "TERMINER COURSE" : "CLIENT À BORD"}
-          </Text>
-        </TouchableOpacity>
+        {!isOngoing && (
+          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
+            <Text style={styles.cancelButtonText}>Annuler la course</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
     </Animated.View>
@@ -133,6 +129,10 @@ const styles = StyleSheet.create({
     paddingTop: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: -5 },
+    shadowOpacity: 0.15,
+    shadowRadius: 10,
     elevation: 20,
     zIndex: 100,
   },
@@ -151,10 +151,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
   },
-  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
-  dotOngoing: { backgroundColor: THEME.COLORS.success },
-  statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
-  riderInfoCard: {
+  dot: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+    backgroundColor: THEME.COLORS.champagneGold,
+  },
+  dotOngoing: {
+    backgroundColor: THEME.COLORS.success,
+  },
+  statusText: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary,
+  },
+  driverInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassSurface,
@@ -165,26 +176,58 @@ const styles = StyleSheet.create({
     marginBottom: THEME.SPACING.md,
   },
   avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
     backgroundColor: THEME.COLORS.glassDark,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1.5,
+    borderWidth: 2,
     borderColor: THEME.COLORS.champagneGold,
   },
-  riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
-  riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
-  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  ratingText: { fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
+  driverDetails: {
+    flex: 1,
+    marginLeft: THEME.SPACING.md,
+  },
+  driverName: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: THEME.COLORS.textPrimary,
+    marginBottom: 4,
+  },
+  carBadge: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 6,
+    alignSelf: 'flex-start',
+    marginBottom: 4,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.glassBorder,
+  },
+  carText: {
+    fontSize: 12,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: '600',
+  },
+  plateText: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: THEME.COLORS.champagneGold,
+    letterSpacing: 1,
+  },
   callButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
     backgroundColor: THEME.COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: THEME.COLORS.success,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
   },
   routeContainer: {
     backgroundColor: THEME.COLORS.glassLight,
@@ -192,28 +235,58 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: THEME.SPACING.md,
   },
-  routeRow: { flexDirection: 'row', alignItems: 'center' },
-  routeText: { marginLeft: 8, color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, fontWeight: '700' },
-  actionsContainer: { flexDirection: 'row', gap: THEME.SPACING.md, marginTop: THEME.SPACING.xs },
-  gpsButton: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: THEME.COLORS.glassSurface,
-    justifyContent: 'center',
+  routeRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
   },
-  primaryActionButton: {
+  routeText: {
+    marginLeft: 8,
+    color: THEME.COLORS.textSecondary,
+    fontSize: 13,
     flex: 1,
-    backgroundColor: THEME.COLORS.glassDark,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.6,
   },
-  primaryActionText: { color: THEME.COLORS.textSecondary, fontWeight: '900', fontSize: 13, letterSpacing: 1 },
+  routeDots: {
+    height: 12,
+    borderLeftWidth: 1.5,
+    borderStyle: 'dashed',
+    borderColor: THEME.COLORS.textTertiary,
+    marginLeft: 7,
+    marginVertical: 2,
+  },
+  actionsContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: THEME.SPACING.sm,
+  },
+  priceContainer: {
+    flex: 1,
+  },
+  priceLabel: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+    fontWeight: 'bold',
+  },
+  priceValue: {
+    fontSize: 24,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+  },
+  cancelButton: {
+    paddingVertical: 12,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.3)',
+  },
+  cancelButtonText: {
+    color: THEME.COLORS.danger,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
 });
 
-export default DriverRideOverlay;
+export default RiderRideOverlay;

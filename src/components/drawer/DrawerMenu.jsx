@@ -1,15 +1,12 @@
-// src/components/drawer/DrawerMenu.jsx
-// MENU LISTE - Nettoyé & Redressé (Aucun italique, aucun skew)
-
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
+import EmergencyResetButton from '../ui/EmergencyResetButton';
 import { getMenuItems } from './menuConfig';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
-  // Récupération des items selon le rôle
   const menuItems = getMenuItems(role);
 
   return (
@@ -28,7 +25,6 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
             disabled={disabled}
             activeOpacity={0.7}
           >
-            {/* ICÔNE */}
             <View style={[
               styles.iconContainer,
               isActive && styles.iconContainerActive
@@ -40,7 +36,6 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
               />
             </View>
 
-            {/* TEXTE (Droit et Lisible) */}
             <Text style={[
               styles.menuLabel,
               isActive && styles.menuLabelActive
@@ -48,7 +43,6 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
               {item.label}
             </Text>
 
-            {/* FLÈCHE BOUT (Optionnel, pour montrer que c'est cliquable) */}
             <Ionicons 
               name="chevron-forward" 
               size={16} 
@@ -58,6 +52,11 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
           </TouchableOpacity>
         );
       })}
+
+      {/* Bouton d'urgence intégré directement dans le menu */}
+      <View style={styles.emergencyWrapper}>
+        <EmergencyResetButton />
+      </View>
     </View>
   );
 };
@@ -69,43 +68,46 @@ const styles = StyleSheet.create({
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16, // Plus d'espace pour le doigt
+    paddingVertical: 16, 
     paddingHorizontal: 16,
     marginBottom: 8,
     borderRadius: 12,
-    backgroundColor: 'transparent', // Par défaut transparent
-    // Pas de border par défaut pour alléger
+    backgroundColor: 'transparent', 
   },
   menuItemActive: {
-    backgroundColor: THEME.COLORS.glassSurface, // Fond subtil si actif
+    backgroundColor: THEME.COLORS.glassSurface, 
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)', // Bordure Or légère
+    borderColor: 'rgba(212, 175, 55, 0.3)', 
   },
   iconContainer: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)', // Gris très léger
+    backgroundColor: 'rgba(128, 128, 128, 0.1)', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.15)', // Or léger
+    backgroundColor: 'rgba(212, 175, 55, 0.15)', 
   },
   menuLabel: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500', // Medium pour la lisibilité
+    fontWeight: '500', 
     color: THEME.COLORS.textSecondary,
-    fontStyle: 'normal', // ⚠️ On force le style NORMAL (pas italique)
-    letterSpacing: 0.3,  // Un peu d'air
-    // Pas de transform ici !
+    fontStyle: 'normal', 
+    letterSpacing: 0.3,  
   },
   menuLabelActive: {
-    color: THEME.COLORS.textPrimary, // Noir (Jour) ou Blanc (Nuit)
-    fontWeight: '700', // Gras si actif
+    color: THEME.COLORS.textPrimary, 
+    fontWeight: '700', 
   },
+  emergencyWrapper: {
+    marginTop: 24,
+    paddingHorizontal: 16,
+    alignItems: 'center',
+  }
 });
 
 export default DrawerMenu;

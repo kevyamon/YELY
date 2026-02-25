@@ -1,6 +1,3 @@
-// src/screens/home/RiderHome.jsx
-// HOME RIDER MOBILE - Routage UI Dynamique & Purge Prop "route"
-
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
@@ -15,7 +12,10 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
+import {
+  useLazyEstimateRideQuery,
+  useRequestRideMutation
+} from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
@@ -107,7 +107,22 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleConfirmRide = async () => {
-    if (!selectedVehicle || !location || !destination || !isUserInZone) return;
+    if (!location) {
+      dispatch(showErrorToast({ title: 'Erreur GPS', message: 'Localisation introuvable. Activez votre GPS.' }));
+      return;
+    }
+    if (!isUserInZone) {
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Vous devez être dans la zone de Maféré pour commander.' }));
+      return;
+    }
+    if (!destination) {
+      dispatch(showErrorToast({ title: 'Destination', message: 'Veuillez choisir une destination.' }));
+      return;
+    }
+    if (!selectedVehicle) {
+      dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un type de véhicule.' }));
+      return;
+    }
     
     try {
       const origLng = Number(location.longitude || location.lng || 0);
@@ -237,7 +252,7 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12 }
+  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12 },
 });
 
 export default RiderHome;

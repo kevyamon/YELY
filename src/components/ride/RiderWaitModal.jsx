@@ -1,7 +1,3 @@
-// src/components/ride/RiderWaitModal.jsx
-// MODALE PASSAGER - Interface centralisée & Auto-Guérison (Ghost State)
-// CSCSM Level: Bank Grade
-
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
@@ -26,9 +22,12 @@ const RiderWaitModal = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
-  if (!currentRide || currentRide.status === 'accepted' || currentRide.status === 'ongoing' || currentRide.status === 'completed') {
-    return null;
-  }
+  // 🛡️ VACCIN GHOST STATE : On ne fait PLUS de "return null" brutal.
+  // On calcule simplement si la modale doit être affichée.
+  const isVisible = Boolean(
+    currentRide && 
+    (currentRide.status === 'searching' || currentRide.status === 'negotiating')
+  );
 
   const handleDecision = async (decision) => {
     setIsLoading(true);
@@ -50,7 +49,6 @@ const RiderWaitModal = () => {
         message: error?.data?.message || 'La session avec ce chauffeur a expiré ou été annulée.' 
       }));
       
-      // AUTO-GUÉRISON : Si le backend dit que la session n'existe plus (404), on libère l'utilisateur
       if (error?.status === 404 || error?.status === 400) {
         dispatch(clearCurrentRide());
       }
@@ -120,6 +118,9 @@ const RiderWaitModal = () => {
   };
 
   const renderContent = () => {
+    // Sécurité supplémentaire si renderContent est appelé pendant la fermeture
+    if (!currentRide) return null;
+
     if (currentRide.status === 'searching') {
       return (
         <View style={styles.centerContent}>
@@ -178,8 +179,8 @@ const RiderWaitModal = () => {
   };
 
   return (
-    <GlassModal visible={true} dismissable={false}>
-      {renderContent()}
+    <GlassModal visible={isVisible} dismissable={false}>
+      {isVisible ? renderContent() : null}
     </GlassModal>
   );
 };

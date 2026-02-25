@@ -144,6 +144,7 @@ const AppNavigator = () => {
               animation: 'slide_from_bottom',
               presentation: 'modal',
               gestureEnabled: true,
+              animationDuration: 150, // L'unique ajout : Accélération de l'ouverture du menu
             }}
           />
 

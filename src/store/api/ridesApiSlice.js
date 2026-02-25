@@ -1,4 +1,3 @@
-// src/store/api/ridesApiSlice.js
 import { apiSlice } from '../slices/apiSlice';
 
 export const ridesApiSlice = apiSlice.injectEndpoints({
@@ -54,6 +53,15 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Ride'],
     }),
 
+    // --- ENDPOINT D'URGENCE (Nettoyage de la base de données) ---
+    emergencyCancelRide: builder.mutation({
+      query: () => ({
+        url: '/rides/emergency-cancel',
+        method: 'POST',
+      }),
+      invalidatesTags: ['Ride'],
+    }),
+
     // --- ANCIENS ENDPOINTS CONSERVÉS (Phase 5, Historique, etc.) ---
     cancelRide: builder.mutation({
       query: ({ rideId, reason }) => ({
@@ -93,6 +101,7 @@ export const {
   useFinalizeRideMutation,
   useStartRideMutation,
   useCompleteRideMutation,
+  useEmergencyCancelRideMutation,
   useCancelRideMutation,
   useRateRideMutation,
   useGetRideHistoryQuery,
