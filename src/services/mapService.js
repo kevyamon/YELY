@@ -4,6 +4,13 @@
 
 import * as Location from 'expo-location';
 
+// 🛡️ SÉCURITÉ & BONNES PRATIQUES : Headers obligatoires pour Nominatim
+// Évite le blocage (HTTP 403) qui retourne du HTML et fait crasher le parseur JSON
+const API_HEADERS = {
+  'User-Agent': 'YelyApp/1.0 (contact@yely.ci)',
+  'Accept': 'application/json',
+};
+
 class MapService {
   static async requestPermissions() {
     try {
@@ -38,10 +45,21 @@ class MapService {
 
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
-      const response = await fetch(url);
+      
+      const response = await fetch(url, { headers: API_HEADERS });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("La réponse de l'API n'est pas du JSON valide.");
+      }
+
       const data = await response.json();
 
-      if (data && data.length > 0) {
+      if (data && Array.isArray(data) && data.length > 0) {
         return data.map((item) => ({
           id: item.place_id.toString(),
           description: item.display_name,
@@ -53,7 +71,7 @@ class MapService {
       }
       return [];
     } catch (error) {
-      console.error('[MapService] Erreur getPlaceSuggestions:', error);
+      console.error('[MapService] Erreur getPlaceSuggestions:', error.message);
       return [];
     }
   }
@@ -68,7 +86,18 @@ class MapService {
   static async getAddressFromCoordinates(lat, lng) {
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
-      const response = await fetch(url);
+      
+      const response = await fetch(url, { headers: API_HEADERS });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP: ${response.status}`);
+      }
+
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        throw new Error("La réponse de l'API n'est pas du JSON valide (Probablement un blocage HTML).");
+      }
+
       const data = await response.json();
 
       if (data && data.display_name) {
@@ -77,13 +106,14 @@ class MapService {
       }
       return "Adresse inconnue";
     } catch (error) {
-      console.error('[MapService] Erreur getAddressFromCoordinates:', error);
-      return "Recherche de l'adresse...";
+      console.error('[MapService] Erreur getAddressFromCoordinates:', error.message);
+      // On retourne un texte d'erreur clair plutôt que de laisser le front bloqué
+      return "Adresse introuvable";
     }
   }
 
   /**
-   * 🏗️ NOUVEAU : CALCUL D'ITINÉRAIRE (ROUTING VIA OSRM)
+   * 🏗️ CALCUL D'ITINÉRAIRE (ROUTING VIA OSRM)
    * Génère le tracé exact en suivant les routes.
    */
   static async getRouteCoordinates(startCoords, endCoords) {
@@ -91,19 +121,27 @@ class MapService {
       // OSRM demande la longitude en premier (lon,lat)
       const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.longitude},${endCoords.latitude}?overview=full&geometries=geojson`;
       
-      const response = await fetch(url);
-      const data = await response.json();
+      const response = await fetch(url, { headers: API_HEADERS });
+      
+      if (!response.ok) {
+        throw new Error(`Erreur HTTP OSRM: ${response.status}`);
+      }
 
-      // 🚀 CORRECTION : Restauration de 'Ok' (norme OSRM, contrairement à Google Maps qui utilise 'OK')
-      if (data.code === 'Ok' && data.routes.length > 0) {
-        // OSRM renvoie un tableau [longitude, latitude], MapView veut {latitude, longitude}
-        return data.routes[0].geometry.coordinates.map(coord => ({
-          latitude: coord[1],
-          longitude: coord[0],
-        }));
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        const data = await response.json();
+
+        // 🚀 CORRECTION : Restauration de 'Ok' (norme OSRM, contrairement à Google Maps qui utilise 'OK')
+        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+          // OSRM renvoie un tableau [longitude, latitude], MapView veut {latitude, longitude}
+          return data.routes[0].geometry.coordinates.map(coord => ({
+            latitude: coord[1],
+            longitude: coord[0],
+          }));
+        }
       }
     } catch (error) {
-      console.error('[MapService] Erreur OSRM Route:', error);
+      console.error('[MapService] Erreur OSRM Route:', error.message);
     }
     
     // Fallback de sécurité : Si le serveur échoue, on trace une ligne droite

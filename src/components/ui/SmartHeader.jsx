@@ -1,12 +1,17 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Tracé de courbe complet (Full Contour)
+// HEADER INTELLIGENT - Jauge d'attente adaptative (Rider/Driver)
 
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
+  Easing,
   Extrapolation,
   interpolate,
-  useAnimatedStyle
+  useAnimatedStyle,
+  useSharedValue,
+  withRepeat,
+  withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -32,6 +37,42 @@ const SmartHeader = ({
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
+  // 🚀 LOGIQUE DE JAUGE INTELLIGENTE
+  const isFetchingAddress = address.toLowerCase().includes('recherche');
+  const progressWidth = useSharedValue(0);
+  const progressOpacity = useSharedValue(0);
+
+  useEffect(() => {
+    if (isFetchingAddress) {
+      progressOpacity.value = 1;
+      progressWidth.value = 0;
+      // Pulse de 0 à 80% en boucle douce
+      progressWidth.value = withRepeat(
+        withTiming(80, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+    } else {
+      // Succès : Fonce à 100% puis disparaît
+      progressWidth.value = withTiming(100, { duration: 300, easing: Easing.out(Easing.ease) }, () => {
+        progressOpacity.value = withTiming(0, { duration: 300 }, () => {
+          progressWidth.value = 0;
+        });
+      });
+    }
+  }, [isFetchingAddress]);
+
+  const riderGaugeStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value}%`,
+    opacity: progressOpacity.value,
+  }));
+
+  const driverGaugeStyle = useAnimatedStyle(() => ({
+    width: `${progressWidth.value}%`,
+    opacity: progressOpacity.value * 0.15, // Opacité max de 15% pour le fond
+  }));
+
+  // ANIMATIONS DU HEADER
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
     const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
@@ -52,7 +93,10 @@ const SmartHeader = ({
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
-      <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]} />
+      <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
+        {/* Jauge Passager Globale */}
+        {isRider && <Animated.View style={[styles.riderLoadingGauge, riderGaugeStyle]} />}
+      </View>
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
         
@@ -84,6 +128,9 @@ const SmartHeader = ({
 
           {!isRider && (
              <View style={styles.driverGpsBadge}>
+                 {/* Jauge Chauffeur intégrée au badge */}
+                 <Animated.View style={[styles.driverLoadingGauge, driverGaugeStyle]} />
+                 
                  <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                  <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
              </View>
@@ -117,11 +164,19 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     borderBottomLeftRadius: 36,
     borderBottomRightRadius: 36,
-    
-    // CORRECTION : Contour complet !
     borderWidth: 2.5,
-    borderTopWidth: 0, // On cache juste la ligne du plafond
+    borderTopWidth: 0,
     borderColor: THEME.COLORS.champagneGold, 
+    overflow: 'hidden', // Empêche la jauge de déborder des coins arrondis
+  },
+  riderLoadingGauge: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    height: 4,
+    backgroundColor: THEME.COLORS.champagneGold,
+    borderTopRightRadius: 4,
+    borderBottomRightRadius: 4,
   },
   contentContainer: {
     flex: 1,
@@ -200,6 +255,14 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
     alignSelf: 'flex-start',
+    overflow: 'hidden', // Important pour la jauge interne
+  },
+  driverLoadingGauge: {
+    position: 'absolute',
+    top: 0,
+    bottom: 0,
+    left: 0,
+    backgroundColor: THEME.COLORS.champagneGold,
   },
   gpsText: {
     color: THEME.COLORS.textPrimary,

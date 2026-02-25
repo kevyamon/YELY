@@ -3,7 +3,6 @@
 // CSCSM Level: Bank Grade
 
 // 🛡️ SÉCURITÉ : Silence Radio absolu en Production. 
-// Empêche toute fuite de données (PII, tokens, états) vers Logcat ou Xcode Console.
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
@@ -16,7 +15,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, useColorScheme, View } from 'react-native';
 
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -38,12 +37,14 @@ import useSocketEvents from './src/hooks/useSocketEvents';
 const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
+  
+  // 🚀 ADAPTATION THEME RACINE
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
 
-  // Orchestrateur réseau WebSocket
   useSocket();
   useSocketEvents();
 
-  // 📡 ÉCOUTEUR RÉSEAU GLOBAL & GESTION HORS-LIGNE
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
@@ -66,7 +67,7 @@ const AppContent = () => {
       <NavigationContainer>
         <View style={styles.container}>
           <StatusBar
-            style="dark"
+            style={isDarkMode ? 'light' : 'dark'}
             backgroundColor="transparent"
             translucent={true}
           />
@@ -74,7 +75,6 @@ const AppContent = () => {
         </View>
       </NavigationContainer>
 
-      {/* Toast global rendu via Portal */}
       <Portal>
         <AppToast
           visible={toast.visible}
