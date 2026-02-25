@@ -113,13 +113,15 @@ const SmartHeader = ({
              </View>
           )}
           
-          {isRider && !hasDestination && (
-            <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
-          )}
+          <View style={styles.actionPillWrapper}>
+            {isRider && !hasDestination && (
+              <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
+            )}
 
-          {isRider && hasDestination && (
-            <ActionPill mode="cancel" text="Annuler la destination" icon="close-circle" onPress={onCancelDestination} />
-          )}
+            {isRider && hasDestination && (
+              <ActionPill mode="cancel" text="Annuler la destination" icon="close-circle" onPress={onCancelDestination} />
+            )}
+          </View>
         </Animated.View>
       </View>
     </Animated.View>
@@ -149,7 +151,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
-    paddingBottom: 20, // UX: On donne plus de marge en bas pour éloigner le bouton de la bordure
+    paddingBottom: 28, // UX: Coussin d'air augmenté pour décoller tout le bloc
   },
   topRow: {
     height: THEME.LAYOUT.HEADER_HEIGHT,
@@ -200,8 +202,8 @@ const styles = StyleSheet.create({
     marginTop: 0, 
   },
   greetingHeader: {
-    marginBottom: 12, // UX: Espace libéré sous l'adresse pour que le bouton ne touche pas
-    minHeight: 40,    // UX: Remplace la hauteur fixe qui écrasait le texte
+    marginBottom: 8, 
+    minHeight: 40,    
     justifyContent: 'flex-start',
   },
   greetingText: {
@@ -242,6 +244,9 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     marginLeft: 8,
     flex: 1, 
+  },
+  actionPillWrapper: {
+    paddingBottom: 4, // UX: Élévation fine du bouton CTA
   }
 });
 
