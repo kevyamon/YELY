@@ -1,6 +1,6 @@
 // src/components/ride/RiderWaitModal.jsx
-// MODALE PASSAGER - Interface centralisée de la salle d'attente
-// CSCSM Level: Bank Grade (Intégrité des états Redux & Fusion UI)
+// MODALE PASSAGER - Interface centralisée & Verrouillage Anti-Conflit
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -8,12 +8,12 @@ import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-nat
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useCancelRideMutation, useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
-import { clearCurrentRide, selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
+import { clearCurrentRide, selectCurrentRide, setCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassModal from '../ui/GlassModal';
 import GoldButton from '../ui/GoldButton';
-import SearchingRadar from './SearchingRadar'; // 🚀 IMPORT DU RADAR PURIFIÉ
+import SearchingRadar from './SearchingRadar';
 
 const RiderWaitModal = () => {
   const dispatch = useDispatch();
@@ -34,14 +34,17 @@ const RiderWaitModal = () => {
     setIsLoading(true);
     try {
       await finalizeRide({ rideId: currentRide.rideId, decision }).unwrap();
+      
       if (decision === 'REJECTED') {
-        // 🛡️ CORRECTION CRITIQUE : On purge explicitement les données du chauffeur refusé
-        // pour éviter l'effet "zombie" (afficher l'ancien prix) pendant la nouvelle recherche.
         dispatch(setCurrentRide({ 
           status: 'searching', 
           proposedPrice: null, 
           driverName: null 
         }));
+      } else if (decision === 'ACCEPTED') {
+        // FERMETURE IMMEDIATE : On met à jour le statut Redux localement 
+        // pour démonter la modale sans attendre le retour Socket, évitant le double clic.
+        dispatch(updateRideStatus({ status: 'accepted' }));
       }
     } catch (error) {
       dispatch(showErrorToast({ 
@@ -80,7 +83,7 @@ const RiderWaitModal = () => {
             <TouchableOpacity 
               style={styles.secondaryButton} 
               onPress={() => setShowCancelConfirmation(false)} 
-              disabled={isCancelling}
+              disabled={isCancelling || isLoading}
             >
               <Text style={styles.secondaryButtonText}>Non, attendre</Text>
             </TouchableOpacity>
@@ -88,7 +91,7 @@ const RiderWaitModal = () => {
             <TouchableOpacity 
               style={styles.solidCancelButton} 
               onPress={handleFinalCancel} 
-              disabled={isCancelling}
+              disabled={isCancelling || isLoading}
             >
               {isCancelling ? (
                 <ActivityIndicator size="small" color="#FFF" />
@@ -105,6 +108,7 @@ const RiderWaitModal = () => {
       <TouchableOpacity 
         style={styles.bigCancelButton} 
         onPress={() => setShowCancelConfirmation(true)}
+        disabled={isLoading}
       >
         <Ionicons name="close-circle" size={20} color="#FFF" style={{ marginRight: 8 }} />
         <Text style={styles.bigCancelButtonText}>Annuler la recherche</Text>
@@ -116,11 +120,9 @@ const RiderWaitModal = () => {
     if (currentRide.status === 'searching') {
       return (
         <View style={styles.centerContent}>
-          {/* 🚀 UTILISATION DU RADAR AU LIEU DU SPINNER BASIQUE */}
           <SearchingRadar />
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
           <Text style={styles.subtitle}>Nous interrogeons les véhicules à proximité.</Text>
-          
           {renderCancelSection()}
         </View>
       );
@@ -148,16 +150,18 @@ const RiderWaitModal = () => {
           <Text style={styles.priceText}>{currentRide.proposedPrice} FCFA</Text>
 
           <View style={styles.actionsContainer}>
-            <TouchableOpacity 
-              style={styles.rejectButton} 
-              onPress={() => handleDecision('REJECTED')}
-              disabled={isLoading}
-            >
-              <Text style={styles.rejectText}>Refuser</Text>
-            </TouchableOpacity>
+            {!isLoading && (
+              <TouchableOpacity 
+                style={styles.rejectButton} 
+                onPress={() => handleDecision('REJECTED')}
+                disabled={isLoading}
+              >
+                <Text style={styles.rejectText}>Refuser</Text>
+              </TouchableOpacity>
+            )}
             
             <GoldButton
-              title={isLoading ? "Attente..." : "Accepter"}
+              title={isLoading ? "Validation en cours..." : "Accepter"}
               onPress={() => handleDecision('ACCEPTED')}
               style={styles.acceptButton}
               disabled={isLoading}

@@ -1,11 +1,11 @@
 // src/store/slices/rideSlice.js
-// STORE RIDE - Séparation stricte Client/Chauffeur
+// STORE RIDE - Séparation stricte Client/Chauffeur & Télémétrie
 
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  currentRide: null,   // Course en cours (Passager ou Chauffeur ayant accepté)
-  incomingRide: null,  // Demande entrante (Uniquement Chauffeur)
+  currentRide: null,   
+  incomingRide: null,  
 };
 
 const rideSlice = createSlice({
@@ -19,7 +19,6 @@ const rideSlice = createSlice({
       state.incomingRide = null;
     },
     setCurrentRide: (state, action) => {
-      // Merge intelligent pour sécuriser l'ID et les données racines
       state.currentRide = { ...state.currentRide, ...action.payload };
     },
     updateRideStatus: (state, action) => {
@@ -29,6 +28,12 @@ const rideSlice = createSlice({
         if (driverName) state.currentRide.driverName = driverName;
         if (startedAt) state.currentRide.startedAt = startedAt;
         if (finalPrice) state.currentRide.finalPrice = finalPrice;
+      }
+    },
+    // RÉCEPTION DE LA TÉLÉMÉTRIE
+    updateDriverLocation: (state, action) => {
+      if (state.currentRide) {
+        state.currentRide.driverLocation = action.payload;
       }
     },
     clearCurrentRide: (state) => {
@@ -41,7 +46,8 @@ export const {
   setIncomingRide, 
   clearIncomingRide, 
   setCurrentRide, 
-  updateRideStatus, 
+  updateRideStatus,
+  updateDriverLocation,
   clearCurrentRide 
 } = rideSlice.actions;
 

@@ -1,5 +1,5 @@
 // src/hooks/useSocketEvents.js
-// ÉCOUTEURS SOCKET - Gestion stricte des flux et Timeouts
+// ÉCOUTEURS SOCKET - Gestion stricte des flux et Télémétrie GPS
 // CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
@@ -11,6 +11,7 @@ import {
   clearIncomingRide,
   setCurrentRide,
   setIncomingRide,
+  updateDriverLocation,
   updateRideStatus
 } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
@@ -22,17 +23,15 @@ const useSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // GESTION COMMUNE (Chauffeur & Passager)
     const handleRideCancelled = (data) => {
       dispatch(clearCurrentRide());
-      dispatch(clearIncomingRide()); // Tue la modale chauffeur si elle est ouverte
+      dispatch(clearIncomingRide());
       dispatch(showErrorToast({ 
         title: 'Course annulée', 
         message: data?.reason || 'Cette course a été annulée.' 
       }));
     };
 
-    // ÉVÉNEMENTS REÇUS PAR LE CHAUFFEUR
     const handleNewRideRequest = (data) => {
       if (data && data.rideId && data.origin && data.destination) {
         dispatch(setIncomingRide(data));
@@ -60,7 +59,6 @@ const useSocketEvents = () => {
       }));
     };
 
-    // ÉVÉNEMENTS REÇUS PAR LE PASSAGER
     const handleDriverFound = (data) => {
       dispatch(updateRideStatus({ 
         status: 'negotiating', 
@@ -98,7 +96,13 @@ const useSocketEvents = () => {
       }));
     };
 
-    // ENREGISTREMENT DES ÉCOUTEURS
+    // NOUVEL ÉCOUTEUR : Capte la position du chauffeur relayée par le serveur
+    const handleDriverLocationUpdate = (data) => {
+      if (data && data.latitude && data.longitude) {
+        dispatch(updateDriverLocation(data));
+      }
+    };
+
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('ride_cancelled', handleRideCancelled);
@@ -109,8 +113,8 @@ const useSocketEvents = () => {
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_completed', handleRideCompleted);
     socketService.on('search_timeout', handleSearchTimeout);
+    socketService.on('driver_location_update', handleDriverLocationUpdate);
 
-    // NETTOYAGE
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
       socketService.off('ride_taken_by_other', handleRideTakenByOther);
@@ -122,6 +126,7 @@ const useSocketEvents = () => {
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_completed', handleRideCompleted);
       socketService.off('search_timeout', handleSearchTimeout);
+      socketService.off('driver_location_update', handleDriverLocationUpdate);
     };
   }, [isAuthenticated, dispatch]);
 };
