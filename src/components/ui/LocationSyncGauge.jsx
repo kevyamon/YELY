@@ -48,10 +48,10 @@ const styles = StyleSheet.create({
     position: 'absolute',
     bottom: 0,
     left: 0,
-    height: 4,
+    height: 2.5, // UX: Épaisseur réduite pour un rendu Premium et subtil
     backgroundColor: THEME.COLORS.champagneGold,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
+    borderTopRightRadius: 2,
+    borderBottomRightRadius: 2,
   },
   driverGauge: {
     position: 'absolute',

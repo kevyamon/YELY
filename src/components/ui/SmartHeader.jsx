@@ -149,7 +149,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
-    paddingBottom: 15, 
+    paddingBottom: 20, // UX: On donne plus de marge en bas pour éloigner le bouton de la bordure
   },
   topRow: {
     height: THEME.LAYOUT.HEADER_HEIGHT,
@@ -200,8 +200,8 @@ const styles = StyleSheet.create({
     marginTop: 0, 
   },
   greetingHeader: {
-    marginBottom: 6, 
-    height: 38, 
+    marginBottom: 12, // UX: Espace libéré sous l'adresse pour que le bouton ne touche pas
+    minHeight: 40,    // UX: Remplace la hauteur fixe qui écrasait le texte
     justifyContent: 'flex-start',
   },
   greetingText: {
