@@ -1,5 +1,5 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Jauge d'attente adaptative (Rider/Driver)
+// HEADER INTELLIGENT - Jauge d'attente adaptative (Rider/Driver) & Skeleton Loading
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect } from 'react';
@@ -15,7 +15,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { selectCurrentUser, selectIsRefreshing } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import ActionPill from './ActionPill';
 
@@ -31,13 +31,14 @@ const SmartHeader = ({
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
+  const isRefreshing = useSelector(selectIsRefreshing);
   const isRider = user?.role === 'rider';
 
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
-  // 🚀 LOGIQUE DE JAUGE INTELLIGENTE
+  // LOGIQUE DE JAUGE INTELLIGENTE (Recherche GPS)
   const isFetchingAddress = address.toLowerCase().includes('recherche');
   const progressWidth = useSharedValue(0);
   const progressOpacity = useSharedValue(0);
@@ -46,14 +47,12 @@ const SmartHeader = ({
     if (isFetchingAddress) {
       progressOpacity.value = 1;
       progressWidth.value = 0;
-      // Pulse de 0 à 80% en boucle douce
       progressWidth.value = withRepeat(
         withTiming(80, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
         -1,
         true
       );
     } else {
-      // Succès : Fonce à 100% puis disparaît
       progressWidth.value = withTiming(100, { duration: 300, easing: Easing.out(Easing.ease) }, () => {
         progressOpacity.value = withTiming(0, { duration: 300 }, () => {
           progressWidth.value = 0;
@@ -69,7 +68,30 @@ const SmartHeader = ({
 
   const driverGaugeStyle = useAnimatedStyle(() => ({
     width: `${progressWidth.value}%`,
-    opacity: progressOpacity.value * 0.15, // Opacité max de 15% pour le fond
+    opacity: progressOpacity.value * 0.15,
+  }));
+
+  // LOGIQUE SKELETON LOADING (Rotation Session)
+  const refreshSkeletonOpacity = useSharedValue(0.3);
+  
+  useEffect(() => {
+    if (isRefreshing) {
+      refreshSkeletonOpacity.value = withRepeat(
+        withTiming(0.8, { duration: 800, easing: Easing.inOut(Easing.ease) }),
+        -1,
+        true
+      );
+    }
+  }, [isRefreshing]);
+
+  const skeletonStyle = useAnimatedStyle(() => ({
+    opacity: refreshSkeletonOpacity.value,
+    width: 120,
+    height: 14,
+    backgroundColor: THEME.COLORS.champagneGold,
+    borderRadius: 4,
+    marginBottom: 4,
+    marginLeft: 4,
   }));
 
   // ANIMATIONS DU HEADER
@@ -94,7 +116,6 @@ const SmartHeader = ({
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
-        {/* Jauge Passager Globale */}
         {isRider && <Animated.View style={[styles.riderLoadingGauge, riderGaugeStyle]} />}
       </View>
 
@@ -117,7 +138,12 @@ const SmartHeader = ({
 
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           <View style={styles.greetingHeader}>
-             <Text style={styles.greetingText}>Bonjour, {userName}</Text>
+             {isRefreshing ? (
+               <Animated.View style={skeletonStyle} />
+             ) : (
+               <Text style={styles.greetingText}>Bonjour, {userName}</Text>
+             )}
+             
              {isRider && (
                <View style={styles.riderAddressRow}>
                   <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
@@ -128,9 +154,7 @@ const SmartHeader = ({
 
           {!isRider && (
              <View style={styles.driverGpsBadge}>
-                 {/* Jauge Chauffeur intégrée au badge */}
                  <Animated.View style={[styles.driverLoadingGauge, driverGaugeStyle]} />
-                 
                  <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                  <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
              </View>
@@ -167,7 +191,7 @@ const styles = StyleSheet.create({
     borderWidth: 2.5,
     borderTopWidth: 0,
     borderColor: THEME.COLORS.champagneGold, 
-    overflow: 'hidden', // Empêche la jauge de déborder des coins arrondis
+    overflow: 'hidden',
   },
   riderLoadingGauge: {
     position: 'absolute',
@@ -255,7 +279,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
     alignSelf: 'flex-start',
-    overflow: 'hidden', // Important pour la jauge interne
+    overflow: 'hidden', 
   },
   driverLoadingGauge: {
     position: 'absolute',

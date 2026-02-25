@@ -21,7 +21,7 @@ const DriverRequestModal = () => {
   const [submitPrice] = useSubmitPriceMutation();
   
   const [selectedAmount, setSelectedAmount] = useState(null);
-  const [loadingStep, setLoadingStep] = useState(null); // null | 'locking' | 'submitting'
+  const [loadingStep, setLoadingStep] = useState(null);
 
   if (!incomingRide) return null;
 
@@ -81,6 +81,7 @@ const DriverRequestModal = () => {
   };
 
   const forfaitColor = getForfaitColor(incomingRide.forfait);
+  const priceOptions = incomingRide.priceOptions || [];
 
   return (
     <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
@@ -91,7 +92,7 @@ const DriverRequestModal = () => {
           <View style={[styles.badge, { backgroundColor: forfaitColor + '20' }]}>
              <Ionicons 
                name={incomingRide.forfait?.toUpperCase() === 'VIP' ? 'star' : 'car'} 
-               size={10} 
+               size={12} 
                color={forfaitColor} 
              />
              <Text style={[styles.badgeText, { color: forfaitColor }]}>
@@ -102,46 +103,57 @@ const DriverRequestModal = () => {
         <Text style={styles.distance}>{incomingRide.distance} km</Text>
       </View>
 
-      <View style={styles.addressContainer}>
-        <View style={styles.addressRow}>
+      {/* UI TRAJET AMÉLIORÉE - Design Timeline Uber-like */}
+      <View style={styles.routeTimelineContainer}>
+        <View style={styles.timelineIndicators}>
           <View style={styles.dotStart} />
-          {/* 🛡️ CORRECTION CRITIQUE : on accède à .address car l'objet vient du GeoJSON */}
-          <Text style={styles.addressText} numberOfLines={2}>
-            {incomingRide.origin?.address || 'Point de départ inconnu'}
-          </Text>
+          <View style={styles.lineDashed} />
+          <Ionicons name="location-sharp" size={20} color={THEME.COLORS.danger} style={styles.iconEnd} />
         </View>
-        <View style={styles.addressDivider} />
-        <View style={styles.addressRow}>
-          <View style={styles.dotEnd} />
-          {/* 🛡️ CORRECTION CRITIQUE : accès .address */}
-          <Text style={styles.addressText} numberOfLines={2}>
-            {incomingRide.destination?.address || 'Destination inconnue'}
-          </Text>
+        
+        <View style={styles.addressTextContainer}>
+          <View style={styles.addressBlock}>
+            <Text style={styles.addressLabel}>Lieu de prise en charge</Text>
+            <Text style={styles.addressValue} numberOfLines={2}>
+              {incomingRide.origin?.address || 'Position inconnue'}
+            </Text>
+          </View>
+          
+          <View style={[styles.addressBlock, styles.destinationBlock]}>
+            <Text style={styles.addressLabel}>Destination finale</Text>
+            <Text style={styles.addressValue} numberOfLines={2}>
+              {incomingRide.destination?.address || 'Destination inconnue'}
+            </Text>
+          </View>
         </View>
       </View>
 
-      <Text style={styles.subtitle}>Votre proposition de prix :</Text>
+      <Text style={styles.subtitle}>Sélectionnez votre tarif :</Text>
       
       <View style={styles.optionsContainer}>
-        {incomingRide.priceOptions?.map((option, index) => {
-          const isSelected = selectedAmount === option.amount;
-          return (
-            <TouchableOpacity
-              key={index}
-              style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-              onPress={() => setSelectedAmount(option.amount)}
-              activeOpacity={0.7}
-              disabled={!!loadingStep}
-            >
-              <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
-                {option.label}
-              </Text>
-              <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
-                {option.amount} F
-              </Text>
-            </TouchableOpacity>
-          );
-        })}
+        {priceOptions.length > 0 ? (
+          priceOptions.map((option, index) => {
+            const isSelected = selectedAmount === option.amount;
+            return (
+              <TouchableOpacity
+                key={index}
+                style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                onPress={() => setSelectedAmount(option.amount)}
+                activeOpacity={0.7}
+                disabled={!!loadingStep}
+              >
+                <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
+                  {option.label}
+                </Text>
+                <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
+                  {option.amount} F
+                </Text>
+              </TouchableOpacity>
+            );
+          })
+        ) : (
+          <Text style={styles.noPriceText}>Calcul du prix en cours ou indisponible.</Text>
+        )}
       </View>
 
       <View style={styles.actionsContainer}>
@@ -155,9 +167,9 @@ const DriverRequestModal = () => {
         
         <GoldButton
           title={
-            loadingStep === 'locking' ? "Verrouillage..." : 
-            loadingStep === 'submitting' ? "Envoi du prix..." : 
-            "Proposer"
+            loadingStep === 'locking' ? "Réservation..." : 
+            loadingStep === 'submitting' ? "Envoi..." : 
+            "Proposer ce prix"
           }
           onPress={handleAcceptAndPropose}
           style={styles.acceptButton}
@@ -192,7 +204,7 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   badgeText: {
-    fontSize: 10,
+    fontSize: 11,
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
@@ -208,7 +220,8 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
   },
-  addressContainer: {
+  routeTimelineContainer: {
+    flexDirection: 'row',
     backgroundColor: THEME.COLORS.glassSurface,
     borderRadius: 16,
     borderWidth: 1,
@@ -216,41 +229,59 @@ const styles = StyleSheet.create({
     padding: THEME.SPACING.md,
     marginBottom: THEME.SPACING.xl,
   },
-  addressRow: {
-    flexDirection: 'row',
+  timelineIndicators: {
     alignItems: 'center',
-    gap: 12,
+    marginRight: 16,
+    paddingTop: 4,
   },
   dotStart: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 14,
+    height: 14,
+    borderRadius: 7,
     backgroundColor: THEME.COLORS.champagneGold,
+    borderWidth: 3,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
   },
-  dotEnd: {
-    width: 12,
-    height: 12,
-    borderRadius: 2,
-    backgroundColor: THEME.COLORS.error,
-  },
-  addressDivider: {
+  lineDashed: {
     width: 2,
-    height: 20,
-    backgroundColor: THEME.COLORS.glassBorder,
-    marginLeft: 5,
-    marginVertical: 4,
-  },
-  addressText: {
     flex: 1,
+    backgroundColor: THEME.COLORS.glassBorder,
+    marginVertical: 4,
+    borderStyle: 'dashed',
+  },
+  iconEnd: {
+    marginLeft: -1, 
+    marginBottom: -4,
+  },
+  addressTextContainer: {
+    flex: 1,
+    justifyContent: 'space-between',
+  },
+  addressBlock: {
+    minHeight: 40,
+  },
+  destinationBlock: {
+    marginTop: 16,
+  },
+  addressLabel: {
+    fontSize: 11,
+    color: THEME.COLORS.textTertiary,
+    textTransform: 'uppercase',
+    fontWeight: '700',
+    letterSpacing: 0.5,
+    marginBottom: 2,
+  },
+  addressValue: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '500',
+    fontSize: 15,
+    fontWeight: '600',
+    lineHeight: 20,
   },
   subtitle: {
-    fontSize: 14,
+    fontSize: 13,
     color: THEME.COLORS.textSecondary,
     marginBottom: THEME.SPACING.md,
-    fontWeight: '600',
+    fontWeight: '700',
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
@@ -264,7 +295,7 @@ const styles = StyleSheet.create({
     flex: 1,
     borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    borderRadius: 16,
+    borderRadius: 12,
     paddingVertical: THEME.SPACING.md,
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassLight,
@@ -279,18 +310,25 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   optionLabel: {
-    fontSize: 11,
+    fontSize: 12,
     color: THEME.COLORS.textTertiary,
-    marginBottom: 4,
-    fontWeight: '600',
+    marginBottom: 6,
+    fontWeight: '700',
   },
   optionAmount: {
-    fontSize: 16,
+    fontSize: 17,
     fontWeight: '900',
     color: THEME.COLORS.textPrimary,
   },
   textSelected: {
     color: '#121418', 
+  },
+  noPriceText: {
+    color: THEME.COLORS.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    width: '100%',
+    padding: 10,
   },
   actionsContainer: {
     flexDirection: 'row',
@@ -309,6 +347,7 @@ const styles = StyleSheet.create({
   ignoreText: {
     color: THEME.COLORS.textSecondary,
     fontWeight: 'bold',
+    fontSize: 15,
   },
   acceptButton: {
     flex: 2,

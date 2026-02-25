@@ -111,16 +111,34 @@ const RiderHome = ({ navigation }) => {
   };
 
   const handleConfirmRide = async () => {
-    if (!selectedVehicle || !location || !destination || !isUserInZone) return;
+    // VACCIN ANTI-SILENCE : Alertes strictes pour chaque blocage
+    if (!location) {
+      dispatch(showErrorToast({ title: 'Erreur GPS', message: 'Position actuelle introuvable.' }));
+      return;
+    }
+    if (!destination) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Veuillez choisir une destination.' }));
+      return;
+    }
+    if (!selectedVehicle) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Veuillez sélectionner un forfait Yély.' }));
+      return;
+    }
+    if (!isUserInZone) {
+      dispatch(showErrorToast({ 
+        title: 'Accès Refusé (Geofencing)', 
+        message: 'Votre GPS indique que vous n\'êtes pas à Maféré. (Placez votre Fake GPS sur Maféré pour tester).' 
+      }));
+      return;
+    }
     
     try {
-      // 🛡️ SÉCURITÉ ABSOLUE : Typage strict avant de parler à Zod
+      // SÉCURITÉ ABSOLUE : Typage strict avant de parler à Zod
       const origLng = Number(location.longitude || location.lng || 0);
       const origLat = Number(location.latitude || location.lat || 0);
       const destLng = Number(destination.longitude || destination.lng || 0);
       const destLat = Number(destination.latitude || destination.lat || 0);
 
-      // Force le type String et nettoie les adresses pour respecter min(5) et max(200)
       let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
       if (safeOriginAddress.length < 5) safeOriginAddress += " (Départ)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
@@ -132,11 +150,11 @@ const RiderHome = ({ navigation }) => {
       const payload = {
         origin: {
           address: safeOriginAddress,
-          coordinates: [origLng, origLat] // Ordre strict [Longitude, Latitude]
+          coordinates: [origLng, origLat]
         },
         destination: {
           address: safeDestAddress,
-          coordinates: [destLng, destLat] // Ordre strict [Longitude, Latitude]
+          coordinates: [destLng, destLat]
         },
         forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase()
       };
@@ -153,19 +171,17 @@ const RiderHome = ({ navigation }) => {
       }));
       
     } catch (error) {
-      // 🛡️ VACCIN ANTI-AVEUGLEMENT POUR LE MOBILE
       const errorData = error?.data;
       let errorMessage = errorData?.message || 'Impossible de lancer la commande.';
       
-      // Extraction chirurgicale des erreurs Zod pour les afficher dans le Toast
       if (errorData?.errors && Array.isArray(errorData.errors)) {
         errorMessage = errorData.errors.map(e => `${e.field} : ${e.message}`).join('\n');
       } else if (error?.error) {
-         errorMessage = error.error; // Erreur réseau pure (CORS, offline, etc.)
+         errorMessage = error.error; 
       }
 
       dispatch(showErrorToast({ 
-        title: 'Détail de l\'erreur', 
+        title: 'Détail de l\'erreur API', 
         message: errorMessage
       }));
     }

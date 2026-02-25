@@ -22,12 +22,18 @@ const useSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // ==========================================
-    // 🚖 ÉVÉNEMENTS REÇUS PAR LE CHAUFFEUR
-    // ==========================================
+    // GESTION COMMUNE (Chauffeur & Passager)
+    const handleRideCancelled = (data) => {
+      dispatch(clearCurrentRide());
+      dispatch(clearIncomingRide()); // Tue la modale chauffeur si elle est ouverte
+      dispatch(showErrorToast({ 
+        title: 'Course annulée', 
+        message: data?.reason || 'Cette course a été annulée.' 
+      }));
+    };
 
+    // ÉVÉNEMENTS REÇUS PAR LE CHAUFFEUR
     const handleNewRideRequest = (data) => {
-      // Sécurité : On s'assure que la payload est valide avant d'afficher la modale
       if (data && data.rideId && data.origin && data.destination) {
         dispatch(setIncomingRide(data));
       }
@@ -54,10 +60,7 @@ const useSocketEvents = () => {
       }));
     };
 
-    // ==========================================
-    // 👤 ÉVÉNEMENTS REÇUS PAR LE PASSAGER (CLIENT)
-    // ==========================================
-
+    // ÉVÉNEMENTS REÇUS PAR LE PASSAGER
     const handleDriverFound = (data) => {
       dispatch(updateRideStatus({ 
         status: 'negotiating', 
@@ -95,9 +98,10 @@ const useSocketEvents = () => {
       }));
     };
 
-    // --- ENREGISTREMENT DES ÉCOUTEURS ---
+    // ENREGISTREMENT DES ÉCOUTEURS
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
+    socketService.on('ride_cancelled', handleRideCancelled);
     socketService.on('driver_found', handleDriverFound);
     socketService.on('price_proposal_received', handlePriceProposal);
     socketService.on('proposal_accepted', handleProposalAccepted);
@@ -106,10 +110,11 @@ const useSocketEvents = () => {
     socketService.on('ride_completed', handleRideCompleted);
     socketService.on('search_timeout', handleSearchTimeout);
 
-    // --- NETTOYAGE ---
+    // NETTOYAGE
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
       socketService.off('ride_taken_by_other', handleRideTakenByOther);
+      socketService.off('ride_cancelled', handleRideCancelled);
       socketService.off('driver_found', handleDriverFound);
       socketService.off('price_proposal_received', handlePriceProposal);
       socketService.off('proposal_accepted', handleProposalAccepted);

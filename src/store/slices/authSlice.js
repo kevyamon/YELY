@@ -8,7 +8,9 @@ import SecureStorageAdapter from '../secureStoreAdapter';
 const initialState = {
   user: null,
   token: null,
+  refreshToken: null,
   isAuthenticated: false,
+  isRefreshing: false, 
 };
 
 const authSlice = createSlice({
@@ -16,20 +18,22 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     setCredentials: (state, action) => {
-      const { user, accessToken, token } = action.payload || {};
+      const { user, accessToken, token, refreshToken } = action.payload || {};
       const finalToken = accessToken || token;
 
-      if (!user || !finalToken) {
+      if (!user && !finalToken && !refreshToken) {
         console.warn('[Redux] Données de connexion incomplètes');
       }
 
-      state.user = user || state.user;
-      state.token = finalToken || state.token;
+      if (user) state.user = user;
+      if (finalToken) state.token = finalToken;
+      if (refreshToken) state.refreshToken = refreshToken;
+      
       state.isAuthenticated = true;
 
-      // 🛡️ SÉCURITÉ : Persistance 100% SecureStore
       if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
       if (state.token) SecureStorageAdapter.setItem('token', state.token);
+      if (state.refreshToken) SecureStorageAdapter.setItem('refreshToken', state.refreshToken);
     },
     
     updateUserInfo: (state, action) => {
@@ -41,27 +45,34 @@ const authSlice = createSlice({
     logout: (state) => {
       state.user = null;
       state.token = null;
+      state.refreshToken = null;
       state.isAuthenticated = false;
+      state.isRefreshing = false;
       
-      // 🛡️ SÉCURITÉ : Nettoyage intégral. 
-      // Note: Le socket sera déconnecté réactivement par le Hook useSocket !
       SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
+      SecureStorageAdapter.removeItem('refreshToken');
     },
 
     restoreAuth: (state, action) => {
-      const { user, token } = action.payload || {};
+      const { user, token, refreshToken } = action.payload || {};
       state.user = user;
       state.token = token;
+      state.refreshToken = refreshToken;
       state.isAuthenticated = !!(user && token);
     },
+
+    setRefreshing: (state, action) => {
+      state.isRefreshing = action.payload;
+    }
   },
 });
 
-export const { setCredentials, updateUserInfo, logout, restoreAuth } = authSlice.actions;
+export const { setCredentials, updateUserInfo, logout, restoreAuth, setRefreshing } = authSlice.actions;
 export default authSlice.reducer;
 
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role;
 export const selectToken = (state) => state.auth.token;
+export const selectIsRefreshing = (state) => state.auth.isRefreshing;
