@@ -1,23 +1,22 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Jauge d'attente adaptative (Rider/Driver) & Skeleton Loading
+// HEADER INTELLIGENT - Architecture modulaire
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
+import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
-  Easing,
   Extrapolation,
   interpolate,
-  useAnimatedStyle,
-  useSharedValue,
-  withRepeat,
-  withTiming
+  useAnimatedStyle
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
+
 import { selectCurrentUser, selectIsRefreshing } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import ActionPill from './ActionPill';
+import LocationSyncGauge from './LocationSyncGauge';
+import SessionRefreshSkeleton from './SessionRefreshSkeleton';
 
 const SmartHeader = ({ 
   scrollY, 
@@ -38,63 +37,9 @@ const SmartHeader = ({
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
-  // LOGIQUE DE JAUGE INTELLIGENTE (Recherche GPS)
   const isFetchingAddress = address.toLowerCase().includes('recherche');
-  const progressWidth = useSharedValue(0);
-  const progressOpacity = useSharedValue(0);
 
-  useEffect(() => {
-    if (isFetchingAddress) {
-      progressOpacity.value = 1;
-      progressWidth.value = 0;
-      progressWidth.value = withRepeat(
-        withTiming(80, { duration: 1200, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
-    } else {
-      progressWidth.value = withTiming(100, { duration: 300, easing: Easing.out(Easing.ease) }, () => {
-        progressOpacity.value = withTiming(0, { duration: 300 }, () => {
-          progressWidth.value = 0;
-        });
-      });
-    }
-  }, [isFetchingAddress]);
-
-  const riderGaugeStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%`,
-    opacity: progressOpacity.value,
-  }));
-
-  const driverGaugeStyle = useAnimatedStyle(() => ({
-    width: `${progressWidth.value}%`,
-    opacity: progressOpacity.value * 0.15,
-  }));
-
-  // LOGIQUE SKELETON LOADING (Rotation Session)
-  const refreshSkeletonOpacity = useSharedValue(0.3);
-  
-  useEffect(() => {
-    if (isRefreshing) {
-      refreshSkeletonOpacity.value = withRepeat(
-        withTiming(0.8, { duration: 800, easing: Easing.inOut(Easing.ease) }),
-        -1,
-        true
-      );
-    }
-  }, [isRefreshing]);
-
-  const skeletonStyle = useAnimatedStyle(() => ({
-    opacity: refreshSkeletonOpacity.value,
-    width: 120,
-    height: 14,
-    backgroundColor: THEME.COLORS.champagneGold,
-    borderRadius: 4,
-    marginBottom: 4,
-    marginLeft: 4,
-  }));
-
-  // ANIMATIONS DU HEADER
+  // ANIMATIONS DU HEADER (Scroll)
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
     const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
@@ -115,8 +60,10 @@ const SmartHeader = ({
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
+      
+      {/* JAUGE GPS POUR PASSAGER */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
-        {isRider && <Animated.View style={[styles.riderLoadingGauge, riderGaugeStyle]} />}
+        {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -128,7 +75,10 @@ const SmartHeader = ({
           </TouchableOpacity>
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <Text style={styles.locationTitle} numberOfLines={1}>📍 {address}</Text>
+            <View style={styles.locationTitleWrapper}>
+              <Ionicons name="location" size={14} color={THEME.COLORS.textPrimary} style={styles.locationIcon} />
+              <Text style={styles.locationTitle} numberOfLines={1}>{address}</Text>
+            </View>
           </Animated.View>
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
@@ -138,11 +88,13 @@ const SmartHeader = ({
 
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           <View style={styles.greetingHeader}>
-             {isRefreshing ? (
-               <Animated.View style={skeletonStyle} />
-             ) : (
-               <Text style={styles.greetingText}>Bonjour, {userName}</Text>
-             )}
+             
+             {/* SKELETON DE RAFRAICHISSEMENT SESSION */}
+             <SessionRefreshSkeleton 
+               isRefreshing={isRefreshing}
+               fallbackText={`Bonjour, ${userName}`}
+               textStyle={styles.greetingText}
+             />
              
              {isRider && (
                <View style={styles.riderAddressRow}>
@@ -152,9 +104,10 @@ const SmartHeader = ({
              )}
           </View>
 
+          {/* JAUGE GPS POUR CHAUFFEUR */}
           {!isRider && (
              <View style={styles.driverGpsBadge}>
-                 <Animated.View style={[styles.driverLoadingGauge, driverGaugeStyle]} />
+                 <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
                  <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                  <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
              </View>
@@ -193,15 +146,6 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.champagneGold, 
     overflow: 'hidden',
   },
-  riderLoadingGauge: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    height: 4,
-    backgroundColor: THEME.COLORS.champagneGold,
-    borderTopRightRadius: 4,
-    borderBottomRightRadius: 4,
-  },
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
@@ -219,10 +163,19 @@ const styles = StyleSheet.create({
     right: 50,
     alignItems: 'center',
   },
+  locationTitleWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  locationIcon: {
+    marginRight: 4,
+  },
   locationTitle: {
     color: THEME.COLORS.textPrimary,
     fontWeight: '800',
     fontSize: 14,
+    flexShrink: 1,
   },
   iconButton: {
     width: 40,
@@ -248,6 +201,8 @@ const styles = StyleSheet.create({
   },
   greetingHeader: {
     marginBottom: 6, 
+    height: 38, 
+    justifyContent: 'flex-start',
   },
   greetingText: {
     color: THEME.COLORS.textSecondary,
@@ -280,13 +235,6 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
     alignSelf: 'flex-start',
     overflow: 'hidden', 
-  },
-  driverLoadingGauge: {
-    position: 'absolute',
-    top: 0,
-    bottom: 0,
-    left: 0,
-    backgroundColor: THEME.COLORS.champagneGold,
   },
   gpsText: {
     color: THEME.COLORS.textPrimary,
