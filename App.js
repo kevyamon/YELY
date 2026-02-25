@@ -2,7 +2,6 @@
 // POINT D'ENTRÉE - Câblage Redux, Providers & Silence de Production
 // CSCSM Level: Bank Grade
 
-// 🛡️ SÉCURITÉ : Silence Radio absolu en Production. 
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
@@ -31,6 +30,7 @@ import { YelyTheme } from './src/theme/theme';
 import AppToast from './src/components/ui/AppToast';
 import { hideToast, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
+import usePushNotifications from './src/hooks/usePushNotifications';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
@@ -38,12 +38,12 @@ const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
   
-  // 🚀 ADAPTATION THEME RACINE
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
 
   useSocket();
   useSocketEvents();
+  usePushNotifications(); // Activation du module Push
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {

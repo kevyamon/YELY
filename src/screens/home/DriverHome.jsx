@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Intelligence Spatiale (KML) branchée !
+// HOME DRIVER - Auto-Online & Intelligence Spatiale (KML)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -21,10 +21,11 @@ import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice'
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-import { isLocationInMafereZone } from '../../utils/mafereZone'; // 🚀 IMPORT DU CERVEAU KML
+import { isLocationInMafereZone } from '../../utils/mafereZone';
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
+  const hasAutoConnected = useRef(false); // Verrou pour éviter les boucles d'auto-connexion
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
@@ -35,7 +36,6 @@ const DriverHome = ({ navigation }) => {
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
 
-  // 🚀 INTELLIGENCE : Vérifie si le chauffeur est dans la zone autorisée
   const isDriverInZone = isLocationInMafereZone(location);
 
   useEffect(() => {
@@ -43,6 +43,35 @@ const DriverHome = ({ navigation }) => {
       setIsAvailable(user.isAvailable);
     }
   }, [user?.isAvailable]);
+
+  // LOGIQUE D'AUTO-CONNEXION (Une seule fois par session d'ouverture)
+  useEffect(() => {
+    const processAutoConnect = async () => {
+      if (!hasAutoConnected.current && location && !isAvailable) {
+        hasAutoConnected.current = true; // On verrouille immédiatement
+
+        if (isDriverInZone) {
+          try {
+            const res = await updateAvailability({ isAvailable: true }).unwrap();
+            const actualStatus = res.data ? res.data.isAvailable : true;
+            
+            setIsAvailable(actualStatus);
+            dispatch(updateUserInfo({ isAvailable: actualStatus }));
+            socketService.emitLocation(location);
+            
+            dispatch(showSuccessToast({
+              title: "EN LIGNE (Automatique)",
+              message: "Prêt à recevoir des courses.",
+            }));
+          } catch (err) {
+            console.warn("[DriverHome] Erreur auto-connect:", err);
+          }
+        }
+      }
+    };
+
+    processAutoConnect();
+  }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
 
   useEffect(() => {
     if (location && isAvailable) {
@@ -69,7 +98,6 @@ const DriverHome = ({ navigation }) => {
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
     
-    // 🚀 SÉCURITÉ : Bloquer le passage en ligne si le chauffeur n'est pas à Maféré
     if (newStatus && !isDriverInZone) {
       dispatch(showErrorToast({ 
         title: 'Accès Refusé', 
