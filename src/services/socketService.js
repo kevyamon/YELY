@@ -1,5 +1,5 @@
 // src/services/socketService.js
-// Singleton Socket.io - Service Réseau Agnostique
+// Singleton Socket.io - Service Reseau Agnostique
 
 import { io } from 'socket.io-client';
 
@@ -26,7 +26,8 @@ class SocketService {
       reconnection: true,
       reconnectionAttempts: Infinity, 
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
+      reconnectionDelayMax: 10000,
+      timeout: 20000,
       randomizationFactor: 0.5
     });
 
@@ -44,23 +45,23 @@ class SocketService {
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      if (__DEV__) console.log(`[Socket] Deconnecte: ${reason}`);
+      if (__DEV__) console.log(`[Socket] Deconnecte. Raison: ${reason}`);
     });
 
     this.socket.on('force_disconnect', (data) => {
-      if (__DEV__) console.warn(`[Socket] Deconnexion forcee par le serveur: ${data?.reason}`);
+      if (__DEV__) console.warn(`[Socket] Deconnexion forcee par le serveur. Raison: ${data?.reason}`);
       this.disconnect();
     });
 
     this.socket.on('connect_error', (error) => {
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
-        if (__DEV__) console.warn('[Socket] Acces refuse. En attente du nouveau token...');
+        if (__DEV__) console.warn('[Socket] Acces refuse. Arret des tentatives de connexion.');
         this.disconnect();
         return;
       }
 
       this.reconnectAttempts++;
-      if (__DEV__) console.warn(`[Socket] Tentative de reconnexion en arriere-plan... (${this.reconnectAttempts})`);
+      if (__DEV__) console.log(`[Socket] Tentative de reconnexion en arriere-plan... (${this.reconnectAttempts})`);
     });
   }
 

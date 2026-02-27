@@ -1,5 +1,5 @@
 // src/store/slices/apiSlice.js
-// CŒUR RÉSEAU - Rotation Mutex & Anti-Sniffing
+// COEUR RESEAU - Rotation Mutex & Anti-Sniffing
 // CSCSM Level: Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
@@ -26,12 +26,10 @@ const baseQuery = fetchBaseQuery({
 });
 
 const baseQueryWithReauth = async (args, api, extraOptions) => {
-  // On attend que le verrou soit levé avant de lancer une requête
   await mutex.waitForUnlock();
   
   let result = await baseQuery(args, api, extraOptions);
 
-  // Si le token est expiré (Erreur 401)
   if (result.error && result.error.status === 401) {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
@@ -45,7 +43,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return result;
         }
 
-        // On part chercher un nouveau token (Correction de l'URL)
         const refreshResult = await baseQuery(
           { 
             url: '/auth/refresh', 
@@ -62,10 +59,10 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             refreshToken: refreshResult.data.data.refreshToken || refreshToken
           }));
           
-          // Magie : On relance la requête initiale qui avait échoué
           result = await baseQuery(args, api, extraOptions);
-        } else {
-          // Si le refresh token est lui-même expiré ou invalide
+        } else if (refreshResult.error && refreshResult.error.status !== 'FETCH_ERROR') {
+          // Rejet explicite du serveur (ex: token expire ou banni).
+          // On ne deconnecte PAS l'utilisateur sur une simple coupure reseau (FETCH_ERROR).
           api.dispatch(logout());
         }
       } finally {
@@ -73,7 +70,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         release();
       }
     } else {
-      // Si un autre appel est déjà en train de rafraîchir, on attend, puis on relance
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
