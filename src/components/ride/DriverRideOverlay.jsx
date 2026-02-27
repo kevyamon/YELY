@@ -81,20 +81,24 @@ const DriverRideOverlay = () => {
     });
   };
 
-  const handleOpenGPS = () => {
-    if (!targetLat || !targetLng) {
+  const handleOpenGPS = (forcedCoords = null) => {
+    const lat = forcedCoords ? forcedCoords.lat : targetLat;
+    const lng = forcedCoords ? forcedCoords.lng : targetLng;
+    const isDest = forcedCoords ? true : isOngoing;
+
+    if (!lat || !lng) {
       dispatch(showErrorToast({ title: "Erreur", message: "Destination introuvable." }));
       return;
     }
 
-    const label = encodeURIComponent(isOngoing ? "Destination Yely" : "Client Yely");
+    const label = encodeURIComponent(isDest ? "Destination Yely" : "Client Yely");
     const url = Platform.select({
-      ios: `maps:0,0?q=${label}&ll=${targetLat},${targetLng}`,
-      android: `geo:0,0?q=${targetLat},${targetLng}(${label})`
+      ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
+      android: `geo:0,0?q=${lat},${lng}(${label})`
     });
 
     Linking.openURL(url).catch(() => {
-       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=$${targetLat},${targetLng}`);
+       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
     });
   };
 
@@ -107,7 +111,7 @@ const DriverRideOverlay = () => {
     if (!isNearTarget && !isOngoing) {
       dispatch(showErrorToast({ 
         title: "Action bloquee", 
-        message: `Vous etes a ${Math.round(distanceToTarget)}m du client. Approchez-vous a moins de 50m pour valider la prise en charge.` 
+        message: "Veuillez vous rapprocher du point de rendez-vous pour prendre le client en charge." 
       }));
       return;
     }
@@ -115,20 +119,24 @@ const DriverRideOverlay = () => {
     const targetRideId = currentRide._id || currentRide.rideId || currentRide.id;
 
     if (!targetRideId) {
-      dispatch(showErrorToast({ title: "Erreur système", message: "L'identifiant de la course est introuvable." }));
+      dispatch(showErrorToast({ title: "Erreur systeme", message: "L'identifiant de la course est introuvable." }));
       return;
     }
 
     try {
       if (!isOngoing) {
         await startRide({ rideId: targetRideId }).unwrap();
-        handleOpenGPS(); 
+        
+        const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+        const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+        handleOpenGPS({ lat: destLat, lng: destLng });
+        
       } else {
         await completeRide({ rideId: targetRideId }).unwrap();
       }
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: "Erreur système", 
+        title: "Erreur systeme", 
         message: error?.data?.message || "Validation impossible." 
       }));
     }
@@ -207,16 +215,11 @@ const DriverRideOverlay = () => {
               {target?.address || 'Adresse de rencontre'}
             </Text>
           </View>
-          {!isOngoing && (
-            <Text style={styles.distanceMetric}>
-              Distance restante : {distanceToTarget === Infinity ? "Calcul..." : `${Math.round(distanceToTarget)} metres`}
-            </Text>
-          )}
         </View>
 
         <View style={styles.actionsWrapper}>
           {!isOngoing && (
-            <TouchableOpacity style={styles.secondaryGpsButton} onPress={handleOpenGPS}>
+            <TouchableOpacity style={styles.secondaryGpsButton} onPress={() => handleOpenGPS(null)}>
               <Ionicons name="map" size={18} color={THEME.COLORS.textSecondary} />
               <Text style={styles.secondaryGpsText}>Ouvrir GPS Externe</Text>
             </TouchableOpacity>
@@ -271,7 +274,6 @@ const styles = StyleSheet.create({
   routeContainer: { backgroundColor: THEME.COLORS.glassLight, padding: THEME.SPACING.md, borderRadius: 16, marginBottom: THEME.SPACING.md },
   routeRow: { flexDirection: 'row', alignItems: 'center' },
   routeText: { marginLeft: 8, color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, fontWeight: '700' },
-  distanceMetric: { marginTop: 8, fontSize: 12, fontWeight: '800', color: THEME.COLORS.champagneGold, textAlign: 'right' },
   actionsWrapper: { gap: THEME.SPACING.sm, marginTop: THEME.SPACING.xs },
   secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
   secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
