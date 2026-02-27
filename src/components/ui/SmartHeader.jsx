@@ -1,5 +1,5 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Architecture modulaire
+// HEADER INTELLIGENT - Architecture modulaire & Context Aware
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
 import { selectCurrentUser, selectIsRefreshing } from '../../store/slices/authSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import ActionPill from './ActionPill';
 import LocationSyncGauge from './LocationSyncGauge';
@@ -29,9 +30,13 @@ const SmartHeader = ({
   onCancelDestination 
 }) => {
   const insets = useSafeAreaInsets();
+  
   const user = useSelector(selectCurrentUser);
   const isRefreshing = useSelector(selectIsRefreshing);
+  const currentRide = useSelector(selectCurrentRide);
+  
   const isRider = user?.role === 'rider';
+  const hasActiveRide = !!currentRide;
 
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
@@ -114,11 +119,12 @@ const SmartHeader = ({
           )}
           
           <View style={styles.actionPillWrapper}>
-            {isRider && !hasDestination && (
+            {/* L'interface masque totalement les boutons si une course est en cours */}
+            {isRider && !hasActiveRide && !hasDestination && (
               <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
             )}
 
-            {isRider && hasDestination && (
+            {isRider && !hasActiveRide && hasDestination && (
               <ActionPill mode="cancel" text="Annuler la destination" icon="close-circle" onPress={onCancelDestination} />
             )}
           </View>
@@ -151,7 +157,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
-    paddingBottom: 28, // UX: Coussin d'air augmenté pour décoller tout le bloc
+    paddingBottom: 28, 
   },
   topRow: {
     height: THEME.LAYOUT.HEADER_HEIGHT,
@@ -246,7 +252,7 @@ const styles = StyleSheet.create({
     flex: 1, 
   },
   actionPillWrapper: {
-    paddingBottom: 4, // UX: Élévation fine du bouton CTA
+    paddingBottom: 4, 
   }
 });
 
