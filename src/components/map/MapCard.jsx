@@ -46,14 +46,18 @@ const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => 
 
 const AnimatedPickupMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
-    ).start();
-  }, [pulseAnim]);
+    );
+    animation.start();
+    
+    return () => animation.stop();
+  }, []);
 
   const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
   const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 0.8, 0.4] });
@@ -70,14 +74,18 @@ const AnimatedPickupMarker = ({ color }) => {
 
 const AnimatedDestinationMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
+  
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
       ])
-    ).start();
-  }, [pulseAnim]);
+    );
+    animation.start();
+
+    return () => animation.stop();
+  }, []);
 
   const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] });
   const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.7, 0.3] });
