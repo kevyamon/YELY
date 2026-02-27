@@ -16,7 +16,6 @@ import RatingModal from './RatingModal';
 
 const { width } = Dimensions.get('window');
 
-// Formule de Haversine pour le radar temps reel
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
   const R = 6371e3; 
@@ -67,7 +66,6 @@ const RiderRideOverlay = () => {
   const isOngoing = currentRide.status === 'ongoing';
   const isCompleted = currentRide.status === 'completed';
 
-  // LOGIQUE RADAR : Calcul de la distance Chauffeur -> Objectif
   const driverLat = currentRide?.driverLocation?.coordinates?.[1] || currentRide?.driverLocation?.latitude;
   const driverLng = currentRide?.driverLocation?.coordinates?.[0] || currentRide?.driverLocation?.longitude;
 
@@ -112,21 +110,21 @@ const RiderRideOverlay = () => {
             </View>
             
             <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yely'}</Text>
+              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Assigné'}</Text>
               <View style={styles.carBadge}>
-                <Text style={styles.carText}>Vehicule Assigne</Text>
+                <Text style={styles.carText}>Véhicule Confirmé</Text>
               </View>
             </View>
 
             <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
-              <Ionicons name="call" size={24} color="#FFF" />
+              <Ionicons name="call" size={24} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
           <View style={styles.routeContainer}>
             <View style={styles.routeRow}>
               <Ionicons name="location" size={16} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.routeText} numberOfLines={1}>{currentRide.origin?.address || 'Votre position'}</Text>
+              <Text style={styles.routeText} numberOfLines={1}>{currentRide.origin?.address || 'Point de départ'}</Text>
             </View>
             <View style={styles.routeDots} />
             <View style={styles.routeRow}>
@@ -137,7 +135,7 @@ const RiderRideOverlay = () => {
 
           <View style={styles.actionsContainer}>
             <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Tarif convenu</Text>
+              <Text style={styles.priceLabel}>Montant Final</Text>
               <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
             </View>
           </View>

@@ -3,10 +3,11 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
+import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
@@ -43,7 +44,6 @@ const DriverHome = ({ navigation }) => {
   const { location: realLocation, errorMsg } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   
-  // INTERCEPTEUR : Utilise la position simulee en dev, sinon la position reelle
   const location = simulatedLocation || realLocation;
   
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -172,7 +172,7 @@ const DriverHome = ({ navigation }) => {
   const handleAutoStartRide = async () => {
     try {
       dispatch(showSuccessToast({
-        title: "Client detecte",
+        title: "Validation Geographique",
         message: "Passage automatique en mode Voyage."
       }));
       await startRide({ rideId: currentRide._id }).unwrap();
@@ -248,29 +248,6 @@ const DriverHome = ({ navigation }) => {
     return [];
   }, [isRideActive, currentRide]);
 
-  // FONCTION DE TELEPORTATION (DEVELOPPEMENT UNIQUEMENT)
-  const teleportTo = (targetType) => {
-    if (!currentRide) return;
-    const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
-    
-    if (lat && lng) {
-      // Offset de 0.00008 degre (environ 8 a 10 metres) pour declencher le geofencing
-      setSimulatedLocation({
-        latitude: Number(lat) + 0.00008,
-        longitude: Number(lng) + 0.00008,
-        accuracy: 5,
-        heading: 0,
-        speed: 0
-      });
-      dispatch(showSuccessToast({ 
-        title: "Simulation GPS", 
-        message: `Teleportation vers ${targetType === 'pickup' ? 'Client' : 'Destination'}` 
-      }));
-    }
-  };
-
   const mapBottomPadding = isRideActive ? 300 : 320; 
 
   return (
@@ -302,23 +279,12 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* PANNEAU DE DEBUG AFFICHÉ UNIQUEMENT EN MODE DÉVELOPPEMENT */}
-      {__DEV__ && isRideActive && (
-        <View style={styles.debugPanel}>
-          <Text style={styles.debugTitle}>Panneau Test GPS</Text>
-          <View style={styles.debugButtons}>
-            <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
-              <Text style={styles.debugBtnText}>Vers Client</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('dropoff')}>
-              <Text style={styles.debugBtnText}>Vers Dest.</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.debugBtn, styles.debugBtnReset]} onPress={() => setSimulatedLocation(null)}>
-              <Text style={styles.debugBtnText}>Reset GPS</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
+      <GpsTeleporter 
+        currentRide={currentRide}
+        realLocation={realLocation}
+        simulatedLocation={simulatedLocation}
+        setSimulatedLocation={setSimulatedLocation}
+      />
 
       {isRideActive ? (
         <DriverRideOverlay />
@@ -339,24 +305,7 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
   loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary },
-  debugPanel: {
-    position: 'absolute',
-    top: 100,
-    left: 10,
-    right: 10,
-    backgroundColor: 'rgba(0,0,0,0.8)',
-    padding: 10,
-    borderRadius: 8,
-    zIndex: 999,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold
-  },
-  debugTitle: { color: THEME.COLORS.champagneGold, fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
-  debugButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
-  debugBtn: { flex: 1, backgroundColor: THEME.COLORS.glassLight, paddingVertical: 8, borderRadius: 5, alignItems: 'center' },
-  debugBtnReset: { backgroundColor: THEME.COLORS.danger },
-  debugBtnText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' }
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary }
 });
 
 export default DriverHome;
