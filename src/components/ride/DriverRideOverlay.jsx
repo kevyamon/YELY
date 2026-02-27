@@ -1,10 +1,10 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Télémétrie et Actions de Course
+// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Hooks Sécurisés
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect } from 'react';
-import { Dimensions, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Dimensions, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,7 +19,10 @@ const DriverRideOverlay = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
+  
   const translateY = useSharedValue(300); 
+  
+  const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -28,6 +31,12 @@ const DriverRideOverlay = () => {
     });
   }, [translateY]);
 
+  // 🛡️ SÉCURITÉ HOOKS : useAnimatedStyle DOIT être déclaré avant tout return précoce
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
+
+  // On coupe le rendu ici si pas de course, mais APRÈS les hooks
   if (!currentRide) return null;
 
   const isOngoing = currentRide.status === 'ongoing';
@@ -41,15 +50,15 @@ const DriverRideOverlay = () => {
   };
 
   const handleOpenGPS = () => {
-    const lat = target?.coordinates?.[1];
-    const lng = target?.coordinates?.[0];
+    const lat = target?.coordinates?.[1] || target?.latitude;
+    const lng = target?.coordinates?.[0] || target?.longitude;
     
     if (!lat || !lng) {
-      dispatch(showErrorToast({ title: "Erreur GPS", message: "Coordonnées de destination introuvables." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Destination introuvable." }));
       return;
     }
 
-    const label = encodeURIComponent(target?.address || "Destination Client");
+    const label = encodeURIComponent("Client Yély");
     const url = Platform.select({
       ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
       android: `geo:0,0?q=${lat},${lng}(${label})`
@@ -60,68 +69,167 @@ const DriverRideOverlay = () => {
     });
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const handleAcceptGps = () => {
+    setShowNavModal(false);
+    handleOpenGPS();
+  };
 
   return (
-    <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
-      
-      <View style={styles.statusBanner}>
-        <View style={styles.statusIndicator}>
-           <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
-        </View>
-        <Text style={styles.statusText}>
-          {isOngoing ? "En route vers la destination" : "Aller chercher le client"}
-        </Text>
-      </View>
+    <>
+      <Modal visible={showNavModal} transparent={true} animationType="fade">
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalIconContainer}>
+              <Ionicons name="checkmark-circle" size={50} color={THEME.COLORS.success} />
+            </View>
+            
+            <Text style={styles.modalTitle}>Course Acceptée</Text>
+            <Text style={styles.modalSubtitle}>
+              Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe pour vous y rendre ?
+            </Text>
 
-      <View style={styles.riderInfoCard}>
-        <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+            <TouchableOpacity style={styles.modalGpsButton} onPress={handleAcceptGps}>
+              <Ionicons name="navigate" size={20} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
+              <Text style={styles.modalGpsButtonText}>Lancer le GPS</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.modalDismissButton} onPress={() => setShowNavModal(false)}>
+              <Text style={styles.modalDismissText}>Je connais l'endroit</Text>
+            </TouchableOpacity>
+          </View>
         </View>
+      </Modal>
+
+      <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
         
-        <View style={styles.riderDetails}>
-          <Text style={styles.riderName}>{currentRide.riderName || 'Client Yély'}</Text>
-          <View style={styles.ratingBadge}>
-            <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.ratingText}>Nouveau</Text>
+        <View style={styles.statusBanner}>
+          <View style={styles.statusIndicator}>
+             <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
+          </View>
+          <Text style={styles.statusText}>
+            {isOngoing ? "Direction Destination" : "Aller chercher le client"}
+          </Text>
+        </View>
+
+        <View style={styles.riderInfoCard}>
+          <View style={styles.avatarPlaceholder}>
+            <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+          </View>
+          
+          <View style={styles.riderDetails}>
+            <Text style={styles.riderName}>{currentRide.riderName || 'Client Yély'}</Text>
+            <View style={styles.ratingBadge}>
+              <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
+              <Text style={styles.ratingText}>5.0 • Client vérifié</Text>
+            </View>
+          </View>
+
+          <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
+            <Ionicons name="call" size={24} color="#FFF" />
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.routeContainer}>
+          <View style={styles.routeRow}>
+            <Ionicons name="navigate-circle" size={20} color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger} />
+            <Text style={styles.routeText} numberOfLines={2}>
+              {target?.address || 'Adresse de rencontre'}
+            </Text>
           </View>
         </View>
 
-        <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
-          <Ionicons name="call" size={24} color="#FFF" />
-        </TouchableOpacity>
-      </View>
+        <View style={styles.actionsWrapper}>
+          {!isOngoing && (
+            <TouchableOpacity style={styles.secondaryGpsButton} onPress={handleOpenGPS}>
+              <Ionicons name="map" size={18} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.secondaryGpsText}>Trouver le client (Ouvrir GPS)</Text>
+            </TouchableOpacity>
+          )}
 
-      <View style={styles.routeContainer}>
-        <View style={styles.routeRow}>
-          <Ionicons name="navigate-circle" size={20} color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger} />
-          <Text style={styles.routeText} numberOfLines={2}>
-            {target?.address || 'Adresse inconnue'}
-          </Text>
+          <TouchableOpacity style={styles.primaryActionButton} disabled={true}>
+            <Text style={styles.primaryActionText}>
+              {isOngoing ? "TERMINER COURSE" : "CLIENT À BORD"}
+            </Text>
+          </TouchableOpacity>
         </View>
-      </View>
 
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity style={styles.gpsButton} onPress={handleOpenGPS}>
-          <Ionicons name="map" size={20} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
-          <Text style={styles.gpsButtonText}>Lancer le GPS</Text>
-        </TouchableOpacity>
-
-        {/* Bouton Placeholder - Actif lors de la Phase 8 */}
-        <TouchableOpacity style={styles.nextPhaseButton} disabled={true}>
-          <Text style={styles.nextPhaseButtonText}>
-            {isOngoing ? "TERMINER COURSE" : "CLIENT À BORD"}
-          </Text>
-        </TouchableOpacity>
-      </View>
-
-    </Animated.View>
+      </Animated.View>
+    </>
   );
 };
 
 const styles = StyleSheet.create({
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: THEME.SPACING.lg,
+  },
+  modalCard: {
+    width: '100%',
+    backgroundColor: THEME.COLORS.background,
+    borderRadius: 24,
+    padding: THEME.SPACING.xl,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 15,
+  },
+  modalIconContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(46, 204, 113, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: THEME.SPACING.md,
+  },
+  modalTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+    marginBottom: 8,
+  },
+  modalSubtitle: {
+    fontSize: 14,
+    color: THEME.COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: THEME.SPACING.xl,
+    lineHeight: 20,
+  },
+  modalGpsButton: {
+    flexDirection: 'row',
+    backgroundColor: THEME.COLORS.champagneGold,
+    width: '100%',
+    paddingVertical: 16,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: THEME.SPACING.md,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  modalGpsButtonText: {
+    color: THEME.COLORS.background,
+    fontWeight: '900',
+    fontSize: 16,
+  },
+  modalDismissButton: {
+    paddingVertical: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  modalDismissText: {
+    color: THEME.COLORS.textSecondary,
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
   container: {
     position: 'absolute',
     bottom: 0,
@@ -133,12 +241,8 @@ const styles = StyleSheet.create({
     paddingTop: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: -5 },
-    shadowOpacity: 0.15,
-    shadowRadius: 10,
     elevation: 20,
-    zIndex: 100,
+    zIndex: 10,
   },
   statusBanner: {
     flexDirection: 'row',
@@ -155,20 +259,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginRight: 8,
   },
-  dot: {
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: THEME.COLORS.champagneGold,
-  },
-  dotOngoing: {
-    backgroundColor: THEME.COLORS.success,
-  },
-  statusText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: THEME.COLORS.textPrimary,
-  },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
+  dotOngoing: { backgroundColor: THEME.COLORS.success },
+  statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -180,54 +273,26 @@ const styles = StyleSheet.create({
     marginBottom: THEME.SPACING.md,
   },
   avatarPlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: THEME.COLORS.glassDark,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: THEME.COLORS.champagneGold,
   },
-  riderDetails: {
-    flex: 1,
-    marginLeft: THEME.SPACING.md,
-  },
-  riderName: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
-    marginBottom: 4,
-  },
-  ratingBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-  },
-  ratingText: {
-    fontSize: 12,
-    color: THEME.COLORS.champagneGold,
-    fontWeight: '800',
-    marginLeft: 4,
-  },
+  riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
+  riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
+  ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  ratingText: { fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
   callButton: {
-    width: 50,
-    height: 50,
-    borderRadius: 25,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: THEME.COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: THEME.COLORS.success,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 5,
   },
   routeContainer: {
     backgroundColor: THEME.COLORS.glassLight,
@@ -235,58 +300,38 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     marginBottom: THEME.SPACING.md,
   },
-  routeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  routeText: {
-    marginLeft: 8,
-    color: THEME.COLORS.textSecondary,
-    fontSize: 13,
-    flex: 1,
-    fontWeight: '600',
-  },
-  actionsContainer: {
-    flexDirection: 'row',
-    gap: THEME.SPACING.md,
+  routeRow: { flexDirection: 'row', alignItems: 'center' },
+  routeText: { marginLeft: 8, color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, fontWeight: '700' },
+  actionsWrapper: {
+    gap: THEME.SPACING.sm,
     marginTop: THEME.SPACING.xs,
   },
-  gpsButton: {
-    flex: 1,
+  secondaryGpsButton: {
     flexDirection: 'row',
-    backgroundColor: THEME.COLORS.champagneGold,
-    paddingVertical: 14,
-    borderRadius: 25,
-    justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 6,
-  },
-  gpsButtonText: {
-    color: THEME.COLORS.background,
-    fontWeight: '900',
-    fontSize: 14,
-  },
-  nextPhaseButton: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.glassDark,
-    paddingVertical: 14,
-    borderRadius: 25,
     justifyContent: 'center',
-    alignItems: 'center',
+    paddingVertical: 12,
+    borderRadius: 20,
+    backgroundColor: THEME.COLORS.glassSurface,
     borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
-    opacity: 0.5, 
+    borderColor: THEME.COLORS.border,
   },
-  nextPhaseButtonText: {
+  secondaryGpsText: {
     color: THEME.COLORS.textSecondary,
     fontWeight: 'bold',
-    fontSize: 12,
-    letterSpacing: 1,
+    marginLeft: 8,
+    fontSize: 13,
   },
+  primaryActionButton: {
+    width: '100%',
+    backgroundColor: THEME.COLORS.glassDark,
+    paddingVertical: 16,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    opacity: 0.6,
+  },
+  primaryActionText: { color: THEME.COLORS.textSecondary, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
 });
 
 export default DriverRideOverlay;
