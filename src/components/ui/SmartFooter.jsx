@@ -1,5 +1,6 @@
 // src/components/ui/SmartFooter.jsx
 // FOOTER INTELLIGENT - Bouton de commande réactif au KML Maféré
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -22,7 +23,7 @@ const SmartFooter = ({
   isAvailable,
   onToggle,
   isToggling,
-  isUserInZone = true // 🚀 REÇOIT L'ÉTAT DU KML
+  isUserInZone = true 
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
@@ -30,14 +31,14 @@ const SmartFooter = ({
 
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
 
-  // 🚀 LOGIQUE MÉTIER : Gestion de l'état du bouton
+  // LOGIQUE METIER : Gestion de l'etat du bouton
   const isButtonDisabled = !selectedVehicle || isEstimating || !isUserInZone;
   
   let buttonText = 'Sélectionnez un véhicule';
   if (!isUserInZone) {
-    buttonText = '📍 Zone non couverte'; // Si tu es à Abobo
+    buttonText = 'Zone non couverte'; 
   } else if (selectedVehicle) {
-    buttonText = `Commander Yély ${selectedVehicle.name}`; // Si tu es à Maféré
+    buttonText = `Commander Yély ${selectedVehicle.name}`; 
   }
 
   return (
@@ -64,18 +65,27 @@ const SmartFooter = ({
                  onPress={onConfirmRide}
                  activeOpacity={0.9}
                >
-                 <Text style={[
-                   styles.confirmButtonText, 
-                   isButtonDisabled && styles.confirmButtonTextDisabled,
-                   !isUserInZone && { color: THEME.COLORS.danger } // Met le texte en rouge si hors zone
-                 ]}>
-                   {buttonText}
-                 </Text>
+                 <View style={styles.buttonContent}>
+                   {!isUserInZone && (
+                     <Ionicons 
+                       name="warning-outline" 
+                       size={20} 
+                       color={THEME.COLORS.danger} 
+                       style={styles.buttonIcon} 
+                     />
+                   )}
+                   <Text style={[
+                     styles.confirmButtonText, 
+                     isButtonDisabled && styles.confirmButtonTextDisabled,
+                     !isUserInZone && { color: THEME.COLORS.danger } 
+                   ]}>
+                     {buttonText}
+                   </Text>
+                 </View>
                </TouchableOpacity>
              </View>
           ) : (
              <View style={styles.emptyBox}>
-               {/* 🚀 EXPLICATION HORS ZONE SI PAS DE DESTINATION */}
                {!isUserInZone ? (
                  <>
                    <Ionicons name="warning-outline" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
@@ -124,6 +134,8 @@ const styles = StyleSheet.create({
   emptyText: { color: THEME.COLORS.textTertiary, fontStyle: 'italic', fontSize: 13, textAlign: 'center', paddingHorizontal: 20 },
   confirmButton: { backgroundColor: THEME.COLORS.champagneGold, paddingVertical: 16, width: '100%', borderRadius: 16, alignItems: 'center', justifyContent: 'center', marginTop: 15, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 6 },
   confirmButtonDisabled: { backgroundColor: THEME.COLORS.glassSurface, borderColor: THEME.COLORS.border, borderWidth: 1, shadowOpacity: 0, elevation: 0 },
+  buttonContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  buttonIcon: { marginRight: 8 },
   confirmButtonText: { color: '#121418', fontSize: 16, fontWeight: '900', letterSpacing: 0.5 },
   confirmButtonTextDisabled: { color: THEME.COLORS.textTertiary },
   statsContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },

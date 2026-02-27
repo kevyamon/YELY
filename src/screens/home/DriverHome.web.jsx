@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Synchronisation des Marqueurs et Arc Autonome
+// HOME DRIVER WEB - Geofencing & Parite Stricte (Bypass Respecte)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -16,6 +16,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
+import { useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
@@ -24,6 +25,7 @@ import THEME from '../../theme/theme';
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
+  const hasAutoStartedRef = useRef(false);
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
@@ -34,6 +36,7 @@ const DriverHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+  const [startRide] = useStartRideMutation();
 
   const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
@@ -59,6 +62,45 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
+  useEffect(() => {
+    if (currentRide?.status !== 'accepted') {
+      hasAutoStartedRef.current = false;
+    }
+  }, [currentRide?.status]);
+
+  useEffect(() => {
+    if (currentRide?.status === 'accepted' && location && !hasAutoStartedRef.current) {
+      const target = currentRide.origin;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat && lng) {
+        const distance = MapService.calculateDistance(
+          location,
+          { latitude: Number(lat), longitude: Number(lng) }
+        );
+
+        if (distance <= 10) {
+          hasAutoStartedRef.current = true;
+          handleAutoStartRide();
+        }
+      }
+    }
+  }, [location, currentRide]);
+
+  const handleAutoStartRide = async () => {
+    try {
+      dispatch(showSuccessToast({
+        title: "Client a bord",
+        message: "Passage automatique en mode Voyage."
+      }));
+      await startRide({ rideId: currentRide._id }).unwrap();
+    } catch (err) {
+      console.warn("[DriverHome.web] Erreur auto-start:", err);
+      hasAutoStartedRef.current = false;
+    }
+  };
+
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
     try {
@@ -72,14 +114,13 @@ const DriverHome = ({ navigation }) => {
       
       dispatch(showSuccessToast({
         title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
-        message: res.isAvailable ? "Prêt pour les courses." : "À bientôt!",
+        message: res.isAvailable ? "Pret pour les courses." : "A bientot!",
       }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Echec changement statut." }));
     }
   };
 
-  // 🚀 ALIGNEMENT DES MARQUEURS WEB : Déclenche l'Arc Doré sur MapCard.web
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
     
@@ -91,12 +132,12 @@ const DriverHome = ({ navigation }) => {
 
     if (lat && lng) {
       return [{
-        id: 'destination', 
+        id: isOngoing ? 'destination' : 'pickup', 
         latitude: Number(lat), 
         longitude: Number(lng),
         title: target.address || "Cible", 
-        type: 'destination',
-        iconType: isOngoing ? 'dropoff' : 'pickup' // Dit à la carte web d'afficher 🙋‍♂️ ou 🏁
+        type: isOngoing ? 'destination' : 'pickup',
+        iconType: isOngoing ? 'dropoff' : 'pickup' 
       }];
     }
     return [];
@@ -114,8 +155,7 @@ const DriverHome = ({ navigation }) => {
              showRecenterButton={true} 
              darkMode={false} 
              floating={false} 
-             markers={mapMarkers} // 🚀
-             route={null} 
+             markers={mapMarkers}
            />
          ) : (
            <View style={styles.loadingContainer}>

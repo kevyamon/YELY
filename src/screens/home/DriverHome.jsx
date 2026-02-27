@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Auto-Online & Arc Doré Autonome
+// HOME DRIVER - Auto-Online, Geofencing & Transition Automatique
 // CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -16,6 +16,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
+import { useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
@@ -27,6 +28,7 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const hasAutoConnected = useRef(false); 
+  const hasAutoStartedRef = useRef(false);
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
@@ -37,6 +39,7 @@ const DriverHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+  const [startRide] = useStartRideMutation();
 
   const isDriverInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
@@ -47,6 +50,7 @@ const DriverHome = ({ navigation }) => {
     }
   }, [user?.isAvailable]);
 
+  // AUTO-CONNECT LOGIC
   useEffect(() => {
     const processAutoConnect = async () => {
       if (!hasAutoConnected.current && location && !isAvailable) {
@@ -63,7 +67,7 @@ const DriverHome = ({ navigation }) => {
             
             dispatch(showSuccessToast({
               title: "EN LIGNE (Automatique)",
-              message: "Prêt à recevoir des courses.",
+              message: "Pret a recevoir des courses.",
             }));
           } catch (err) {
             console.warn("[DriverHome] Erreur auto-connect:", err);
@@ -97,13 +101,54 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
+  // RESET AUTO-START
+  useEffect(() => {
+    if (currentRide?.status !== 'accepted') {
+      hasAutoStartedRef.current = false;
+    }
+  }, [currentRide?.status]);
+
+  // AUTO-START COURSE (GEOFENCING < 10 METRES)
+  useEffect(() => {
+    if (currentRide?.status === 'accepted' && location && !hasAutoStartedRef.current) {
+      const target = currentRide.origin;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat && lng) {
+        const distance = MapService.calculateDistance(
+          location,
+          { latitude: Number(lat), longitude: Number(lng) }
+        );
+
+        if (distance <= 10) {
+          hasAutoStartedRef.current = true;
+          handleAutoStartRide();
+        }
+      }
+    }
+  }, [location, currentRide]);
+
+  const handleAutoStartRide = async () => {
+    try {
+      dispatch(showSuccessToast({
+        title: "Client a bord",
+        message: "Passage automatique en mode Voyage."
+      }));
+      await startRide({ rideId: currentRide._id }).unwrap();
+    } catch (err) {
+      console.warn("[DriverHome] Erreur auto-start:", err);
+      hasAutoStartedRef.current = false;
+    }
+  };
+
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
     
     if (newStatus && !isDriverInZone) {
       dispatch(showErrorToast({ 
-        title: 'Accès Refusé', 
-        message: 'Vous devez être dans la zone de Maféré pour vous mettre en service.' 
+        title: 'Acces Refuse', 
+        message: 'Vous devez etre dans la zone de Mafere pour vous mettre en service.' 
       }));
       return;
     }
@@ -121,19 +166,18 @@ const DriverHome = ({ navigation }) => {
       
       dispatch(showSuccessToast({
         title: actualStatus ? "EN LIGNE" : "HORS LIGNE",
-        message: actualStatus ? "Prêt pour les courses." : "Mode pause activé.",
+        message: actualStatus ? "Pret pour les courses." : "Mode pause active.",
       }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Echec changement statut." }));
     }
   };
 
-  // 🛡️ ALIGNEMENT DES MARQUEURS - DECLENCHE L'ARC DORÉ DANS MAPCARD
+  // ARCHITECTURE BYPASS : La carte detecte seule la ligne a tracer selon le type (pickup ou destination).
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
     
     const isOngoing = currentRide.status === 'ongoing';
-    // Si en route vers client, cible = origin. Si client à bord, cible = destination.
     const target = isOngoing ? currentRide.destination : currentRide.origin;
     
     const lat = target?.coordinates?.[1] || target?.latitude;
@@ -141,12 +185,12 @@ const DriverHome = ({ navigation }) => {
 
     if (lat && lng) {
       return [{
-        id: 'destination', 
+        id: isOngoing ? 'destination' : 'pickup', 
         latitude: Number(lat), 
         longitude: Number(lng),
-        title: target.address || "Destination", 
-        iconColor: THEME.COLORS.danger,
-        type: 'destination' // 🔑 TRIGGER POUR LE BYPASS AUTONOME
+        title: target.address || (isOngoing ? "Destination" : "Client"), 
+        iconColor: isOngoing ? THEME.COLORS.danger : THEME.COLORS.info,
+        type: isOngoing ? 'destination' : 'pickup' 
       }];
     }
     return [];

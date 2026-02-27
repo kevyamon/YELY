@@ -1,11 +1,9 @@
 // src/services/mapService.js
-// SERVICE CARTO & GÉOLOCALISATION - Niveau Industriel (Open Source)
-// Moteurs : Nominatim (Recherche) + OSRM (Calcul d'itinéraire)
+// SERVICE CARTO & GEOLOCALISATION - Niveau Industriel (Open Source)
+// Moteurs : Nominatim (Recherche) + OSRM (Calcul d'itineraire) + Haversine (Geofencing)
 
 import * as Location from 'expo-location';
 
-// 🛡️ SÉCURITÉ & BONNES PRATIQUES : Headers obligatoires pour Nominatim
-// Évite le blocage (HTTP 403) qui retourne du HTML et fait crasher le parseur JSON
 const API_HEADERS = {
   'User-Agent': 'YelyApp/1.0 (contact@yely.ci)',
   'Accept': 'application/json',
@@ -16,7 +14,7 @@ class MapService {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        throw new Error("L'accès à la localisation a été refusé par l'utilisateur.");
+        throw new Error("L'acces a la localisation a ete refuse par l'utilisateur.");
       }
       return true;
     } catch (error) {
@@ -36,7 +34,7 @@ class MapService {
       };
     } catch (error) {
       console.error('[MapService] Erreur getCurrentLocation:', error);
-      throw new Error("Impossible de récupérer la position actuelle.");
+      throw new Error("Impossible de recuperer la position actuelle.");
     }
   }
 
@@ -54,7 +52,7 @@ class MapService {
 
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("La réponse de l'API n'est pas du JSON valide.");
+        throw new Error("La reponse de l'API n'est pas du JSON valide.");
       }
 
       const data = await response.json();
@@ -80,7 +78,7 @@ class MapService {
     if (fallbackCoords && fallbackCoords.latitude && fallbackCoords.longitude) {
       return fallbackCoords;
     }
-    throw new Error('Coordonnées introuvables.');
+    throw new Error('Coordonnees introuvables.');
   }
 
   static async getAddressFromCoordinates(lat, lng) {
@@ -95,7 +93,7 @@ class MapService {
 
       const contentType = response.headers.get("content-type");
       if (!contentType || !contentType.includes("application/json")) {
-        throw new Error("La réponse de l'API n'est pas du JSON valide (Probablement un blocage HTML).");
+        throw new Error("La reponse de l'API n'est pas du JSON valide.");
       }
 
       const data = await response.json();
@@ -107,18 +105,12 @@ class MapService {
       return "Adresse inconnue";
     } catch (error) {
       console.error('[MapService] Erreur getAddressFromCoordinates:', error.message);
-      // On retourne un texte d'erreur clair plutôt que de laisser le front bloqué
       return "Adresse introuvable";
     }
   }
 
-  /**
-   * 🏗️ CALCUL D'ITINÉRAIRE (ROUTING VIA OSRM)
-   * Génère le tracé exact en suivant les routes.
-   */
   static async getRouteCoordinates(startCoords, endCoords) {
     try {
-      // OSRM demande la longitude en premier (lon,lat)
       const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.longitude},${endCoords.latitude}?overview=full&geometries=geojson`;
       
       const response = await fetch(url, { headers: API_HEADERS });
@@ -131,9 +123,7 @@ class MapService {
       if (contentType && contentType.includes("application/json")) {
         const data = await response.json();
 
-        // 🚀 CORRECTION : Restauration de 'Ok' (norme OSRM, contrairement à Google Maps qui utilise 'OK')
         if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-          // OSRM renvoie un tableau [longitude, latitude], MapView veut {latitude, longitude}
           return data.routes[0].geometry.coordinates.map(coord => ({
             latitude: coord[1],
             longitude: coord[0],
@@ -144,11 +134,28 @@ class MapService {
       console.error('[MapService] Erreur OSRM Route:', error.message);
     }
     
-    // Fallback de sécurité : Si le serveur échoue, on trace une ligne droite
     return [
       { latitude: startCoords.latitude, longitude: startCoords.longitude },
       { latitude: endCoords.latitude, longitude: endCoords.longitude }
     ];
+  }
+
+  // CALCUL GEOSPATIAL - Haversine Formula (Precision : Metre)
+  static calculateDistance(coord1, coord2) {
+    if (!coord1 || !coord2 || !coord1.latitude || !coord2.latitude) return Infinity;
+    
+    const R = 6371e3; 
+    const lat1 = coord1.latitude * Math.PI / 180;
+    const lat2 = coord2.latitude * Math.PI / 180;
+    const deltaLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
+    const deltaLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
+
+    const a = Math.sin(deltaLat/2) * Math.sin(deltaLat/2) +
+              Math.cos(lat1) * Math.cos(lat2) *
+              Math.sin(deltaLon/2) * Math.sin(deltaLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c; 
   }
 }
 

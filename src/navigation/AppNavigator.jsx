@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION - Démarrage "Trustless" (Validation de Session)
+// ORCHESTRATEUR DE NAVIGATION - Demarrage Trustless (Validation de Session)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -25,7 +25,7 @@ import RiderHome from '../screens/home/RiderHome';
 // Menu
 import MenuScreen from '../screens/MenuScreen';
 
-// 🚧 COMPOSANT TEMPORAIRE POUR LES PAGES EN CONSTRUCTION 🚧
+// COMPOSANT TEMPORAIRE POUR LES PAGES EN CONSTRUCTION
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -34,7 +34,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Cette fonctionnalité arrive bientôt.</Text>
+    <Text style={styles.placeholderText}>Cette fonctionnalite arrive bientot.</Text>
   </View>
 );
 
@@ -52,7 +52,6 @@ const AppNavigator = () => {
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
       try {
-        // 1. Récupération depuis le stockage chiffré
         const storedUserStr = await SecureStorageAdapter.getItem('userInfo');
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
@@ -61,7 +60,7 @@ const AppNavigator = () => {
           const storedUser = JSON.parse(storedUserStr);
 
           try {
-            // 2. 🛡️ DÉMARRAGE TRUSTLESS : On demande au backend si on est toujours légitime
+            // DEMARRAGE TRUSTLESS : On demande au backend si on est toujours legitime
             const API_URL = process.env.EXPO_PUBLIC_API_URL;
             const response = await fetch(`${API_URL}/auth/refresh`, {
               method: 'POST',
@@ -72,33 +71,29 @@ const AppNavigator = () => {
             if (response.ok) {
               const data = await response.json();
               if (data.success) {
-                // Session certifiée valide !
                 dispatch(setCredentials({
                   user: storedUser,
                   accessToken: data.data.accessToken,
                   refreshToken: data.data.refreshToken || storedRefreshToken,
                 }));
               } else {
-                dispatch(logout()); // Token révoqué
+                dispatch(logout()); 
               }
             } else {
-              // 401 ou 403 : Banni ou expiré
               if (response.status === 401 || response.status === 403) {
                 dispatch(logout());
               } else {
-                // Erreur 500 : On restaure pour ne pas bloquer l'app
                 dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
               }
             }
           } catch (networkError) {
-            // Pas d'internet (Mode Offline-First) : on restaure les données locales
             dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
           }
         } else {
-          dispatch(logout()); // Données manquantes
+          dispatch(logout()); 
         }
       } catch (e) {
-        console.error('[Auth] Erreur critique au démarrage:', e);
+        console.error('[Auth] Erreur critique au demarrage:', e);
         dispatch(logout());
       } finally {
         setIsReady(true);
@@ -141,10 +136,10 @@ const AppNavigator = () => {
             name="Menu" 
             component={MenuScreen} 
             options={{
-              animation: 'slide_from_bottom',
-              presentation: 'modal',
+              animation: 'fade_from_bottom',
+              presentation: 'transparentModal',
               gestureEnabled: true,
-              animationDuration: 150, // L'unique ajout : Accélération de l'ouverture du menu
+              animationDuration: 100, 
             }}
           />
 
