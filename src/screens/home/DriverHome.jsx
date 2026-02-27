@@ -19,7 +19,7 @@ import socketService from '../../services/socketService';
 import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
-import { selectCurrentRide, setEffectiveLocation } from '../../store/slices/rideSlice';
+import { selectCurrentRide, setEffectiveLocation, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -65,7 +65,7 @@ const DriverHome = ({ navigation }) => {
   }, [user?.isAvailable]);
 
   // Synchronise la position effective dans le store Redux.
-  // DriverRideOverlay lit ce selecteur pour afficher la bonne distance,
+  // DriverRideOverlay lit ce selecteur pour afficher la bonne distance
   // qu'il s'agisse du GPS reel ou d'une simulation de teleportation.
   useEffect(() => {
     if (location) {
@@ -160,6 +160,8 @@ const DriverHome = ({ navigation }) => {
 
         if (distance <= PICKUP_RADIUS_METERS) {
           isProcessingPickupRef.current = true;
+          // Enregistre l'horodatage d'arrivee dans le store pour le timer "Client a bord"
+          dispatch(updateRideStatus({ arrivedAt: Date.now() }));
           handleAutoStartRide();
         }
       }
@@ -241,25 +243,60 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
+  // Construction des marqueurs passes a MapCard.
+  //
+  // Phase 'accepted' : marqueur 'pickup' (bonhomme bleu pulse)
+  //   -> MapCard tracera : position chauffeur → pickup
+  //
+  // Phase 'ongoing'  : marqueur 'pickup_origin' (point dore fixe) + marqueur 'destination' (drapeau rouge pulse)
+  //   -> MapCard tracera : pickup_origin → destination
+  //   -> Le point de depart du trace devient fixe (le point de rencontre),
+  //      independamment de la position du chauffeur qui avance.
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
     const isOngoing = currentRide.status === 'ongoing';
-    const target = isOngoing ? currentRide.destination : currentRide.origin;
 
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
+    const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+    const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+    const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+    const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
 
-    if (lat && lng) {
+    if (isOngoing) {
+      const result = [];
+      if (originLat && originLng) {
+        result.push({
+          id: 'pickup_origin',
+          type: 'pickup_origin',
+          latitude: Number(originLat),
+          longitude: Number(originLng),
+        });
+      }
+      if (destLat && destLng) {
+        result.push({
+          id: 'destination',
+          type: 'destination',
+          latitude: Number(destLat),
+          longitude: Number(destLng),
+          title: currentRide.destination?.address || 'Destination',
+          iconColor: THEME.COLORS.danger,
+        });
+      }
+      return result;
+    }
+
+    // Phase accepted : on guide vers le client
+    if (originLat && originLng) {
       return [{
-        id: isOngoing ? 'destination' : 'pickup',
-        latitude: Number(lat),
-        longitude: Number(lng),
-        title: target.address || (isOngoing ? 'Destination' : 'Client'),
-        iconColor: isOngoing ? THEME.COLORS.danger : THEME.COLORS.info,
-        type: isOngoing ? 'destination' : 'pickup'
+        id: 'pickup',
+        type: 'pickup',
+        latitude: Number(originLat),
+        longitude: Number(originLng),
+        title: currentRide.origin?.address || 'Client',
+        iconColor: THEME.COLORS.info,
       }];
     }
+
     return [];
   }, [isRideActive, currentRide]);
 
@@ -320,7 +357,7 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
   loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary }
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary },
 });
 
 export default DriverHome;

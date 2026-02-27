@@ -1,9 +1,9 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Etat Automatise
+// PANNEAU CHAUFFEUR - Guidage, Statuts de Proximite & Timer Embarquement
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Dimensions, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,9 @@ import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
+// Delai en ms avant de passer de "Chauffeur arrive" a "Client a bord"
+const BOARDING_DELAY_MS = 60000;
+
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
   const R = 6371e3;
@@ -22,11 +25,53 @@ const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const p2 = lat2 * Math.PI / 180;
   const dp = (lat2 - lat1) * Math.PI / 180;
   const dl = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
-            Math.cos(p1) * Math.cos(p2) *
-            Math.sin(dl / 2) * Math.sin(dl / 2);
+  const a =
+    Math.sin(dp / 2) * Math.sin(dp / 2) +
+    Math.cos(p1) * Math.cos(p2) *
+    Math.sin(dl / 2) * Math.sin(dl / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
+};
+
+// Statuts possibles de la banniere chauffeur
+const DRIVER_STATUS = {
+  APPROACHING: 'approaching',   // En route vers le client
+  ARRIVED: 'arrived',           // A moins de 15m du client
+  BOARDING: 'boarding',         // Client monte (60s ecoule)
+  ONGOING: 'ongoing',           // Trajet en cours vers destination
+};
+
+const resolveBannerConfig = (status) => {
+  switch (status) {
+    case DRIVER_STATUS.ARRIVED:
+      return {
+        label: 'Chauffeur arrive',
+        dotStyle: 'dotArrived',
+        containerStyle: 'passiveStatusArrived',
+        distanceLabel: 'En attente du client...',
+      };
+    case DRIVER_STATUS.BOARDING:
+      return {
+        label: 'Client a bord',
+        dotStyle: 'dotBoarding',
+        containerStyle: 'passiveStatusBoarding',
+        distanceLabel: 'Depart imminent',
+      };
+    case DRIVER_STATUS.ONGOING:
+      return {
+        label: 'TRAJET EN COURS',
+        dotStyle: 'dotOngoing',
+        containerStyle: 'passiveStatusOngoing',
+        distanceLabel: null,
+      };
+    default:
+      return {
+        label: 'EN APPROCHE',
+        dotStyle: null,
+        containerStyle: null,
+        distanceLabel: null,
+      };
+  }
 };
 
 const DriverRideOverlay = () => {
@@ -35,13 +80,15 @@ const DriverRideOverlay = () => {
   const navigation = useNavigation();
   const currentRide = useSelector(selectCurrentRide);
 
-  // Lecture de la position effective depuis le store.
-  // DriverHome y publie la position simulee (dev) ou GPS reelle (prod) a chaque tick.
-  // Cela garantit que cet overlay — monte independamment — voit toujours la bonne position.
+  // Position effective du chauffeur publiee par DriverHome dans le store.
+  // Garantit que cet overlay voit la position simulee en dev, GPS reel en prod.
   const effectiveLocation = useSelector(selectEffectiveLocation);
 
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
+  const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
+  const boardingTimerRef = useRef(null);
+
   const translateY = useSharedValue(300);
 
   useEffect(() => {
@@ -56,6 +103,46 @@ const DriverRideOverlay = () => {
       setLocalStatus(currentRide.status);
     }
   }, [currentRide?.status, localStatus]);
+
+  // Gestion du timer d'embarquement.
+  // Quand arrivedAt est positionne dans le store (le chauffeur est arrive au pickup),
+  // on calcule le temps ecoule et on planifie la transition "Client a bord"
+  // pour le temps restant. Cela resiste a un re-mount du composant.
+  useEffect(() => {
+    if (boardingTimerRef.current) {
+      clearTimeout(boardingTimerRef.current);
+      boardingTimerRef.current = null;
+    }
+
+    const arrivedAt = currentRide?.arrivedAt;
+    const status = currentRide?.status;
+
+    if (status === 'ongoing') {
+      setDriverStatus(DRIVER_STATUS.ONGOING);
+      return;
+    }
+
+    if (!arrivedAt) {
+      setDriverStatus(DRIVER_STATUS.APPROACHING);
+      return;
+    }
+
+    const elapsed = Date.now() - arrivedAt;
+    const remaining = BOARDING_DELAY_MS - elapsed;
+
+    if (remaining <= 0) {
+      setDriverStatus(DRIVER_STATUS.BOARDING);
+    } else {
+      setDriverStatus(DRIVER_STATUS.ARRIVED);
+      boardingTimerRef.current = setTimeout(() => {
+        setDriverStatus(DRIVER_STATUS.BOARDING);
+      }, remaining);
+    }
+
+    return () => {
+      if (boardingTimerRef.current) clearTimeout(boardingTimerRef.current);
+    };
+  }, [currentRide?.arrivedAt, currentRide?.status]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -78,6 +165,8 @@ const DriverRideOverlay = () => {
     );
   }, [effectiveLocation, targetLat, targetLng]);
 
+  const bannerConfig = resolveBannerConfig(driverStatus);
+
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
@@ -98,7 +187,7 @@ const DriverRideOverlay = () => {
     const label = encodeURIComponent(isDest ? 'Destination Yely' : 'Client Yely');
     const url = Platform.select({
       ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
-      android: `geo:0,0?q=${lat},${lng}(${label})`
+      android: `geo:0,0?q=${lat},${lng}(${label})`,
     });
 
     Linking.openURL(url).catch(() => {
@@ -115,10 +204,10 @@ const DriverRideOverlay = () => {
     navigation.navigate('Pancarte');
   };
 
-  const statusLabel = isOngoing ? 'TRAJET EN COURS' : 'EN APPROCHE';
-  const distanceLabel = distanceToTarget !== Infinity
+  const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
+  const distanceLabel = isApproaching && distanceToTarget !== Infinity
     ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)`
-    : 'Calcul de la distance...';
+    : bannerConfig.distanceLabel;
 
   return (
     <>
@@ -150,7 +239,7 @@ const DriverRideOverlay = () => {
 
         <View style={styles.statusBanner}>
           <View style={styles.statusIndicator}>
-            <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
+            <View style={[styles.dot, styles[bannerConfig.dotStyle]]} />
           </View>
           <Text style={styles.statusText}>
             {isOngoing ? 'Direction Destination' : 'Aller chercher le client'}
@@ -203,9 +292,14 @@ const DriverRideOverlay = () => {
             </TouchableOpacity>
           )}
 
-          <View style={[styles.passiveStatusContainer, isOngoing && styles.passiveStatusContainerOngoing]}>
-            <Text style={styles.passiveStatusTitle}>{statusLabel}</Text>
-            <Text style={styles.passiveStatusDistance}>{distanceLabel}</Text>
+          <View style={[
+            styles.passiveStatusContainer,
+            bannerConfig.containerStyle && styles[bannerConfig.containerStyle],
+          ]}>
+            <Text style={styles.passiveStatusTitle}>{bannerConfig.label}</Text>
+            {distanceLabel ? (
+              <Text style={styles.passiveStatusDistance}>{distanceLabel}</Text>
+            ) : null}
           </View>
         </View>
 
@@ -229,6 +323,8 @@ const styles = StyleSheet.create({
   statusIndicator: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(212, 175, 55, 0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
   dotOngoing: { backgroundColor: THEME.COLORS.success },
+  dotArrived: { backgroundColor: THEME.COLORS.info },
+  dotBoarding: { backgroundColor: '#9B59B6' },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
   avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
@@ -246,9 +342,11 @@ const styles = StyleSheet.create({
   secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
   secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
   passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
-  passiveStatusContainerOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
+  passiveStatusOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
+  passiveStatusArrived: { backgroundColor: 'rgba(52, 152, 219, 0.1)', borderColor: 'rgba(52, 152, 219, 0.4)' },
+  passiveStatusBoarding: { backgroundColor: 'rgba(155, 89, 182, 0.1)', borderColor: 'rgba(155, 89, 182, 0.4)' },
   passiveStatusTitle: { color: THEME.COLORS.textPrimary, fontWeight: '900', fontSize: 15, letterSpacing: 1, marginBottom: 4 },
-  passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600' }
+  passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
 });
 
 export default DriverRideOverlay;

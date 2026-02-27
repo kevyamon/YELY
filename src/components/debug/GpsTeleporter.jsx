@@ -23,7 +23,9 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
     return { lat: Number(lat), lng: Number(lng), type: targetType };
   };
 
-  // Centralise la mise a jour locale ET l'emission socket via le contrat etabli
+  // Centralise la mise a jour locale ET l'emission socket via le contrat etabli.
+  // Utilise emitLocation (snake_case 'update_location') pour correspondre
+  // au contrat du backend — jamais emit('updateLocation').
   const syncLocation = (newLocation) => {
     setSimulatedLocation(newLocation);
     socketService.emitLocation(newLocation);
@@ -41,14 +43,14 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       longitude: Number(lng) + 0.00008,
       accuracy: 5,
       heading: 0,
-      speed: 0
+      speed: 0,
     };
 
     syncLocation(newLocation);
 
     dispatch(showSuccessToast({
       title: 'Simulation System',
-      message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`
+      message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`,
     }));
   };
 
@@ -72,7 +74,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
         longitude: targetInfo.lng,
         accuracy: 5,
         heading: 0,
-        speed: 0
+        speed: 0,
       };
       syncLocation(exactLocation);
       return;
@@ -82,15 +84,13 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
     const newLat = currentLat + (targetInfo.lat - currentLat) * ratio;
     const newLng = currentLng + (targetInfo.lng - currentLng) * ratio;
 
-    const advancedLocation = {
+    syncLocation({
       latitude: newLat,
       longitude: newLng,
       accuracy: 5,
       heading: 0,
-      speed: 0
-    };
-
-    syncLocation(advancedLocation);
+      speed: 0,
+    });
   };
 
   const resetSimulation = () => {
@@ -134,7 +134,7 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     zIndex: 999,
     borderWidth: 1,
-    borderColor: THEME.COLORS.info
+    borderColor: THEME.COLORS.info,
   },
   debugTitle: {
     color: THEME.COLORS.info,
@@ -142,18 +142,18 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     marginBottom: 10,
     textAlign: 'center',
-    letterSpacing: 1
+    letterSpacing: 1,
   },
   debugButtons: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     gap: 8,
-    marginBottom: 8
+    marginBottom: 8,
   },
   debugButtonsSecond: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8
+    gap: 8,
   },
   debugBtn: {
     flex: 1,
@@ -162,23 +162,23 @@ const styles = StyleSheet.create({
     borderRadius: 6,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: THEME.COLORS.border
+    borderColor: THEME.COLORS.border,
   },
   debugBtnAdvance: {
     backgroundColor: 'rgba(46, 204, 113, 0.2)',
-    borderColor: THEME.COLORS.success
+    borderColor: THEME.COLORS.success,
   },
   debugBtnReset: {
     backgroundColor: 'rgba(231, 76, 60, 0.2)',
-    borderColor: THEME.COLORS.danger
+    borderColor: THEME.COLORS.danger,
   },
   debugBtnText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',
     textTransform: 'uppercase',
-    letterSpacing: 0.5
-  }
+    letterSpacing: 0.5,
+  },
 });
 
 export default GpsTeleporter;

@@ -7,7 +7,7 @@ const initialState = {
   currentRide: null,
   incomingRide: null,
   // Position effective du chauffeur (simulee en dev, GPS reel en prod).
-  // Stockee ici pour etre accessible par tous les composants montes independamment.
+  // Publiee par DriverHome, lue par DriverRideOverlay.
   effectiveLocation: null,
 };
 
@@ -26,11 +26,14 @@ const rideSlice = createSlice({
     },
     updateRideStatus: (state, action) => {
       if (state.currentRide) {
-        const { status, driverName, startedAt, finalPrice } = action.payload;
+        const { status, driverName, startedAt, finalPrice, arrivedAt } = action.payload;
         if (status) state.currentRide.status = status;
         if (driverName) state.currentRide.driverName = driverName;
         if (startedAt) state.currentRide.startedAt = startedAt;
         if (finalPrice) state.currentRide.finalPrice = finalPrice;
+        // Horodatage de l'arrivee au pickup : declenche le compte a rebours
+        // "Client a bord" de 60s cote chauffeur et cote rider simultanement.
+        if (arrivedAt !== undefined) state.currentRide.arrivedAt = arrivedAt;
       }
     },
     // Telemetrie recue depuis le serveur (cote rider via socket)
@@ -41,7 +44,6 @@ const rideSlice = createSlice({
     },
     // Position effective locale du chauffeur (simulee ou GPS reel).
     // Mise a jour par DriverHome a chaque changement de position.
-    // Lue par DriverRideOverlay pour afficher la bonne distance.
     setEffectiveLocation: (state, action) => {
       state.effectiveLocation = action.payload;
     },
