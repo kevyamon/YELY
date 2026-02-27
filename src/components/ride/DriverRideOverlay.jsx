@@ -3,25 +3,46 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
+import useGeolocation from '../../hooks/useGeolocation';
+import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
+const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371e3; 
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180;
+  const dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
+
 const DriverRideOverlay = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  const navigation = useNavigation();
   const currentRide = useSelector(selectCurrentRide);
+  const { location } = useGeolocation();
+  
+  const [startRide, { isLoading: isStarting }] = useStartRideMutation();
+  const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
   
   const translateY = useSharedValue(300); 
-  
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
 
   useEffect(() => {
@@ -31,16 +52,27 @@ const DriverRideOverlay = () => {
     });
   }, [translateY]);
 
-  // 🛡️ SÉCURITÉ HOOKS : useAnimatedStyle DOIT être déclaré avant tout return précoce
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
-  // On coupe le rendu ici si pas de course, mais APRÈS les hooks
   if (!currentRide) return null;
 
   const isOngoing = currentRide.status === 'ongoing';
   const target = isOngoing ? currentRide.destination : currentRide.origin;
+
+  const targetLat = target?.coordinates?.[1] || target?.latitude;
+  const targetLng = target?.coordinates?.[0] || target?.longitude;
+
+  const distanceToTarget = useMemo(() => {
+    return calculateDistanceInMeters(
+      location?.latitude, location?.longitude,
+      targetLat, targetLng
+    );
+  }, [location, targetLat, targetLng]);
+
+  const isNearTarget = distanceToTarget <= 50; 
+  const isProcessing = isStarting || isCompleting;
 
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
@@ -50,28 +82,53 @@ const DriverRideOverlay = () => {
   };
 
   const handleOpenGPS = () => {
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
-    
-    if (!lat || !lng) {
+    if (!targetLat || !targetLng) {
       dispatch(showErrorToast({ title: "Erreur", message: "Destination introuvable." }));
       return;
     }
 
-    const label = encodeURIComponent("Client Yély");
+    const label = encodeURIComponent(isOngoing ? "Destination Yély" : "Client Yély");
     const url = Platform.select({
-      ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
-      android: `geo:0,0?q=${lat},${lng}(${label})`
+      ios: `maps:0,0?q=${label}&ll=${targetLat},${targetLng}`,
+      android: `geo:0,0?q=${targetLat},${targetLng}(${label})`
     });
 
     Linking.openURL(url).catch(() => {
-       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=$${targetLat},${targetLng}`);
     });
   };
 
   const handleAcceptGps = () => {
     setShowNavModal(false);
     handleOpenGPS();
+  };
+
+  const handlePrimaryAction = async () => {
+    if (!isNearTarget && !isOngoing) {
+      dispatch(showErrorToast({ 
+        title: "Action bloquée", 
+        message: `Vous êtes à ${Math.round(distanceToTarget)}m du client. Approchez-vous à moins de 50m pour valider la prise en charge.` 
+      }));
+      return;
+    }
+
+    try {
+      if (!isOngoing) {
+        await startRide({ rideId: currentRide._id }).unwrap();
+        handleOpenGPS(); 
+      } else {
+        await completeRide({ rideId: currentRide._id }).unwrap();
+      }
+    } catch (error) {
+      dispatch(showErrorToast({ 
+        title: "Erreur système", 
+        message: error?.data?.message || "Validation impossible." 
+      }));
+    }
+  };
+
+  const openPancarte = () => {
+    navigation.navigate('Pancarte');
   };
 
   return (
@@ -120,13 +177,20 @@ const DriverRideOverlay = () => {
             <Text style={styles.riderName}>{currentRide.riderName || 'Client Yély'}</Text>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-              <Text style={styles.ratingText}>5.0 • Client vérifié</Text>
+              <Text style={styles.ratingText}>Client vérifié</Text>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
-            <Ionicons name="call" size={24} color="#FFF" />
-          </TouchableOpacity>
+          <View style={styles.topActionsGroup}>
+            {!isOngoing && (
+              <TouchableOpacity style={styles.pancarteButton} onPress={openPancarte}>
+                <Ionicons name="tablet-landscape" size={20} color={THEME.COLORS.champagneGold} />
+              </TouchableOpacity>
+            )}
+            <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
+              <Ionicons name="call" size={22} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
         <View style={styles.routeContainer}>
@@ -136,19 +200,33 @@ const DriverRideOverlay = () => {
               {target?.address || 'Adresse de rencontre'}
             </Text>
           </View>
+          {!isOngoing && (
+            <Text style={styles.distanceMetric}>
+              Distance restante : {distanceToTarget === Infinity ? "Calcul..." : `${Math.round(distanceToTarget)} mètres`}
+            </Text>
+          )}
         </View>
 
         <View style={styles.actionsWrapper}>
           {!isOngoing && (
             <TouchableOpacity style={styles.secondaryGpsButton} onPress={handleOpenGPS}>
               <Ionicons name="map" size={18} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.secondaryGpsText}>Trouver le client (Ouvrir GPS)</Text>
+              <Text style={styles.secondaryGpsText}>Ouvrir GPS Externe</Text>
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity style={styles.primaryActionButton} disabled={true}>
+          <TouchableOpacity 
+            style={[
+              styles.primaryActionButton, 
+              (isProcessing || (!isOngoing && !isNearTarget)) && styles.primaryActionButtonDisabled,
+              isOngoing && styles.primaryActionButtonOngoing
+            ]} 
+            onPress={handlePrimaryAction}
+            disabled={isProcessing}
+            activeOpacity={0.8}
+          >
             <Text style={styles.primaryActionText}>
-              {isOngoing ? "TERMINER COURSE" : "CLIENT À BORD"}
+              {isProcessing ? "TRAITEMENT..." : (isOngoing ? "TERMINER LA COURSE" : "CLIENT À BORD")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -159,179 +237,41 @@ const DriverRideOverlay = () => {
 };
 
 const styles = StyleSheet.create({
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: THEME.SPACING.lg,
-  },
-  modalCard: {
-    width: '100%',
-    backgroundColor: THEME.COLORS.background,
-    borderRadius: 24,
-    padding: THEME.SPACING.xl,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 15,
-  },
-  modalIconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: 'rgba(46, 204, 113, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.md,
-  },
-  modalTitle: {
-    fontSize: 22,
-    fontWeight: '900',
-    color: THEME.COLORS.textPrimary,
-    marginBottom: 8,
-  },
-  modalSubtitle: {
-    fontSize: 14,
-    color: THEME.COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: THEME.SPACING.xl,
-    lineHeight: 20,
-  },
-  modalGpsButton: {
-    flexDirection: 'row',
-    backgroundColor: THEME.COLORS.champagneGold,
-    width: '100%',
-    paddingVertical: 16,
-    borderRadius: 30,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.md,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
-  },
-  modalGpsButtonText: {
-    color: THEME.COLORS.background,
-    fontWeight: '900',
-    fontSize: 16,
-  },
-  modalDismissButton: {
-    paddingVertical: 12,
-    width: '100%',
-    alignItems: 'center',
-  },
-  modalDismissText: {
-    color: THEME.COLORS.textSecondary,
-    fontWeight: 'bold',
-    fontSize: 15,
-  },
-  container: {
-    position: 'absolute',
-    bottom: 0,
-    width: width,
-    backgroundColor: THEME.COLORS.background,
-    borderTopLeftRadius: 32,
-    borderTopRightRadius: 32,
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.md,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    elevation: 20,
-    zIndex: 10,
-  },
-  statusBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: THEME.SPACING.md,
-  },
-  statusIndicator: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
+  modalBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'center', alignItems: 'center', padding: THEME.SPACING.lg },
+  modalCard: { width: '100%', backgroundColor: THEME.COLORS.background, borderRadius: 24, padding: THEME.SPACING.xl, alignItems: 'center', elevation: 15 },
+  modalIconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(46, 204, 113, 0.1)', justifyContent: 'center', alignItems: 'center', marginBottom: THEME.SPACING.md },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: THEME.COLORS.textPrimary, marginBottom: 8 },
+  modalSubtitle: { fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginBottom: THEME.SPACING.xl, lineHeight: 20 },
+  modalGpsButton: { flexDirection: 'row', backgroundColor: THEME.COLORS.champagneGold, width: '100%', paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: THEME.SPACING.md, elevation: 4 },
+  modalGpsButtonText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 16 },
+  modalDismissButton: { paddingVertical: 12, width: '100%', alignItems: 'center' },
+  modalDismissText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', fontSize: 15 },
+  container: { position: 'absolute', bottom: 0, width: width, backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: THEME.SPACING.lg, paddingTop: THEME.SPACING.md, borderWidth: 1, borderColor: THEME.COLORS.border, elevation: 20, zIndex: 10 },
+  statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: THEME.SPACING.md },
+  statusIndicator: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(212, 175, 55, 0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
   dotOngoing: { backgroundColor: THEME.COLORS.success },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
-  riderInfoCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    padding: THEME.SPACING.md,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    marginBottom: THEME.SPACING.md,
-  },
-  avatarPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: THEME.COLORS.glassDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.champagneGold,
-  },
+  riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
+  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
   riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   ratingText: { fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
-  callButton: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: THEME.COLORS.success,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  routeContainer: {
-    backgroundColor: THEME.COLORS.glassLight,
-    padding: THEME.SPACING.md,
-    borderRadius: 16,
-    marginBottom: THEME.SPACING.md,
-  },
+  topActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  callButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.success, justifyContent: 'center', alignItems: 'center' },
+  pancarteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.glassDark, borderWidth: 1, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center' },
+  routeContainer: { backgroundColor: THEME.COLORS.glassLight, padding: THEME.SPACING.md, borderRadius: 16, marginBottom: THEME.SPACING.md },
   routeRow: { flexDirection: 'row', alignItems: 'center' },
   routeText: { marginLeft: 8, color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, fontWeight: '700' },
-  actionsWrapper: {
-    gap: THEME.SPACING.sm,
-    marginTop: THEME.SPACING.xs,
-  },
-  secondaryGpsButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 20,
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-  },
-  secondaryGpsText: {
-    color: THEME.COLORS.textSecondary,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    fontSize: 13,
-  },
-  primaryActionButton: {
-    width: '100%',
-    backgroundColor: THEME.COLORS.glassDark,
-    paddingVertical: 16,
-    borderRadius: 28,
-    justifyContent: 'center',
-    alignItems: 'center',
-    opacity: 0.6,
-  },
-  primaryActionText: { color: THEME.COLORS.textSecondary, fontWeight: '900', fontSize: 14, letterSpacing: 1 },
+  distanceMetric: { marginTop: 8, fontSize: 12, fontWeight: '800', color: THEME.COLORS.champagneGold, textAlign: 'right' },
+  actionsWrapper: { gap: THEME.SPACING.sm, marginTop: THEME.SPACING.xs },
+  secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
+  secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
+  primaryActionButton: { width: '100%', backgroundColor: THEME.COLORS.textPrimary, paddingVertical: 18, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
+  primaryActionButtonOngoing: { backgroundColor: THEME.COLORS.danger },
+  primaryActionButtonDisabled: { backgroundColor: THEME.COLORS.glassDark, opacity: 0.5 },
+  primaryActionText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
 });
 
-export default DriverRideOverlay;
+export default DriverRideOverlay; 

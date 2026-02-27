@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION - Demarrage Trustless (Validation de Session)
+// ORCHESTRATEUR DE NAVIGATION - Démarrage Trustless (Validation de Session)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -22,10 +22,12 @@ import RegisterPage from '../screens/auth/RegisterPage';
 import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
 
+// Outils Chauffeur
+import PancarteScreen from '../screens/ride/PancarteScreen';
+
 // Menu
 import MenuScreen from '../screens/MenuScreen';
 
-// COMPOSANT TEMPORAIRE POUR LES PAGES EN CONSTRUCTION
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -34,7 +36,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Cette fonctionnalite arrive bientot.</Text>
+    <Text style={styles.placeholderText}>Cette fonctionnalité arrive bientôt.</Text>
   </View>
 );
 
@@ -60,7 +62,6 @@ const AppNavigator = () => {
           const storedUser = JSON.parse(storedUserStr);
 
           try {
-            // DEMARRAGE TRUSTLESS : On demande au backend si on est toujours legitime
             const API_URL = process.env.EXPO_PUBLIC_API_URL;
             const response = await fetch(`${API_URL}/auth/refresh`, {
               method: 'POST',
@@ -93,7 +94,7 @@ const AppNavigator = () => {
           dispatch(logout()); 
         }
       } catch (e) {
-        console.error('[Auth] Erreur critique au demarrage:', e);
+        console.error('[Auth] Erreur critique au démarrage:', e);
         dispatch(logout());
       } finally {
         setIsReady(true);
@@ -140,6 +141,14 @@ const AppNavigator = () => {
               presentation: 'transparentModal',
               gestureEnabled: true,
               animationDuration: 100, 
+            }}
+          />
+
+          <Stack.Screen 
+            name="Pancarte" 
+            component={PancarteScreen} 
+            options={{
+              animation: 'slide_from_bottom',
             }}
           />
 
