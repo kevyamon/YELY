@@ -1,5 +1,5 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur en Temps Réel
+// PANNEAU PASSAGER - Suivi du Chauffeur en Temps Reel
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,8 +9,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { useCancelRideMutation } from '../../store/api/ridesApiSlice';
-import { clearCurrentRide, selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -21,7 +20,6 @@ const RiderRideOverlay = () => {
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
   
-  const [cancelRideApi] = useCancelRideMutation();
   const translateY = useSharedValue(300);
 
   useEffect(() => {
@@ -32,18 +30,6 @@ const RiderRideOverlay = () => {
   }, [translateY]);
 
   if (!currentRide) return null;
-
-  const handleCancel = async () => {
-    try {
-      await cancelRideApi({ 
-        rideId: currentRide.rideId, 
-        reason: "Annulé manuellement par le passager en cours d'approche" 
-      }).unwrap();
-      dispatch(clearCurrentRide());
-    } catch (error) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Impossible d'annuler la course." }));
-    }
-  };
 
   const handleCallDriver = () => {
     const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
@@ -66,7 +52,7 @@ const RiderRideOverlay = () => {
            <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
         </View>
         <Text style={styles.statusText}>
-          {isOngoing ? "Le chauffeur est arrivé !" : "Le chauffeur est en route"}
+          {isOngoing ? "Le chauffeur est arrive !" : "Le chauffeur est en route"}
         </Text>
       </View>
 
@@ -76,7 +62,7 @@ const RiderRideOverlay = () => {
         </View>
         
         <View style={styles.driverDetails}>
-          <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yély'}</Text>
+          <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yely'}</Text>
           <View style={styles.carBadge}>
             <Text style={styles.carText}>Toyota Corolla • Grise</Text>
           </View>
@@ -105,12 +91,6 @@ const RiderRideOverlay = () => {
           <Text style={styles.priceLabel}>Tarif convenu</Text>
           <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
         </View>
-
-        {!isOngoing && (
-          <TouchableOpacity style={styles.cancelButton} onPress={handleCancel}>
-            <Text style={styles.cancelButtonText}>Annuler la course</Text>
-          </TouchableOpacity>
-        )}
       </View>
 
     </Animated.View>
@@ -273,20 +253,7 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: '900',
     color: THEME.COLORS.textPrimary,
-  },
-  cancelButton: {
-    paddingVertical: 12,
-    paddingHorizontal: 20,
-    borderRadius: 20,
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-    borderWidth: 1,
-    borderColor: 'rgba(231, 76, 60, 0.3)',
-  },
-  cancelButtonText: {
-    color: THEME.COLORS.danger,
-    fontWeight: 'bold',
-    fontSize: 14,
-  },
+  }
 });
 
 export default RiderRideOverlay;

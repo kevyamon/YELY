@@ -1,6 +1,5 @@
 // src/services/socketService.js
-// Singleton Socket.io - Service Réseau Agnostique (Sans dépendance Redux)
-// CSCSM Level: Bank Grade
+// Singleton Socket.io - Service Réseau Agnostique
 
 import { io } from 'socket.io-client';
 
@@ -12,7 +11,6 @@ class SocketService {
     this.socket = null;
     this.isConnected = false;
     this.reconnectAttempts = 0;
-    this.maxReconnectAttempts = 5; 
     this._listeners = [];
   }
 
@@ -26,8 +24,10 @@ class SocketService {
       transports: ['websocket'],
       path: '/socket.io/',
       reconnection: true,
-      reconnectionAttempts: this.maxReconnectAttempts,
-      reconnectionDelay: 2000,
+      reconnectionAttempts: Infinity, 
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      randomizationFactor: 0.5
     });
 
     this._setupCoreListeners();
@@ -39,35 +39,28 @@ class SocketService {
     this.socket.on('connect', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      if (__DEV__) console.log('[Socket] ✅ Connecté !');
+      if (__DEV__) console.log('[Socket] Connecte avec succes.');
     });
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      if (__DEV__) console.log(`[Socket] Déconnecté: ${reason}`);
+      if (__DEV__) console.log(`[Socket] Deconnecte: ${reason}`);
     });
 
-    // 🛡️ SÉCURITÉ INTERNE : Blocage des boucles de reconnexion
     this.socket.on('force_disconnect', (data) => {
-      if (__DEV__) console.warn(`[Socket] KICK FORCÉ DU SERVEUR: ${data?.reason}`);
-      this.maxReconnectAttempts = 0; 
+      if (__DEV__) console.warn(`[Socket] Deconnexion forcee par le serveur: ${data?.reason}`);
       this.disconnect();
     });
 
     this.socket.on('connect_error', (error) => {
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
-        if (__DEV__) console.warn('[Socket] Accès refusé par le serveur. Arrêt des tentatives.');
+        if (__DEV__) console.warn('[Socket] Acces refuse. En attente du nouveau token...');
         this.disconnect();
         return;
       }
 
       this.reconnectAttempts++;
-      if (__DEV__) console.warn(`[Socket] Tentative connexion ${this.reconnectAttempts}/${this.maxReconnectAttempts}...`);
-      
-      if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-        if (__DEV__) console.error('[Socket] Échec définitif de connexion.');
-        this.disconnect();
-      }
+      if (__DEV__) console.warn(`[Socket] Tentative de reconnexion en arriere-plan... (${this.reconnectAttempts})`);
     });
   }
 

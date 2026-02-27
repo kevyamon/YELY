@@ -1,10 +1,11 @@
+// src/components/ui/EmergencyResetButton.jsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import { useEmergencyCancelRideMutation } from '../../store/api/ridesApiSlice';
-import { setCurrentRide } from '../../store/slices/rideSlice';
-import { showErrorToast } from '../../store/slices/uiSlice';
+import { clearCurrentRide } from '../../store/slices/rideSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const EmergencyResetButton = ({ style }) => {
@@ -22,8 +23,10 @@ const EmergencyResetButton = ({ style }) => {
       setShowConfirm(false);
 
       setTimeout(() => {
-        dispatch(setCurrentRide(null));
-        dispatch(showErrorToast({ title: 'Succes', message: 'Votre session a ete reinitialisee.' }));
+        // Remplacement de setCurrentRide(null) par la bonne fonction de purge
+        dispatch(clearCurrentRide());
+        // Utilisation du bon Toast pour un succes
+        dispatch(showSuccessToast({ title: 'Succes', message: 'Votre session a ete reinitialisee.' }));
       }, 300);
 
     } catch (error) {

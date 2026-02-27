@@ -1,13 +1,24 @@
+// src/components/drawer/DrawerMenu.jsx
 import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
-import EmergencyResetButton from '../ui/EmergencyResetButton';
 import { getMenuItems } from './menuConfig';
+import SettingsModal from './SettingsModal';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
+  const [isSettingsVisible, setIsSettingsVisible] = useState(false);
   const menuItems = getMenuItems(role);
+
+  const handlePress = (route) => {
+    if (route === 'SettingsModal') {
+      setIsSettingsVisible(true);
+    } else {
+      onNavigate(route);
+    }
+  };
 
   return (
     <View style={styles.container}>
@@ -21,7 +32,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
               styles.menuItem,
               isActive && styles.menuItemActive
             ]}
-            onPress={() => onNavigate(item.route)}
+            onPress={() => handlePress(item.route)}
             disabled={disabled}
             activeOpacity={0.7}
           >
@@ -44,7 +55,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
             </Text>
 
             <Ionicons 
-              name="chevron-forward" 
+              name={item.route === 'SettingsModal' ? "settings-outline" : "chevron-forward"} 
               size={16} 
               color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.border} 
               style={{ opacity: 0.5 }}
@@ -53,10 +64,11 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
         );
       })}
 
-      {/* Bouton d'urgence intégré directement dans le menu */}
-      <View style={styles.emergencyWrapper}>
-        <EmergencyResetButton />
-      </View>
+      <SettingsModal 
+        visible={isSettingsVisible} 
+        onClose={() => setIsSettingsVisible(false)} 
+        onNavigate={onNavigate} 
+      />
     </View>
   );
 };
@@ -102,11 +114,6 @@ const styles = StyleSheet.create({
   menuLabelActive: {
     color: THEME.COLORS.textPrimary, 
     fontWeight: '700', 
-  },
-  emergencyWrapper: {
-    marginTop: 24,
-    paddingHorizontal: 16,
-    alignItems: 'center',
   }
 });
 

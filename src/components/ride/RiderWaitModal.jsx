@@ -1,5 +1,6 @@
+// src/components/ride/RiderWaitModal.jsx
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,8 +23,8 @@ const RiderWaitModal = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
-  // 🛡️ VACCIN GHOST STATE : On ne fait PLUS de "return null" brutal.
-  // On calcule simplement si la modale doit être affichée.
+  // VACCIN GHOST STATE : On ne fait PLUS de "return null" brutal.
+  // On calcule simplement si la modale doit etre affichee.
   const isVisible = Boolean(
     currentRide && 
     (currentRide.status === 'searching' || currentRide.status === 'negotiating')
@@ -45,8 +46,8 @@ const RiderWaitModal = () => {
       }
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Information expirée', 
-        message: error?.data?.message || 'La session avec ce chauffeur a expiré ou été annulée.' 
+        title: 'Information expiree', 
+        message: error?.data?.message || 'La session avec ce chauffeur a expire ou ete annulee.' 
       }));
       
       if (error?.status === 404 || error?.status === 400) {
@@ -62,7 +63,7 @@ const RiderWaitModal = () => {
     try {
       await cancelRideApi({ 
         rideId: currentRide.rideId, 
-        reason: "Annulé par le passager" 
+        reason: "Annule par le passager" 
       }).unwrap();
     } catch (error) {
       console.log("Erreur annulation :", error);
@@ -78,7 +79,7 @@ const RiderWaitModal = () => {
       return (
         <View style={styles.confirmationContainer}>
           <Text style={styles.confirmationTitle}>Voulez-vous vraiment annuler ?</Text>
-          <Text style={styles.confirmationSubtitle}>Votre demande sera retirée des chauffeurs.</Text>
+          <Text style={styles.confirmationSubtitle}>Votre demande sera retiree des chauffeurs.</Text>
           
           <View style={styles.confirmationButtonsRow}>
             <TouchableOpacity 
@@ -118,7 +119,6 @@ const RiderWaitModal = () => {
   };
 
   const renderContent = () => {
-    // Sécurité supplémentaire si renderContent est appelé pendant la fermeture
     if (!currentRide) return null;
 
     if (currentRide.status === 'searching') {
@@ -126,7 +126,7 @@ const RiderWaitModal = () => {
         <View style={styles.centerContent}>
           <SearchingRadar />
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
-          <Text style={styles.subtitle}>Nous interrogeons les véhicules à proximité.</Text>
+          <Text style={styles.subtitle}>Nous interrogeons les vehicules a proximite.</Text>
           {renderCancelSection()}
         </View>
       );
@@ -136,8 +136,8 @@ const RiderWaitModal = () => {
       return (
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
-          <Text style={styles.title}>Chauffeur trouvé !</Text>
-          <Text style={styles.subtitle}>{currentRide.driverName} analyse votre demande et prépare son tarif.</Text>
+          <Text style={styles.title}>Chauffeur trouve !</Text>
+          <Text style={styles.subtitle}>{currentRide.driverName} analyse votre demande et prepare son tarif.</Text>
         </View>
       );
     }
@@ -148,8 +148,8 @@ const RiderWaitModal = () => {
           <View style={styles.iconContainer}>
             <Ionicons name="pricetag" size={40} color={THEME.COLORS.champagneGold} />
           </View>
-          <Text style={styles.title}>Proposition reçue</Text>
-          <Text style={styles.subtitle}>{currentRide.driverName} est prêt à effectuer la course pour :</Text>
+          <Text style={styles.title}>Proposition recue</Text>
+          <Text style={styles.subtitle}>{currentRide.driverName} est pret a effectuer la course pour :</Text>
           
           <Text style={styles.priceText}>{currentRide.proposedPrice} FCFA</Text>
 
