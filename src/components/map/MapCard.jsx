@@ -44,6 +44,30 @@ const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => 
   return <Marker identifier={identifier} coordinate={coordinate} anchor={anchor} tracksViewChanges={tracks} zIndex={zIndex}>{children}</Marker>;
 };
 
+const AnimatedPickupMarker = ({ color }) => {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true })
+      ])
+    ).start();
+  }, [pulseAnim]);
+
+  const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
+  const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 0.8, 0.4] });
+
+  return (
+    <View style={styles.animatedMarkerContainer}>
+      <Animated.View style={[styles.pulseHalo, { backgroundColor: color, transform: [{ scale }], opacity }]} />
+      <View style={[styles.humanMarkerBg, { backgroundColor: color }]}>
+        <Ionicons name="accessibility" size={24} color="#FFFFFF" style={styles.markerIconShadow} />
+      </View>
+    </View>
+  );
+};
+
 const AnimatedDestinationMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
   useEffect(() => {
@@ -127,13 +151,12 @@ const MapCard = forwardRef(({
   
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // BOUCLIER ANTI-RACE CONDITION ANDROID : Calcul isolé et asynchrone de l'Arc Doré.
   useEffect(() => {
-    const destMarker = markers.find(m => m.type === 'destination');
+    const activeTarget = markers.find(m => m.type === 'pickup') || markers.find(m => m.type === 'destination');
     
-    if (location && destMarker) {
+    if (location && activeTarget) {
       const timer = setTimeout(() => {
-        setArcCoordinates(generateBezierCurve(location, destMarker));
+        setArcCoordinates(generateBezierCurve(location, activeTarget));
       }, 150); 
       return () => clearTimeout(timer);
     } else {
@@ -142,9 +165,9 @@ const MapCard = forwardRef(({
   }, [location, markers]);
 
   useEffect(() => {
-    const destinationMarker = markers.find(m => m.type === 'destination');
+    const activeTarget = markers.find(m => m.type === 'pickup') || markers.find(m => m.type === 'destination');
     
-    if (isMapReady && location && driverLocation) {
+    if (isMapReady && location && driverLocation && !activeTarget) {
       const timer = setTimeout(() => {
         mapRef.current?.fitToCoordinates(
           [
@@ -156,12 +179,12 @@ const MapCard = forwardRef(({
       }, 600); 
       return () => clearTimeout(timer);
     }
-    else if (isMapReady && location && destinationMarker) {
+    else if (isMapReady && location && activeTarget) {
       const timer = setTimeout(() => {
         mapRef.current?.fitToCoordinates(
           [
             { latitude: location.latitude, longitude: location.longitude },
-            { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude }
+            { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
           ],
           { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
         );
@@ -221,9 +244,23 @@ const MapCard = forwardRef(({
 
           {markers.map((marker, index) => {
             if (!marker.latitude || !marker.longitude) return null;
-            const isDestination = marker.type === 'destination';
             
-            if (isDestination && !driverLocation) { 
+            if (marker.type === 'pickup') {
+              return (
+                <Marker
+                  identifier="pickup_loc" 
+                  key={marker.id || `marker-${index}`}
+                  coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                  anchor={{ x: 0.5, y: 0.5 }} 
+                  zIndex={120}
+                  tracksViewChanges={true} 
+                >
+                  <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
+                </Marker>
+              );
+            }
+
+            if (marker.type === 'destination') { 
               return (
                 <Marker
                   identifier="dest_loc" 
@@ -237,8 +274,6 @@ const MapCard = forwardRef(({
                 </Marker>
               );
             }
-
-            if (isDestination) return null;
 
             return (
               <TrackedMarker key={marker.id || `marker-${index}`} coordinate={{ latitude: marker.latitude, longitude: marker.longitude }} anchor={{ x: 0.5, y: 0.5 }} zIndex={90}>
@@ -277,6 +312,7 @@ const styles = StyleSheet.create({
   animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
   pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
   markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 },
+  humanMarkerBg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 3, elevation: 5 },
   carMarkerContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   carMarkerBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E1E1E', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
 });

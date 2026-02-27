@@ -1,5 +1,6 @@
 // src/components/ui/SmartHeader.jsx
 // HEADER INTELLIGENT - Architecture modulaire & Context Aware
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -44,7 +45,6 @@ const SmartHeader = ({
 
   const isFetchingAddress = address.toLowerCase().includes('recherche');
 
-  // ANIMATIONS DU HEADER (Scroll)
   const headerAnimatedStyle = useAnimatedStyle(() => {
     const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
     const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
@@ -66,7 +66,6 @@ const SmartHeader = ({
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       
-      {/* JAUGE GPS POUR PASSAGER */}
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
         {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
@@ -94,7 +93,6 @@ const SmartHeader = ({
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           <View style={styles.greetingHeader}>
              
-             {/* SKELETON DE RAFRAICHISSEMENT SESSION */}
              <SessionRefreshSkeleton 
                isRefreshing={isRefreshing}
                fallbackText={`Bonjour, ${userName}`}
@@ -109,7 +107,6 @@ const SmartHeader = ({
              )}
           </View>
 
-          {/* JAUGE GPS POUR CHAUFFEUR */}
           {!isRider && (
              <View style={styles.driverGpsBadge}>
                  <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
@@ -119,7 +116,6 @@ const SmartHeader = ({
           )}
           
           <View style={styles.actionPillWrapper}>
-            {/* L'interface masque totalement les boutons si une course est en cours */}
             {isRider && !hasActiveRide && !hasDestination && (
               <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
             )}
