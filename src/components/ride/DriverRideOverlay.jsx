@@ -1,5 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Hooks Securises
+// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & État Optimiste Local
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -42,8 +42,9 @@ const DriverRideOverlay = () => {
   const [startRide, { isLoading: isStarting }] = useStartRideMutation();
   const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
   
-  const translateY = useSharedValue(300); 
+  const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
+  const translateY = useSharedValue(300); 
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -52,13 +53,19 @@ const DriverRideOverlay = () => {
     });
   }, [translateY]);
 
+  useEffect(() => {
+    if (currentRide?.status && currentRide.status !== localStatus) {
+      setLocalStatus(currentRide.status);
+    }
+  }, [currentRide?.status]);
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   if (!currentRide) return null;
 
-  const isOngoing = currentRide.status === 'ongoing';
+  const isOngoing = localStatus === 'ongoing';
   const target = isOngoing ? currentRide.destination : currentRide.origin;
 
   const targetLat = target?.coordinates?.[1] || target?.latitude;
@@ -98,7 +105,7 @@ const DriverRideOverlay = () => {
     });
 
     Linking.openURL(url).catch(() => {
-       Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`);
+       Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
     });
   };
 
@@ -125,6 +132,8 @@ const DriverRideOverlay = () => {
 
     try {
       if (!isOngoing) {
+        setLocalStatus('ongoing');
+        
         await startRide({ rideId: targetRideId }).unwrap();
         
         const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
@@ -135,9 +144,10 @@ const DriverRideOverlay = () => {
         await completeRide({ rideId: targetRideId }).unwrap();
       }
     } catch (error) {
+      setLocalStatus(currentRide.status);
       dispatch(showErrorToast({ 
-        title: "Erreur systeme", 
-        message: error?.data?.message || "Validation impossible." 
+        title: "Erreur", 
+        message: error?.data?.message || "Action impossible. Veuillez reessayer." 
       }));
     }
   };
