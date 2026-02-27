@@ -1,9 +1,9 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur & Cloture Securisee
+// PANNEAU PASSAGER - Suivi du Chauffeur & Radar Dynamique
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Dimensions, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -15,6 +15,27 @@ import THEME from '../../theme/theme';
 import RatingModal from './RatingModal';
 
 const { width } = Dimensions.get('window');
+
+// Formule de Haversine pour le radar temps reel
+const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
+  const R = 6371e3; 
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180;
+  const dl = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
+
+const formatDistance = (meters) => {
+  if (meters === Infinity) return 'Calcul...';
+  if (meters < 1000) return `${Math.round(meters)}m`;
+  return `${(meters / 1000).toFixed(1)}km`;
+};
 
 const RiderRideOverlay = () => {
   const insets = useSafeAreaInsets();
@@ -43,6 +64,21 @@ const RiderRideOverlay = () => {
 
   if (!currentRide) return null;
 
+  const isOngoing = currentRide.status === 'ongoing';
+  const isCompleted = currentRide.status === 'completed';
+
+  // LOGIQUE RADAR : Calcul de la distance Chauffeur -> Objectif
+  const driverLat = currentRide?.driverLocation?.coordinates?.[1] || currentRide?.driverLocation?.latitude;
+  const driverLng = currentRide?.driverLocation?.coordinates?.[0] || currentRide?.driverLocation?.longitude;
+
+  const target = isOngoing ? currentRide.destination : currentRide.origin;
+  const targetLat = target?.coordinates?.[1] || target?.latitude;
+  const targetLng = target?.coordinates?.[0] || target?.longitude;
+
+  const liveDistance = useMemo(() => {
+    return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
+  }, [driverLat, driverLng, targetLat, targetLng]);
+
   const handleCallDriver = () => {
     const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
@@ -54,9 +90,6 @@ const RiderRideOverlay = () => {
     setShowRating(false);
   };
 
-  const isOngoing = currentRide.status === 'ongoing';
-  const isCompleted = currentRide.status === 'completed';
-
   return (
     <>
       {!isCompleted && (
@@ -67,7 +100,9 @@ const RiderRideOverlay = () => {
                <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
             </View>
             <Text style={styles.statusText}>
-              {isOngoing ? "Trajet en cours vers la destination" : "Le chauffeur est en route"}
+              {isOngoing 
+                ? `Trajet en cours (${formatDistance(liveDistance)})` 
+                : `En approche (${formatDistance(liveDistance)})`}
             </Text>
           </View>
 

@@ -1,9 +1,9 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Auto-Online, Geofencing & Transition Automatique
+// HOME DRIVER - Auto-Online, Geofencing & Debug Teleporter
 // CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -16,7 +16,6 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
-// Ajout de useCompleteRideMutation supposé existant dans l'API slice
 import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
@@ -26,8 +25,6 @@ import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-// Constantes de configuration pour le Geo-fencing (en mètres)
-// Ajusté pour correspondre à la précision réelle des GPS civils
 const PICKUP_RADIUS_METERS = 15;
 const DROPOFF_RADIUS_METERS = 30;
 
@@ -35,7 +32,6 @@ const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const hasAutoConnected = useRef(false); 
   
-  // Verrous d'état pour éviter le spam de requêtes (Vaccin)
   const isProcessingPickupRef = useRef(false);
   const isProcessingDropoffRef = useRef(false);
   
@@ -43,7 +39,13 @@ const DriverHome = ({ navigation }) => {
   
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
-  const { location, errorMsg } = useGeolocation();
+  
+  const { location: realLocation, errorMsg } = useGeolocation();
+  const [simulatedLocation, setSimulatedLocation] = useState(null);
+  
+  // INTERCEPTEUR : Utilise la position simulee en dev, sinon la position reelle
+  const location = simulatedLocation || realLocation;
+  
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
   const scrollY = useSharedValue(0);
@@ -62,7 +64,6 @@ const DriverHome = ({ navigation }) => {
     }
   }, [user?.isAvailable]);
 
-  // LOGIQUE DE CONNEXION AUTOMATIQUE
   useEffect(() => {
     const processAutoConnect = async () => {
       if (!hasAutoConnected.current && location && !isAvailable) {
@@ -91,14 +92,12 @@ const DriverHome = ({ navigation }) => {
     processAutoConnect();
   }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
 
-  // EMISSION GPS CONTINUE
   useEffect(() => {
     if (location && isAvailable) {
       socketService.emitLocation(location);
     }
   }, [location, isAvailable]);
 
-  // RESOLUTION DE L'ADRESSE
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
@@ -115,13 +114,12 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
-  // REINITIALISATION DES VERROUS SI LE STATUT DE LA COURSE CHANGE
   useEffect(() => {
     if (!currentRide) {
       isProcessingPickupRef.current = false;
       isProcessingDropoffRef.current = false;
     } else if (currentRide.status === 'ongoing') {
-      isProcessingPickupRef.current = true; // Déjà à bord, on verrouille le pickup
+      isProcessingPickupRef.current = true; 
       isProcessingDropoffRef.current = false;
     } else if (currentRide.status === 'accepted') {
       isProcessingPickupRef.current = false;
@@ -129,13 +127,11 @@ const DriverHome = ({ navigation }) => {
     }
   }, [currentRide?.status]);
 
-  // GEOFENCING : DETECTION AUTOMATIQUE CLIENT A BORD ET FIN DE COURSE
   useEffect(() => {
     if (!location || !currentRide) return;
 
     const status = currentRide.status;
 
-    // Phase 1 : Détection d'arrivée chez le client (Pickup)
     if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -154,7 +150,6 @@ const DriverHome = ({ navigation }) => {
       }
     }
 
-    // Phase 2 : Détection d'arrivée à destination (Dropoff)
     if (status === 'ongoing' && !isProcessingDropoffRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -183,7 +178,6 @@ const DriverHome = ({ navigation }) => {
       await startRide({ rideId: currentRide._id }).unwrap();
     } catch (err) {
       console.warn("[DriverHome] Echec auto-start:", err);
-      // En cas d'échec silencieux réseau, on libère le verrou pour réessayer
       isProcessingPickupRef.current = false;
     }
   };
@@ -228,7 +222,7 @@ const DriverHome = ({ navigation }) => {
         message: actualStatus ? "Pret pour les courses." : "Mode pause active.",
       }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur système", message: "Echec de mise a jour du statut." }));
+      dispatch(showErrorToast({ title: "Erreur systeme", message: "Echec de mise a jour du statut." }));
     }
   };
 
@@ -253,6 +247,29 @@ const DriverHome = ({ navigation }) => {
     }
     return [];
   }, [isRideActive, currentRide]);
+
+  // FONCTION DE TELEPORTATION (DEVELOPPEMENT UNIQUEMENT)
+  const teleportTo = (targetType) => {
+    if (!currentRide) return;
+    const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
+    const lat = target?.coordinates?.[1] || target?.latitude;
+    const lng = target?.coordinates?.[0] || target?.longitude;
+    
+    if (lat && lng) {
+      // Offset de 0.00008 degre (environ 8 a 10 metres) pour declencher le geofencing
+      setSimulatedLocation({
+        latitude: Number(lat) + 0.00008,
+        longitude: Number(lng) + 0.00008,
+        accuracy: 5,
+        heading: 0,
+        speed: 0
+      });
+      dispatch(showSuccessToast({ 
+        title: "Simulation GPS", 
+        message: `Teleportation vers ${targetType === 'pickup' ? 'Client' : 'Destination'}` 
+      }));
+    }
+  };
 
   const mapBottomPadding = isRideActive ? 300 : 320; 
 
@@ -285,6 +302,24 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
+      {/* PANNEAU DE DEBUG AFFICHÉ UNIQUEMENT EN MODE DÉVELOPPEMENT */}
+      {__DEV__ && isRideActive && (
+        <View style={styles.debugPanel}>
+          <Text style={styles.debugTitle}>Panneau Test GPS</Text>
+          <View style={styles.debugButtons}>
+            <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
+              <Text style={styles.debugBtnText}>Vers Client</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('dropoff')}>
+              <Text style={styles.debugBtnText}>Vers Dest.</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[styles.debugBtn, styles.debugBtnReset]} onPress={() => setSimulatedLocation(null)}>
+              <Text style={styles.debugBtnText}>Reset GPS</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
       {isRideActive ? (
         <DriverRideOverlay />
       ) : (
@@ -304,7 +339,24 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
   loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary }
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary },
+  debugPanel: {
+    position: 'absolute',
+    top: 100,
+    left: 10,
+    right: 10,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    padding: 10,
+    borderRadius: 8,
+    zIndex: 999,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.champagneGold
+  },
+  debugTitle: { color: THEME.COLORS.champagneGold, fontSize: 12, fontWeight: 'bold', marginBottom: 8, textAlign: 'center' },
+  debugButtons: { flexDirection: 'row', justifyContent: 'space-between', gap: 5 },
+  debugBtn: { flex: 1, backgroundColor: THEME.COLORS.glassLight, paddingVertical: 8, borderRadius: 5, alignItems: 'center' },
+  debugBtnReset: { backgroundColor: THEME.COLORS.danger },
+  debugBtnText: { color: '#FFF', fontSize: 11, fontWeight: 'bold' }
 });
 
 export default DriverHome;
