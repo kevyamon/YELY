@@ -92,11 +92,12 @@ const DriverHome = ({ navigation }) => {
     processAutoConnect();
   }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
 
+  // CORRECTION CRITIQUE : Emettre si disponible OU en course active
   useEffect(() => {
-    if (location && isAvailable) {
+    if (location && (isAvailable || isRideActive)) {
       socketService.emitLocation(location);
     }
-  }, [location, isAvailable]);
+  }, [location, isAvailable, isRideActive]);
 
   useEffect(() => {
     if (location) {
