@@ -1,6 +1,5 @@
 // src/components/debug/GpsTeleporter.jsx
 // OUTIL DE DEBUG - Teleportation et Simulation de mouvement (DEV ONLY)
-// CSCSM Level: Bank Grade
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -24,14 +23,10 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
     return { lat: Number(lat), lng: Number(lng), type: targetType };
   };
 
+  // Centralise la mise a jour locale ET l'emission socket via le contrat etabli
   const syncLocation = (newLocation) => {
     setSimulatedLocation(newLocation);
-    socketService.emit('updateLocation', {
-      latitude: newLocation.latitude,
-      longitude: newLocation.longitude,
-      heading: newLocation.heading,
-      speed: newLocation.speed
-    });
+    socketService.emitLocation(newLocation);
   };
 
   const teleportTo = (targetType) => {
@@ -39,22 +34,22 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
 
-    if (lat && lng) {
-      const newLocation = {
-        latitude: Number(lat) + 0.00008,
-        longitude: Number(lng) + 0.00008,
-        accuracy: 5,
-        heading: 0,
-        speed: 0
-      };
-      
-      syncLocation(newLocation);
-      
-      dispatch(showSuccessToast({
-        title: "Simulation System",
-        message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`
-      }));
-    }
+    if (!lat || !lng) return;
+
+    const newLocation = {
+      latitude: Number(lat) + 0.00008,
+      longitude: Number(lng) + 0.00008,
+      accuracy: 5,
+      heading: 0,
+      speed: 0
+    };
+
+    syncLocation(newLocation);
+
+    dispatch(showSuccessToast({
+      title: 'Simulation System',
+      message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`
+    }));
   };
 
   const moveForward = () => {
@@ -94,19 +89,14 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       heading: 0,
       speed: 0
     };
-    
+
     syncLocation(advancedLocation);
   };
 
   const resetSimulation = () => {
     setSimulatedLocation(null);
     if (realLocation) {
-      socketService.emit('updateLocation', {
-        latitude: realLocation.latitude,
-        longitude: realLocation.longitude,
-        heading: realLocation.heading || 0,
-        speed: realLocation.speed || 0
-      });
+      socketService.emitLocation(realLocation);
     }
   };
 
@@ -117,7 +107,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
           <Text style={styles.debugBtnText}>SAUT CLIENT</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('dropoff')}>
+        <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('destination')}>
           <Text style={styles.debugBtnText}>SAUT DEST.</Text>
         </TouchableOpacity>
       </View>

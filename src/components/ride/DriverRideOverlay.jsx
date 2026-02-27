@@ -1,6 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Etat Automatisé
-// CSCSM Level: Bank Grade
+// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Etat Automatise
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -10,8 +9,7 @@ import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from '
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import useGeolocation from '../../hooks/useGeolocation';
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, selectEffectiveLocation } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -19,7 +17,7 @@ const { width } = Dimensions.get('window');
 
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  const R = 6371e3; 
+  const R = 6371e3;
   const p1 = lat1 * Math.PI / 180;
   const p2 = lat2 * Math.PI / 180;
   const dp = (lat2 - lat1) * Math.PI / 180;
@@ -28,7 +26,7 @@ const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
             Math.cos(p1) * Math.cos(p2) *
             Math.sin(dl / 2) * Math.sin(dl / 2);
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; 
+  return R * c;
 };
 
 const DriverRideOverlay = () => {
@@ -36,11 +34,15 @@ const DriverRideOverlay = () => {
   const dispatch = useDispatch();
   const navigation = useNavigation();
   const currentRide = useSelector(selectCurrentRide);
-  const { location } = useGeolocation();
-  
+
+  // Lecture de la position effective depuis le store.
+  // DriverHome y publie la position simulee (dev) ou GPS reelle (prod) a chaque tick.
+  // Cela garantit que cet overlay — monte independamment — voit toujours la bonne position.
+  const effectiveLocation = useSelector(selectEffectiveLocation);
+
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
-  const translateY = useSharedValue(300); 
+  const translateY = useSharedValue(300);
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -69,15 +71,17 @@ const DriverRideOverlay = () => {
 
   const distanceToTarget = useMemo(() => {
     return calculateDistanceInMeters(
-      location?.latitude, location?.longitude,
-      targetLat, targetLng
+      effectiveLocation?.latitude,
+      effectiveLocation?.longitude,
+      targetLat,
+      targetLng
     );
-  }, [location, targetLat, targetLng]);
+  }, [effectiveLocation, targetLat, targetLng]);
 
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-       dispatch(showErrorToast({ title: "Erreur", message: "Impossible de lancer l'appel." }));
+      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
     });
   };
 
@@ -87,18 +91,18 @@ const DriverRideOverlay = () => {
     const isDest = forcedCoords ? true : isOngoing;
 
     if (!lat || !lng) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Destination introuvable." }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Destination introuvable.' }));
       return;
     }
 
-    const label = encodeURIComponent(isDest ? "Destination Yely" : "Client Yely");
+    const label = encodeURIComponent(isDest ? 'Destination Yely' : 'Client Yely');
     const url = Platform.select({
       ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
       android: `geo:0,0?q=${lat},${lng}(${label})`
     });
 
     Linking.openURL(url).catch(() => {
-       Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
+      Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
     });
   };
 
@@ -111,6 +115,11 @@ const DriverRideOverlay = () => {
     navigation.navigate('Pancarte');
   };
 
+  const statusLabel = isOngoing ? 'TRAJET EN COURS' : 'EN APPROCHE';
+  const distanceLabel = distanceToTarget !== Infinity
+    ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)`
+    : 'Calcul de la distance...';
+
   return (
     <>
       <Modal visible={showNavModal} transparent={true} animationType="fade">
@@ -119,7 +128,7 @@ const DriverRideOverlay = () => {
             <View style={styles.modalIconContainer}>
               <Ionicons name="checkmark-circle" size={50} color={THEME.COLORS.success} />
             </View>
-            
+
             <Text style={styles.modalTitle}>Course Acceptee</Text>
             <Text style={styles.modalSubtitle}>
               Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe pour vous y rendre ?
@@ -138,13 +147,13 @@ const DriverRideOverlay = () => {
       </Modal>
 
       <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
-        
+
         <View style={styles.statusBanner}>
           <View style={styles.statusIndicator}>
-             <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
+            <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
           </View>
           <Text style={styles.statusText}>
-            {isOngoing ? "Direction Destination" : "Aller chercher le client"}
+            {isOngoing ? 'Direction Destination' : 'Aller chercher le client'}
           </Text>
         </View>
 
@@ -152,7 +161,7 @@ const DriverRideOverlay = () => {
           <View style={styles.avatarPlaceholder}>
             <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
           </View>
-          
+
           <View style={styles.riderDetails}>
             <Text style={styles.riderName}>{currentRide.riderName || 'Client Yely'}</Text>
             <View style={styles.ratingBadge}>
@@ -175,7 +184,11 @@ const DriverRideOverlay = () => {
 
         <View style={styles.routeContainer}>
           <View style={styles.routeRow}>
-            <Ionicons name="navigate-circle" size={20} color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger} />
+            <Ionicons
+              name="navigate-circle"
+              size={20}
+              color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger}
+            />
             <Text style={styles.routeText} numberOfLines={2}>
               {target?.address || 'Adresse de rencontre'}
             </Text>
@@ -190,16 +203,9 @@ const DriverRideOverlay = () => {
             </TouchableOpacity>
           )}
 
-          {/* INDICATEUR DE STATUT PASSIF (Remplace les anciens boutons manuels) */}
           <View style={[styles.passiveStatusContainer, isOngoing && styles.passiveStatusContainerOngoing]}>
-            <Text style={styles.passiveStatusTitle}>
-              {isOngoing ? "TRAJET EN COURS" : "EN APPROCHE"}
-            </Text>
-            <Text style={styles.passiveStatusDistance}>
-              {distanceToTarget !== Infinity 
-                ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)` 
-                : "Calcul de la distance..."}
-            </Text>
+            <Text style={styles.passiveStatusTitle}>{statusLabel}</Text>
+            <Text style={styles.passiveStatusDistance}>{distanceLabel}</Text>
           </View>
         </View>
 
