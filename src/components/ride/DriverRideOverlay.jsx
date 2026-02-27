@@ -1,5 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & État Optimiste Local
+// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Etat Automatisé
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -11,7 +11,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import useGeolocation from '../../hooks/useGeolocation';
-import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -39,9 +38,6 @@ const DriverRideOverlay = () => {
   const currentRide = useSelector(selectCurrentRide);
   const { location } = useGeolocation();
   
-  const [startRide, { isLoading: isStarting }] = useStartRideMutation();
-  const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
-  
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
   const translateY = useSharedValue(300); 
@@ -57,7 +53,7 @@ const DriverRideOverlay = () => {
     if (currentRide?.status && currentRide.status !== localStatus) {
       setLocalStatus(currentRide.status);
     }
-  }, [currentRide?.status]);
+  }, [currentRide?.status, localStatus]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -77,9 +73,6 @@ const DriverRideOverlay = () => {
       targetLat, targetLng
     );
   }, [location, targetLat, targetLng]);
-
-  const isNearTarget = distanceToTarget <= 50; 
-  const isProcessing = isStarting || isCompleting;
 
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
@@ -112,44 +105,6 @@ const DriverRideOverlay = () => {
   const handleAcceptGps = () => {
     setShowNavModal(false);
     handleOpenGPS();
-  };
-
-  const handlePrimaryAction = async () => {
-    if (!isNearTarget && !isOngoing) {
-      dispatch(showErrorToast({ 
-        title: "Action bloquee", 
-        message: "Veuillez vous rapprocher du point de rendez-vous pour prendre le client en charge." 
-      }));
-      return;
-    }
-
-    const targetRideId = currentRide._id || currentRide.rideId || currentRide.id;
-
-    if (!targetRideId) {
-      dispatch(showErrorToast({ title: "Erreur systeme", message: "L'identifiant de la course est introuvable." }));
-      return;
-    }
-
-    try {
-      if (!isOngoing) {
-        setLocalStatus('ongoing');
-        
-        await startRide({ rideId: targetRideId }).unwrap();
-        
-        const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
-        const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
-        handleOpenGPS({ lat: destLat, lng: destLng });
-        
-      } else {
-        await completeRide({ rideId: targetRideId }).unwrap();
-      }
-    } catch (error) {
-      setLocalStatus(currentRide.status);
-      dispatch(showErrorToast({ 
-        title: "Erreur", 
-        message: error?.data?.message || "Action impossible. Veuillez reessayer." 
-      }));
-    }
   };
 
   const openPancarte = () => {
@@ -235,20 +190,17 @@ const DriverRideOverlay = () => {
             </TouchableOpacity>
           )}
 
-          <TouchableOpacity 
-            style={[
-              styles.primaryActionButton, 
-              (isProcessing || (!isOngoing && !isNearTarget)) && styles.primaryActionButtonDisabled,
-              isOngoing && styles.primaryActionButtonOngoing
-            ]} 
-            onPress={handlePrimaryAction}
-            disabled={isProcessing}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.primaryActionText}>
-              {isProcessing ? "TRAITEMENT..." : (isOngoing ? "TERMINER LA COURSE" : "CLIENT A BORD")}
+          {/* INDICATEUR DE STATUT PASSIF (Remplace les anciens boutons manuels) */}
+          <View style={[styles.passiveStatusContainer, isOngoing && styles.passiveStatusContainerOngoing]}>
+            <Text style={styles.passiveStatusTitle}>
+              {isOngoing ? "TRAJET EN COURS" : "EN APPROCHE"}
             </Text>
-          </TouchableOpacity>
+            <Text style={styles.passiveStatusDistance}>
+              {distanceToTarget !== Infinity 
+                ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)` 
+                : "Calcul de la distance..."}
+            </Text>
+          </View>
         </View>
 
       </Animated.View>
@@ -287,10 +239,10 @@ const styles = StyleSheet.create({
   actionsWrapper: { gap: THEME.SPACING.sm, marginTop: THEME.SPACING.xs },
   secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
   secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
-  primaryActionButton: { width: '100%', backgroundColor: THEME.COLORS.textPrimary, paddingVertical: 18, borderRadius: 28, justifyContent: 'center', alignItems: 'center' },
-  primaryActionButtonOngoing: { backgroundColor: THEME.COLORS.danger },
-  primaryActionButtonDisabled: { backgroundColor: THEME.COLORS.glassDark, opacity: 0.5 },
-  primaryActionText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
+  passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
+  passiveStatusContainerOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
+  passiveStatusTitle: { color: THEME.COLORS.textPrimary, fontWeight: '900', fontSize: 15, letterSpacing: 1, marginBottom: 4 },
+  passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600' }
 });
 
 export default DriverRideOverlay;

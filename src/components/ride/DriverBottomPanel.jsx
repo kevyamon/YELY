@@ -1,5 +1,6 @@
 // src/components/ride/DriverBottomPanel.jsx
-// COMPOSANT CHAUFFEUR - Panneau de contrôle fixe avec Design "Arc" (Encastré)
+// COMPOSANT CHAUFFEUR - Panneau de controle fixe
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { StyleSheet, Switch, Text, View } from 'react-native';
@@ -12,11 +13,9 @@ const DriverBottomPanel = ({ isAvailable, onToggle, isToggling }) => {
   return (
     <View style={[
       styles.bottomPanel, 
-      // On ajoute le paddingBottom de l'appareil (ex: la barre d'accueil iOS)
       { paddingBottom: Math.max(insets.bottom + 20, THEME.SPACING.xl) }
     ]}>
       
-      {/* CARTE DE DISPONIBILITÉ */}
       <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
         <View style={styles.availabilityRow}>
           <View style={styles.statusInfo}>
@@ -45,7 +44,6 @@ const DriverBottomPanel = ({ isAvailable, onToggle, isToggling }) => {
         </View>
       </View>
 
-      {/* STATISTIQUES */}
       <View style={styles.statsContainer}>
         <StatBox icon="car-sport" value="0" label="Courses" />
         <StatBox icon="time" value="0h" label="Heures" />
@@ -56,7 +54,6 @@ const DriverBottomPanel = ({ isAvailable, onToggle, isToggling }) => {
   );
 };
 
-// SOUS-COMPOSANT INTERNE
 const StatBox = ({ icon, value, label, isGold }) => (
   <View style={styles.statBox}>
     <Ionicons name={icon} size={22} color={isGold ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} />
@@ -67,7 +64,6 @@ const StatBox = ({ icon, value, label, isGold }) => (
 
 const styles = StyleSheet.create({
   bottomPanel: {
-    // FIXATION PARFAITE EN BAS DE L'ÉCRAN
     position: 'absolute',
     bottom: 0,
     left: 0,
@@ -75,8 +71,6 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.background,
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.xl,
-    
-    // DESIGN ORGANIQUE : Arc du bas
     borderTopLeftRadius: 36,
     borderTopRightRadius: 36,
     zIndex: 10,

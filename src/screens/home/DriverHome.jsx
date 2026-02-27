@@ -16,7 +16,8 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
-import { useStartRideMutation } from '../../store/api/ridesApiSlice';
+// Ajout de useCompleteRideMutation supposé existant dans l'API slice
+import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
@@ -25,10 +26,19 @@ import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
+// Constantes de configuration pour le Geo-fencing (en mètres)
+// Ajusté pour correspondre à la précision réelle des GPS civils
+const PICKUP_RADIUS_METERS = 15;
+const DROPOFF_RADIUS_METERS = 30;
+
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const hasAutoConnected = useRef(false); 
-  const hasAutoStartedRef = useRef(false);
+  
+  // Verrous d'état pour éviter le spam de requêtes (Vaccin)
+  const isProcessingPickupRef = useRef(false);
+  const isProcessingDropoffRef = useRef(false);
+  
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
@@ -38,8 +48,10 @@ const DriverHome = ({ navigation }) => {
   
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
+  
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
   const [startRide] = useStartRideMutation();
+  const [completeRide] = useCompleteRideMutation();
 
   const isDriverInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
@@ -50,7 +62,7 @@ const DriverHome = ({ navigation }) => {
     }
   }, [user?.isAvailable]);
 
-  // AUTO-CONNECT LOGIC
+  // LOGIQUE DE CONNEXION AUTOMATIQUE
   useEffect(() => {
     const processAutoConnect = async () => {
       if (!hasAutoConnected.current && location && !isAvailable) {
@@ -66,7 +78,7 @@ const DriverHome = ({ navigation }) => {
             socketService.emitLocation(location);
             
             dispatch(showSuccessToast({
-              title: "EN LIGNE (Automatique)",
+              title: "En service (Automatique)",
               message: "Pret a recevoir des courses.",
             }));
           } catch (err) {
@@ -79,12 +91,14 @@ const DriverHome = ({ navigation }) => {
     processAutoConnect();
   }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
 
+  // EMISSION GPS CONTINUE
   useEffect(() => {
     if (location && isAvailable) {
       socketService.emitLocation(location);
     }
   }, [location, isAvailable]);
 
+  // RESOLUTION DE L'ADRESSE
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
@@ -97,20 +111,32 @@ const DriverHome = ({ navigation }) => {
       };
       getAddress();
     } else if (errorMsg) {
-      setCurrentAddress("Erreur GPS");
+      setCurrentAddress("Erreur signal GPS");
     }
   }, [location, errorMsg]);
 
-  // RESET AUTO-START
+  // REINITIALISATION DES VERROUS SI LE STATUT DE LA COURSE CHANGE
   useEffect(() => {
-    if (currentRide?.status !== 'accepted') {
-      hasAutoStartedRef.current = false;
+    if (!currentRide) {
+      isProcessingPickupRef.current = false;
+      isProcessingDropoffRef.current = false;
+    } else if (currentRide.status === 'ongoing') {
+      isProcessingPickupRef.current = true; // Déjà à bord, on verrouille le pickup
+      isProcessingDropoffRef.current = false;
+    } else if (currentRide.status === 'accepted') {
+      isProcessingPickupRef.current = false;
+      isProcessingDropoffRef.current = false;
     }
   }, [currentRide?.status]);
 
-  // AUTO-START COURSE (GEOFENCING < 10 METRES)
+  // GEOFENCING : DETECTION AUTOMATIQUE CLIENT A BORD ET FIN DE COURSE
   useEffect(() => {
-    if (currentRide?.status === 'accepted' && location && !hasAutoStartedRef.current) {
+    if (!location || !currentRide) return;
+
+    const status = currentRide.status;
+
+    // Phase 1 : Détection d'arrivée chez le client (Pickup)
+    if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
       const lng = target?.coordinates?.[0] || target?.longitude;
@@ -121,9 +147,28 @@ const DriverHome = ({ navigation }) => {
           { latitude: Number(lat), longitude: Number(lng) }
         );
 
-        if (distance <= 10) {
-          hasAutoStartedRef.current = true;
+        if (distance <= PICKUP_RADIUS_METERS) {
+          isProcessingPickupRef.current = true;
           handleAutoStartRide();
+        }
+      }
+    }
+
+    // Phase 2 : Détection d'arrivée à destination (Dropoff)
+    if (status === 'ongoing' && !isProcessingDropoffRef.current) {
+      const target = currentRide.destination;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat && lng) {
+        const distance = MapService.calculateDistance(
+          location,
+          { latitude: Number(lat), longitude: Number(lng) }
+        );
+
+        if (distance <= DROPOFF_RADIUS_METERS) {
+          isProcessingDropoffRef.current = true;
+          handleAutoCompleteRide();
         }
       }
     }
@@ -132,13 +177,27 @@ const DriverHome = ({ navigation }) => {
   const handleAutoStartRide = async () => {
     try {
       dispatch(showSuccessToast({
-        title: "Client a bord",
+        title: "Client detecte",
         message: "Passage automatique en mode Voyage."
       }));
       await startRide({ rideId: currentRide._id }).unwrap();
     } catch (err) {
-      console.warn("[DriverHome] Erreur auto-start:", err);
-      hasAutoStartedRef.current = false;
+      console.warn("[DriverHome] Echec auto-start:", err);
+      // En cas d'échec silencieux réseau, on libère le verrou pour réessayer
+      isProcessingPickupRef.current = false;
+    }
+  };
+
+  const handleAutoCompleteRide = async () => {
+    try {
+      dispatch(showSuccessToast({
+        title: "Destination atteinte",
+        message: "Cloture automatique de la course."
+      }));
+      await completeRide({ rideId: currentRide._id }).unwrap();
+    } catch (err) {
+      console.warn("[DriverHome] Echec auto-complete:", err);
+      isProcessingDropoffRef.current = false;
     }
   };
 
@@ -148,7 +207,7 @@ const DriverHome = ({ navigation }) => {
     if (newStatus && !isDriverInZone) {
       dispatch(showErrorToast({ 
         title: 'Acces Refuse', 
-        message: 'Vous devez etre dans la zone de Mafere pour vous mettre en service.' 
+        message: 'Vous devez etre dans la zone autorisee pour vous mettre en service.' 
       }));
       return;
     }
@@ -165,15 +224,14 @@ const DriverHome = ({ navigation }) => {
       }
       
       dispatch(showSuccessToast({
-        title: actualStatus ? "EN LIGNE" : "HORS LIGNE",
+        title: actualStatus ? "En service" : "Hors ligne",
         message: actualStatus ? "Pret pour les courses." : "Mode pause active.",
       }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Echec changement statut." }));
+      dispatch(showErrorToast({ title: "Erreur système", message: "Echec de mise a jour du statut." }));
     }
   };
 
-  // ARCHITECTURE BYPASS : La carte detecte seule la ligne a tracer selon le type (pickup ou destination).
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
     
@@ -200,7 +258,6 @@ const DriverHome = ({ navigation }) => {
 
   return (
     <View style={styles.screenWrapper}>
-      
       <View style={styles.mapContainer}>
          {location ? (
            <MapCard 
@@ -215,7 +272,7 @@ const DriverHome = ({ navigation }) => {
          ) : (
            <View style={styles.loadingContainer}>
              <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-             <Text style={styles.loadingText}>Localisation...</Text>
+             <Text style={styles.loadingText}>Acquisition du signal GPS...</Text>
            </View>
          )}
       </View>
@@ -239,7 +296,6 @@ const DriverHome = ({ navigation }) => {
       )}
 
       <DriverRequestModal />
-
     </View>
   );
 };

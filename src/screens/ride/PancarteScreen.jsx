@@ -1,23 +1,33 @@
 // src/screens/ride/PancarteScreen.jsx
-// ÉCRAN DE RENCONTRE - Haute visibilité pour identification nocturne
+// ECRAN DE RENCONTRE - Haute visibilite pour identification
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSelector } from 'react-redux';
 
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
 const PancarteScreen = ({ navigation }) => {
   const user = useSelector(selectCurrentUser);
+  const currentRide = useSelector(selectCurrentRide);
   
-  const vehiclePlate = user?.vehicle?.plate || 'YÉLY';
-  const vehicleColor = user?.vehicle?.color || 'Non spécifié';
-  const vehicleModel = user?.vehicle?.model || 'Véhicule';
+  const vehiclePlate = user?.vehicle?.plate || 'NON SPECIFIE';
+  const vehicleColor = user?.vehicle?.color || 'Non specifie';
+  const vehicleModel = user?.vehicle?.model || 'Vehicule';
+
+  // Fermeture automatique de la pancarte dès que le statut passe en cours
+  // Ceci est déclenché silencieusement par le Geofencing dans DriverHome
+  useEffect(() => {
+    if (currentRide && currentRide.status === 'ongoing') {
+      navigation.goBack();
+    }
+  }, [currentRide?.status, navigation]);
 
   return (
     <SafeAreaView style={styles.container}>
@@ -30,7 +40,7 @@ const PancarteScreen = ({ navigation }) => {
       </TouchableOpacity>
 
       <View style={styles.content}>
-        <Text style={styles.instructionText}>MON IMMATRICULATION</Text>
+        <Text style={styles.instructionText}>PLAQUE D'IMMATRICULATION</Text>
         
         <View style={styles.plateContainer}>
           <Text style={styles.plateText} adjustsFontSizeToFit numberOfLines={1}>
@@ -49,7 +59,7 @@ const PancarteScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <Text style={styles.footerText}>Présentez cet écran à votre client pour faciliter la rencontre.</Text>
+        <Text style={styles.footerText}>Cet ecran se fermera automatiquement une fois le client a bord.</Text>
       </View>
     </SafeAreaView>
   );

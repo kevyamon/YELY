@@ -1,5 +1,5 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur & Clôture Sécurisée
+// PANNEAU PASSAGER - Suivi du Chauffeur & Cloture Securisee
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -67,7 +67,7 @@ const RiderRideOverlay = () => {
                <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
             </View>
             <Text style={styles.statusText}>
-              {isOngoing ? "Le chauffeur est arrivé !" : "Le chauffeur est en route"}
+              {isOngoing ? "Trajet en cours vers la destination" : "Le chauffeur est en route"}
             </Text>
           </View>
 
@@ -77,9 +77,9 @@ const RiderRideOverlay = () => {
             </View>
             
             <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yély'}</Text>
+              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yely'}</Text>
               <View style={styles.carBadge}>
-                <Text style={styles.carText}>Véhicule Assigné</Text>
+                <Text style={styles.carText}>Vehicule Assigne</Text>
               </View>
             </View>
 
