@@ -1,9 +1,9 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur en Temps Reel
+// PANNEAU PASSAGER - Suivi du Chauffeur & Clôture Sécurisée
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Dimensions, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -12,6 +12,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+import RatingModal from './RatingModal';
 
 const { width } = Dimensions.get('window');
 
@@ -20,6 +21,7 @@ const RiderRideOverlay = () => {
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
   
+  const [showRating, setShowRating] = useState(false);
   const translateY = useSharedValue(300);
 
   useEffect(() => {
@@ -28,6 +30,16 @@ const RiderRideOverlay = () => {
       easing: Easing.out(Easing.exp),
     });
   }, [translateY]);
+
+  useEffect(() => {
+    if (currentRide && currentRide.status === 'completed') {
+      setShowRating(true);
+    }
+  }, [currentRide?.status]);
+
+  const animatedStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: translateY.value }],
+  }));
 
   if (!currentRide) return null;
 
@@ -38,62 +50,75 @@ const RiderRideOverlay = () => {
     });
   };
 
-  const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ translateY: translateY.value }],
-  }));
+  const handleCloseRating = () => {
+    setShowRating(false);
+  };
 
   const isOngoing = currentRide.status === 'ongoing';
+  const isCompleted = currentRide.status === 'completed';
 
   return (
-    <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
-      
-      <View style={styles.statusBanner}>
-        <View style={styles.statusIndicator}>
-           <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
-        </View>
-        <Text style={styles.statusText}>
-          {isOngoing ? "Le chauffeur est arrive !" : "Le chauffeur est en route"}
-        </Text>
-      </View>
-
-      <View style={styles.driverInfoCard}>
-        <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
-        </View>
-        
-        <View style={styles.driverDetails}>
-          <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yely'}</Text>
-          <View style={styles.carBadge}>
-            <Text style={styles.carText}>Toyota Corolla • Grise</Text>
+    <>
+      {!isCompleted && (
+        <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
+          
+          <View style={styles.statusBanner}>
+            <View style={styles.statusIndicator}>
+               <View style={[styles.dot, isOngoing && styles.dotOngoing]} />
+            </View>
+            <Text style={styles.statusText}>
+              {isOngoing ? "Le chauffeur est arrivé !" : "Le chauffeur est en route"}
+            </Text>
           </View>
-          <Text style={styles.plateText}>CI-1234-XY</Text>
-        </View>
 
-        <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
-          <Ionicons name="call" size={24} color="#FFF" />
-        </TouchableOpacity>
-      </View>
+          <View style={styles.driverInfoCard}>
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+            </View>
+            
+            <View style={styles.driverDetails}>
+              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Yély'}</Text>
+              <View style={styles.carBadge}>
+                <Text style={styles.carText}>Véhicule Assigné</Text>
+              </View>
+            </View>
 
-      <View style={styles.routeContainer}>
-        <View style={styles.routeRow}>
-          <Ionicons name="location" size={16} color={THEME.COLORS.textSecondary} />
-          <Text style={styles.routeText} numberOfLines={1}>{currentRide.origin || 'Votre position'}</Text>
-        </View>
-        <View style={styles.routeDots} />
-        <View style={styles.routeRow}>
-          <Ionicons name="flag" size={16} color={THEME.COLORS.danger} />
-          <Text style={styles.routeText} numberOfLines={1}>{currentRide.destination || 'Destination'}</Text>
-        </View>
-      </View>
+            <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
+              <Ionicons name="call" size={24} color="#FFF" />
+            </TouchableOpacity>
+          </View>
 
-      <View style={styles.actionsContainer}>
-        <View style={styles.priceContainer}>
-          <Text style={styles.priceLabel}>Tarif convenu</Text>
-          <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
-        </View>
-      </View>
+          <View style={styles.routeContainer}>
+            <View style={styles.routeRow}>
+              <Ionicons name="location" size={16} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.routeText} numberOfLines={1}>{currentRide.origin?.address || 'Votre position'}</Text>
+            </View>
+            <View style={styles.routeDots} />
+            <View style={styles.routeRow}>
+              <Ionicons name="flag" size={16} color={THEME.COLORS.danger} />
+              <Text style={styles.routeText} numberOfLines={1}>{currentRide.destination?.address || 'Destination'}</Text>
+            </View>
+          </View>
 
-    </Animated.View>
+          <View style={styles.actionsContainer}>
+            <View style={styles.priceContainer}>
+              <Text style={styles.priceLabel}>Tarif convenu</Text>
+              <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
+            </View>
+          </View>
+
+        </Animated.View>
+      )}
+
+      {isCompleted && (
+        <RatingModal 
+          visible={showRating} 
+          rideId={currentRide._id} 
+          driverName={currentRide.driverName}
+          onClose={handleCloseRating} 
+        />
+      )}
+    </>
   );
 };
 
@@ -189,12 +214,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: THEME.COLORS.textSecondary,
     fontWeight: '600',
-  },
-  plateText: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: THEME.COLORS.champagneGold,
-    letterSpacing: 1,
   },
   callButton: {
     width: 50,
