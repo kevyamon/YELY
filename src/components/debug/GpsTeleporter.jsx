@@ -7,6 +7,7 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import MapService from '../../services/mapService';
+import socketService from '../../services/socketService';
 import { showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -23,18 +24,32 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
     return { lat: Number(lat), lng: Number(lng), type: targetType };
   };
 
+  const syncLocation = (newLocation) => {
+    setSimulatedLocation(newLocation);
+    socketService.emit('updateLocation', {
+      latitude: newLocation.latitude,
+      longitude: newLocation.longitude,
+      heading: newLocation.heading,
+      speed: newLocation.speed
+    });
+  };
+
   const teleportTo = (targetType) => {
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
 
     if (lat && lng) {
-      // Offset statique pour se placer juste a la limite du declenchement
-      setSimulatedLocation({
+      const newLocation = {
         latitude: Number(lat) + 0.00008,
         longitude: Number(lng) + 0.00008,
-        accuracy: 5, heading: 0, speed: 0
-      });
+        accuracy: 5,
+        heading: 0,
+        speed: 0
+      };
+      
+      syncLocation(newLocation);
+      
       dispatch(showSuccessToast({
         title: "Simulation System",
         message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'}`
@@ -56,26 +71,43 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       { latitude: targetInfo.lat, longitude: targetInfo.lng }
     );
 
-    // Si on est deja a moins de 3 metres, on se place exactement sur le point
     if (distance <= 3) {
-      setSimulatedLocation({
+      const exactLocation = {
         latitude: targetInfo.lat,
         longitude: targetInfo.lng,
-        accuracy: 5, heading: 0, speed: 0
-      });
+        accuracy: 5,
+        heading: 0,
+        speed: 0
+      };
+      syncLocation(exactLocation);
       return;
     }
 
-    // Interpolation lineaire pour avancer de 3 metres vers la cible
     const ratio = 3 / distance;
     const newLat = currentLat + (targetInfo.lat - currentLat) * ratio;
     const newLng = currentLng + (targetInfo.lng - currentLng) * ratio;
 
-    setSimulatedLocation({
+    const advancedLocation = {
       latitude: newLat,
       longitude: newLng,
-      accuracy: 5, heading: 0, speed: 0
-    });
+      accuracy: 5,
+      heading: 0,
+      speed: 0
+    };
+    
+    syncLocation(advancedLocation);
+  };
+
+  const resetSimulation = () => {
+    setSimulatedLocation(null);
+    if (realLocation) {
+      socketService.emit('updateLocation', {
+        latitude: realLocation.latitude,
+        longitude: realLocation.longitude,
+        heading: realLocation.heading || 0,
+        speed: realLocation.speed || 0
+      });
+    }
   };
 
   return (
@@ -93,7 +125,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
         <TouchableOpacity style={[styles.debugBtn, styles.debugBtnAdvance]} onPress={moveForward}>
           <Text style={styles.debugBtnText}>AVANCER DE 3M</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={[styles.debugBtn, styles.debugBtnReset]} onPress={() => setSimulatedLocation(null)}>
+        <TouchableOpacity style={[styles.debugBtn, styles.debugBtnReset]} onPress={resetSimulation}>
           <Text style={styles.debugBtnText}>RESTAURER GPS</Text>
         </TouchableOpacity>
       </View>

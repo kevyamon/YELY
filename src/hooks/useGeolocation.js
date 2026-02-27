@@ -1,4 +1,7 @@
 // src/hooks/useGeolocation.js
+// HOOK DE GEOLOCALISATION - Suivi en temps reel
+// CSCSM Level: Bank Grade
+
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
@@ -6,8 +9,8 @@ const useGeolocation = (options = {}) => {
   const {
     enableHighAccuracy = true,
     watchPosition = true,
-    distanceInterval = 10,
-    timeInterval = 5000,
+    distanceInterval = 5,
+    timeInterval = 3000,
   } = options;
 
   const [location, setLocation] = useState(null);
@@ -19,7 +22,7 @@ const useGeolocation = (options = {}) => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        setError('Permission refusée');
+        setError('Permission refusee');
         setIsLoading(false);
         return false;
       }
@@ -34,11 +37,13 @@ const useGeolocation = (options = {}) => {
   const getCurrentPosition = useCallback(async () => {
     try {
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.Balanced,
+        accuracy: enableHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
       });
       const coords = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
+        heading: loc.coords.heading || 0,
+        speed: loc.coords.speed || 0,
       };
       setLocation(coords);
       setIsLoading(false);
@@ -48,19 +53,47 @@ const useGeolocation = (options = {}) => {
       setIsLoading(false);
       return null;
     }
-  }, []);
+  }, [enableHighAccuracy]);
 
   useEffect(() => {
     let mounted = true;
+
     const init = async () => {
       const granted = await requestPermission();
       if (granted && mounted) {
         await getCurrentPosition();
+
+        if (watchPosition) {
+          watchRef.current = await Location.watchPositionAsync(
+            {
+              accuracy: enableHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
+              timeInterval,
+              distanceInterval,
+            },
+            (loc) => {
+              if (mounted) {
+                setLocation({
+                  latitude: loc.coords.latitude,
+                  longitude: loc.coords.longitude,
+                  heading: loc.coords.heading || 0,
+                  speed: loc.coords.speed || 0,
+                });
+              }
+            }
+          );
+        }
       }
     };
+
     init();
-    return () => { mounted = false; };
-  }, []);
+
+    return () => {
+      mounted = false;
+      if (watchRef.current) {
+        watchRef.current.remove();
+      }
+    };
+  }, [watchPosition, timeInterval, distanceInterval, enableHighAccuracy, requestPermission, getCurrentPosition]);
 
   return { location, error, isLoading };
 };

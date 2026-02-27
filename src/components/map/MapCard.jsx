@@ -228,11 +228,11 @@ const MapCard = forwardRef(({
           showsCompass={false}
           rotateEnabled={false}
           pitchEnabled={false} 
-          maxZoomLevel={18}
+          maxZoomLevel={17}
           onMapReady={handleMapReady} 
           onPress={onPress}
         >
-          <UrlTile urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL} maximumZ={19} flipY={false} shouldReplaceMapContent={true} tileSize={256} fadeDuration={0} zIndex={-1} />
+          <UrlTile urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL} maximumZ={17} flipY={false} shouldReplaceMapContent={true} tileSize={256} fadeDuration={0} zIndex={-1} />
 
           {arcCoordinates.length > 0 && (
             <Polyline coordinates={arcCoordinates} strokeColor="#D4AF37" strokeWidth={4} zIndex={50} />
@@ -326,4 +326,4 @@ const styles = StyleSheet.create({
   carMarkerBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E1E1E', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
 });
 
-export default React.memo(MapCard); 
+export default React.memo(MapCard);
