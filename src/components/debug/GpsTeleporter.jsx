@@ -52,7 +52,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       
       dispatch(showSuccessToast({
         title: "Simulation System",
-        message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'}`
+        message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`
       }));
     }
   };

@@ -38,6 +38,7 @@ const generateBezierCurve = (start, end) => {
 const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => {
   const [tracks, setTracks] = useState(true);
   useEffect(() => {
+    // Optimisation critique : desactiver le suivi apres le premier rendu pour eviter l'ecran blanc
     const timer = setTimeout(() => setTracks(false), 500);
     return () => clearTimeout(timer);
   }, []);
@@ -262,7 +263,7 @@ const MapCard = forwardRef(({
                   coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                   anchor={{ x: 0.5, y: 0.5 }} 
                   zIndex={120}
-                  tracksViewChanges={true} 
+                  tracksViewChanges={false} 
                 >
                   <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
                 </Marker>
@@ -277,7 +278,7 @@ const MapCard = forwardRef(({
                   coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                   anchor={{ x: 0.28, y: 0.85 }} 
                   zIndex={110}
-                  tracksViewChanges={true} 
+                  tracksViewChanges={false} 
                 >
                   <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
                 </Marker>
