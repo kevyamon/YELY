@@ -1,9 +1,9 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Architecture de l'Arc Doré Balistique & Zoom Autonome
+// HOME RIDER WEB - Architecture Arc Doré, Suivi Chauffeur Live & Overlay
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -11,6 +11,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
+import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassCard from '../../components/ui/GlassCard';
@@ -18,7 +19,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import useGeolocation from '../../hooks/useGeolocation';
 import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { setCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -32,7 +33,9 @@ const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  
   const user = useSelector(selectCurrentUser);
+  const currentRide = useSelector(selectCurrentRide);
   
   const { location, address } = useGeolocation();
   const currentAddress = address || 'Localisation en cours...';
@@ -47,6 +50,7 @@ const RiderHome = ({ navigation }) => {
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
+  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
@@ -64,9 +68,6 @@ const RiderHome = ({ navigation }) => {
         start: location,
         end: selectedPlace
       });
-
-      // 🚀 SUPPRESSION du zoom forcé ici. 
-      // La MapCard Web gère maintenant son propre recadrage fluide (MapAutoFitter).
       
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
@@ -79,8 +80,6 @@ const RiderHome = ({ navigation }) => {
     setDestination(null);
     setArcRoute(null);
     setSelectedVehicle(null);
-    
-    // Le retour à la position initiale est géré par la disparition du marqueur de destination.
   };
 
   const handleConfirmRide = async () => {
@@ -118,10 +117,34 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  const mapMarkers = destination ? [{
-    id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
-    title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger, type: 'destination'
-  }] : [];
+  // 🚀 ALIGNEMENT DES MARQUEURS WEB : Déclenche l'Arc Doré sur la Leaflet
+  const mapMarkers = useMemo(() => {
+    if (isRideActive && currentRide) {
+      const isOngoing = currentRide.status === 'ongoing';
+      const target = isOngoing ? currentRide.destination : currentRide.origin;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat && lng) {
+        return [{
+          id: 'destination', 
+          latitude: Number(lat), 
+          longitude: Number(lng),
+          type: 'destination',
+          iconType: isOngoing ? 'dropoff' : 'pickup'
+        }];
+      }
+      return [];
+    }
+
+    if (destination) {
+      return [{
+        id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
+        title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger, type: 'destination'
+      }];
+    }
+    return [];
+  }, [destination, isRideActive, currentRide]);
 
   const renderWebSearchControls = () => {
     if (!destination) {
@@ -159,10 +182,12 @@ const RiderHome = ({ navigation }) => {
           <MapCard
             ref={mapRef}
             location={location}
-            showUserMarker showRecenterButton 
+            driverLocation={currentRide?.driverLocation} // 🚀 Pousse la position Live du chauffeur
+            showUserMarker={true} 
+            showRecenterButton={true} 
             floating={false}
             markers={mapMarkers} 
-            route={arcRoute} 
+            route={isRideActive ? null : arcRoute} // Désactive la route statique si course active
           />
         ) : (
           <View style={styles.loadingContainer}>
@@ -182,18 +207,22 @@ const RiderHome = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <RiderBottomPanel 
-        destination={destination}
-        displayVehicles={displayVehicles}
-        selectedVehicle={selectedVehicle}
-        onSelectVehicle={setSelectedVehicle}
-        isEstimating={isEstimating}
-        estimationData={estimationData}
-        estimateError={estimateError}
-        onConfirmRide={handleConfirmRide}
-        isOrdering={isOrdering} 
-        topContent={renderWebSearchControls()} 
-      />
+      {isRideActive ? (
+        <RiderRideOverlay />
+      ) : (
+        <RiderBottomPanel 
+          destination={destination}
+          displayVehicles={displayVehicles}
+          selectedVehicle={selectedVehicle}
+          onSelectVehicle={setSelectedVehicle}
+          isEstimating={isEstimating}
+          estimationData={estimationData}
+          estimateError={estimateError}
+          onConfirmRide={handleConfirmRide}
+          isOrdering={isOrdering} 
+          topContent={renderWebSearchControls()} 
+        />
+      )}
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
@@ -208,121 +237,21 @@ const RiderHome = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    position: 'relative',
-    backgroundColor: THEME.COLORS.background,
-  },
-  mapWrapper: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F5F5F5',
-    zIndex: 1,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  topBar: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: THEME.SPACING.lg,
-    paddingBottom: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.background,
-    borderBottomLeftRadius: 36,
-    borderBottomRightRadius: 36,
-    zIndex: 10,
-    borderWidth: 2.5,
-    borderTopWidth: 0, 
-    borderColor: THEME.COLORS.champagneGold, 
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 16,
-    elevation: 15,
-  },
-  locationContainer: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassLight,
-    paddingHorizontal: THEME.SPACING.md,
-    paddingVertical: THEME.SPACING.md,
-    borderRadius: THEME.BORDERS.radius.lg,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
-    marginRight: THEME.SPACING.md,
-  },
-  locationText: {
-    color: THEME.COLORS.textPrimary,
-    marginLeft: THEME.SPACING.sm,
-    fontSize: 12,
-    flex: 1,
-  },
-  menuButton: {
-    width: 46,
-    height: 46,
-    backgroundColor: THEME.COLORS.glassDark,
-    borderRadius: 23,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-  },
-  searchCard: {
-    padding: 0,
-    borderRadius: 16,
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderColor: THEME.COLORS.border,
-  },
-  searchRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    gap: 12,
-  },
-  searchIconContainer: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  searchTextContainer: {
-    flex: 1,
-  },
-  searchLabel: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: 'bold',
-  },
-  searchHint: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
-    marginTop: 2,
-  },
-  cancelCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
-    borderColor: THEME.COLORS.danger,
-    borderWidth: 1,
-    borderRadius: 12,
-    paddingVertical: 12,
-  },
-  cancelCardText: {
-    color: THEME.COLORS.danger,
-    fontWeight: 'bold',
-    marginLeft: 8,
-    fontSize: 14,
-  }
+  container: { flex: 1, position: 'relative', backgroundColor: THEME.COLORS.background },
+  mapWrapper: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F5F5F5', zIndex: 1 },
+  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
+  topBar: { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: THEME.SPACING.lg, paddingBottom: THEME.SPACING.md, backgroundColor: THEME.COLORS.background, borderBottomLeftRadius: 36, borderBottomRightRadius: 36, zIndex: 10, borderWidth: 2.5, borderTopWidth: 0, borderColor: THEME.COLORS.champagneGold, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 15 },
+  locationContainer: { flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, paddingHorizontal: THEME.SPACING.md, paddingVertical: THEME.SPACING.md, borderRadius: THEME.BORDERS.radius.lg, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, marginRight: THEME.SPACING.md },
+  locationText: { color: THEME.COLORS.textPrimary, marginLeft: THEME.SPACING.sm, fontSize: 12, flex: 1 },
+  menuButton: { width: 46, height: 46, backgroundColor: THEME.COLORS.glassDark, borderRadius: 23, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
+  searchCard: { padding: 0, borderRadius: 16, backgroundColor: THEME.COLORS.glassSurface, borderColor: THEME.COLORS.border },
+  searchRow: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 12 },
+  searchIconContainer: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(212, 175, 55, 0.1)', justifyContent: 'center', alignItems: 'center' },
+  searchTextContainer: { flex: 1 },
+  searchLabel: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: 'bold' },
+  searchHint: { color: THEME.COLORS.textSecondary, fontSize: 11, marginTop: 2 },
+  cancelCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(231, 76, 60, 0.1)', borderColor: THEME.COLORS.danger, borderWidth: 1, borderRadius: 12, paddingVertical: 12 },
+  cancelCardText: { color: THEME.COLORS.danger, fontWeight: 'bold', marginLeft: 8, fontSize: 14 }
 });
 
 export default RiderHome;

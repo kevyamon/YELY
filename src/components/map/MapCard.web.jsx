@@ -1,5 +1,5 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT CARTE WEB - Moteur Mathématique Arc Doré & Zoom Intelligent
+// COMPOSANT CARTE WEB - Arc Doré Autonome, 🙋‍♂️ / 🏁 & Driver Live Tracking
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -40,13 +40,13 @@ const defaultIcon = L.divIcon({
   iconAnchor: [18, 18],
 });
 
-// 🚀 ANCRAGE CORRIGÉ (Comme sur mobile, on pointe le pied du drapeau)
-const destinationIcon = L.divIcon({
-  className: 'yely-destination-marker',
+// 🙋‍♂️ Icône de prise en charge
+const pickupIcon = L.divIcon({
+  className: 'yely-pickup-marker',
   html: `
     <div style="width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; position: relative;">
-      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #E74C3C; animation: yely-pulse 1.5s infinite ease-in-out;"></div>
-      <span style="color: #E74C3C; font-size: 32px; z-index: 1; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);">🚩</span>
+      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: rgba(212, 175, 55, 0.3); animation: yely-pulse 1.5s infinite ease-in-out;"></div>
+      <span style="font-size: 32px; z-index: 1; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);">🙋‍♂️</span>
       <style>
         @keyframes yely-pulse {
           0% { transform: scale(0.8); opacity: 0.3; }
@@ -57,7 +57,34 @@ const destinationIcon = L.divIcon({
     </div>
   `,
   iconSize: [50, 50],
-  iconAnchor: [15, 45], // Le pied du drapeau
+  iconAnchor: [25, 45],
+});
+
+// 🏁 Icône de destination finale
+const destinationIcon = L.divIcon({
+  className: 'yely-destination-marker',
+  html: `
+    <div style="width: 50px; height: 50px; display: flex; justify-content: center; align-items: center; position: relative;">
+      <div style="position: absolute; width: 40px; height: 40px; border-radius: 50%; background: #E74C3C; animation: yely-pulse 1.5s infinite ease-in-out;"></div>
+      <span style="color: #E74C3C; font-size: 32px; z-index: 1; text-shadow: 0px 2px 4px rgba(0,0,0,0.4);">🏁</span>
+    </div>
+  `,
+  iconSize: [50, 50],
+  iconAnchor: [25, 45],
+});
+
+// 🚙 NOUVEAU : Icône Live du Chauffeur
+const driverIcon = L.divIcon({
+  className: 'yely-driver-marker',
+  html: `
+    <div style="width: 44px; height: 44px; display: flex; justify-content: center; align-items: center;">
+      <div style="width: 36px; height: 36px; border-radius: 50%; background: #1E1E1E; border: 2px solid #D4AF37; display: flex; justify-content: center; align-items: center; box-shadow: 0px 4px 6px rgba(0,0,0,0.3);">
+        <span style="color: #D4AF37; font-size: 18px;">🚙</span>
+      </div>
+    </div>
+  `,
+  iconSize: [44, 44],
+  iconAnchor: [22, 22],
 });
 
 const generateBezierCurve = (start, end) => {
@@ -79,96 +106,88 @@ const generateBezierCurve = (start, end) => {
   return points;
 };
 
-// 🚀 NOUVEAU : Composant qui écoute l'ajout de la destination et effectue le zoom "Grand Angle"
-const MapAutoFitter = ({ location, markers }) => {
+const MapAutoFitter = ({ location, driverLocation, markers }) => {
   const map = useMap();
-  
   useEffect(() => {
     const destMarker = markers.find(m => m.type === 'destination');
     
-    if (location && destMarker) {
-      // On crée la boîte qui englobe l'utilisateur et la destination
+    // Zoom intelligent : si chauffeur en approche, on englobe Chauffeur + Cible
+    if (driverLocation && destMarker) {
+      const bounds = L.latLngBounds([
+        [driverLocation.latitude, driverLocation.longitude],
+        [destMarker.latitude, destMarker.longitude]
+      ]);
+      setTimeout(() => {
+        map.flyToBounds(bounds, { paddingTopLeft: [50, 150], paddingBottomRight: [50, 350], duration: 1.5, maxZoom: 16 });
+      }, 300);
+    } 
+    // Sinon, on englobe Client + Cible
+    else if (location && destMarker) {
       const bounds = L.latLngBounds([
         [location.latitude, location.longitude],
         [destMarker.latitude, destMarker.longitude]
       ]);
-
-      // On laisse un petit délai pour l'animation d'apparition du drapeau
       setTimeout(() => {
-        // flyToBounds effectue un zoom fluide. 
-        // paddingTopLeft: [x, y] décale le contenu vers la droite et le bas (pour le header)
-        // paddingBottomRight: [x, y] décale le contenu vers la gauche et le haut (pour le menu)
-        map.flyToBounds(bounds, {
-          paddingTopLeft: [50, 150],     // Protège le haut (Header)
-          paddingBottomRight: [50, 250], // Protège le bas (Bottom Panel)
-          duration: 1.5,                 // Animation fluide
-          maxZoom: 16                    // Empêche un zoom trop fort si les points sont proches
-        });
+        map.flyToBounds(bounds, { paddingTopLeft: [50, 150], paddingBottomRight: [50, 350], duration: 1.5, maxZoom: 16 });
       }, 300);
-    } else if (location && !destMarker) {
-       // Retour au centrage simple si on annule
+    } 
+    else if (location && !destMarker && !driverLocation) {
        map.flyTo([location.latitude, location.longitude], 15, { duration: 1 });
     }
-  }, [location, markers, map]);
-
+  }, [location, driverLocation, markers, map]);
   return null;
 };
 
 const MapCard = forwardRef(({
   location,
+  driverLocation, // 🚀
   markers = [],
   route = null, 
   showUserMarker = true,
   showRecenterButton = true,
   darkMode = true,
   onMapReady,
-  onPress,
   onMarkerPress,
   style,
-  children,
 }, ref) => {
   const mapInstanceRef = useRef(null);
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([region.latitude, region.longitude], 15, { duration: 0.8 });
-      }
+      if (mapInstanceRef.current) mapInstanceRef.current.flyTo([region.latitude, region.longitude], 15, { duration: 0.8 });
     },
-    fitToCoordinates: (coords) => {
-      // 🚀 Remplacé par la logique interne du composant MapAutoFitter
-    },
+    fitToCoordinates: () => {},
     centerOnUser: () => {
-      if (location && mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
-      }
+      if (location && mapInstanceRef.current) mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
     },
   }));
 
-  const center = [
-    location?.latitude || MAFERE_CENTER.latitude,
-    location?.longitude || MAFERE_CENTER.longitude,
-  ];
-
+  const center = [location?.latitude || MAFERE_CENTER.latitude, location?.longitude || MAFERE_CENTER.longitude];
   const leafletKmlPositions = MAFERE_KML_ZONE.map(coord => [coord.latitude, coord.longitude]);
 
+  // Calcul de l'Arc Doré
   const arcPositions = useMemo(() => {
     if (route && route.start && route.end) {
       return generateBezierCurve(route.start, route.end);
     }
+    const destMarker = markers.find(m => m.type === 'destination');
+    
+    // Si chauffeur présent, la courbe part du chauffeur vers la cible
+    if (driverLocation && destMarker) {
+      return generateBezierCurve(driverLocation, destMarker);
+    }
+    // Sinon du client vers la cible
+    if (location && destMarker) {
+      return generateBezierCurve(location, destMarker);
+    }
     return [];
-  }, [route]);
+  }, [route, location, driverLocation, markers]);
 
   return (
     <View style={[styles.container, style]}>
       <style>{`
-        .yely-golden-arc {
-          stroke-dasharray: 8, 12;
-          animation: arc-flow 1.5s linear infinite;
-        }
-        @keyframes arc-flow {
-          to { stroke-dashoffset: -40; }
-        }
+        .yely-golden-arc { stroke-dasharray: 8, 12; animation: arc-flow 1.5s linear infinite; }
+        @keyframes arc-flow { to { stroke-dashoffset: -40; } }
       `}</style>
 
       <MapContainer
@@ -181,49 +200,48 @@ const MapCard = forwardRef(({
         whenReady={() => onMapReady?.()}
       >
         <TileLayer url={darkMode ? DARK_TILE_URL : LIGHT_TILE_URL} attribution={ATTRIBUTION} maxZoom={19} />
-
-        {/* 🚀 INJECTION DU GESTIONNAIRE DE ZOOM */}
-        <MapAutoFitter location={location} markers={markers} />
+        
+        <MapAutoFitter location={location} driverLocation={driverLocation} markers={markers} />
 
         {leafletKmlPositions.length > 0 && (
-          <Polygon 
-            positions={leafletKmlPositions} 
-            pathOptions={{ color: THEME.COLORS.champagneGold, fillColor: THEME.COLORS.champagneGold, fillOpacity: 0.15, weight: 2, dashArray: '5, 5' }} 
-          />
+          <Polygon positions={leafletKmlPositions} pathOptions={{ color: THEME.COLORS.champagneGold, fillColor: THEME.COLORS.champagneGold, fillOpacity: 0.15, weight: 2, dashArray: '5, 5' }} />
         )}
 
         {showUserMarker && location && (
           <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
         )}
 
+        {/* 🚀 AFFICHE LE CHAUFFEUR SUR LA CARTE WEB */}
+        {driverLocation && (
+          <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={driverIcon} />
+        )}
+
         {markers.map((marker, index) => {
           const isDestination = marker.type === 'destination';
+          let markerIcon = defaultIcon;
+          if (isDestination) {
+            markerIcon = marker.iconType === 'pickup' ? pickupIcon : destinationIcon;
+          }
+          
           return (
             <Marker 
               key={marker.id || `marker-${index}`} 
               position={[marker.latitude, marker.longitude]} 
-              icon={isDestination ? destinationIcon : defaultIcon} 
+              icon={markerIcon} 
               eventHandlers={{ click: () => onMarkerPress?.(marker) }} 
             />
           );
         })}
 
         {arcPositions.length > 0 && (
-          <Polyline
-            positions={arcPositions}
-            pathOptions={{ color: THEME.COLORS.champagneGold, weight: 4, className: 'yely-golden-arc' }}
-          />
+          <Polyline positions={arcPositions} pathOptions={{ color: THEME.COLORS.champagneGold, weight: 4, className: 'yely-golden-arc' }} />
         )}
       </MapContainer>
 
       {showRecenterButton && (
         <TouchableOpacity
           style={styles.recenterButton}
-          onPress={() => {
-            if (location && mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
-            }
-          }}
+          onPress={() => { if (location && mapInstanceRef.current) mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 }); }}
         >
           <Ionicons name="locate-outline" size={22} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>

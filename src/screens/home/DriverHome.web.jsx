@@ -1,14 +1,15 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Dashboard complet avec Overlay de Course
+// HOME DRIVER WEB - Synchronisation des Marqueurs et Arc Autonome
+// CSCSM Level: Bank Grade
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
-import DriverRideOverlay from '../../components/ride/DriverRideOverlay'; // 🚀 NOUVEAU
+import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -17,6 +18,7 @@ import MapService from '../../services/mapService';
 import socketService from '../../services/socketService';
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -25,12 +27,15 @@ const DriverHome = ({ navigation }) => {
   const dispatch = useDispatch();
   
   const user = useSelector(selectCurrentUser);
+  const currentRide = useSelector(selectCurrentRide);
   const { location, errorMsg } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
   const scrollY = useSharedValue(0);
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+
+  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
   useEffect(() => {
     if (location && isAvailable) {
@@ -67,14 +72,35 @@ const DriverHome = ({ navigation }) => {
       
       dispatch(showSuccessToast({
         title: res.isAvailable ? "EN LIGNE" : "HORS LIGNE",
-        message: res.isAvailable ? "Prêt pour les courses." : "Mode pause activé.",
+        message: res.isAvailable ? "Prêt pour les courses." : "À bientôt!",
       }));
     } catch (err) {
       dispatch(showErrorToast({ title: "Erreur", message: "Échec changement statut." }));
     }
   };
 
-  const mapBottomPadding = 320; 
+  // 🚀 ALIGNEMENT DES MARQUEURS WEB : Déclenche l'Arc Doré sur MapCard.web
+  const mapMarkers = useMemo(() => {
+    if (!isRideActive || !currentRide) return [];
+    
+    const isOngoing = currentRide.status === 'ongoing';
+    const target = isOngoing ? currentRide.destination : currentRide.origin;
+    
+    const lat = target?.coordinates?.[1] || target?.latitude;
+    const lng = target?.coordinates?.[0] || target?.longitude;
+
+    if (lat && lng) {
+      return [{
+        id: 'destination', 
+        latitude: Number(lat), 
+        longitude: Number(lng),
+        title: target.address || "Cible", 
+        type: 'destination',
+        iconType: isOngoing ? 'dropoff' : 'pickup' // Dit à la carte web d'afficher 🙋‍♂️ ou 🏁
+      }];
+    }
+    return [];
+  }, [isRideActive, currentRide]);
 
   return (
     <View style={styles.screenWrapper}>
@@ -88,9 +114,8 @@ const DriverHome = ({ navigation }) => {
              showRecenterButton={true} 
              darkMode={false} 
              floating={false} 
-             markers={[]} 
+             markers={mapMarkers} // 🚀
              route={null} 
-             recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
            <View style={styles.loadingContainer}>
@@ -108,14 +133,15 @@ const DriverHome = ({ navigation }) => {
         onNotificationPress={() => navigation.navigate('Notifications')}
       />
 
-      {/* 🚀 PANNEAU DE COURSE EN COURS (WEB) */}
-      <DriverRideOverlay />
-
-      <SmartFooter 
-        isAvailable={isAvailable}
-        onToggle={handleToggleAvailability}
-        isToggling={isToggling}
-      />
+      {isRideActive ? (
+        <DriverRideOverlay />
+      ) : (
+        <SmartFooter 
+          isAvailable={isAvailable}
+          onToggle={handleToggleAvailability}
+          isToggling={isToggling}
+        />
+      )}
 
       <DriverRequestModal />
 
@@ -124,26 +150,10 @@ const DriverHome = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  screenWrapper: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
-  mapContainer: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: '#F5F5F5', 
-    zIndex: 1,
-  },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-  },
-  loadingText: {
-    marginTop: 10, 
-    fontSize: 12,
-    color: THEME.COLORS.textSecondary,
-  }
+  screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
+  mapContainer: { ...StyleSheet.absoluteFillObject, backgroundColor: '#F5F5F5', zIndex: 1 },
+  loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary }
 });
 
 export default DriverHome;

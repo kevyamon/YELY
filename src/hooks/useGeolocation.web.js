@@ -1,58 +1,33 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GÉOLOCALISATION WEB
+// GESTION GÉOLOCALISATION WEB - Mocking Automatique Strict (Maféré)
 // Récupère la position et traduit en adresse via API standard (Nominatim)
 
 import { useEffect, useState } from 'react';
 
+// Coordonnées exactes injectées pour les tests Web
+const EXACT_MOCK_LOCATION = {
+  latitude: 5.414702,
+  longitude: -3.028109,
+};
+
 const useGeolocation = () => {
   const [location, setLocation] = useState(null);
-  const [address, setAddress] = useState(null); // Ajout de l'état adresse
+  const [address, setAddress] = useState(null); 
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!navigator.geolocation) {
-      setError("Géolocalisation non supportée par ce navigateur.");
-      setIsLoading(false);
-      return;
-    }
-
-    const success = async (position) => {
-      const coords = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
+    // 🚀 Bypasse le vrai navigateur et applique directement le Mock
+    const applyMockLocation = async () => {
+      setLocation(EXACT_MOCK_LOCATION);
       
-      setLocation(coords);
-      
-      // Traduction immédiate (Reverse Geocoding)
-      await reverseGeocodeWeb(coords);
+      // On garde TA logique de traduction d'adresse pour que l'UI affiche bien "Maféré"
+      await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
       
       setIsLoading(false);
     };
 
-    const fail = () => {
-      setError("Accès position refusé sur le Web.");
-      setIsLoading(false);
-    };
-
-    navigator.geolocation.getCurrentPosition(success, fail);
-
-    // Optionnel : watchPosition pour le suivi en temps réel sur web
-    const watchId = navigator.geolocation.watchPosition(
-      (position) => {
-         const coords = {
-            latitude: position.coords.latitude,
-            longitude: position.coords.longitude,
-         };
-         setLocation(coords);
-         // On évite de spammer l'API de reverse geocoding à chaque mouvement sur le watch
-      },
-      () => {},
-      { enableHighAccuracy: true }
-    );
-
-    return () => navigator.geolocation.clearWatch(watchId);
+    applyMockLocation();
   }, []);
 
   // Fonction de Reverse Geocoding Web (Utilise Nominatim OpenStreetMap)
@@ -68,7 +43,6 @@ const useGeolocation = () => {
         const addr = data.address;
         
         // Construction formatée similaire à la version mobile
-        // Ex: "Plateau, Abidjan"
         const components = [
           addr.road || addr.pedestrian || addr.suburb, // Rue ou Quartier
           addr.city || addr.town || addr.village || addr.county // Ville ou Commune
