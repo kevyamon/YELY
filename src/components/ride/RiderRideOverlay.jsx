@@ -1,23 +1,34 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur, Statuts de Proximite & Timer Embarquement
+// PANNEAU PASSAGER - Suivi du Chauffeur, Statuts & Fin de Course
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  Dimensions,
+  Linking,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { clearCurrentRide, selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import RatingModal from './RatingModal';
 
 const { width } = Dimensions.get('window');
 
-// Doit etre identique a la constante dans DriverRideOverlay pour
-// que les deux overlays basculent en "Client a bord" au meme instant.
-const BOARDING_DELAY_MS = 60000;
+// Doit etre identique a BOARDING_DISPLAY_DELAY_MS dans DriverHome
+const BOARDING_DISPLAY_DELAY_MS = 60000;
 
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -30,8 +41,7 @@ const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
     Math.sin(dp / 2) * Math.sin(dp / 2) +
     Math.cos(p1) * Math.cos(p2) *
     Math.sin(dl / 2) * Math.sin(dl / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 const formatDistance = (meters) => {
@@ -40,7 +50,6 @@ const formatDistance = (meters) => {
   return `${(meters / 1000).toFixed(1)}km`;
 };
 
-// Statuts possibles de la banniere passager
 const RIDER_STATUS = {
   APPROACHING: 'approaching',
   ARRIVED: 'arrived',
@@ -66,16 +75,16 @@ const RiderRideOverlay = () => {
     });
   }, [translateY]);
 
+  // Ouverture de la modal de notation quand la course passe en 'completed'
   useEffect(() => {
     if (currentRide?.status === 'completed') {
       setShowRating(true);
     }
   }, [currentRide?.status]);
 
-  // Synchronisation du timer embarquement avec le store.
-  // arrivedAt est positionne par DriverHome quand le chauffeur arrive au pickup.
-  // Le rider et le chauffeur partagent le meme horodatage donc les transitions
-  // "Chauffeur arrive" / "Client a bord" sont parfaitement synchronisees.
+  // Synchronisation du statut d'affichage embarquement avec le store.
+  // arrivedAt partage le meme horodatage que celui pose par DriverHome,
+  // donc les transitions sont parfaitement synchronisees entre les deux appareils.
   useEffect(() => {
     if (boardingTimerRef.current) {
       clearTimeout(boardingTimerRef.current);
@@ -96,7 +105,7 @@ const RiderRideOverlay = () => {
     }
 
     const elapsed = Date.now() - arrivedAt;
-    const remaining = BOARDING_DELAY_MS - elapsed;
+    const remaining = BOARDING_DISPLAY_DELAY_MS - elapsed;
 
     if (remaining <= 0) {
       setRiderStatus(RIDER_STATUS.BOARDING);
@@ -112,20 +121,33 @@ const RiderRideOverlay = () => {
     };
   }, [currentRide?.arrivedAt, currentRide?.status]);
 
+  // Nettoyage du store apres fermeture de la modal de notation.
+  // C'est ici que le cycle de vie de la course se termine cote rider.
+  // clearCurrentRide remet isRideActive a false dans RiderHome,
+  // ce qui ferme l'overlay et retourne a l'etat de repos de la Home.
+  const handleCloseRating = () => {
+    setShowRating(false);
+    dispatch(clearCurrentRide());
+  };
+
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   if (!currentRide) return null;
 
-  const isOngoing = currentRide.status === 'ongoing';
   const isCompleted = currentRide.status === 'completed';
+  const isOngoing = currentRide.status === 'ongoing';
 
   // Distance calculee depuis la position du chauffeur vers la cible active.
-  // En phase 'accepted' : chauffeur → pickup (le rider voit le chauffeur arriver).
-  // En phase 'ongoing'  : chauffeur → destination (le rider suit le trajet).
-  const driverLat = currentRide?.driverLocation?.coordinates?.[1] || currentRide?.driverLocation?.latitude;
-  const driverLng = currentRide?.driverLocation?.coordinates?.[0] || currentRide?.driverLocation?.longitude;
+  // Phase 'accepted' : chauffeur -> pickup (rider voit le chauffeur arriver)
+  // Phase 'ongoing'  : chauffeur -> destination (rider suit la progression)
+  const driverLat =
+    currentRide?.driverLocation?.coordinates?.[1] ||
+    currentRide?.driverLocation?.latitude;
+  const driverLng =
+    currentRide?.driverLocation?.coordinates?.[0] ||
+    currentRide?.driverLocation?.longitude;
 
   const target = isOngoing ? currentRide.destination : currentRide.origin;
   const targetLat = target?.coordinates?.[1] || target?.latitude;
@@ -135,18 +157,6 @@ const RiderRideOverlay = () => {
     return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
   }, [driverLat, driverLng, targetLat, targetLng]);
 
-  const handleCallDriver = () => {
-    const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
-    Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
-    });
-  };
-
-  const handleCloseRating = () => {
-    setShowRating(false);
-  };
-
-  // Construction du label de statut affiche dans la banniere
   const resolveStatusLabel = () => {
     switch (riderStatus) {
       case RIDER_STATUS.ARRIVED:
@@ -160,7 +170,7 @@ const RiderRideOverlay = () => {
     }
   };
 
-  const resolveStatusStyle = () => {
+  const resolveDotStyle = () => {
     switch (riderStatus) {
       case RIDER_STATUS.ARRIVED:
         return styles.dotArrived;
@@ -173,6 +183,13 @@ const RiderRideOverlay = () => {
     }
   };
 
+  const handleCallDriver = () => {
+    const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
+    Linking.openURL(phoneUrl).catch(() => {
+      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
+    });
+  };
+
   return (
     <>
       {!isCompleted && (
@@ -180,7 +197,7 @@ const RiderRideOverlay = () => {
 
           <View style={styles.statusBanner}>
             <View style={styles.statusIndicator}>
-              <View style={[styles.dot, resolveStatusStyle()]} />
+              <View style={[styles.dot, resolveDotStyle()]} />
             </View>
             <Text style={styles.statusText}>{resolveStatusLabel()}</Text>
           </View>
@@ -191,7 +208,9 @@ const RiderRideOverlay = () => {
             </View>
 
             <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>{currentRide.driverName || 'Chauffeur Assigne'}</Text>
+              <Text style={styles.driverName}>
+                {currentRide.driverName || 'Chauffeur Assigne'}
+              </Text>
               <View style={styles.carBadge}>
                 <Text style={styles.carText}>Vehicule Confirme</Text>
               </View>
@@ -221,21 +240,24 @@ const RiderRideOverlay = () => {
           <View style={styles.actionsContainer}>
             <View style={styles.priceContainer}>
               <Text style={styles.priceLabel}>Montant Final</Text>
-              <Text style={styles.priceValue}>{currentRide.proposedPrice || currentRide.price} F</Text>
+              <Text style={styles.priceValue}>
+                {currentRide.proposedPrice || currentRide.price} F
+              </Text>
             </View>
           </View>
 
         </Animated.View>
       )}
 
-      {isCompleted && (
-        <RatingModal
-          visible={showRating}
-          rideId={currentRide._id}
-          driverName={currentRide.driverName}
-          onClose={handleCloseRating}
-        />
-      )}
+      {/* La modal de notation s'affiche quand status === 'completed'.
+          Sa fermeture (handleCloseRating) dispatche clearCurrentRide,
+          ce qui ferme l'overlay et retourne la Home a son etat initial. */}
+      <RatingModal
+        visible={showRating}
+        rideId={currentRide._id}
+        driverName={currentRide.driverName}
+        onClose={handleCloseRating}
+      />
     </>
   );
 };

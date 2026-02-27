@@ -1,6 +1,5 @@
 // src/hooks/useSocketEvents.js
-// ÉCOUTEURS SOCKET - Gestion stricte des flux et Télémétrie GPS
-// CSCSM Level: Bank Grade
+// ECOUTEURS SOCKET - Gestion stricte des flux et Telemetrie GPS
 
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -12,7 +11,7 @@ import {
   setCurrentRide,
   setIncomingRide,
   updateDriverLocation,
-  updateRideStatus
+  updateRideStatus,
 } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
@@ -26,9 +25,9 @@ const useSocketEvents = () => {
     const handleRideCancelled = (data) => {
       dispatch(clearCurrentRide());
       dispatch(clearIncomingRide());
-      dispatch(showErrorToast({ 
-        title: 'Course annulée', 
-        message: data?.reason || 'Cette course a été annulée.' 
+      dispatch(showErrorToast({
+        title: 'Course annulee',
+        message: data?.reason || 'Cette course a ete annulee.',
       }));
     };
 
@@ -45,58 +44,63 @@ const useSocketEvents = () => {
     const handleProposalAccepted = (data) => {
       dispatch(setCurrentRide({ ...data, status: 'accepted' }));
       dispatch(clearIncomingRide());
-      dispatch(showSuccessToast({ 
-        title: 'Course confirmée', 
-        message: 'Le client a accepté votre tarif. En route !' 
+      dispatch(showSuccessToast({
+        title: 'Course confirmee',
+        message: 'Le client a accepte votre tarif. En route !',
       }));
     };
 
     const handleProposalRejected = () => {
       dispatch(clearIncomingRide());
-      dispatch(showErrorToast({ 
-        title: 'Prix refusé', 
-        message: 'Le client a décliné votre proposition.' 
+      dispatch(showErrorToast({
+        title: 'Prix refuse',
+        message: 'Le client a decline votre proposition.',
       }));
     };
 
     const handleDriverFound = (data) => {
-      dispatch(updateRideStatus({ 
-        status: 'negotiating', 
-        driverName: data?.driverName || 'Un chauffeur' 
+      dispatch(updateRideStatus({
+        status: 'negotiating',
+        driverName: data?.driverName || 'Un chauffeur',
       }));
     };
 
     const handlePriceProposal = (data) => {
-      dispatch(setCurrentRide({ 
-        proposedPrice: data.amount, 
-        driverName: data.driverName, 
-        status: 'negotiating' 
+      dispatch(setCurrentRide({
+        proposedPrice: data.amount,
+        driverName: data.driverName,
+        status: 'negotiating',
       }));
     };
 
     const handleRideStarted = (data) => {
-      dispatch(updateRideStatus({ 
-        status: 'ongoing', 
-        startedAt: data.startedAt 
+      dispatch(updateRideStatus({
+        status: 'ongoing',
+        startedAt: data.startedAt,
       }));
     };
 
+    // Ne pas clearCurrentRide ici.
+    // Les overlays (RiderRideOverlay, DriverRideOverlay) observent le passage
+    // a 'completed' dans le store et gerent chacun leur propre cycle de fin :
+    // notation cote rider, toast + nettoyage cote chauffeur.
+    // clearCurrentRide est dispatche par les overlays apres que l'utilisateur
+    // a termine son interaction (fermeture modal notation ou fin auto chauffeur).
     const handleRideCompleted = (data) => {
-      dispatch(updateRideStatus({ 
-        status: 'completed', 
-        finalPrice: data.finalPrice 
+      dispatch(updateRideStatus({
+        status: 'completed',
+        finalPrice: data?.finalPrice,
       }));
     };
 
     const handleSearchTimeout = (data) => {
-      dispatch(clearCurrentRide()); 
-      dispatch(showErrorToast({ 
-        title: 'Recherche expirée', 
-        message: data?.message || "Aucun chauffeur n'est disponible dans votre zone." 
+      dispatch(clearCurrentRide());
+      dispatch(showErrorToast({
+        title: 'Recherche expiree',
+        message: data?.message || "Aucun chauffeur n'est disponible dans votre zone.",
       }));
     };
 
-    // NOUVEL ÉCOUTEUR : Capte la position du chauffeur relayée par le serveur
     const handleDriverLocationUpdate = (data) => {
       if (data && data.latitude && data.longitude) {
         dispatch(updateDriverLocation(data));

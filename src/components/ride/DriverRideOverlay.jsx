@@ -1,11 +1,25 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Statuts de Proximite & Timer Embarquement
+// PANNEAU CHAUFFEUR - Guidage, Statuts de Proximite & Affichage Embarquement
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Dimensions, Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { Easing, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
+import {
+  Dimensions,
+  Linking,
+  Modal,
+  Platform,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+} from 'react-native';
+import Animated, {
+  Easing,
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -15,8 +29,8 @@ import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
-// Delai en ms avant de passer de "Chauffeur arrive" a "Client a bord"
-const BOARDING_DELAY_MS = 60000;
+// Doit etre identique a BOARDING_DISPLAY_DELAY_MS dans DriverHome
+const BOARDING_DISPLAY_DELAY_MS = 60000;
 
 const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
@@ -29,59 +43,48 @@ const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
     Math.sin(dp / 2) * Math.sin(dp / 2) +
     Math.cos(p1) * Math.cos(p2) *
     Math.sin(dl / 2) * Math.sin(dl / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// Statuts possibles de la banniere chauffeur
 const DRIVER_STATUS = {
-  APPROACHING: 'approaching',   // En route vers le client
-  ARRIVED: 'arrived',           // A moins de 15m du client
-  BOARDING: 'boarding',         // Client monte (60s ecoule)
-  ONGOING: 'ongoing',           // Trajet en cours vers destination
+  APPROACHING: 'approaching',
+  ARRIVED: 'arrived',
+  BOARDING: 'boarding',
+  ONGOING: 'ongoing',
 };
 
-const resolveBannerConfig = (status) => {
-  switch (status) {
-    case DRIVER_STATUS.ARRIVED:
-      return {
-        label: 'Chauffeur arrive',
-        dotStyle: 'dotArrived',
-        containerStyle: 'passiveStatusArrived',
-        distanceLabel: 'En attente du client...',
-      };
-    case DRIVER_STATUS.BOARDING:
-      return {
-        label: 'Client a bord',
-        dotStyle: 'dotBoarding',
-        containerStyle: 'passiveStatusBoarding',
-        distanceLabel: 'Depart imminent',
-      };
-    case DRIVER_STATUS.ONGOING:
-      return {
-        label: 'TRAJET EN COURS',
-        dotStyle: 'dotOngoing',
-        containerStyle: 'passiveStatusOngoing',
-        distanceLabel: null,
-      };
-    default:
-      return {
-        label: 'EN APPROCHE',
-        dotStyle: null,
-        containerStyle: null,
-        distanceLabel: null,
-      };
-  }
+const BANNER_CONFIG = {
+  [DRIVER_STATUS.APPROACHING]: {
+    label: 'EN APPROCHE',
+    dotStyle: null,
+    containerStyle: null,
+  },
+  [DRIVER_STATUS.ARRIVED]: {
+    label: 'Chauffeur arrive',
+    dotStyle: 'dotArrived',
+    containerStyle: 'passiveStatusArrived',
+    subLabel: 'En attente du client...',
+  },
+  [DRIVER_STATUS.BOARDING]: {
+    label: 'Client a bord',
+    dotStyle: 'dotBoarding',
+    containerStyle: 'passiveStatusBoarding',
+    subLabel: 'Depart imminent...',
+  },
+  [DRIVER_STATUS.ONGOING]: {
+    label: 'TRAJET EN COURS',
+    dotStyle: 'dotOngoing',
+    containerStyle: 'passiveStatusOngoing',
+  },
 };
 
 const DriverRideOverlay = () => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const navigation = useNavigation();
-  const currentRide = useSelector(selectCurrentRide);
 
-  // Position effective du chauffeur publiee par DriverHome dans le store.
-  // Garantit que cet overlay voit la position simulee en dev, GPS reel en prod.
+  const currentRide = useSelector(selectCurrentRide);
+  // Position effective publiee par DriverHome (simulee en dev, GPS reel en prod)
   const effectiveLocation = useSelector(selectEffectiveLocation);
 
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
@@ -104,10 +107,9 @@ const DriverRideOverlay = () => {
     }
   }, [currentRide?.status, localStatus]);
 
-  // Gestion du timer d'embarquement.
-  // Quand arrivedAt est positionne dans le store (le chauffeur est arrive au pickup),
-  // on calcule le temps ecoule et on planifie la transition "Client a bord"
-  // pour le temps restant. Cela resiste a un re-mount du composant.
+  // Gestion du statut d'affichage embarquement.
+  // arrivedAt est pose par DriverHome quand le chauffeur arrive au pickup.
+  // Ce composant ne fait qu'afficher — le depart reel est pilote par DriverHome.
   useEffect(() => {
     if (boardingTimerRef.current) {
       clearTimeout(boardingTimerRef.current);
@@ -128,7 +130,7 @@ const DriverRideOverlay = () => {
     }
 
     const elapsed = Date.now() - arrivedAt;
-    const remaining = BOARDING_DELAY_MS - elapsed;
+    const remaining = BOARDING_DISPLAY_DELAY_MS - elapsed;
 
     if (remaining <= 0) {
       setDriverStatus(DRIVER_STATUS.BOARDING);
@@ -152,7 +154,6 @@ const DriverRideOverlay = () => {
 
   const isOngoing = localStatus === 'ongoing';
   const target = isOngoing ? currentRide.destination : currentRide.origin;
-
   const targetLat = target?.coordinates?.[1] || target?.latitude;
   const targetLng = target?.coordinates?.[0] || target?.longitude;
 
@@ -165,7 +166,12 @@ const DriverRideOverlay = () => {
     );
   }, [effectiveLocation, targetLat, targetLng]);
 
-  const bannerConfig = resolveBannerConfig(driverStatus);
+  const bannerConfig = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
+
+  const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
+  const distanceLabel = isApproaching && distanceToTarget !== Infinity
+    ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)`
+    : bannerConfig.subLabel || null;
 
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
@@ -195,20 +201,6 @@ const DriverRideOverlay = () => {
     });
   };
 
-  const handleAcceptGps = () => {
-    setShowNavModal(false);
-    handleOpenGPS();
-  };
-
-  const openPancarte = () => {
-    navigation.navigate('Pancarte');
-  };
-
-  const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
-  const distanceLabel = isApproaching && distanceToTarget !== Infinity
-    ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)`
-    : bannerConfig.distanceLabel;
-
   return (
     <>
       <Modal visible={showNavModal} transparent={true} animationType="fade">
@@ -220,15 +212,21 @@ const DriverRideOverlay = () => {
 
             <Text style={styles.modalTitle}>Course Acceptee</Text>
             <Text style={styles.modalSubtitle}>
-              Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe pour vous y rendre ?
+              Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe ?
             </Text>
 
-            <TouchableOpacity style={styles.modalGpsButton} onPress={handleAcceptGps}>
+            <TouchableOpacity
+              style={styles.modalGpsButton}
+              onPress={() => { setShowNavModal(false); handleOpenGPS(); }}
+            >
               <Ionicons name="navigate" size={20} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
               <Text style={styles.modalGpsButtonText}>Lancer le GPS</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.modalDismissButton} onPress={() => setShowNavModal(false)}>
+            <TouchableOpacity
+              style={styles.modalDismissButton}
+              onPress={() => setShowNavModal(false)}
+            >
               <Text style={styles.modalDismissText}>Je connais l'endroit</Text>
             </TouchableOpacity>
           </View>
@@ -239,7 +237,7 @@ const DriverRideOverlay = () => {
 
         <View style={styles.statusBanner}>
           <View style={styles.statusIndicator}>
-            <View style={[styles.dot, styles[bannerConfig.dotStyle]]} />
+            <View style={[styles.dot, bannerConfig.dotStyle && styles[bannerConfig.dotStyle]]} />
           </View>
           <Text style={styles.statusText}>
             {isOngoing ? 'Direction Destination' : 'Aller chercher le client'}
@@ -261,7 +259,10 @@ const DriverRideOverlay = () => {
 
           <View style={styles.topActionsGroup}>
             {!isOngoing && (
-              <TouchableOpacity style={styles.pancarteButton} onPress={openPancarte}>
+              <TouchableOpacity
+                style={styles.pancarteButton}
+                onPress={() => navigation.navigate('Pancarte')}
+              >
                 <Ionicons name="tablet-landscape" size={20} color={THEME.COLORS.champagneGold} />
               </TouchableOpacity>
             )}
