@@ -1,3 +1,7 @@
+// src/store/api/ridesApiSlice.js
+// GESTIONNAIRE D'API RIDES - Optimistic Updates (Zero Latency UI)
+// CSCSM Level: Bank Grade
+
 import { apiSlice } from '../slices/apiSlice';
 
 export const ridesApiSlice = apiSlice.injectEndpoints({
@@ -45,6 +49,21 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      // ⚡ OPTIMISTIC UPDATE : Mise à jour instantanée de l'interface avant la réponse serveur
+      async onQueryStarted({ rideId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
+            if (draft && (draft._id === rideId || draft.id === rideId || draft.rideId === rideId)) {
+              draft.status = 'ongoing';
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo(); // Rollback automatique en cas d'erreur réseau
+        }
+      },
       invalidatesTags: ['Ride'],
     }),
     
@@ -54,6 +73,21 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
+      // ⚡ OPTIMISTIC UPDATE : Clôture instantanée
+      async onQueryStarted({ rideId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
+            if (draft && (draft._id === rideId || draft.id === rideId || draft.rideId === rideId)) {
+              draft.status = 'completed';
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
       invalidatesTags: ['Ride'],
     }),
 
