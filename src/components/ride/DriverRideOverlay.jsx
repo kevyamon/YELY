@@ -1,5 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Hooks Sécurisés
+// PANNEAU CHAUFFEUR - Guidage, Interstitial GPS & Hooks Securises
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -87,7 +87,7 @@ const DriverRideOverlay = () => {
       return;
     }
 
-    const label = encodeURIComponent(isOngoing ? "Destination Yély" : "Client Yély");
+    const label = encodeURIComponent(isOngoing ? "Destination Yely" : "Client Yely");
     const url = Platform.select({
       ios: `maps:0,0?q=${label}&ll=${targetLat},${targetLng}`,
       android: `geo:0,0?q=${targetLat},${targetLng}(${label})`
@@ -106,18 +106,25 @@ const DriverRideOverlay = () => {
   const handlePrimaryAction = async () => {
     if (!isNearTarget && !isOngoing) {
       dispatch(showErrorToast({ 
-        title: "Action bloquée", 
-        message: `Vous êtes à ${Math.round(distanceToTarget)}m du client. Approchez-vous à moins de 50m pour valider la prise en charge.` 
+        title: "Action bloquee", 
+        message: `Vous etes a ${Math.round(distanceToTarget)}m du client. Approchez-vous a moins de 50m pour valider la prise en charge.` 
       }));
+      return;
+    }
+
+    const targetRideId = currentRide._id || currentRide.rideId || currentRide.id;
+
+    if (!targetRideId) {
+      dispatch(showErrorToast({ title: "Erreur système", message: "L'identifiant de la course est introuvable." }));
       return;
     }
 
     try {
       if (!isOngoing) {
-        await startRide({ rideId: currentRide._id }).unwrap();
+        await startRide({ rideId: targetRideId }).unwrap();
         handleOpenGPS(); 
       } else {
-        await completeRide({ rideId: currentRide._id }).unwrap();
+        await completeRide({ rideId: targetRideId }).unwrap();
       }
     } catch (error) {
       dispatch(showErrorToast({ 
@@ -140,7 +147,7 @@ const DriverRideOverlay = () => {
               <Ionicons name="checkmark-circle" size={50} color={THEME.COLORS.success} />
             </View>
             
-            <Text style={styles.modalTitle}>Course Acceptée</Text>
+            <Text style={styles.modalTitle}>Course Acceptee</Text>
             <Text style={styles.modalSubtitle}>
               Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe pour vous y rendre ?
             </Text>
@@ -174,10 +181,10 @@ const DriverRideOverlay = () => {
           </View>
           
           <View style={styles.riderDetails}>
-            <Text style={styles.riderName}>{currentRide.riderName || 'Client Yély'}</Text>
+            <Text style={styles.riderName}>{currentRide.riderName || 'Client Yely'}</Text>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-              <Text style={styles.ratingText}>Client vérifié</Text>
+              <Text style={styles.ratingText}>Client verifie</Text>
             </View>
           </View>
 
@@ -202,7 +209,7 @@ const DriverRideOverlay = () => {
           </View>
           {!isOngoing && (
             <Text style={styles.distanceMetric}>
-              Distance restante : {distanceToTarget === Infinity ? "Calcul..." : `${Math.round(distanceToTarget)} mètres`}
+              Distance restante : {distanceToTarget === Infinity ? "Calcul..." : `${Math.round(distanceToTarget)} metres`}
             </Text>
           )}
         </View>
@@ -226,7 +233,7 @@ const DriverRideOverlay = () => {
             activeOpacity={0.8}
           >
             <Text style={styles.primaryActionText}>
-              {isProcessing ? "TRAITEMENT..." : (isOngoing ? "TERMINER LA COURSE" : "CLIENT À BORD")}
+              {isProcessing ? "TRAITEMENT..." : (isOngoing ? "TERMINER LA COURSE" : "CLIENT A BORD")}
             </Text>
           </TouchableOpacity>
         </View>
@@ -274,4 +281,4 @@ const styles = StyleSheet.create({
   primaryActionText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 15, letterSpacing: 1 },
 });
 
-export default DriverRideOverlay; 
+export default DriverRideOverlay;
