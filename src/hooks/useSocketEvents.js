@@ -4,14 +4,15 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { selectIsAuthenticated } from '../store/slices/authSlice';
+import { selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
   clearCurrentRide,
   clearIncomingRide,
   setCurrentRide,
   setIncomingRide,
+  setRideToRate,
   updateDriverLocation,
-  updateRideStatus,
+  updateRideStatus
 } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
@@ -80,32 +81,27 @@ const useSocketEvents = () => {
       }));
     };
 
-    // Ne pas clearCurrentRide ici.
-    // Les overlays (RiderRideOverlay, DriverRideOverlay) observent le passage
-    // a 'completed' dans le store et gerent chacun leur propre cycle de fin :
-    // notation cote rider, toast + nettoyage cote chauffeur.
-    // clearCurrentRide est dispatche par les overlays apres que l'utilisateur
-    // a termine son interaction (fermeture modal notation ou fin auto chauffeur).
+    // Nettoyage centralise et absolu de la fin de course
     const handleRideCompleted = (data) => {
-      dispatch(updateRideStatus({
-        status: 'completed',
-        finalPrice: data?.finalPrice,
-      }));
+      dispatch(setRideToRate(data));
+      
+      if (data?.stats) {
+        dispatch(updateUserInfo({
+          totalRides: data.stats.totalRides,
+          totalEarnings: data.stats.totalEarnings,
+          rating: data.stats.rating
+        }));
+      }
+
+      dispatch(clearCurrentRide());
     };
 
-    // Unification des deux chemins de changement d'etat :
-    // - rideController (REST) emet 'ride_completed' et 'ride_started' directement
-    // - rideService (GPS auto-complete) emet 'ride_status_update' avec { status, ride }
-    // Ce handler unifie la reception pour garantir que les transitions GPS
-    // (arrived, ongoing, completed) sont bien repercutees dans le store.
     const handleRideStatusUpdate = (data) => {
       if (!data?.status) return;
 
       if (data.status === 'completed') {
-        dispatch(updateRideStatus({
-          status: 'completed',
-          finalPrice: data?.ride?.price,
-        }));
+        dispatch(setRideToRate(data.ride || data));
+        dispatch(clearCurrentRide());
         return;
       }
 

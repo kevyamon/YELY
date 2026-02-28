@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Architecture Arc Doré, Suivi Chauffeur Live & Overlay
+// HOME RIDER WEB - Architecture Arc Dore, Suivi Chauffeur Live & Overlay
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,6 +10,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import RatingModal from '../../components/ride/RatingModal';
 import RiderBottomPanel from '../../components/ride/RiderBottomPanel';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
@@ -19,7 +20,7 @@ import GlassCard from '../../components/ui/GlassCard';
 import useGeolocation from '../../hooks/useGeolocation';
 import { useLazyEstimateRideQuery, useRequestRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, selectRideToRate, setCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -36,6 +37,7 @@ const RiderHome = ({ navigation }) => {
   
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
+  const rideToRate = useSelector(selectRideToRate);
   
   const { location, address } = useGeolocation();
   const currentAddress = address || 'Localisation en cours...';
@@ -59,6 +61,18 @@ const RiderHome = ({ navigation }) => {
     }
   }, [destination, displayVehicles, selectedVehicle]);
 
+  // Nettoyage reactif post-course (Parite stricte avec l'environnement mobile)
+  useEffect(() => {
+    if (rideToRate) {
+      setDestination(null);
+      setArcRoute(null);
+      setSelectedVehicle(null);
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.centerOnUser();
+      }, 300);
+    }
+  }, [rideToRate]);
+
   const handleDestinationSelect = async (selectedPlace) => {
     setDestination(selectedPlace);
     setSelectedVehicle(null);
@@ -80,6 +94,10 @@ const RiderHome = ({ navigation }) => {
     setDestination(null);
     setArcRoute(null);
     setSelectedVehicle(null);
+    
+    if (location && mapRef.current) {
+      mapRef.current.centerOnUser();
+    }
   };
 
   const handleConfirmRide = async () => {
@@ -117,10 +135,6 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // Markers actifs selon la phase de course (parite avec RiderHome.jsx natif) :
-  // - Hors course : destination choisie (apercu du trajet, arc depuis le rider)
-  // - Phase 'accepted' : origin du rider (pickup = bonhomme bleu) → arc depuis driverLocation → pickup
-  // - Phase 'ongoing'  : destination de la course (drapeau pulse) → arc depuis driverLocation → destination
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
       const isOngoing = currentRide.status === 'ongoing';
@@ -138,7 +152,6 @@ const RiderHome = ({ navigation }) => {
         }];
       }
 
-      // Phase accepted : le chauffeur vient chercher le rider, cible = pickup (origin)
       const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
       const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
       if (!originLat || !originLng) return [];
@@ -163,7 +176,6 @@ const RiderHome = ({ navigation }) => {
     return [];
   }, [destination, isRideActive, currentRide]);
 
-  // Position du chauffeur normalisee pour la carte
   const driverLocationObj = currentRide?.driverLocation;
   const driverLatLng = driverLocationObj
     ? {
@@ -171,7 +183,6 @@ const RiderHome = ({ navigation }) => {
         longitude: driverLocationObj?.coordinates?.[0] ?? driverLocationObj?.longitude,
       }
     : null;
-
 
   const renderWebSearchControls = () => {
     if (!destination) {
@@ -258,6 +269,7 @@ const RiderHome = ({ navigation }) => {
       />
 
       <RiderWaitModal />
+      <RatingModal />
 
     </View>
   );

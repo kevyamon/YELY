@@ -20,7 +20,6 @@ import { useCompleteRideMutation, useStartRideMutation } from '../../store/api/r
 import { useUpdateAvailabilityMutation } from '../../store/api/usersApiSlice';
 import { selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import {
-  clearCurrentRide,
   selectCurrentRide,
   setEffectiveLocation,
   updateRideStatus,
@@ -33,12 +32,9 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 const PICKUP_RADIUS_METERS = 10;
 const DROPOFF_RADIUS_METERS = 10;
 
-// Duree du statut "Client a bord" avant declenchement automatique du depart (ms)
 const BOARDING_DISPLAY_DELAY_MS = 60000;
 const BOARDING_GRACE_DELAY_MS = 20000;
 const TOTAL_BOARDING_TO_START_MS = BOARDING_DISPLAY_DELAY_MS + BOARDING_GRACE_DELAY_MS;
-
-const POST_COMPLETION_CLEANUP_DELAY_MS = 3000;
 
 const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
@@ -47,7 +43,6 @@ const DriverHome = ({ navigation }) => {
   const isProcessingPickupRef = useRef(false);
   const isProcessingDropoffRef = useRef(false);
   const boardingStartTimerRef = useRef(null);
-  const completionCleanupTimerRef = useRef(null);
 
   const dispatch = useDispatch();
 
@@ -198,49 +193,18 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // --- ECOUTE DU SIGNAL DE FIN DE COURSE (BACKEND) ---
+  // Vaccin Anti-Blocage GPS : Si la course est purgee, on coupe le Fake GPS
+  // pour que la carte revienne immediatement a la vraie position physique.
   useEffect(() => {
-    const handleRideCompleted = (data) => {
-      if (currentRide && currentRide.status !== 'completed') {
-        dispatch(updateRideStatus({ status: 'completed' }));
-        // Rafraichissement silencieux des gains si fournis par le socket
-        if (data && data.stats) {
-          dispatch(updateUserInfo({ 
-            totalRides: data.stats.totalRides,
-            totalEarnings: data.stats.totalEarnings,
-            rating: data.stats.rating
-          }));
-        }
+    if (!currentRide) {
+      if (simulatedLocation) {
+        setSimulatedLocation(null);
       }
-    };
-
-    socketService.on('ride_completed', handleRideCompleted);
-    return () => socketService.off('ride_completed', handleRideCompleted);
-  }, [currentRide, dispatch]);
-
-  useEffect(() => {
-    if (completionCleanupTimerRef.current) {
-      clearTimeout(completionCleanupTimerRef.current);
-      completionCleanupTimerRef.current = null;
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.centerOnUser();
+      }, 300);
     }
-
-    if (currentRide?.status === 'completed') {
-      dispatch(showSuccessToast({
-        title: 'Course terminee',
-        message: 'Bien joue ! Vous etes de nouveau disponible.',
-      }));
-
-      completionCleanupTimerRef.current = setTimeout(() => {
-        dispatch(clearCurrentRide());
-      }, POST_COMPLETION_CLEANUP_DELAY_MS);
-    }
-
-    return () => {
-      if (completionCleanupTimerRef.current) {
-        clearTimeout(completionCleanupTimerRef.current);
-      }
-    };
-  }, [currentRide?.status, dispatch]);
+  }, [currentRide]);
 
   useEffect(() => {
     if (!location || !currentRide) return;

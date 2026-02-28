@@ -13,14 +13,13 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
-import socketService from '../../services/socketService';
 import {
   useLazyEstimateRideQuery,
   useRequestRideMutation
 } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { clearCurrentRide, selectCurrentRide, setCurrentRide, setRideToRate } from '../../store/slices/rideSlice';
-import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import { selectCurrentRide, selectRideToRate, setCurrentRide } from '../../store/slices/rideSlice';
+import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -35,6 +34,7 @@ const RiderHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
+  const rideToRate = useSelector(selectRideToRate);
   
   const { location, errorMsg } = useGeolocation(); 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -78,29 +78,16 @@ const RiderHome = ({ navigation }) => {
     }
   }, [destination, displayVehicles, selectedVehicle]);
 
-  // --- ECOUTE DU SIGNAL DE FIN DE COURSE (BACKEND) ---
+  // Nettoyage reactif post-course
   useEffect(() => {
-    const handleRideCompleted = (data) => {
-      dispatch(setRideToRate(data));
-      dispatch(clearCurrentRide());
+    if (rideToRate) {
       setDestination(null);
       setSelectedVehicle(null);
-      
-      dispatch(showSuccessToast({
-        title: 'Course terminee',
-        message: 'Vous etes arrive a destination.'
-      }));
-
-      if (mapRef.current) {
-        mapRef.current.centerOnUser();
-      }
-    };
-
-    socketService.on('ride_completed', handleRideCompleted);
-    return () => {
-      socketService.off('ride_completed', handleRideCompleted);
-    };
-  }, [dispatch]);
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.centerOnUser();
+      }, 300);
+    }
+  }, [rideToRate]);
 
   const handleDestinationSelect = async (selectedPlace) => {
     if (!isLocationInMafereZone(selectedPlace)) {

@@ -68,6 +68,15 @@ const DriverHome = ({ navigation }) => {
     }
   }, [currentRide?.status]);
 
+  // Surveillance post-course : Recentrage automatique de la camera a la fin
+  useEffect(() => {
+    if (!currentRide) {
+      setTimeout(() => {
+        if (mapRef.current) mapRef.current.centerOnUser();
+      }, 300);
+    }
+  }, [currentRide]);
+
   useEffect(() => {
     if (currentRide?.status === 'accepted' && location && !hasAutoStartedRef.current) {
       const target = currentRide.origin;
@@ -121,10 +130,6 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // Markers selon la phase de course (parite avec DriverHome.jsx natif) :
-  // Phase 'accepted'  : marker 'pickup' (bonhomme bleu pulse) → arc chauffeur → pickup
-  // Phase 'ongoing'   : marker 'pickup_origin' (point dore repere) + 'destination' (drapeau pulse)
-  //                     Arc depuis la position courante du chauffeur (location) → destination
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
