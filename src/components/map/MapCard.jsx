@@ -212,6 +212,9 @@ const MapCard = forwardRef(({
 
   // Reference vers le timer d'animation pour nettoyage propre.
   const drawIntervalRef = useRef(null);
+  // Verrou de dessin : empeche le nettoyage du trace par le GPS pendant l'animation initiale.
+  const isDrawingRouteRef = useRef(false);
+
   // Ensemble complet des points de la route calculee (reference interne non-state).
   // Permet de "consommer" le trace au fur et a mesure sans recalculer OSRM.
   const fullRoutePointsRef = useRef([]);
@@ -227,12 +230,13 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // Arrete proprement toute animation de dessin en cours.
+  // Arrete proprement toute animation de dessin en cours et leve le verrou.
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
       clearInterval(drawIntervalRef.current);
       drawIntervalRef.current = null;
     }
+    isDrawingRouteRef.current = false;
   }, []);
 
   // Lance l'animation de dessin progressif d'un tableau de points de route.
@@ -243,6 +247,7 @@ const MapCard = forwardRef(({
 
     if (!fullPoints || fullPoints.length === 0) return;
 
+    isDrawingRouteRef.current = true;
     let revealedCount = 0;
     const stepSize = computeStepSize(fullPoints.length);
 
@@ -293,20 +298,6 @@ const MapCard = forwardRef(({
 
   // Observateur principal du trace (architecture bypass Android).
   // La carte determine elle-meme quels points relier, sans instruction du parent.
-  //
-  // Logique de selection du trace :
-  //
-  // Phase 'accepted' (marqueur 'pickup') :
-  //   trace : position conducteur/utilisateur → pickup (bonhomme bleu)
-  //   Recalcul OSRM si : premiere fois, destination changee, ou deviation >DEVIATION_THRESHOLD
-  //   Reduction du trace si : deplacement simple sur la route
-  //
-  // Phase 'ongoing' (marqueurs 'pickup_origin' + 'destination') :
-  //   trace : position conducteur (location) → destination (drapeau)
-  //   Meme logique de recalcul et de reduction
-  //
-  // Phase rider sans course active (marqueur 'destination' seul) :
-  //   trace : position utilisateur → destination (apercu)
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
@@ -346,10 +337,13 @@ const MapCard = forwardRef(({
     // Cas 2 : Deviation trop importante → re-routage (comportement Google Maps)
     const deviationDist = distanceToRoute(currentLat, currentLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
-      fetchAndStoreRoute(
-        { latitude: currentLat, longitude: currentLng },
-        { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
-      );
+      // Blocage de re-routage intempestif si la ligne est encore en cours de dessin initial
+      if (!isDrawingRouteRef.current) {
+        fetchAndStoreRoute(
+          { latitude: currentLat, longitude: currentLng },
+          { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
+        );
+      }
       return;
     }
 
@@ -360,8 +354,11 @@ const MapCard = forwardRef(({
       : REROUTE_THRESHOLD_METERS + 1;
 
     if (movedDist >= REROUTE_THRESHOLD_METERS) {
-      lastRouteOriginRef.current = { latitude: currentLat, longitude: currentLng };
-      trimRouteFromCurrentPosition(currentLat, currentLng);
+      // On ne coupe pas la ligne si l'animation est en cours pour eviter un trace tronque par le bruit GPS
+      if (!isDrawingRouteRef.current) {
+        lastRouteOriginRef.current = { latitude: currentLat, longitude: currentLng };
+        trimRouteFromCurrentPosition(currentLat, currentLng);
+      }
     }
   }, [location, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
 

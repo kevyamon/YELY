@@ -84,8 +84,6 @@ const DriverHome = ({ navigation }) => {
   }, [user?.isAvailable]);
 
   // --- PUBLICATION DE LA POSITION EFFECTIVE DANS LE STORE ---
-  // DriverRideOverlay lit ce selecteur pour afficher la bonne distance,
-  // qu'il s'agisse du GPS reel ou d'une simulation de teleportation.
   useEffect(() => {
     if (location) {
       dispatch(setEffectiveLocation({
@@ -170,10 +168,6 @@ const DriverHome = ({ navigation }) => {
   }, [currentRide?.status]);
 
   // --- TIMER D'EMBARQUEMENT : DEPART AUTOMATIQUE ---
-  // Quand arrivedAt est pose dans le store (chauffeur arrive au pickup),
-  // on planifie le passage automatique en 'ongoing' apres
-  // BOARDING_DISPLAY_DELAY + BOARDING_GRACE_DELAY.
-  // Ce timer se substitue a la detection GPS de proximite deja consommee.
   useEffect(() => {
     if (boardingStartTimerRef.current) {
       clearTimeout(boardingStartTimerRef.current);
@@ -189,7 +183,6 @@ const DriverHome = ({ navigation }) => {
     const remaining = TOTAL_BOARDING_TO_START_MS - elapsed;
 
     if (remaining <= 0) {
-      // Le delai est deja ecoule (ex: remount du composant apres navigation)
       triggerBoardingDeparture();
     } else {
       boardingStartTimerRef.current = setTimeout(() => {
@@ -206,6 +199,7 @@ const DriverHome = ({ navigation }) => {
     if (!currentRide || currentRide.status !== 'accepted') return;
 
     try {
+      dispatch(updateRideStatus({ status: 'ongoing' }));
       dispatch(showSuccessToast({
         title: 'Depart',
         message: 'Client a bord — En route vers la destination.',
@@ -217,9 +211,6 @@ const DriverHome = ({ navigation }) => {
   };
 
   // --- FIN DE COURSE COTE CHAUFFEUR ---
-  // Quand le statut passe a 'completed' (via socket ride_completed),
-  // on attend POST_COMPLETION_CLEANUP_DELAY_MS puis on nettoie le store.
-  // La Home reprend son etat initial car isRideActive redevient false.
   useEffect(() => {
     if (completionCleanupTimerRef.current) {
       clearTimeout(completionCleanupTimerRef.current);
@@ -263,8 +254,6 @@ const DriverHome = ({ navigation }) => {
 
         if (distance <= PICKUP_RADIUS_METERS) {
           isProcessingPickupRef.current = true;
-          // Enregistre l'horodatage d'arrivee : declenche les timers
-          // "Chauffeur arrive" / "Client a bord" des deux cotes
           dispatch(updateRideStatus({ arrivedAt: Date.now() }));
         }
       }
@@ -291,10 +280,7 @@ const DriverHome = ({ navigation }) => {
 
   const handleAutoCompleteRide = async () => {
     try {
-      dispatch(showSuccessToast({
-        title: 'Destination atteinte',
-        message: 'Cloture automatique de la course.',
-      }));
+      dispatch(updateRideStatus({ status: 'completed' }));
       await completeRide({ rideId: currentRide._id }).unwrap();
     } catch (err) {
       console.warn('[DriverHome] Echec auto-complete:', err);
@@ -337,11 +323,6 @@ const DriverHome = ({ navigation }) => {
   };
 
   // --- CONSTRUCTION DES MARQUEURS ---
-  // Phase 'accepted' : marqueur 'pickup' (bonhomme bleu pulse)
-  //   MapCard trace : position chauffeur → pickup
-  //
-  // Phase 'ongoing'  : marqueur 'pickup_origin' (point fixe) + 'destination' (drapeau pulse)
-  //   MapCard trace : pickup_origin → destination (trace fixe independant de la position)
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
@@ -354,14 +335,6 @@ const DriverHome = ({ navigation }) => {
 
     if (isOngoing) {
       const result = [];
-      if (originLat && originLng) {
-        result.push({
-          id: 'pickup_origin',
-          type: 'pickup_origin',
-          latitude: Number(originLat),
-          longitude: Number(originLng),
-        });
-      }
       if (destLat && destLng) {
         result.push({
           id: 'destination',
