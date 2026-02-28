@@ -121,25 +121,52 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
+  // Markers selon la phase de course (parite avec DriverHome.jsx natif) :
+  // Phase 'accepted'  : marker 'pickup' (bonhomme bleu pulse) → arc chauffeur → pickup
+  // Phase 'ongoing'   : marker 'pickup_origin' (point dore repere) + 'destination' (drapeau pulse)
+  //                     Arc depuis la position courante du chauffeur (location) → destination
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
-    
-    const isOngoing = currentRide.status === 'ongoing';
-    const target = isOngoing ? currentRide.destination : currentRide.origin;
-    
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
 
-    if (lat && lng) {
+    const isOngoing = currentRide.status === 'ongoing';
+
+    const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+    const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+    const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+    const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+
+    if (isOngoing) {
+      const result = [];
+      if (originLat && originLng) {
+        result.push({
+          id: 'pickup_origin',
+          type: 'pickup_origin',
+          latitude: Number(originLat),
+          longitude: Number(originLng),
+        });
+      }
+      if (destLat && destLng) {
+        result.push({
+          id: 'destination',
+          type: 'destination',
+          latitude: Number(destLat),
+          longitude: Number(destLng),
+          title: currentRide.destination?.address || 'Destination',
+        });
+      }
+      return result;
+    }
+
+    if (originLat && originLng) {
       return [{
-        id: isOngoing ? 'destination' : 'pickup', 
-        latitude: Number(lat), 
-        longitude: Number(lng),
-        title: target.address || "Cible", 
-        type: isOngoing ? 'destination' : 'pickup',
-        iconType: isOngoing ? 'dropoff' : 'pickup' 
+        id: 'pickup',
+        type: 'pickup',
+        latitude: Number(originLat),
+        longitude: Number(originLng),
+        title: currentRide.origin?.address || 'Client',
       }];
     }
+
     return [];
   }, [isRideActive, currentRide]);
 

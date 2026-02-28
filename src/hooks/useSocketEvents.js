@@ -93,6 +93,30 @@ const useSocketEvents = () => {
       }));
     };
 
+    // Unification des deux chemins de changement d'etat :
+    // - rideController (REST) emet 'ride_completed' et 'ride_started' directement
+    // - rideService (GPS auto-complete) emet 'ride_status_update' avec { status, ride }
+    // Ce handler unifie la reception pour garantir que les transitions GPS
+    // (arrived, ongoing, completed) sont bien repercutees dans le store.
+    const handleRideStatusUpdate = (data) => {
+      if (!data?.status) return;
+
+      if (data.status === 'completed') {
+        dispatch(updateRideStatus({
+          status: 'completed',
+          finalPrice: data?.ride?.price,
+        }));
+        return;
+      }
+
+      if (data.status === 'ongoing') {
+        dispatch(updateRideStatus({
+          status: 'ongoing',
+          startedAt: data?.ride?.startedAt,
+        }));
+      }
+    };
+
     const handleSearchTimeout = (data) => {
       dispatch(clearCurrentRide());
       dispatch(showErrorToast({
@@ -116,6 +140,7 @@ const useSocketEvents = () => {
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_completed', handleRideCompleted);
+    socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
 
@@ -129,6 +154,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_completed', handleRideCompleted);
+      socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
     };

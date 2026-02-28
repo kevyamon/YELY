@@ -117,34 +117,61 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // 🚀 ALIGNEMENT DES MARQUEURS WEB : Déclenche l'Arc Doré sur la Leaflet
+  // Markers actifs selon la phase de course (parite avec RiderHome.jsx natif) :
+  // - Hors course : destination choisie (apercu du trajet, arc depuis le rider)
+  // - Phase 'accepted' : origin du rider (pickup = bonhomme bleu) → arc depuis driverLocation → pickup
+  // - Phase 'ongoing'  : destination de la course (drapeau pulse) → arc depuis driverLocation → destination
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
       const isOngoing = currentRide.status === 'ongoing';
-      const target = isOngoing ? currentRide.destination : currentRide.origin;
-      const lat = target?.coordinates?.[1] || target?.latitude;
-      const lng = target?.coordinates?.[0] || target?.longitude;
 
-      if (lat && lng) {
+      if (isOngoing) {
+        const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+        const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+        if (!destLat || !destLng) return [];
         return [{
-          id: 'destination', 
-          latitude: Number(lat), 
-          longitude: Number(lng),
+          id: 'destination',
           type: 'destination',
-          iconType: isOngoing ? 'dropoff' : 'pickup'
+          latitude: Number(destLat),
+          longitude: Number(destLng),
+          title: currentRide.destination?.address || 'Destination',
         }];
       }
-      return [];
+
+      // Phase accepted : le chauffeur vient chercher le rider, cible = pickup (origin)
+      const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+      const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+      if (!originLat || !originLng) return [];
+      return [{
+        id: 'pickup',
+        type: 'pickup',
+        latitude: Number(originLat),
+        longitude: Number(originLng),
+        title: currentRide.origin?.address || 'Point de rencontre',
+      }];
     }
 
     if (destination) {
       return [{
-        id: 'destination', latitude: destination.latitude, longitude: destination.longitude,
-        title: destination.address, icon: 'flag', iconColor: THEME.COLORS.danger, type: 'destination'
+        id: 'destination',
+        latitude: destination.latitude,
+        longitude: destination.longitude,
+        title: destination.address,
+        type: 'destination',
       }];
     }
     return [];
   }, [destination, isRideActive, currentRide]);
+
+  // Position du chauffeur normalisee pour la carte
+  const driverLocationObj = currentRide?.driverLocation;
+  const driverLatLng = driverLocationObj
+    ? {
+        latitude: driverLocationObj?.coordinates?.[1] ?? driverLocationObj?.latitude,
+        longitude: driverLocationObj?.coordinates?.[0] ?? driverLocationObj?.longitude,
+      }
+    : null;
+
 
   const renderWebSearchControls = () => {
     if (!destination) {
@@ -182,12 +209,12 @@ const RiderHome = ({ navigation }) => {
           <MapCard
             ref={mapRef}
             location={location}
-            driverLocation={currentRide?.driverLocation} // 🚀 Pousse la position Live du chauffeur
-            showUserMarker={true} 
-            showRecenterButton={true} 
+            driverLocation={isRideActive ? driverLatLng : null}
+            showUserMarker={!isRideActive}
+            showRecenterButton={true}
             floating={false}
-            markers={mapMarkers} 
-            route={isRideActive ? null : arcRoute} // Désactive la route statique si course active
+            markers={mapMarkers}
+            route={isRideActive ? null : arcRoute}
           />
         ) : (
           <View style={styles.loadingContainer}>

@@ -26,11 +26,59 @@ const ROUTE_DRAW_DURATION_MS = 900;
 // Intervalle entre chaque point revele lors de l'animation (ms)
 const ROUTE_DRAW_INTERVAL_MS = 16;
 
+// Distance minimale de deplacement (metres) avant de recalculer la route.
+// Evite le recalcul a chaque micro-mouvement GPS (~1-2m de bruit).
+const REROUTE_THRESHOLD_METERS = 40;
+
+// Distance de deviation par rapport a la route calculee avant re-routage force.
+// Si le conducteur s'ecarte de plus de cette valeur, on recalcule.
+const DEVIATION_THRESHOLD_METERS = 60;
+
 // Calcule combien de points afficher a chaque frame pour
 // completer l'animation en ROUTE_DRAW_DURATION_MS.
 const computeStepSize = (totalPoints) => {
   const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
   return Math.max(1, Math.ceil(totalPoints / totalFrames));
+};
+
+// Calcule la distance haversine en metres entre deux coordonnees.
+const haversineMeters = (lat1, lng1, lat2, lng2) => {
+  if (!lat1 || !lng1 || !lat2 || !lng2) return Infinity;
+  const R = 6371e3;
+  const p1 = lat1 * Math.PI / 180;
+  const p2 = lat2 * Math.PI / 180;
+  const dp = (lat2 - lat1) * Math.PI / 180;
+  const dl = (lng2 - lng1) * Math.PI / 180;
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+};
+
+// Trouve l'index du point de la route le plus proche de la position actuelle.
+// Sert a "consommer" le trace deja parcouru : on n'affiche que le troncon restant.
+const findClosestPointIndex = (routePoints, currentLat, currentLng) => {
+  if (!routePoints || routePoints.length === 0) return 0;
+  let minDist = Infinity;
+  let closestIdx = 0;
+  for (let i = 0; i < routePoints.length; i++) {
+    const d = haversineMeters(currentLat, currentLng, routePoints[i].latitude, routePoints[i].longitude);
+    if (d < minDist) {
+      minDist = d;
+      closestIdx = i;
+    }
+  }
+  return closestIdx;
+};
+
+// Calcule la distance minimale entre un point et la route calculee.
+// Sert a detecter si le conducteur s'est trop ecarte du trace prevu.
+const distanceToRoute = (lat, lng, routePoints) => {
+  if (!routePoints || routePoints.length < 2) return Infinity;
+  let minDist = Infinity;
+  for (let i = 0; i < routePoints.length; i++) {
+    const d = haversineMeters(lat, lng, routePoints[i].latitude, routePoints[i].longitude);
+    if (d < minDist) minDist = d;
+  }
+  return minDist;
 };
 
 const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => {
@@ -164,8 +212,14 @@ const MapCard = forwardRef(({
 
   // Reference vers le timer d'animation pour nettoyage propre.
   const drawIntervalRef = useRef(null);
-  // Derniere cle de route calculee : evite de recalculer si A et B n'ont pas change.
-  const lastRouteKeyRef = useRef(null);
+  // Ensemble complet des points de la route calculee (reference interne non-state).
+  // Permet de "consommer" le trace au fur et a mesure sans recalculer OSRM.
+  const fullRoutePointsRef = useRef([]);
+  // Derniere position depuis laquelle on a calcule la route.
+  // Sert a limiter les appels OSRM au seuil REROUTE_THRESHOLD_METERS.
+  const lastRouteOriginRef = useRef(null);
+  // Cle de la route courante (destination) pour detecter un changement de cible.
+  const lastRouteDestKeyRef = useRef(null);
 
   const colorScheme = useColorScheme();
   const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
@@ -202,65 +256,114 @@ const MapCard = forwardRef(({
     }, ROUTE_DRAW_INTERVAL_MS);
   }, [stopDrawAnimation]);
 
-  // Calcule et anime la route entre deux points via OSRM.
-  // Cette fonction est l'unique source de verite pour le trace.
-  // Elle est appelee exclusivement depuis l'interieur de ce composant
-  // (jamais depuis le parent) pour respecter l'architecture bypass Android.
-  const computeAndDrawRoute = useCallback(async (pointA, pointB) => {
+  // Calcule et stocke la route complete entre deux points via OSRM.
+  // Appele uniquement quand un recalcul est necessaire (nouveau depart ou deviation).
+  const fetchAndStoreRoute = useCallback(async (pointA, pointB) => {
     if (!pointA || !pointB) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
-      lastRouteKeyRef.current = null;
+      fullRoutePointsRef.current = [];
+      lastRouteOriginRef.current = null;
+      lastRouteDestKeyRef.current = null;
       return;
     }
 
-    const routeKey = `${pointA.latitude.toFixed(5)},${pointA.longitude.toFixed(5)}|${pointB.latitude.toFixed(5)},${pointB.longitude.toFixed(5)}`;
-
-    // Si la route est deja calculee pour ces deux points, ne rien refaire.
-    if (routeKey === lastRouteKeyRef.current) return;
-    lastRouteKeyRef.current = routeKey;
+    const destKey = `${pointB.latitude.toFixed(5)},${pointB.longitude.toFixed(5)}`;
+    lastRouteDestKeyRef.current = destKey;
+    lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
 
     const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+    fullRoutePointsRef.current = routePoints || [];
     animateRouteDraw(routePoints);
   }, [animateRouteDraw, stopDrawAnimation]);
 
-  // Observateur autonome des marqueurs (architecture bypass Android).
+  // Reduit le trace en supprimant les points deja parcourus par le conducteur.
+  // Appele a chaque changement de position en phase active (pas de recalcul OSRM).
+  const trimRouteFromCurrentPosition = useCallback((currentLat, currentLng) => {
+    const full = fullRoutePointsRef.current;
+    if (!full || full.length < 2) return;
+
+    const closestIdx = findClosestPointIndex(full, currentLat, currentLng);
+    // On garde a partir du point le plus proche, le trace se "consume" visuellement
+    const remaining = full.slice(closestIdx);
+    if (remaining.length > 1) {
+      setVisibleRoutePoints(remaining);
+    }
+  }, []);
+
+  // Observateur principal du trace (architecture bypass Android).
   // La carte determine elle-meme quels points relier, sans instruction du parent.
   //
   // Logique de selection du trace :
-  // - Un marqueur 'pickup'      -> trace : position utilisateur → pickup
-  // - Un marqueur 'destination' -> trace : position utilisateur → destination
-  // - Un marqueur 'pickup_origin' (phase ongoing chauffeur) :
-  //     trace fixe : point de rencontre → destination
-  //     (le chauffeur a pris le client, on trace vers la destination)
+  //
+  // Phase 'accepted' (marqueur 'pickup') :
+  //   trace : position conducteur/utilisateur → pickup (bonhomme bleu)
+  //   Recalcul OSRM si : premiere fois, destination changee, ou deviation >DEVIATION_THRESHOLD
+  //   Reduction du trace si : deplacement simple sur la route
+  //
+  // Phase 'ongoing' (marqueurs 'pickup_origin' + 'destination') :
+  //   trace : position conducteur (location) → destination (drapeau)
+  //   Meme logique de recalcul et de reduction
+  //
+  // Phase rider sans course active (marqueur 'destination' seul) :
+  //   trace : position utilisateur → destination (apercu)
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
 
-    if (pickupOriginMarker && destinationMarker) {
-      // Phase ongoing cote chauffeur : trace fixe pickup → destination
-      computeAndDrawRoute(
-        { latitude: pickupOriginMarker.latitude, longitude: pickupOriginMarker.longitude },
-        { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude }
-      );
+    // Determination de la cible finale du trace
+    const targetMarker = pickupMarker || destinationMarker;
+
+    // En phase ongoing (pickup_origin present), la cible est toujours la destination
+    const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
+
+    if (!activeTarget || !location) {
+      // Aucun marqueur pertinent : on efface le trace
+      stopDrawAnimation();
+      setVisibleRoutePoints([]);
+      fullRoutePointsRef.current = [];
+      lastRouteOriginRef.current = null;
+      lastRouteDestKeyRef.current = null;
       return;
     }
 
-    const activeTarget = pickupMarker || destinationMarker;
-    if (location && activeTarget) {
-      computeAndDrawRoute(
-        { latitude: location.latitude, longitude: location.longitude },
+    const currentLat = location.latitude;
+    const currentLng = location.longitude;
+    const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
+
+    // Cas 1 : Changement de destination → recalcul complet obligatoire
+    if (destKey !== lastRouteDestKeyRef.current) {
+      fetchAndStoreRoute(
+        { latitude: currentLat, longitude: currentLng },
         { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
       );
       return;
     }
 
-    // Aucun marqueur pertinent : on efface le trace
-    stopDrawAnimation();
-    setVisibleRoutePoints([]);
-    lastRouteKeyRef.current = null;
-  }, [location, markers, computeAndDrawRoute, stopDrawAnimation]);
+    const full = fullRoutePointsRef.current;
+
+    // Cas 2 : Deviation trop importante → re-routage (comportement Google Maps)
+    const deviationDist = distanceToRoute(currentLat, currentLng, full);
+    if (deviationDist > DEVIATION_THRESHOLD_METERS) {
+      fetchAndStoreRoute(
+        { latitude: currentLat, longitude: currentLng },
+        { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
+      );
+      return;
+    }
+
+    // Cas 3 : Deplacement suffisant sans deviation → reduction du trace parcouru
+    const lastOrigin = lastRouteOriginRef.current;
+    const movedDist = lastOrigin
+      ? haversineMeters(currentLat, currentLng, lastOrigin.latitude, lastOrigin.longitude)
+      : REROUTE_THRESHOLD_METERS + 1;
+
+    if (movedDist >= REROUTE_THRESHOLD_METERS) {
+      lastRouteOriginRef.current = { latitude: currentLat, longitude: currentLng };
+      trimRouteFromCurrentPosition(currentLat, currentLng);
+    }
+  }, [location, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
 
   // Centrage automatique de la carte sur les deux points du trace actif.
   useEffect(() => {
@@ -282,11 +385,11 @@ const MapCard = forwardRef(({
       return () => clearTimeout(timer);
     }
 
-    if (isMapReady && pickupOriginMarker && destinationMarker) {
+    if (isMapReady && pickupOriginMarker && destinationMarker && location) {
       const timer = setTimeout(() => {
         mapRef.current?.fitToCoordinates(
           [
-            { latitude: pickupOriginMarker.latitude, longitude: pickupOriginMarker.longitude },
+            { latitude: location.latitude, longitude: location.longitude },
             { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude },
           ],
           { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }

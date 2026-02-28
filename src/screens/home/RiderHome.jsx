@@ -172,19 +172,69 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
+  // Markers actifs selon la phase de course :
+  // - Hors course : destination choisie (apercu du trajet)
+  // - Phase 'accepted' : origin du rider (pickup = bonhomme bleu) → MapCard trace driverLocation → pickup
+  // - Phase 'ongoing'  : destination de la course (drapeau pulse) → MapCard trace driverLocation → destination
   const mapMarkers = useMemo(() => {
+    if (isRideActive && currentRide) {
+      const isOngoing = currentRide.status === 'ongoing';
+
+      if (isOngoing) {
+        const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+        const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+        if (!destLat || !destLng) return [];
+        return [{
+          id: 'destination',
+          type: 'destination',
+          latitude: Number(destLat),
+          longitude: Number(destLng),
+          title: currentRide.destination?.address || 'Destination',
+          iconColor: THEME.COLORS.danger,
+        }];
+      }
+
+      // Phase accepted : le chauffeur vient chercher le rider
+      // On affiche le point de rencontre (origin) comme cible du chauffeur
+      const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+      const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+      if (!originLat || !originLng) return [];
+      return [{
+        id: 'pickup',
+        type: 'pickup',
+        latitude: Number(originLat),
+        longitude: Number(originLng),
+        title: currentRide.origin?.address || 'Point de rencontre',
+        iconColor: THEME.COLORS.info,
+      }];
+    }
+
     if (!destination) return [];
     return [{
-      id: 'destination', 
-      latitude: Number(destination.latitude), 
+      id: 'destination',
+      latitude: Number(destination.latitude),
       longitude: Number(destination.longitude),
-      title: destination.address, 
+      title: destination.address,
       iconColor: THEME.COLORS.danger,
-      type: 'destination' 
+      type: 'destination'
     }];
-  }, [destination]);
+  }, [destination, isRideActive, currentRide]);
 
-  const mapBottomPadding = isRideActive ? 280 : (destination ? 320 : 240); 
+  const mapBottomPadding = isRideActive ? 280 : (destination ? 320 : 240);
+
+  // En phase de course active, le trace part de la position du chauffeur vers la cible.
+  // MapCard utilise 'location' comme point de depart du trace OSRM.
+  // Hors course, on utilise la position du rider (location GPS local).
+  const driverLocationObj = currentRide?.driverLocation;
+  const driverLatLng = driverLocationObj
+    ? {
+        latitude: driverLocationObj?.coordinates?.[1] ?? driverLocationObj?.latitude,
+        longitude: driverLocationObj?.coordinates?.[0] ?? driverLocationObj?.longitude,
+        heading: driverLocationObj?.heading,
+      }
+    : null;
+
+  const mapTraceOrigin = (isRideActive && driverLatLng?.latitude) ? driverLatLng : location;
 
   return (
     <View style={styles.screenWrapper}>
@@ -193,9 +243,9 @@ const RiderHome = ({ navigation }) => {
          {location ? (
            <MapCard 
              ref={mapRef}
-             location={location}
-             driverLocation={currentRide?.driverLocation} 
-             showUserMarker={true}
+             location={mapTraceOrigin}
+             driverLocation={isRideActive ? driverLatLng : null}
+             showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
