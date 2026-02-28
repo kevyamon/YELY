@@ -1,6 +1,5 @@
 // src/components/ride/RatingModal.jsx
-// MODALE DE NOTATION - Glassmorphism & Soumission Sécurisée
-// CSCSM Level: Bank Grade
+// MODALE DE NOTATION - Autonome et Nettoyage d'Etat Integre
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -8,6 +7,7 @@ import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, Sty
 import { useDispatch } from 'react-redux';
 
 import { useRateRideMutation } from '../../store/api/ridesApiSlice';
+import { clearCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -22,6 +22,12 @@ const RatingModal = ({ visible, rideId, driverName, onClose }) => {
     setRating(selectedRating);
   };
 
+  const handleCleanupAndClose = () => {
+    // Purge explicite de la course du store pour liberer l'interface client
+    dispatch(clearCurrentRide());
+    if (onClose) onClose();
+  };
+
   const handleSubmit = async () => {
     if (rating === 0) {
       dispatch(showErrorToast({ title: "Validation requise", message: "Veuillez attribuer une note avant de valider." }));
@@ -30,10 +36,10 @@ const RatingModal = ({ visible, rideId, driverName, onClose }) => {
 
     try {
       await rateRide({ rideId, rating, comment: comment.trim() }).unwrap();
-      dispatch(showSuccessToast({ title: "Merci", message: "Votre avis a été enregistré avec succès." }));
-      onClose();
+      dispatch(showSuccessToast({ title: "Merci", message: "Votre avis a ete enregistre avec succes." }));
+      handleCleanupAndClose();
     } catch (error) {
-      dispatch(showErrorToast({ title: "Erreur système", message: error?.data?.message || "Impossible d'enregistrer la note." }));
+      dispatch(showErrorToast({ title: "Erreur systeme", message: error?.data?.message || "Impossible d'enregistrer la note." }));
     }
   };
 
@@ -50,9 +56,9 @@ const RatingModal = ({ visible, rideId, driverName, onClose }) => {
               <View style={styles.successIconContainer}>
                 <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
               </View>
-              <Text style={styles.titleText}>Course Terminée</Text>
+              <Text style={styles.titleText}>Course Terminee</Text>
               <Text style={styles.subtitleText}>
-                Comment s'est passé votre trajet avec {driverName || 'le chauffeur'} ?
+                Comment s'est passe votre trajet avec {driverName || 'le chauffeur'} ?
               </Text>
             </View>
 
@@ -101,7 +107,7 @@ const RatingModal = ({ visible, rideId, driverName, onClose }) => {
             </TouchableOpacity>
 
             {!isLoading && (
-              <TouchableOpacity style={styles.skipButton} onPress={onClose}>
+              <TouchableOpacity style={styles.skipButton} onPress={handleCleanupAndClose}>
                 <Text style={styles.skipButtonText}>Passer</Text>
               </TouchableOpacity>
             )}

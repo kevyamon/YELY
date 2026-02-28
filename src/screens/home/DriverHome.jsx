@@ -30,18 +30,14 @@ import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-const PICKUP_RADIUS_METERS = 15;
-const DROPOFF_RADIUS_METERS = 30;
+const PICKUP_RADIUS_METERS = 10;
+const DROPOFF_RADIUS_METERS = 10;
 
 // Duree du statut "Client a bord" avant declenchement automatique du depart (ms)
 const BOARDING_DISPLAY_DELAY_MS = 60000;
-// Delai supplementaire apres "Client a bord" avant de lancer le depart (ms)
-// Laisse le temps a l'affichage de s'installer et au client de se preparer
 const BOARDING_GRACE_DELAY_MS = 20000;
 const TOTAL_BOARDING_TO_START_MS = BOARDING_DISPLAY_DELAY_MS + BOARDING_GRACE_DELAY_MS;
 
-// Delai avant de liberer le store apres la fin de course cote chauffeur (ms)
-// Laisse le toast visible avant que la Home reprenne son etat initial
 const POST_COMPLETION_CLEANUP_DELAY_MS = 3000;
 
 const DriverHome = ({ navigation }) => {
@@ -61,7 +57,6 @@ const DriverHome = ({ navigation }) => {
   const { location: realLocation, errorMsg } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
 
-  // Position effective : simulation prioritaire en dev, GPS reel sinon
   const location = simulatedLocation || realLocation;
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -76,14 +71,12 @@ const DriverHome = ({ navigation }) => {
   const isDriverInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
 
-  // --- SYNCHRONISATION DE L'ETAT DE DISPONIBILITE ---
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
       setIsAvailable(user.isAvailable);
     }
   }, [user?.isAvailable]);
 
-  // --- PUBLICATION DE LA POSITION EFFECTIVE DANS LE STORE ---
   useEffect(() => {
     if (location) {
       dispatch(setEffectiveLocation({
@@ -95,7 +88,6 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, dispatch]);
 
-  // --- AUTO-CONNEXION AU SERVICE ---
   useEffect(() => {
     const processAutoConnect = async () => {
       if (!hasAutoConnected.current && location && !isAvailable) {
@@ -124,14 +116,12 @@ const DriverHome = ({ navigation }) => {
     processAutoConnect();
   }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
 
-  // --- EMISSION DE POSITION ---
   useEffect(() => {
     if (location && (isAvailable || isRideActive)) {
       socketService.emitLocation(location);
     }
   }, [location, isAvailable, isRideActive]);
 
-  // --- GEOCODAGE INVERSE DE L'ADRESSE ---
   useEffect(() => {
     if (location) {
       const getAddress = async () => {
@@ -153,7 +143,6 @@ const DriverHome = ({ navigation }) => {
     }
   }, [location, errorMsg]);
 
-  // --- REINITIALISATION DES FLAGS SELON LE STATUT ---
   useEffect(() => {
     if (!currentRide) {
       isProcessingPickupRef.current = false;
@@ -167,7 +156,6 @@ const DriverHome = ({ navigation }) => {
     }
   }, [currentRide?.status]);
 
-  // --- TIMER D'EMBARQUEMENT : DEPART AUTOMATIQUE ---
   useEffect(() => {
     if (boardingStartTimerRef.current) {
       clearTimeout(boardingStartTimerRef.current);
@@ -210,7 +198,26 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // --- FIN DE COURSE COTE CHAUFFEUR ---
+  // --- ECOUTE DU SIGNAL DE FIN DE COURSE (BACKEND) ---
+  useEffect(() => {
+    const handleRideCompleted = (data) => {
+      if (currentRide && currentRide.status !== 'completed') {
+        dispatch(updateRideStatus({ status: 'completed' }));
+        // Rafraichissement silencieux des gains si fournis par le socket
+        if (data && data.stats) {
+          dispatch(updateUserInfo({ 
+            totalRides: data.stats.totalRides,
+            totalEarnings: data.stats.totalEarnings,
+            rating: data.stats.rating
+          }));
+        }
+      }
+    };
+
+    socketService.on('ride_completed', handleRideCompleted);
+    return () => socketService.off('ride_completed', handleRideCompleted);
+  }, [currentRide, dispatch]);
+
   useEffect(() => {
     if (completionCleanupTimerRef.current) {
       clearTimeout(completionCleanupTimerRef.current);
@@ -235,7 +242,6 @@ const DriverHome = ({ navigation }) => {
     };
   }, [currentRide?.status, dispatch]);
 
-  // --- DETECTION DE PROXIMITE GPS ---
   useEffect(() => {
     if (!location || !currentRide) return;
 
@@ -281,7 +287,15 @@ const DriverHome = ({ navigation }) => {
   const handleAutoCompleteRide = async () => {
     try {
       dispatch(updateRideStatus({ status: 'completed' }));
-      await completeRide({ rideId: currentRide._id }).unwrap();
+      const res = await completeRide({ rideId: currentRide._id }).unwrap();
+      
+      if (res.data && res.data.stats) {
+        dispatch(updateUserInfo({ 
+          totalRides: res.data.stats.totalRides,
+          totalEarnings: res.data.stats.totalEarnings,
+          rating: res.data.stats.rating
+        }));
+      }
     } catch (err) {
       console.warn('[DriverHome] Echec auto-complete:', err);
       isProcessingDropoffRef.current = false;
@@ -322,7 +336,6 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // --- CONSTRUCTION DES MARQUEURS ---
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 

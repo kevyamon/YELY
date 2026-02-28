@@ -4,6 +4,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
@@ -12,13 +13,14 @@ import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
 import MapService from '../../services/mapService';
+import socketService from '../../services/socketService';
 import {
   useLazyEstimateRideQuery,
   useRequestRideMutation
 } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
-import { selectCurrentRide, setCurrentRide } from '../../store/slices/rideSlice';
-import { showErrorToast } from '../../store/slices/uiSlice';
+import { clearCurrentRide, selectCurrentRide, setCurrentRide, setRideToRate } from '../../store/slices/rideSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -76,11 +78,35 @@ const RiderHome = ({ navigation }) => {
     }
   }, [destination, displayVehicles, selectedVehicle]);
 
+  // --- ECOUTE DU SIGNAL DE FIN DE COURSE (BACKEND) ---
+  useEffect(() => {
+    const handleRideCompleted = (data) => {
+      dispatch(setRideToRate(data));
+      dispatch(clearCurrentRide());
+      setDestination(null);
+      setSelectedVehicle(null);
+      
+      dispatch(showSuccessToast({
+        title: 'Course terminee',
+        message: 'Vous etes arrive a destination.'
+      }));
+
+      if (mapRef.current) {
+        mapRef.current.centerOnUser();
+      }
+    };
+
+    socketService.on('ride_completed', handleRideCompleted);
+    return () => {
+      socketService.off('ride_completed', handleRideCompleted);
+    };
+  }, [dispatch]);
+
   const handleDestinationSelect = async (selectedPlace) => {
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
-        message: 'Yély ne dessert que la ville de Maféré pour le moment.' 
+        message: 'Yely ne dessert que la ville de Mafere pour le moment.' 
       }));
       setIsSearchModalVisible(false);
       return;
@@ -112,7 +138,7 @@ const RiderHome = ({ navigation }) => {
       return;
     }
     if (!isUserInZone) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Vous devez être dans la zone de Maféré pour commander.' }));
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Vous devez etre dans la zone de Mafere pour commander.' }));
       return;
     }
     if (!destination) {
@@ -120,7 +146,7 @@ const RiderHome = ({ navigation }) => {
       return;
     }
     if (!selectedVehicle) {
-      dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un type de véhicule.' }));
+      dispatch(showErrorToast({ title: 'Vehicule', message: 'Veuillez selectionner un type de vehicule.' }));
       return;
     }
     
@@ -131,11 +157,11 @@ const RiderHome = ({ navigation }) => {
       const destLat = Number(destination.latitude || destination.lat || 0);
 
       let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
-      if (safeOriginAddress.length < 5) safeOriginAddress += " (Départ)";
+      if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
 
       let safeDestAddress = String(destination.address || destination.name || "Destination").trim();
-      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivée)";
+      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivee)";
       if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
 
       const payload = {
@@ -172,10 +198,6 @@ const RiderHome = ({ navigation }) => {
     }
   };
 
-  // Markers actifs selon la phase de course :
-  // - Hors course : destination choisie (apercu du trajet)
-  // - Phase 'accepted' : origin du rider (pickup = bonhomme bleu) → MapCard trace driverLocation → pickup
-  // - Phase 'ongoing'  : destination de la course (drapeau pulse) → MapCard trace driverLocation → destination
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
       const isOngoing = currentRide.status === 'ongoing';
@@ -194,8 +216,6 @@ const RiderHome = ({ navigation }) => {
         }];
       }
 
-      // Phase accepted : le chauffeur vient chercher le rider
-      // On affiche le point de rencontre (origin) comme cible du chauffeur
       const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
       const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
       if (!originLat || !originLng) return [];
@@ -222,9 +242,6 @@ const RiderHome = ({ navigation }) => {
 
   const mapBottomPadding = isRideActive ? 280 : (destination ? 320 : 240);
 
-  // En phase de course active, le trace part de la position du chauffeur vers la cible.
-  // MapCard utilise 'location' comme point de depart du trace OSRM.
-  // Hors course, on utilise la position du rider (location GPS local).
   const driverLocationObj = currentRide?.driverLocation;
   const driverLatLng = driverLocationObj
     ? {
@@ -293,6 +310,7 @@ const RiderHome = ({ navigation }) => {
       />
 
       <RiderWaitModal />
+      <RatingModal />
 
     </View>
   );

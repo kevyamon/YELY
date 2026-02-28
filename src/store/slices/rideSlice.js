@@ -9,6 +9,8 @@ const initialState = {
   // Position effective du chauffeur (simulee en dev, GPS reel en prod).
   // Publiee par DriverHome, lue par DriverRideOverlay.
   effectiveLocation: null,
+  // Donnes de la course a noter (declenche l'affichage du RatingModal)
+  rideToRate: null,
 };
 
 const rideSlice = createSlice({
@@ -47,10 +49,19 @@ const rideSlice = createSlice({
     setEffectiveLocation: (state, action) => {
       state.effectiveLocation = action.payload;
     },
+    // Nettoyage absolu de fin de course
     clearCurrentRide: (state) => {
       state.currentRide = null;
       state.effectiveLocation = null;
+      state.incomingRide = null;
     },
+    // Gestion de la notation
+    setRideToRate: (state, action) => {
+      state.rideToRate = action.payload;
+    },
+    clearRideToRate: (state) => {
+      state.rideToRate = null;
+    }
   },
 });
 
@@ -62,10 +73,13 @@ export const {
   updateDriverLocation,
   setEffectiveLocation,
   clearCurrentRide,
+  setRideToRate,
+  clearRideToRate
 } = rideSlice.actions;
 
 export const selectIncomingRide = (state) => state.ride.incomingRide;
 export const selectCurrentRide = (state) => state.ride.currentRide;
 export const selectEffectiveLocation = (state) => state.ride.effectiveLocation;
+export const selectRideToRate = (state) => state.ride.rideToRate;
 
 export default rideSlice.reducer;
