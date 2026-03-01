@@ -1,170 +1,24 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Routage Dynamique (Alignement strict sur la route)
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
-import MapView, { AnimatedRegion, Marker, Polyline, UrlTile } from 'react-native-maps';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
-import MapService from '../../services/mapService';
+import useRouteManager from '../../hooks/useRouteManager';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
+import {
+  AnimatedDestinationMarker,
+  AnimatedPickupMarker,
+  SmoothDriverMarker,
+  TrackedMarker,
+} from './markers/MobileMarkers';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-const ROUTE_DRAW_DURATION_MS = 900;
-const ROUTE_DRAW_INTERVAL_MS = 16;
-const REROUTE_THRESHOLD_METERS = 25;
-const DEVIATION_THRESHOLD_METERS = 60;
-
-const computeStepSize = (totalPoints) => {
-  const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
-  return Math.max(1, Math.ceil(totalPoints / totalFrames));
-};
-
-const haversineMeters = (lat1, lng1, lat2, lng2) => {
-  if (!lat1 || !lng1 || !lat2 || !lng2) return Infinity;
-  const R = 6371e3;
-  const p1 = lat1 * Math.PI / 180;
-  const p2 = lat2 * Math.PI / 180;
-  const dp = (lat2 - lat1) * Math.PI / 180;
-  const dl = (lng2 - lng1) * Math.PI / 180;
-  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-const findClosestPointIndex = (routePoints, currentLat, currentLng) => {
-  if (!routePoints || routePoints.length === 0) return 0;
-  let minDist = Infinity;
-  let closestIdx = 0;
-  for (let i = 0; i < routePoints.length; i++) {
-    const d = haversineMeters(currentLat, currentLng, routePoints[i].latitude, routePoints[i].longitude);
-    if (d < minDist) {
-      minDist = d;
-      closestIdx = i;
-    }
-  }
-  return closestIdx;
-};
-
-const distanceToRoute = (lat, lng, routePoints) => {
-  if (!routePoints || routePoints.length < 2) return Infinity;
-  let minDist = Infinity;
-  for (let i = 0; i < routePoints.length; i++) {
-    const d = haversineMeters(lat, lng, routePoints[i].latitude, routePoints[i].longitude);
-    if (d < minDist) minDist = d;
-  }
-  return minDist;
-};
-
-const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => {
-  const [tracks, setTracks] = useState(true);
-  useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 500);
-    return () => clearTimeout(timer);
-  }, []);
-  return (
-    <Marker
-      identifier={identifier}
-      coordinate={coordinate}
-      anchor={anchor}
-      tracksViewChanges={tracks}
-      zIndex={zIndex}
-    >
-      {children}
-    </Marker>
-  );
-};
-
-const AnimatedPickupMarker = ({ color }) => {
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1200, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulseAnim]);
-
-  const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1.15] });
-  const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.4, 0.8, 0.4] });
-
-  return (
-    <View style={styles.animatedMarkerContainer}>
-      <Animated.View style={[styles.pulseHalo, { backgroundColor: color, transform: [{ scale }], opacity }]} />
-      <View style={[styles.humanMarkerBg, { backgroundColor: color }]}>
-        <Ionicons name="accessibility" size={24} color="#FFFFFF" style={styles.markerIconShadow} />
-      </View>
-    </View>
-  );
-};
-
-const AnimatedDestinationMarker = ({ color }) => {
-  const pulseAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 0, duration: 1500, easing: Easing.inOut(Easing.ease), useNativeDriver: true }),
-      ])
-    );
-    animation.start();
-    return () => animation.stop();
-  }, [pulseAnim]);
-
-  const scale = pulseAnim.interpolate({ inputRange: [0, 1], outputRange: [0.8, 1.2] });
-  const opacity = pulseAnim.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.3, 0.7, 0.3] });
-
-  return (
-    <View style={styles.animatedMarkerContainer}>
-      <Animated.View style={[styles.pulseHalo, { backgroundColor: color, transform: [{ scale }], opacity }]} />
-      <Ionicons name="flag" size={32} color={color} style={styles.markerIconShadow} />
-    </View>
-  );
-};
-
-const SmoothDriverMarker = ({ coordinate, heading }) => {
-  const [markerCoordinate] = useState(
-    new AnimatedRegion({
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-    })
-  );
-
-  useEffect(() => {
-    markerCoordinate.timing({
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
-      duration: 1000,
-      useNativeDriver: false,
-    }).start();
-  }, [coordinate, markerCoordinate]);
-
-  return (
-    <Marker.Animated
-      coordinate={markerCoordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      zIndex={200}
-      flat={true}
-      rotation={heading || 0}
-    >
-      <View style={styles.carMarkerContainer}>
-        <View style={styles.carMarkerBg}>
-          <Ionicons name="car-sport" size={20} color={THEME.COLORS.champagneGold} />
-        </View>
-      </View>
-    </Marker.Animated>
-  );
-};
 
 const MapCard = forwardRef(({
   location,
@@ -184,142 +38,16 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
-
-  const drawIntervalRef = useRef(null);
-  const isDrawingRouteRef = useRef(false);
-
-  const fullRoutePointsRef = useRef([]);
-  const lastRouteOriginRef = useRef(null);
-  const lastRouteDestKeyRef = useRef(null);
-
   const colorScheme = useColorScheme();
   const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
   const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  const stopDrawAnimation = useCallback(() => {
-    if (drawIntervalRef.current) {
-      clearInterval(drawIntervalRef.current);
-      drawIntervalRef.current = null;
-    }
-    isDrawingRouteRef.current = false;
-  }, []);
+  // Injection du Hook de routage dechargeant le composant de toute la logique mathématique
+  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  const animateRouteDraw = useCallback((fullPoints) => {
-    stopDrawAnimation();
-    setVisibleRoutePoints([]);
-
-    if (!fullPoints || fullPoints.length === 0) return;
-
-    isDrawingRouteRef.current = true;
-    let revealedCount = 0;
-    const stepSize = computeStepSize(fullPoints.length);
-
-    drawIntervalRef.current = setInterval(() => {
-      revealedCount = Math.min(revealedCount + stepSize, fullPoints.length);
-      setVisibleRoutePoints(fullPoints.slice(0, revealedCount));
-
-      if (revealedCount >= fullPoints.length) {
-        stopDrawAnimation();
-      }
-    }, ROUTE_DRAW_INTERVAL_MS);
-  }, [stopDrawAnimation]);
-
-  const fetchAndStoreRoute = useCallback(async (pointA, pointB) => {
-    if (!pointA || !pointB) {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      fullRoutePointsRef.current = [];
-      lastRouteOriginRef.current = null;
-      lastRouteDestKeyRef.current = null;
-      return;
-    }
-
-    const destKey = `${pointB.latitude.toFixed(5)},${pointB.longitude.toFixed(5)}`;
-    lastRouteDestKeyRef.current = destKey;
-    lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
-
-    const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
-
-    if (lastRouteDestKeyRef.current !== destKey) {
-      return;
-    }
-
-    fullRoutePointsRef.current = routePoints || [];
-    animateRouteDraw(routePoints);
-  }, [animateRouteDraw, stopDrawAnimation]);
-
-  const trimRouteFromCurrentPosition = useCallback((currentLat, currentLng) => {
-    const full = fullRoutePointsRef.current;
-    if (!full || full.length < 2) return;
-
-    const closestIdx = findClosestPointIndex(full, currentLat, currentLng);
-    const remaining = full.slice(closestIdx);
-    
-    // Le trace est purement base sur la route geometrique (Evite les deformations)
-    if (remaining.length > 1) {
-      setVisibleRoutePoints(remaining);
-    }
-  }, []);
-
-  useEffect(() => {
-    const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
-    const destinationMarker = markers.find((m) => m.type === 'destination');
-    const pickupMarker = markers.find((m) => m.type === 'pickup');
-
-    const targetMarker = pickupMarker || destinationMarker;
-    const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
-
-    if (!activeTarget || !location) {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      fullRoutePointsRef.current = [];
-      lastRouteOriginRef.current = null;
-      lastRouteDestKeyRef.current = null;
-      return;
-    }
-
-    const routeOriginLat = driverLocation?.latitude || location.latitude;
-    const routeOriginLng = driverLocation?.longitude || location.longitude;
-
-    const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
-
-    if (destKey !== lastRouteDestKeyRef.current) {
-      fetchAndStoreRoute(
-        { latitude: routeOriginLat, longitude: routeOriginLng },
-        { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
-      );
-      return;
-    }
-
-    const full = fullRoutePointsRef.current;
-
-    const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
-    if (deviationDist > DEVIATION_THRESHOLD_METERS) {
-      if (!isDrawingRouteRef.current) {
-        fetchAndStoreRoute(
-          { latitude: routeOriginLat, longitude: routeOriginLng },
-          { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
-        );
-      }
-      return;
-    }
-
-    const lastOrigin = lastRouteOriginRef.current;
-    const movedDist = lastOrigin
-      ? haversineMeters(routeOriginLat, routeOriginLng, lastOrigin.latitude, lastOrigin.longitude)
-      : REROUTE_THRESHOLD_METERS + 1;
-
-    if (movedDist >= REROUTE_THRESHOLD_METERS) {
-      if (!isDrawingRouteRef.current) {
-        lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
-        trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
-      }
-    }
-  }, [location, driverLocation, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
-
+  // Logique specifique à la caméra (Auto-Fit)
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
@@ -365,10 +93,6 @@ const MapCard = forwardRef(({
       return () => clearTimeout(timer);
     }
   }, [markers, isMapReady, location, driverLocation, recenterBottomPadding]);
-
-  useEffect(() => {
-    return () => stopDrawAnimation();
-  }, [stopDrawAnimation]);
 
   const handleRecenter = () => {
     if (isMapReady && location) {
@@ -552,12 +276,6 @@ const styles = StyleSheet.create({
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
   originDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2, borderColor: '#FFFFFF', opacity: 0.7 },
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
-  animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
-  pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
-  markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 },
-  humanMarkerBg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 3, elevation: 5 },
-  carMarkerContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  carMarkerBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E1E1E', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
 });
 
 export default React.memo(MapCard);
