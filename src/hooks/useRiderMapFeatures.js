@@ -8,8 +8,8 @@ import THEME from '../theme/theme';
 const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location }) => {
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
-      // CORRECTION : Alignement strict sur le vocabulaire du Backend / Redux
-      const isOngoing = currentRide.status === 'in_progress';
+      // 🛡️ REPARATION : On declenche la vue "En route vers la destination" DES que le chauffeur est 'arrived'
+      const isOngoing = ['in_progress', 'arrived'].includes(currentRide.status);
 
       if (isOngoing) {
         const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
@@ -31,7 +31,7 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
           });
         }
         
-        // Point de depart maintenu visuellement pour le contexte
+        // Point de depart maintenu visuellement pour le contexte (petit point, pas de bonhomme)
         if (originLat && originLng) {
           markers.push({
             id: 'pickup_origin',
@@ -49,7 +49,7 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
       const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
       if (!originLat || !originLng) return [];
       
-      // Phase d'approche du chauffeur
+      // Phase d'approche du chauffeur (le chauffeur n'est pas encore arrivé)
       return [{
         id: 'pickup',
         type: 'pickup',

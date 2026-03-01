@@ -28,16 +28,13 @@ const haversineMeters = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// 🛡️ NOUVEAU : Mathematique de projection orthogonale (Snapping sur la route)
+// Mathematique de projection orthogonale (Snapping sur la route)
 const getProjectedPoint = (A, B, P) => {
   const dx = B.longitude - A.longitude;
   const dy = B.latitude - A.latitude;
   if (dx === 0 && dy === 0) return { latitude: A.latitude, longitude: A.longitude };
 
-  // Calcul du scalaire t representant la projection de P sur le segment AB
   const t = ((P.longitude - A.longitude) * dx + (P.latitude - A.latitude) * dy) / (dx * dx + dy * dy);
-  
-  // Clamper t entre 0 et 1 pour forcer le point a rester STRICTEMENT entre A et B (sur la route)
   const tClamped = Math.max(0, Math.min(1, t));
 
   return {
@@ -46,7 +43,6 @@ const getProjectedPoint = (A, B, P) => {
   };
 };
 
-// Utilitaire de distance euclidienne rapide pour le calcul d'ecart local
 const distSq = (p1, p2) => Math.pow(p1.latitude - p2.latitude, 2) + Math.pow(p1.longitude - p2.longitude, 2);
 
 const useRouteManager = (location, driverLocation, markers) => {
@@ -58,7 +54,7 @@ const useRouteManager = (location, driverLocation, markers) => {
   const fullRoutePointsRef = useRef([]);
   const lastRouteOriginRef = useRef(null);
   const lastRouteDestKeyRef = useRef(null);
-  const lastPassedIndexRef = useRef(0); // Memoire de la progression pour eviter les "queues" arrieres
+  const lastPassedIndexRef = useRef(0);
 
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
@@ -114,7 +110,7 @@ const useRouteManager = (location, driverLocation, markers) => {
       }
 
       fullRoutePointsRef.current = routePoints || [];
-      lastPassedIndexRef.current = 0; // Remise a zero de la memoire sur un nouveau tracé
+      lastPassedIndexRef.current = 0;
       animateRouteDraw(routePoints);
     },
     [animateRouteDraw, stopDrawAnimation]
@@ -129,7 +125,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     let closestIdx = startIndex;
     let minDist = Infinity;
 
-    // On scanne uniquement les 100 prochains points devant nous (Optimisation de performance)
     const scanLimit = Math.min(full.length, startIndex + 100);
 
     for (let i = startIndex; i < scanLimit; i++) {
@@ -144,7 +139,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     let bestDist = Infinity;
     let sliceIndex = closestIdx + 1;
 
-    // Test Segment Precedent
     if (closestIdx > 0) {
       const proj1 = getProjectedPoint(full[closestIdx - 1], full[closestIdx], P);
       const d1 = distSq(P, proj1);
@@ -155,7 +149,6 @@ const useRouteManager = (location, driverLocation, markers) => {
       }
     }
 
-    // Test Segment Suivant
     if (closestIdx < full.length - 1) {
       const proj2 = getProjectedPoint(full[closestIdx], full[closestIdx + 1], P);
       const d2 = distSq(P, proj2);
@@ -168,12 +161,9 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     if (!bestProj) return;
 
-    // Memorisation : On s'assure de ne jamais revenir en arriere pour detruire l'effet de queue de comete
     lastPassedIndexRef.current = Math.max(0, sliceIndex - 1);
 
     const remaining = full.slice(sliceIndex);
-    
-    // On glisse la projection parfaite sur le chemin geometrique
     remaining.unshift({ latitude: bestProj.latitude, longitude: bestProj.longitude });
 
     if (remaining.length > 1) {
@@ -212,6 +202,15 @@ const useRouteManager = (location, driverLocation, markers) => {
     const routeOriginLat = driverLocation?.latitude || location.latitude;
     const routeOriginLng = driverLocation?.longitude || location.longitude;
 
+    // 🛡️ REPARATION : "Kill Switch" de proximite (Coupe le fil si on est a moins de 25 metres)
+    const distToTarget = haversineMeters(routeOriginLat, routeOriginLng, activeTarget.latitude, activeTarget.longitude);
+    if (distToTarget <= 25) {
+      stopDrawAnimation();
+      setVisibleRoutePoints([]);
+      fullRoutePointsRef.current = [];
+      return; // On stoppe le routage net !
+    }
+
     const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
@@ -245,7 +244,6 @@ const useRouteManager = (location, driverLocation, markers) => {
         )
       : TRIM_THRESHOLD_METERS + 1;
 
-    // Le rafraichissement est declenche beaucoup plus vite (2 metres au lieu de 5)
     if (movedDist >= TRIM_THRESHOLD_METERS) {
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };

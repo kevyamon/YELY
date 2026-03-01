@@ -75,7 +75,6 @@ const useSocketEvents = () => {
       }));
     };
 
-    // 🛡️ CORRECTION : Le statut est passe de 'ongoing' a 'in_progress'
     const handleRideStarted = (data) => {
       dispatch(updateRideStatus({
         status: 'in_progress', 
@@ -83,7 +82,6 @@ const useSocketEvents = () => {
       }));
     };
 
-    // 🛡️ NOUVEAU : On ecoute explicitement l'arrivee du chauffeur
     const handleRideArrived = (data) => {
       dispatch(updateRideStatus({
         status: 'arrived',
@@ -118,7 +116,6 @@ const useSocketEvents = () => {
         return;
       }
 
-      // 🛡️ CORRECTION : Le statut est passe de 'ongoing' a 'in_progress'
       if (data.status === 'in_progress') {
         dispatch(updateRideStatus({
           status: 'in_progress',
@@ -127,7 +124,6 @@ const useSocketEvents = () => {
         return;
       }
 
-      // 🛡️ CORRECTION : On s'assure que le passage a 'arrived' via ce fallback marche aussi
       if (data.status === 'arrived') {
         dispatch(updateRideStatus({
           status: 'arrived',
@@ -145,8 +141,32 @@ const useSocketEvents = () => {
     };
 
     const handleDriverLocationUpdate = (data) => {
-      if (data && data.latitude && data.longitude) {
-        dispatch(updateDriverLocation(data));
+      if (!data) return;
+
+      // 🛡️ REPARATION : Extraction ultra-robuste des coordonnees (Peu importe le format du backend)
+      let lat, lng, heading;
+
+      if (data.latitude && data.longitude) {
+        lat = data.latitude;
+        lng = data.longitude;
+        heading = data.heading;
+      } else if (data.location && data.location.coordinates) {
+        // Format GeoJSON MongoDB classique : [longitude, latitude]
+        lat = data.location.coordinates[1];
+        lng = data.location.coordinates[0];
+        heading = data.heading;
+      } else if (data.coordinates) {
+        lat = data.coordinates[1];
+        lng = data.coordinates[0];
+        heading = data.heading;
+      }
+
+      if (lat && lng) {
+        dispatch(updateDriverLocation({
+          latitude: Number(lat),
+          longitude: Number(lng),
+          heading: heading || 0
+        }));
       }
     };
 
@@ -158,7 +178,7 @@ const useSocketEvents = () => {
     socketService.on('proposal_accepted', handleProposalAccepted);
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
-    socketService.on('ride_arrived', handleRideArrived); // 🛡️ BRANCHE !
+    socketService.on('ride_arrived', handleRideArrived); 
     socketService.on('ride_completed', handleRideCompleted);
     socketService.on('RIDE_COMPLETED', handleRideCompleted);
     socketService.on('ride_status_update', handleRideStatusUpdate);
@@ -174,7 +194,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_accepted', handleProposalAccepted);
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
-      socketService.off('ride_arrived', handleRideArrived); // 🛡️ DEBRANCHE !
+      socketService.off('ride_arrived', handleRideArrived); 
       socketService.off('ride_completed', handleRideCompleted);
       socketService.off('RIDE_COMPLETED', handleRideCompleted);
       socketService.off('ride_status_update', handleRideStatusUpdate);
