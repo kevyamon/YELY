@@ -9,31 +9,24 @@ const API_HEADERS = {
   'Accept': 'application/json',
 };
 
-// Precision du cache d'adresse : les coordonnees sont arrondies a ~11m
-// pour que deux positions proches partagent le meme cache sans appel reseau.
 const ADDRESS_CACHE_PRECISION = 4;
 const ADDRESS_CACHE_MAX_SIZE = 50;
 const ADDRESS_DEBOUNCE_MS = 1500;
+const ROUTE_FETCH_TIMEOUT_MS = 5000;
 
-// Cache LRU leger : evite les appels Nominatim repetitifs (protection anti-429)
 const addressCache = new Map();
 
 const roundCoord = (value) => Number(value.toFixed(ADDRESS_CACHE_PRECISION));
 
-const getCacheKey = (lat, lng) =>
-  `${roundCoord(lat)},${roundCoord(lng)}`;
+const getCacheKey = (lat, lng) => `${roundCoord(lat)},${roundCoord(lng)}`;
 
 const writeAddressCache = (key, address) => {
   if (addressCache.size >= ADDRESS_CACHE_MAX_SIZE) {
-    // Supprime la premiere entree (la plus ancienne)
     addressCache.delete(addressCache.keys().next().value);
   }
   addressCache.set(key, address);
 };
 
-// Debounce pour les appels d'adresse inverses : les clics rapides sur +3M
-// generaient un appel Nominatim par position, saturant le quota (429).
-// Un seul appel reseau est envoye apres ADDRESS_DEBOUNCE_MS ms d'inactivite.
 let addressDebounceTimer = null;
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
   clearTimeout(addressDebounceTimer);
@@ -73,7 +66,7 @@ class MapService {
       }
       return true;
     } catch (error) {
-      console.error('[MapService] Erreur permission GPS:', error);
+      console.warn('[MapService] Erreur permission GPS:', error.message);
       throw error;
     }
   }
@@ -88,7 +81,7 @@ class MapService {
         longitude: location.coords.longitude,
       };
     } catch (error) {
-      console.error('[MapService] Erreur getCurrentLocation:', error);
+      console.warn('[MapService] Erreur getCurrentLocation:', error.message);
       throw new Error('Impossible de recuperer la position actuelle.');
     }
   }
@@ -124,7 +117,7 @@ class MapService {
       }
       return [];
     } catch (error) {
-      console.error('[MapService] Erreur getPlaceSuggestions:', error.message);
+      console.warn('[MapService] Erreur getPlaceSuggestions:', error.message);
       return [];
     }
   }
@@ -136,9 +129,6 @@ class MapService {
     throw new Error('Coordonnees introuvables.');
   }
 
-  // Geocodage inverse avec cache LRU + debounce anti-429.
-  // Si la position est deja connue (rayon ~11m), retourne instantanement.
-  // Sinon, attend ADDRESS_DEBOUNCE_MS ms avant d'envoyer la requete reseau.
   static async getAddressFromCoordinates(lat, lng) {
     const cacheKey = getCacheKey(lat, lng);
     const cached = addressCache.get(cacheKey);
@@ -151,24 +141,42 @@ class MapService {
       writeAddressCache(cacheKey, address);
       return address;
     } catch (error) {
-      // Sur 429, on retourne les coordonnees brutes sans crasher
       if (error.message.includes('429')) {
-        const fallback = `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-        return fallback;
+        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       }
-      console.error('[MapService] Erreur getAddressFromCoordinates:', error.message);
+      console.warn('[MapService] Erreur getAddressFromCoordinates:', error.message);
       return 'Adresse introuvable';
     }
   }
 
-  // Routage reel via OSRM (Open Source Routing Machine).
-  // Retourne un tableau de coordonnees qui suivent les vraies routes.
-  // En cas d'echec reseau, fallback sur la ligne droite A→B.
   static async getRouteCoordinates(startCoords, endCoords) {
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${startCoords.longitude},${startCoords.latitude};${endCoords.longitude},${endCoords.latitude}?overview=full&geometries=geojson`;
+    const sLat = startCoords.latitude || startCoords.lat;
+    const sLng = startCoords.longitude || startCoords.lng;
+    const eLat = endCoords.latitude || endCoords.lat;
+    const eLng = endCoords.longitude || endCoords.lng;
 
-      const response = await fetch(url, { headers: API_HEADERS });
+    if (!sLat || !sLng || !eLat || !eLng) {
+      console.warn('[MapService] Coordonnees invalides pour le routage.');
+      return [];
+    }
+
+    const distance = this.calculateDistance({ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng });
+    if (distance < 10) {
+      return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
+    }
+
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), ROUTE_FETCH_TIMEOUT_MS);
+
+      const url = `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
+
+      const response = await fetch(url, { 
+        headers: API_HEADERS,
+        signal: controller.signal
+      });
+
+      clearTimeout(timeoutId);
 
       if (!response.ok) {
         throw new Error(`Erreur HTTP OSRM: ${response.status}`);
@@ -186,17 +194,15 @@ class MapService {
         }
       }
     } catch (error) {
-      console.error('[MapService] Erreur OSRM Route:', error.message);
+      console.warn('[MapService] Erreur OSRM Route:', error.message);
     }
 
-    // Fallback : ligne droite si OSRM est inaccessible
     return [
-      { latitude: startCoords.latitude, longitude: startCoords.longitude },
-      { latitude: endCoords.latitude, longitude: endCoords.longitude },
+      { latitude: sLat, longitude: sLng },
+      { latitude: eLat, longitude: eLng },
     ];
   }
 
-  // Formule de Haversine - precision au metre
   static calculateDistance(coord1, coord2) {
     if (!coord1 || !coord2 || !coord1.latitude || !coord2.latitude) return Infinity;
 

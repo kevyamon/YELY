@@ -1,5 +1,5 @@
 // src/hooks/useRouteManager.js
-// GESTIONNAIRE DE TRACÉ DE ROUTE - Tracé animé, suivi en temps réel et recalcul sur déviation
+// GESTIONNAIRE DE TRACE DE ROUTE - Trace anime, suivi en temps reel et recalcul sur deviation
 // CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -104,7 +104,6 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
 
-      // Protection contre les réponses obsolètes si la cible a changé entre-temps
       if (lastRouteDestKeyRef.current !== destKey) {
         return;
       }
@@ -182,13 +181,12 @@ const useRouteManager = (location, driverLocation, markers) => {
   }, []);
 
   useEffect(() => {
+    if (!markers || !Array.isArray(markers)) return;
+
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
 
-    // Logique de sélection de la cible active :
-    // - Si pickup_origin est présent, on est en phase 2 (course en cours) : cible = destination finale.
-    // - Sinon, la cible est le premier marqueur trouvé (pickup pour l'approche, destination pour le preview).
     const targetMarker = pickupMarker || destinationMarker;
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
@@ -202,14 +200,6 @@ const useRouteManager = (location, driverLocation, markers) => {
       return;
     }
 
-    // Détermination de l'origine du tracé selon la phase :
-    // - Phase 1 (approche, marqueur 'pickup') : origine = position du chauffeur (driverLocation).
-    //   Si driverLocation est absent (pas encore reçu via socket), on utilise location comme
-    //   fallback pour ne pas bloquer le tracé indéfiniment.
-    // - Phase 2 (course en cours, pickup_origin présent) : origine = position du chauffeur
-    //   (driverLocation côté passager, ou location côté chauffeur qui passe sa propre position).
-    //   Le chauffeur passe location=sa_position et driverLocation=sa_position également,
-    //   donc l'un ou l'autre convient. On privilégie driverLocation si disponible.
     const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
     const routeOriginLat = hasDriverPosition ? driverLocation.latitude : location.latitude;
     const routeOriginLng = hasDriverPosition ? driverLocation.longitude : location.longitude;
@@ -221,7 +211,6 @@ const useRouteManager = (location, driverLocation, markers) => {
       activeTarget.longitude
     );
 
-    // Pas de tracé si on est déjà sur la cible
     if (distToTarget <= 25) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
@@ -229,16 +218,10 @@ const useRouteManager = (location, driverLocation, markers) => {
       return;
     }
 
-    // Clé unique intégrant le type de cible pour forcer un recalcul complet
-    // lors du passage de la phase 1 (pickup) à la phase 2 (destination).
-    // Sans cela, l'ancienne route reste affichée lors de la transition.
-    const destKey = `TARGET_${activeTarget.type}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
+    const phaseIdentifier = pickupOriginMarker ? 'PHASE2_DROP' : 'PHASE1_PICKUP';
+    const destKey = `TARGET_${phaseIdentifier}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
-      // Nouvelle cible détectée : purge complète de l'état précédent puis recalcul.
-      // Cette purge est critique pour la transition phase 1 -> phase 2 :
-      // elle garantit que l'ancienne route (approche) disparaît immédiatement
-      // avant que la nouvelle (vers destination) ne soit calculée.
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       fullRoutePointsRef.current = [];

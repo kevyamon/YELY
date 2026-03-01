@@ -8,12 +8,16 @@ import { Animated, Easing, StyleSheet, View } from 'react-native';
 import { AnimatedRegion, Marker } from 'react-native-maps';
 import THEME from '../../../theme/theme';
 
-export const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier }) => {
+export const TrackedMarker = ({ coordinate, anchor, children, zIndex, identifier, visible = true }) => {
   const [tracks, setTracks] = useState(true);
+  
   useEffect(() => {
     const timer = setTimeout(() => setTracks(false), 500);
     return () => clearTimeout(timer);
   }, []);
+
+  if (!visible) return null;
+
   return (
     <Marker
       identifier={identifier}
@@ -90,12 +94,14 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 
   useEffect(() => {
-    markerCoordinate.timing({
-      latitude: coordinate.latitude,
-      longitude: coordinate.longitude,
-      duration: 1000,
-      useNativeDriver: false,
-    }).start();
+    if (coordinate && coordinate.latitude && coordinate.longitude) {
+      markerCoordinate.timing({
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+        duration: 800,
+        useNativeDriver: false,
+      }).start();
+    }
   }, [coordinate, markerCoordinate]);
 
   return (
