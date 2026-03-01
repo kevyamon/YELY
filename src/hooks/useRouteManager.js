@@ -1,5 +1,5 @@
 // src/hooks/useRouteManager.js
-// HOOK METIER - Routage dynamique, Animation et Trimming agnostique
+// HOOK METIER - Routage dynamique, Projection Orthogonale et Grignotage Fluide
 // CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -7,7 +7,7 @@ import MapService from '../services/mapService';
 
 const ROUTE_DRAW_DURATION_MS = 900;
 const ROUTE_DRAW_INTERVAL_MS = 16;
-const REROUTE_THRESHOLD_METERS = 25;
+const TRIM_THRESHOLD_METERS = 2; // Haute frequence : recalcul visuel tous les 2 metres (Tres fluide)
 const DEVIATION_THRESHOLD_METERS = 60;
 
 const computeStepSize = (totalPoints) => {
@@ -28,39 +28,26 @@ const haversineMeters = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const findClosestPointIndex = (routePoints, currentLat, currentLng) => {
-  if (!routePoints || routePoints.length === 0) return 0;
-  let minDist = Infinity;
-  let closestIdx = 0;
-  for (let i = 0; i < routePoints.length; i++) {
-    const d = haversineMeters(
-      currentLat,
-      currentLng,
-      routePoints[i].latitude,
-      routePoints[i].longitude
-    );
-    if (d < minDist) {
-      minDist = d;
-      closestIdx = i;
-    }
-  }
-  return closestIdx;
+// 🛡️ NOUVEAU : Mathematique de projection orthogonale (Snapping sur la route)
+const getProjectedPoint = (A, B, P) => {
+  const dx = B.longitude - A.longitude;
+  const dy = B.latitude - A.latitude;
+  if (dx === 0 && dy === 0) return { latitude: A.latitude, longitude: A.longitude };
+
+  // Calcul du scalaire t representant la projection de P sur le segment AB
+  const t = ((P.longitude - A.longitude) * dx + (P.latitude - A.latitude) * dy) / (dx * dx + dy * dy);
+  
+  // Clamper t entre 0 et 1 pour forcer le point a rester STRICTEMENT entre A et B (sur la route)
+  const tClamped = Math.max(0, Math.min(1, t));
+
+  return {
+    latitude: A.latitude + tClamped * dy,
+    longitude: A.longitude + tClamped * dx,
+  };
 };
 
-const distanceToRoute = (lat, lng, routePoints) => {
-  if (!routePoints || routePoints.length < 2) return Infinity;
-  let minDist = Infinity;
-  for (let i = 0; i < routePoints.length; i++) {
-    const d = haversineMeters(
-      lat,
-      lng,
-      routePoints[i].latitude,
-      routePoints[i].longitude
-    );
-    if (d < minDist) minDist = d;
-  }
-  return minDist;
-};
+// Utilitaire de distance euclidienne rapide pour le calcul d'ecart local
+const distSq = (p1, p2) => Math.pow(p1.latitude - p2.latitude, 2) + Math.pow(p1.longitude - p2.longitude, 2);
 
 const useRouteManager = (location, driverLocation, markers) => {
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
@@ -71,6 +58,7 @@ const useRouteManager = (location, driverLocation, markers) => {
   const fullRoutePointsRef = useRef([]);
   const lastRouteOriginRef = useRef(null);
   const lastRouteDestKeyRef = useRef(null);
+  const lastPassedIndexRef = useRef(0); // Memoire de la progression pour eviter les "queues" arrieres
 
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
@@ -111,6 +99,7 @@ const useRouteManager = (location, driverLocation, markers) => {
         fullRoutePointsRef.current = [];
         lastRouteOriginRef.current = null;
         lastRouteDestKeyRef.current = null;
+        lastPassedIndexRef.current = 0;
         return;
       }
 
@@ -125,6 +114,7 @@ const useRouteManager = (location, driverLocation, markers) => {
       }
 
       fullRoutePointsRef.current = routePoints || [];
+      lastPassedIndexRef.current = 0; // Remise a zero de la memoire sur un nouveau tracé
       animateRouteDraw(routePoints);
     },
     [animateRouteDraw, stopDrawAnimation]
@@ -134,13 +124,71 @@ const useRouteManager = (location, driverLocation, markers) => {
     const full = fullRoutePointsRef.current;
     if (!full || full.length < 2) return;
 
-    const closestIdx = findClosestPointIndex(full, currentLat, currentLng);
-    const remaining = full.slice(closestIdx);
+    const P = { latitude: currentLat, longitude: currentLng };
+    let startIndex = lastPassedIndexRef.current || 0;
+    let closestIdx = startIndex;
+    let minDist = Infinity;
 
-    // Le trace suit strictement la route geometrique pour eviter toute deformation
+    // On scanne uniquement les 100 prochains points devant nous (Optimisation de performance)
+    const scanLimit = Math.min(full.length, startIndex + 100);
+
+    for (let i = startIndex; i < scanLimit; i++) {
+      const d = haversineMeters(currentLat, currentLng, full[i].latitude, full[i].longitude);
+      if (d < minDist) {
+        minDist = d;
+        closestIdx = i;
+      }
+    }
+
+    let bestProj = null;
+    let bestDist = Infinity;
+    let sliceIndex = closestIdx + 1;
+
+    // Test Segment Precedent
+    if (closestIdx > 0) {
+      const proj1 = getProjectedPoint(full[closestIdx - 1], full[closestIdx], P);
+      const d1 = distSq(P, proj1);
+      if (d1 < bestDist) {
+        bestDist = d1;
+        bestProj = proj1;
+        sliceIndex = closestIdx;
+      }
+    }
+
+    // Test Segment Suivant
+    if (closestIdx < full.length - 1) {
+      const proj2 = getProjectedPoint(full[closestIdx], full[closestIdx + 1], P);
+      const d2 = distSq(P, proj2);
+      if (d2 < bestDist) {
+        bestDist = d2;
+        bestProj = proj2;
+        sliceIndex = closestIdx + 1;
+      }
+    }
+
+    if (!bestProj) return;
+
+    // Memorisation : On s'assure de ne jamais revenir en arriere pour detruire l'effet de queue de comete
+    lastPassedIndexRef.current = Math.max(0, sliceIndex - 1);
+
+    const remaining = full.slice(sliceIndex);
+    
+    // On glisse la projection parfaite sur le chemin geometrique
+    remaining.unshift({ latitude: bestProj.latitude, longitude: bestProj.longitude });
+
     if (remaining.length > 1) {
       setVisibleRoutePoints(remaining);
     }
+  }, []);
+
+  const distanceToRoute = useCallback((lat, lng, routePoints) => {
+    if (!routePoints || routePoints.length < 2) return Infinity;
+    let minDist = Infinity;
+    for (let i = 0; i < routePoints.length; i++) {
+      const d = haversineMeters(lat, lng, routePoints[i].latitude, routePoints[i].longitude);
+      if (d < minDist) minDist = d;
+    }
+    return minDist;
   }, []);
 
   useEffect(() => {
@@ -157,6 +205,7 @@ const useRouteManager = (location, driverLocation, markers) => {
       fullRoutePointsRef.current = [];
       lastRouteOriginRef.current = null;
       lastRouteDestKeyRef.current = null;
+      lastPassedIndexRef.current = 0;
       return;
     }
 
@@ -194,9 +243,10 @@ const useRouteManager = (location, driverLocation, markers) => {
           lastOrigin.latitude,
           lastOrigin.longitude
         )
-      : REROUTE_THRESHOLD_METERS + 1;
+      : TRIM_THRESHOLD_METERS + 1;
 
-    if (movedDist >= REROUTE_THRESHOLD_METERS) {
+    // Le rafraichissement est declenche beaucoup plus vite (2 metres au lieu de 5)
+    if (movedDist >= TRIM_THRESHOLD_METERS) {
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
         trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
@@ -209,6 +259,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     fetchAndStoreRoute,
     trimRouteFromCurrentPosition,
     stopDrawAnimation,
+    distanceToRoute
   ]);
 
   useEffect(() => {

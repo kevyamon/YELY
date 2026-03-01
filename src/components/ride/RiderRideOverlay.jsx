@@ -1,5 +1,5 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur (Strictement Presentationnel)
+// PANNEAU PASSAGER - Suivi du Chauffeur avec Zero-Latency UI
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -21,7 +21,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters, formatDistance } from '../../utils/distanceUtils';
@@ -51,7 +51,7 @@ const RiderRideOverlay = () => {
     });
   }, [translateY]);
 
-  // Synchronisation stricte avec le statut du Backend (Machine d'Etat)
+  // Synchronisation stricte avec la machine d'etat
   useEffect(() => {
     const status = currentRide?.status;
 
@@ -86,6 +86,16 @@ const RiderRideOverlay = () => {
   const liveDistance = useMemo(() => {
     return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
   }, [driverLat, driverLng, targetLat, targetLng]);
+
+  // 🛡️ VACCIN : ZERO-LATENCY UI (Geofencing Autonome Passager)
+  // Si le reseau est defaillant et que le serveur n'a pas pu envoyer le WebSocket,
+  // l'interface client prend la decision locale de basculer en 'arrived' des 30 metres.
+  // Cela elimine definitivement le bug visuel du "En approche (0m)".
+  useEffect(() => {
+    if (currentRide?.status === 'accepted' && liveDistance !== Infinity && liveDistance <= 30) {
+      dispatch(updateRideStatus({ status: 'arrived', arrivedAt: Date.now() }));
+    }
+  }, [liveDistance, currentRide?.status, dispatch]);
 
   const resolveStatusLabel = () => {
     switch (riderStatus) {

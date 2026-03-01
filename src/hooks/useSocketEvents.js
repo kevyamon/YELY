@@ -75,19 +75,25 @@ const useSocketEvents = () => {
       }));
     };
 
+    // 🛡️ CORRECTION : Le statut est passe de 'ongoing' a 'in_progress'
     const handleRideStarted = (data) => {
       dispatch(updateRideStatus({
-        status: 'ongoing',
+        status: 'in_progress', 
         startedAt: data.startedAt,
       }));
     };
 
-    // Gestion industrielle de la fin de course
+    // 🛡️ NOUVEAU : On ecoute explicitement l'arrivee du chauffeur
+    const handleRideArrived = (data) => {
+      dispatch(updateRideStatus({
+        status: 'arrived',
+        arrivedAt: data.arrivedAt || Date.now(),
+      }));
+    };
+
     const handleRideCompleted = (data) => {
-      // 1. Mise en cache pour la modale de notation
       dispatch(setRideToRate(data.ride || data));
       
-      // 2. Mise a jour des donnees financieres si disponibles
       if (data?.stats) {
         dispatch(updateUserInfo({
           totalRides: data.stats.totalRides,
@@ -96,7 +102,6 @@ const useSocketEvents = () => {
         }));
       }
 
-      // 3. Purge absolue du cache de course actif
       dispatch(clearCurrentRide());
 
       dispatch(showSuccessToast({
@@ -113,17 +118,19 @@ const useSocketEvents = () => {
         return;
       }
 
-      if (data.status === 'ongoing') {
+      // 🛡️ CORRECTION : Le statut est passe de 'ongoing' a 'in_progress'
+      if (data.status === 'in_progress') {
         dispatch(updateRideStatus({
-          status: 'ongoing',
+          status: 'in_progress',
           startedAt: data?.ride?.startedAt,
         }));
         return;
       }
 
+      // 🛡️ CORRECTION : On s'assure que le passage a 'arrived' via ce fallback marche aussi
       if (data.status === 'arrived') {
         dispatch(updateRideStatus({
-          status: 'accepted',
+          status: 'arrived',
           arrivedAt: Date.now(),
         }));
       }
@@ -151,7 +158,7 @@ const useSocketEvents = () => {
     socketService.on('proposal_accepted', handleProposalAccepted);
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
-    // Double ecoute pour garantir la reception peu importe le formatage backend
+    socketService.on('ride_arrived', handleRideArrived); // 🛡️ BRANCHE !
     socketService.on('ride_completed', handleRideCompleted);
     socketService.on('RIDE_COMPLETED', handleRideCompleted);
     socketService.on('ride_status_update', handleRideStatusUpdate);
@@ -167,6 +174,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_accepted', handleProposalAccepted);
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
+      socketService.off('ride_arrived', handleRideArrived); // 🛡️ DEBRANCHE !
       socketService.off('ride_completed', handleRideCompleted);
       socketService.off('RIDE_COMPLETED', handleRideCompleted);
       socketService.off('ride_status_update', handleRideStatusUpdate);
