@@ -62,8 +62,14 @@ const MapCard = forwardRef(({
 
   const leafletKmlPositions = MAFERE_KML_ZONE.map((coord) => [coord.latitude, coord.longitude]);
 
-  // 🛡️ REPARATION : On obéit STRICTEMENT au parent. Plus d'effacement automatique rebelle.
-  const shouldShowUserMarker = showUserMarker;
+  // Nettoyage strict des points fantomes : si l'utilisateur est cache (phase 2), 
+  // on eradique completement les points de depart pour eviter les residus.
+  const displayMarkers = markers.filter(marker => {
+    if (!showUserMarker && (marker.type === 'pickup' || marker.type === 'pickup_origin')) {
+      return false;
+    }
+    return true;
+  });
 
   const polylinePositions = visibleRoutePoints.map(p => [p.latitude, p.longitude]);
 
@@ -84,7 +90,12 @@ const MapCard = forwardRef(({
           maxZoom={19}
         />
 
-        <MapAutoFitter location={location} driverLocation={driverLocation} markers={markers} />
+        <MapAutoFitter 
+          location={location} 
+          driverLocation={driverLocation} 
+          markers={displayMarkers} 
+          routePoints={visibleRoutePoints}
+        />
 
         {leafletKmlPositions.length > 0 && (
           <Polygon
@@ -99,7 +110,7 @@ const MapCard = forwardRef(({
           />
         )}
 
-        {shouldShowUserMarker && location && (
+        {showUserMarker && location && (
           <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
         )}
 
@@ -107,7 +118,7 @@ const MapCard = forwardRef(({
           <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={driverIcon} />
         )}
 
-        {markers.map((marker, index) => {
+        {displayMarkers.map((marker, index) => {
           if (!marker.latitude || !marker.longitude) return null;
 
           let markerIcon = defaultIcon;

@@ -32,6 +32,9 @@ const RiderHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
   
+  // Extraction directe depuis le store pour contourner tout blocage de flux dans les hooks intermediaires
+  const driverLocationFromRedux = useSelector((state) => state.ride?.driverLocation);
+  
   const { location, errorMsg } = useGeolocation(); 
   const isUserInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
@@ -72,6 +75,9 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
+  // Injection prioritaire de la position temps reel issue des WebSockets
+  const activeDriverLocation = isRideActive ? (driverLocationFromRedux || driverLatLng) : null;
+
   return (
     <View style={styles.screenWrapper}>
       
@@ -80,11 +86,10 @@ const RiderHome = ({ navigation }) => {
            <MapCard 
              ref={mapRef}
              location={mapTraceOrigin}
-             driverLocation={isRideActive ? driverLatLng : null}
+             driverLocation={activeDriverLocation}
              showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
-             // 🛡️ REPARATION : Le hook gere desormais l'etat complet des marqueurs
              markers={mapMarkers}
              recenterBottomPadding={mapBottomPadding} 
            />
@@ -143,4 +148,4 @@ const styles = StyleSheet.create({
   loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12, fontWeight: '600' },
 });
 
-export default RiderHome; 
+export default RiderHome;
