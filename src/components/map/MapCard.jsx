@@ -1,5 +1,5 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Routage Dynamique & Masquage Intelligent
+// COMPOSANT CARTE - Routage Dynamique (Alignement strict sur la route)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -16,7 +16,7 @@ const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
 
 const ROUTE_DRAW_DURATION_MS = 900;
 const ROUTE_DRAW_INTERVAL_MS = 16;
-const REROUTE_THRESHOLD_METERS = 40;
+const REROUTE_THRESHOLD_METERS = 25;
 const DEVIATION_THRESHOLD_METERS = 60;
 
 const computeStepSize = (totalPoints) => {
@@ -257,6 +257,8 @@ const MapCard = forwardRef(({
 
     const closestIdx = findClosestPointIndex(full, currentLat, currentLng);
     const remaining = full.slice(closestIdx);
+    
+    // Le trace est purement base sur la route geometrique (Evite les deformations)
     if (remaining.length > 1) {
       setVisibleRoutePoints(remaining);
     }
@@ -279,8 +281,6 @@ const MapCard = forwardRef(({
       return;
     }
 
-    // Le centre vital de l'UX : Si on connait la position du chauffeur, le trace part TOUJOURS de lui.
-    // Cela corrige le bug "le premier trace n'apparait meme pas pour le client".
     const routeOriginLat = driverLocation?.latitude || location.latitude;
     const routeOriginLng = driverLocation?.longitude || location.longitude;
 

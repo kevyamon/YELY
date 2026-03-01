@@ -42,6 +42,30 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Ride'],
     }),
+
+    markAsArrived: builder.mutation({
+      query: (data) => ({
+        url: '/rides/arrived',
+        method: 'POST',
+        body: data,
+      }),
+      async onQueryStarted({ rideId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
+            if (draft && (draft._id === rideId || draft.id === rideId || draft.rideId === rideId)) {
+              draft.status = 'arrived';
+              draft.arrivedAt = Date.now();
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+      invalidatesTags: ['Ride'],
+    }),
     
     startRide: builder.mutation({
       query: (data) => ({
@@ -49,19 +73,18 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      // ⚡ OPTIMISTIC UPDATE : Mise à jour instantanée de l'interface avant la réponse serveur
       async onQueryStarted({ rideId }, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
             if (draft && (draft._id === rideId || draft.id === rideId || draft.rideId === rideId)) {
-              draft.status = 'ongoing';
+              draft.status = 'in_progress';
             }
           })
         );
         try {
           await queryFulfilled;
         } catch {
-          patchResult.undo(); // Rollback automatique en cas d'erreur réseau
+          patchResult.undo();
         }
       },
       invalidatesTags: ['Ride'],
@@ -73,7 +96,6 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      // ⚡ OPTIMISTIC UPDATE : Clôture instantanée
       async onQueryStarted({ rideId }, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
@@ -139,6 +161,7 @@ export const {
   useLockRideMutation,
   useSubmitPriceMutation,
   useFinalizeRideMutation,
+  useMarkAsArrivedMutation,
   useStartRideMutation,
   useCompleteRideMutation,
   useEmergencyCancelRideMutation,

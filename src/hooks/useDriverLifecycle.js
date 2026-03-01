@@ -7,7 +7,7 @@ import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
 import socketService from '../services/socketService';
-import { useCompleteRideMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
+import { useCompleteRideMutation, useMarkAsArrivedMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../store/api/usersApiSlice';
 import { updateUserInfo } from '../store/slices/authSlice';
 import { setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlice';
@@ -39,6 +39,7 @@ const useDriverLifecycle = ({
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+  const [markAsArrived] = useMarkAsArrivedMutation();
   const [startRide] = useStartRideMutation();
   const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
 
@@ -129,7 +130,6 @@ const useDriverLifecycle = ({
     }
   }, [currentRide?.status]);
 
-  // Ecouteur WebSocket pour declencher la modale d'arrivee depuis le Backend
   useEffect(() => {
     const handlePromptArrival = ({ rideId }) => {
       if (currentRide && currentRide._id === rideId && !snoozeTimerRef.current && currentRide.status === 'in_progress') {
@@ -155,7 +155,6 @@ const useDriverLifecycle = ({
     }
   }, [currentRide, simulatedLocation, setSimulatedLocation, mapRef]);
 
-  // Logique Geofencing (Fallback & Prise en charge initiale)
   useEffect(() => {
     if (!location || !currentRide) return;
 
@@ -174,12 +173,17 @@ const useDriverLifecycle = ({
 
         if (distance <= PICKUP_RADIUS_METERS) {
           isProcessingPickupRef.current = true;
-          dispatch(updateRideStatus({ arrivedAt: Date.now() }));
+          
+          dispatch(updateRideStatus({ arrivedAt: Date.now(), status: 'arrived' }));
+          
+          markAsArrived({ rideId: currentRide._id }).unwrap().catch(err => {
+            console.warn('[DriverLifecycle] Erreur notification d\'arrivee:', err);
+            isProcessingPickupRef.current = false; 
+          });
         }
       }
     }
 
-    // Redondance du declencheur de la modale cote client (en cas de perte socket)
     if (status === 'in_progress' && !isArrivalModalVisible && !snoozeTimerRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -196,7 +200,7 @@ const useDriverLifecycle = ({
         }
       }
     }
-  }, [location, currentRide, dispatch, isArrivalModalVisible]);
+  }, [location, currentRide, dispatch, isArrivalModalVisible, markAsArrived]); 
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
