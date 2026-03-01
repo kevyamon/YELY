@@ -1,5 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage, Statuts de Proximite & Validation Embarquement
+// PANNEAU CHAUFFEUR - Guidage et Statuts de Proximite (Interface Allegee)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -24,12 +24,12 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { useStartRideMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentRide, selectEffectiveLocation } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters } from '../../utils/distanceUtils';
 import RideRouteDisplay from './RideRouteDisplay';
+import StartRideButton from './StartRideButton';
 
 const { width } = Dimensions.get('window');
 
@@ -69,8 +69,6 @@ const DriverRideOverlay = () => {
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
-
-  const [startRide, { isLoading: isStartingRide }] = useStartRideMutation();
 
   const translateY = useSharedValue(300);
 
@@ -152,15 +150,6 @@ const DriverRideOverlay = () => {
     Linking.openURL(url).catch(() => {
       Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
     });
-  };
-
-  const handleStartRide = async () => {
-    if (!currentRide) return;
-    try {
-      await startRide({ rideId: currentRide._id }).unwrap();
-    } catch (err) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de demarrer la course.' }));
-    }
   };
 
   return (
@@ -250,16 +239,8 @@ const DriverRideOverlay = () => {
           )}
 
           {driverStatus === DRIVER_STATUS.ARRIVED ? (
-            <TouchableOpacity
-              style={[styles.startRideButton, isStartingRide && styles.startRideButtonDisabled]}
-              onPress={handleStartRide}
-              disabled={isStartingRide}
-            >
-              <Ionicons name="play" size={24} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
-              <Text style={styles.startRideButtonText}>
-                {isStartingRide ? "DEMARRAGE..." : "CLIENT A BORD - DEMARRER"}
-              </Text>
-            </TouchableOpacity>
+            // 🛡️ INJECTION DU MODULE ISOLE
+            <StartRideButton />
           ) : (
             <View style={[
               styles.passiveStatusContainer,
@@ -307,9 +288,6 @@ const styles = StyleSheet.create({
   actionsWrapper: { gap: THEME.SPACING.sm, marginTop: THEME.SPACING.xs },
   secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
   secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },
-  startRideButton: { flexDirection: 'row', backgroundColor: THEME.COLORS.success, width: '100%', paddingVertical: 18, borderRadius: 28, justifyContent: 'center', alignItems: 'center', elevation: 5, shadowColor: THEME.COLORS.success, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5 },
-  startRideButtonDisabled: { opacity: 0.7 },
-  startRideButtonText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 16, letterSpacing: 1 },
   passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
   passiveStatusOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
   passiveStatusArrived: { backgroundColor: 'rgba(52, 152, 219, 0.1)', borderColor: 'rgba(52, 152, 219, 0.4)' },
