@@ -1,5 +1,6 @@
 // src/components/debug/GpsTeleporter.jsx
 // OUTIL DE DEBUG - Teleportation et Simulation de mouvement (DEV ONLY)
+// CSCSM Level: Bank Grade
 
 import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -16,7 +17,8 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
   if (!__DEV__ || !currentRide) return null;
 
   const getTargetCoordinates = () => {
-    const targetType = currentRide.status === 'ongoing' ? 'destination' : 'pickup';
+    // La cible change selon le statut reel de la course
+    const targetType = ['arrived', 'in_progress'].includes(currentRide.status) ? 'destination' : 'pickup';
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
