@@ -72,10 +72,6 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
-  const activeMarkers = (isRideActive && currentRide?.status === 'in_progress')
-    ? mapMarkers.filter(m => m.type !== 'pickup')
-    : mapMarkers;
-
   return (
     <View style={styles.screenWrapper}>
       
@@ -88,7 +84,8 @@ const RiderHome = ({ navigation }) => {
              showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
-             markers={activeMarkers}
+             // 🛡️ REPARATION : Purifie de la logique "bricolee" de filtrage, on fait confiance au hook
+             markers={mapMarkers}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (

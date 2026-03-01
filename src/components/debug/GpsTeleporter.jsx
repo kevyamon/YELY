@@ -17,17 +17,14 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
   if (!__DEV__ || !currentRide) return null;
 
   const getTargetCoordinates = () => {
-    // La cible change selon le statut reel de la course
-    const targetType = ['arrived', 'in_progress'].includes(currentRide.status) ? 'destination' : 'pickup';
+    // 🛡️ REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
+    const targetType = currentRide.status === 'in_progress' ? 'destination' : 'pickup';
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
     return { lat: Number(lat), lng: Number(lng), type: targetType };
   };
 
-  // Centralise la mise a jour locale ET l'emission socket via le contrat etabli.
-  // Utilise emitLocation (snake_case 'update_location') pour correspondre
-  // au contrat du backend — jamais emit('updateLocation').
   const syncLocation = (newLocation) => {
     setSimulatedLocation(newLocation);
     socketService.emitLocation(newLocation);

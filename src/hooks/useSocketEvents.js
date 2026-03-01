@@ -29,7 +29,7 @@ const useSocketEvents = () => {
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
         title: 'Course annulee',
-        message: data?.reason || 'Annulation confirmée par le serveur.',
+        message: data?.reason || 'Annulation confirmee par le serveur.',
       }));
     };
 
@@ -143,15 +143,14 @@ const useSocketEvents = () => {
     const handleDriverLocationUpdate = (data) => {
       if (!data) return;
 
-      // 🛡️ REPARATION : Extraction ultra-robuste des coordonnees (Peu importe le format du backend)
       let lat, lng, heading;
 
+      // Extraction robuste des coordonnees : on fouille dans le JSON selon differents formats possibles
       if (data.latitude && data.longitude) {
         lat = data.latitude;
         lng = data.longitude;
         heading = data.heading;
       } else if (data.location && data.location.coordinates) {
-        // Format GeoJSON MongoDB classique : [longitude, latitude]
         lat = data.location.coordinates[1];
         lng = data.location.coordinates[0];
         heading = data.heading;
@@ -178,7 +177,7 @@ const useSocketEvents = () => {
     socketService.on('proposal_accepted', handleProposalAccepted);
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
-    socketService.on('ride_arrived', handleRideArrived); 
+    socketService.on('ride_arrived', handleRideArrived);
     socketService.on('ride_completed', handleRideCompleted);
     socketService.on('RIDE_COMPLETED', handleRideCompleted);
     socketService.on('ride_status_update', handleRideStatusUpdate);
@@ -194,7 +193,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_accepted', handleProposalAccepted);
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
-      socketService.off('ride_arrived', handleRideArrived); 
+      socketService.off('ride_arrived', handleRideArrived);
       socketService.off('ride_completed', handleRideCompleted);
       socketService.off('RIDE_COMPLETED', handleRideCompleted);
       socketService.off('ride_status_update', handleRideStatusUpdate);

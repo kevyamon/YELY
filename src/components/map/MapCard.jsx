@@ -44,10 +44,8 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // Injection du Hook de routage dechargeant le composant de toute la logique mathématique
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  // Logique specifique à la caméra (Auto-Fit)
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
@@ -114,8 +112,8 @@ const MapCard = forwardRef(({
     if (onMapReady) onMapReady();
   };
 
-  const isDestinationTargeted = markers.some((m) => m.type === 'pickup_origin') || markers.length === 1 && markers[0].type === 'destination';
-  const shouldShowUserMarker = showUserMarker && !isDestinationTargeted;
+  // 🛡️ REPARATION : On obeit strictement a l'ordre du parent (showUserMarker)
+  const shouldShowUserMarker = showUserMarker;
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>

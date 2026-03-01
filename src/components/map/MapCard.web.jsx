@@ -39,7 +39,6 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapInstanceRef = useRef(null);
 
-  // Injection du Hook de routage commun (Mobile/Web)
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   useImperativeHandle(ref, () => ({
@@ -63,10 +62,9 @@ const MapCard = forwardRef(({
 
   const leafletKmlPositions = MAFERE_KML_ZONE.map((coord) => [coord.latitude, coord.longitude]);
 
-  const isDestinationTargeted = markers.some((m) => m.type === 'pickup_origin') || (markers.length === 1 && markers[0].type === 'destination');
-  const shouldShowUserMarker = showUserMarker && !isDestinationTargeted;
+  // 🛡️ REPARATION : On obéit STRICTEMENT au parent. Plus d'effacement automatique rebelle.
+  const shouldShowUserMarker = showUserMarker;
 
-  // Adaptation du tableau d'objets en tableau de tableaux pour react-leaflet
   const polylinePositions = visibleRoutePoints.map(p => [p.latitude, p.longitude]);
 
   return (

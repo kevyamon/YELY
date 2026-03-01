@@ -16,9 +16,9 @@ const ArrivalConfirmModal = ({ visible, onConfirm, onSnooze, isLoading }) => {
             <Ionicons name="location" size={40} color={THEME.COLORS.background} />
           </View>
 
-          <Text style={styles.modalTitle}>Etes-vous arrive ?</Text>
+          <Text style={styles.modalTitle}>Etes-vous arrivé ?</Text>
           <Text style={styles.modalSubtitle}>
-            Vous semblez etre a destination. Confirmez-vous la fin de la course pour encaisser vos gains ?
+            Vous semblez etre à destination. Confirmez-vous la fin de la course pour encaisser vos gains ?
           </Text>
 
           <View style={styles.actionsContainer}>

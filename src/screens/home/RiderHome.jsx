@@ -72,10 +72,6 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
-  const activeMarkers = (isRideActive && currentRide?.status === 'in_progress')
-    ? mapMarkers.filter(m => m.type !== 'pickup')
-    : mapMarkers;
-
   return (
     <View style={styles.screenWrapper}>
       
@@ -88,7 +84,8 @@ const RiderHome = ({ navigation }) => {
              showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
-             markers={activeMarkers}
+             // 🛡️ REPARATION : Le hook gere desormais l'etat complet des marqueurs
+             markers={mapMarkers}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (
@@ -146,4 +143,4 @@ const styles = StyleSheet.create({
   loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12, fontWeight: '600' },
 });
 
-export default RiderHome;
+export default RiderHome; 

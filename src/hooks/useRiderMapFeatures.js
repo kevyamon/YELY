@@ -8,18 +8,15 @@ import THEME from '../theme/theme';
 const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location }) => {
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
-      // 🛡️ REPARATION : On declenche la vue "En route vers la destination" DES que le chauffeur est 'arrived'
-      const isOngoing = ['in_progress', 'arrived'].includes(currentRide.status);
+      const isOngoing = currentRide.status === 'in_progress';
 
       if (isOngoing) {
         const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
         const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
-        const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
-        const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
         
         const markers = [];
         
-        // Cible du routage en cours
+        // Cible du routage en cours (La destination finale)
         if (destLat && destLng) {
           markers.push({
             id: 'destination',
@@ -31,17 +28,9 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
           });
         }
         
-        // Point de depart maintenu visuellement pour le contexte (petit point, pas de bonhomme)
-        if (originLat && originLng) {
-          markers.push({
-            id: 'pickup_origin',
-            type: 'pickup_origin',
-            latitude: Number(originLat),
-            longitude: Number(originLng),
-            title: currentRide.origin?.address || 'Depart',
-          });
-        }
-        
+        // Nettoyage absolu : on ne retourne QUE la destination.
+        // L'icone de la voiture sera placee par le composant parent.
+        // Cela supprime definitivement la double icone au depart.
         return markers;
       }
 
@@ -49,7 +38,7 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
       const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
       if (!originLat || !originLng) return [];
       
-      // Phase d'approche du chauffeur (le chauffeur n'est pas encore arrivé)
+      // Phase d'approche du chauffeur ou en attente
       return [{
         id: 'pickup',
         type: 'pickup',
