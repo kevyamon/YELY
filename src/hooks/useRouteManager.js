@@ -1,11 +1,13 @@
 // src/hooks/useRouteManager.js
+// GESTIONNAIRE DE TRACÉ DE ROUTE - Tracé animé, suivi en temps réel et recalcul sur déviation
+// CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
 
 const ROUTE_DRAW_DURATION_MS = 900;
 const ROUTE_DRAW_INTERVAL_MS = 16;
-const TRIM_THRESHOLD_METERS = 2; 
+const TRIM_THRESHOLD_METERS = 2;
 const DEVIATION_THRESHOLD_METERS = 60;
 
 const computeStepSize = (totalPoints) => {
@@ -14,7 +16,7 @@ const computeStepSize = (totalPoints) => {
 };
 
 const haversineMeters = (lat1, lng1, lat2, lng2) => {
-  if (!lat1 || !lng1 || !lat2 || !lng2) return Infinity;
+  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return Infinity;
   const R = 6371e3;
   const p1 = (lat1 * Math.PI) / 180;
   const p2 = (lat2 * Math.PI) / 180;
@@ -40,7 +42,8 @@ const getProjectedPoint = (A, B, P) => {
   };
 };
 
-const distSq = (p1, p2) => Math.pow(p1.latitude - p2.latitude, 2) + Math.pow(p1.longitude - p2.longitude, 2);
+const distSq = (p1, p2) =>
+  Math.pow(p1.latitude - p2.latitude, 2) + Math.pow(p1.longitude - p2.longitude, 2);
 
 const useRouteManager = (location, driverLocation, markers) => {
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
@@ -101,6 +104,7 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
 
+      // Protection contre les réponses obsolètes si la cible a changé entre-temps
       if (lastRouteDestKeyRef.current !== destKey) {
         return;
       }
@@ -117,7 +121,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (!full || full.length < 2) return;
 
     const P = { latitude: currentLat, longitude: currentLng };
-    let startIndex = lastPassedIndexRef.current || 0;
+    const startIndex = lastPassedIndexRef.current || 0;
     let closestIdx = startIndex;
     let minDist = Infinity;
 
@@ -182,6 +186,9 @@ const useRouteManager = (location, driverLocation, markers) => {
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
 
+    // Logique de sélection de la cible active :
+    // - Si pickup_origin est présent, on est en phase 2 (course en cours) : cible = destination finale.
+    // - Sinon, la cible est le premier marqueur trouvé (pickup pour l'approche, destination pour le preview).
     const targetMarker = pickupMarker || destinationMarker;
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
@@ -195,28 +202,48 @@ const useRouteManager = (location, driverLocation, markers) => {
       return;
     }
 
-    const routeOriginLat = driverLocation?.latitude || location.latitude;
-    const routeOriginLng = driverLocation?.longitude || location.longitude;
+    // Détermination de l'origine du tracé selon la phase :
+    // - Phase 1 (approche, marqueur 'pickup') : origine = position du chauffeur (driverLocation).
+    //   Si driverLocation est absent (pas encore reçu via socket), on utilise location comme
+    //   fallback pour ne pas bloquer le tracé indéfiniment.
+    // - Phase 2 (course en cours, pickup_origin présent) : origine = position du chauffeur
+    //   (driverLocation côté passager, ou location côté chauffeur qui passe sa propre position).
+    //   Le chauffeur passe location=sa_position et driverLocation=sa_position également,
+    //   donc l'un ou l'autre convient. On privilégie driverLocation si disponible.
+    const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
+    const routeOriginLat = hasDriverPosition ? driverLocation.latitude : location.latitude;
+    const routeOriginLng = hasDriverPosition ? driverLocation.longitude : location.longitude;
 
-    // SECURITE 1 : Interdiction de tracer la route d'approche si la position du chauffeur est absente
-    if (activeTarget.type === 'pickup' && (!driverLocation?.latitude || !driverLocation?.longitude)) {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      return;
-    }
+    const distToTarget = haversineMeters(
+      routeOriginLat,
+      routeOriginLng,
+      activeTarget.latitude,
+      activeTarget.longitude
+    );
 
-    const distToTarget = haversineMeters(routeOriginLat, routeOriginLng, activeTarget.latitude, activeTarget.longitude);
+    // Pas de tracé si on est déjà sur la cible
     if (distToTarget <= 25) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       fullRoutePointsRef.current = [];
-      return; 
+      return;
     }
 
-    // SECURITE 2 : On integre le type de cible dans la cle pour forcer un recalcul si on passe de Client a Destination
+    // Clé unique intégrant le type de cible pour forcer un recalcul complet
+    // lors du passage de la phase 1 (pickup) à la phase 2 (destination).
+    // Sans cela, l'ancienne route reste affichée lors de la transition.
     const destKey = `TARGET_${activeTarget.type}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
+      // Nouvelle cible détectée : purge complète de l'état précédent puis recalcul.
+      // Cette purge est critique pour la transition phase 1 -> phase 2 :
+      // elle garantit que l'ancienne route (approche) disparaît immédiatement
+      // avant que la nouvelle (vers destination) ne soit calculée.
+      stopDrawAnimation();
+      setVisibleRoutePoints([]);
+      fullRoutePointsRef.current = [];
+      lastPassedIndexRef.current = 0;
+
       fetchAndStoreRoute(
         { latitude: routeOriginLat, longitude: routeOriginLng },
         { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
@@ -226,7 +253,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     const full = fullRoutePointsRef.current;
-
     if (!full || full.length === 0) return;
 
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
@@ -264,7 +290,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     fetchAndStoreRoute,
     trimRouteFromCurrentPosition,
     stopDrawAnimation,
-    distanceToRoute
+    distanceToRoute,
   ]);
 
   useEffect(() => {

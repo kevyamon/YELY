@@ -9,18 +9,34 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
-    // CORRECTION : Alignement strict sur le vocabulaire du Backend / Redux
     const isOngoing = currentRide.status === 'in_progress';
 
-    const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
-    const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
-    const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
-    const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+    const originLat = currentRide.origin?.coordinates?.[1] ?? currentRide.origin?.latitude;
+    const originLng = currentRide.origin?.coordinates?.[0] ?? currentRide.origin?.longitude;
+    const destLat = currentRide.destination?.coordinates?.[1] ?? currentRide.destination?.latitude;
+    const destLng = currentRide.destination?.coordinates?.[0] ?? currentRide.destination?.longitude;
 
     if (isOngoing) {
-      const result = [];
+      // Phase 2 : le chauffeur roule vers la destination du client.
+      // On pose un marqueur pickup_origin sur le point de rencontre afin que
+      // useRouteManager sache qu'on est en phase "destination finale" et trace
+      // la route depuis la position actuelle du chauffeur vers la destination.
+      // Sans ce marqueur, le hook ne sait pas distinguer les deux phases et
+      // recalcule la route en boucle ou ne la trace pas du tout.
+      const markers = [];
+
+      if (originLat && originLng) {
+        markers.push({
+          id: 'pickup_origin',
+          type: 'pickup_origin',
+          latitude: Number(originLat),
+          longitude: Number(originLng),
+          title: currentRide.origin?.address || 'Point de depart',
+        });
+      }
+
       if (destLat && destLng) {
-        result.push({
+        markers.push({
           id: 'destination',
           type: 'destination',
           latitude: Number(destLat),
@@ -29,9 +45,13 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
           iconColor: THEME.COLORS.danger,
         });
       }
-      return result;
+
+      return markers;
     }
 
+    // Phase 1 : le chauffeur se dirige vers le point de rencontre (statuts accepted/arrived).
+    // Marqueur type 'pickup' = cible du tracé. useRouteManager utilisera
+    // la position GPS du chauffeur (passee via location/driverLocation) comme origine.
     if (originLat && originLng) {
       return [{
         id: 'pickup',
@@ -50,7 +70,7 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
 
   return {
     mapMarkers,
-    mapBottomPadding
+    mapBottomPadding,
   };
 };
 
