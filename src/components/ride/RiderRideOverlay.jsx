@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   Linking,
@@ -29,13 +29,10 @@ import RideRouteDisplay from './RideRouteDisplay';
 
 const { width } = Dimensions.get('window');
 
-const BOARDING_DISPLAY_DELAY_MS = 60000;
-
 const RIDER_STATUS = {
   APPROACHING: 'approaching',
   ARRIVED: 'arrived',
-  BOARDING: 'boarding',
-  ONGOING: 'ongoing',
+  IN_PROGRESS: 'in_progress',
 };
 
 const RiderRideOverlay = () => {
@@ -44,7 +41,6 @@ const RiderRideOverlay = () => {
   const currentRide = useSelector(selectCurrentRide);
 
   const [riderStatus, setRiderStatus] = useState(RIDER_STATUS.APPROACHING);
-  const boardingTimerRef = useRef(null);
 
   const translateY = useSharedValue(300);
 
@@ -55,41 +51,18 @@ const RiderRideOverlay = () => {
     });
   }, [translateY]);
 
+  // Synchronisation stricte avec le statut du Backend (Machine d'Etat)
   useEffect(() => {
-    if (boardingTimerRef.current) {
-      clearTimeout(boardingTimerRef.current);
-      boardingTimerRef.current = null;
-    }
-
-    const arrivedAt = currentRide?.arrivedAt;
     const status = currentRide?.status;
 
-    if (status === 'ongoing') {
-      setRiderStatus(RIDER_STATUS.ONGOING);
-      return;
-    }
-
-    if (!arrivedAt) {
-      setRiderStatus(RIDER_STATUS.APPROACHING);
-      return;
-    }
-
-    const elapsed = Date.now() - arrivedAt;
-    const remaining = BOARDING_DISPLAY_DELAY_MS - elapsed;
-
-    if (remaining <= 0) {
-      setRiderStatus(RIDER_STATUS.BOARDING);
-    } else {
+    if (status === 'in_progress') {
+      setRiderStatus(RIDER_STATUS.IN_PROGRESS);
+    } else if (status === 'arrived') {
       setRiderStatus(RIDER_STATUS.ARRIVED);
-      boardingTimerRef.current = setTimeout(() => {
-        setRiderStatus(RIDER_STATUS.BOARDING);
-      }, remaining);
+    } else {
+      setRiderStatus(RIDER_STATUS.APPROACHING);
     }
-
-    return () => {
-      if (boardingTimerRef.current) clearTimeout(boardingTimerRef.current);
-    };
-  }, [currentRide?.arrivedAt, currentRide?.status]);
+  }, [currentRide?.status]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -97,7 +70,7 @@ const RiderRideOverlay = () => {
 
   if (!currentRide) return null;
 
-  const isOngoing = currentRide.status === 'ongoing';
+  const isOngoing = riderStatus === RIDER_STATUS.IN_PROGRESS;
 
   const driverLat =
     currentRide?.driverLocation?.coordinates?.[1] ||
@@ -117,11 +90,9 @@ const RiderRideOverlay = () => {
   const resolveStatusLabel = () => {
     switch (riderStatus) {
       case RIDER_STATUS.ARRIVED:
-        return 'Chauffeur arrive';
-      case RIDER_STATUS.BOARDING:
-        return 'Client a bord';
-      case RIDER_STATUS.ONGOING:
-        return `Trajet en cours (${formatDistance(liveDistance)})`;
+        return 'Le chauffeur est arrive';
+      case RIDER_STATUS.IN_PROGRESS:
+        return 'En route vers la destination';
       default:
         return `En approche (${formatDistance(liveDistance)})`;
     }
@@ -131,9 +102,7 @@ const RiderRideOverlay = () => {
     switch (riderStatus) {
       case RIDER_STATUS.ARRIVED:
         return styles.dotArrived;
-      case RIDER_STATUS.BOARDING:
-        return styles.dotBoarding;
-      case RIDER_STATUS.ONGOING:
+      case RIDER_STATUS.IN_PROGRESS:
         return styles.dotOngoing;
       default:
         return null;
@@ -143,7 +112,7 @@ const RiderRideOverlay = () => {
   const handleCallDriver = () => {
     const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: "Appel impossible." }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Appel impossible.' }));
     });
   };
 
@@ -220,7 +189,6 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
   dotOngoing: { backgroundColor: THEME.COLORS.success },
   dotArrived: { backgroundColor: THEME.COLORS.info },
-  dotBoarding: { backgroundColor: '#9B59B6' },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   driverInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
   avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: THEME.COLORS.champagneGold },

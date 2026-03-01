@@ -1,5 +1,5 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Routage OSRM, Animation Progressive & Securite Asynchrone
+// COMPOSANT CARTE - Routage Dynamique & Masquage Intelligent
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -243,9 +243,6 @@ const MapCard = forwardRef(({
 
     const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
 
-    // VERROU D'OBSOLESCENCE (Stale Check Asynchrone)
-    // Empeche la carte de dessiner un trace "fantome" si la course a ete annulee
-    // ou nettoyee pendant le delai de resolution de la requete reseau.
     if (lastRouteDestKeyRef.current !== destKey) {
       return;
     }
@@ -282,13 +279,16 @@ const MapCard = forwardRef(({
       return;
     }
 
-    const currentLat = location.latitude;
-    const currentLng = location.longitude;
+    // Le centre vital de l'UX : Si on connait la position du chauffeur, le trace part TOUJOURS de lui.
+    // Cela corrige le bug "le premier trace n'apparait meme pas pour le client".
+    const routeOriginLat = driverLocation?.latitude || location.latitude;
+    const routeOriginLng = driverLocation?.longitude || location.longitude;
+
     const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
       fetchAndStoreRoute(
-        { latitude: currentLat, longitude: currentLng },
+        { latitude: routeOriginLat, longitude: routeOriginLng },
         { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
       );
       return;
@@ -296,11 +296,11 @@ const MapCard = forwardRef(({
 
     const full = fullRoutePointsRef.current;
 
-    const deviationDist = distanceToRoute(currentLat, currentLng, full);
+    const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       if (!isDrawingRouteRef.current) {
         fetchAndStoreRoute(
-          { latitude: currentLat, longitude: currentLng },
+          { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
         );
       }
@@ -309,16 +309,16 @@ const MapCard = forwardRef(({
 
     const lastOrigin = lastRouteOriginRef.current;
     const movedDist = lastOrigin
-      ? haversineMeters(currentLat, currentLng, lastOrigin.latitude, lastOrigin.longitude)
+      ? haversineMeters(routeOriginLat, routeOriginLng, lastOrigin.latitude, lastOrigin.longitude)
       : REROUTE_THRESHOLD_METERS + 1;
 
     if (movedDist >= REROUTE_THRESHOLD_METERS) {
       if (!isDrawingRouteRef.current) {
-        lastRouteOriginRef.current = { latitude: currentLat, longitude: currentLng };
-        trimRouteFromCurrentPosition(currentLat, currentLng);
+        lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
+        trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
       }
     }
-  }, [location, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
+  }, [location, driverLocation, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
 
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
@@ -390,6 +390,9 @@ const MapCard = forwardRef(({
     if (onMapReady) onMapReady();
   };
 
+  const isDestinationTargeted = markers.some((m) => m.type === 'pickup_origin') || markers.length === 1 && markers[0].type === 'destination';
+  const shouldShowUserMarker = showUserMarker && !isDestinationTargeted;
+
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
       <View style={[styles.mapClip, !floating && styles.mapClipEdge, { backgroundColor: mapBackgroundColor }]}>
@@ -431,7 +434,7 @@ const MapCard = forwardRef(({
             />
           )}
 
-          {showUserMarker && location && (
+          {shouldShowUserMarker && location && (
             <TrackedMarker
               identifier="user_loc"
               coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
@@ -539,92 +542,22 @@ MapCard.displayName = 'MapCard';
 
 const styles = StyleSheet.create({
   container: { flex: 1, position: 'relative' },
-  floating: {
-    marginHorizontal: THEME.SPACING.md,
-    marginVertical: THEME.SPACING.sm,
-    borderRadius: THEME.BORDERS.radius.xxl,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-    overflow: 'hidden',
-    ...THEME.SHADOWS.medium,
-  },
+  floating: { marginHorizontal: THEME.SPACING.md, marginVertical: THEME.SPACING.sm, borderRadius: THEME.BORDERS.radius.xxl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder, overflow: 'hidden', ...THEME.SHADOWS.medium },
   mapClip: { ...StyleSheet.absoluteFillObject, borderRadius: THEME.BORDERS.radius.xxl, overflow: 'hidden', zIndex: 1 },
   mapClipEdge: { borderRadius: 0 },
   map: { width: '100%', height: '100%' },
   userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
   userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' },
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
-  defaultMarker: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: THEME.COLORS.glassDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.glassBorder,
-  },
-  originDot: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: THEME.COLORS.champagneGold,
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    opacity: 0.7,
-  },
-  recenterButton: {
-    position: 'absolute',
-    right: THEME.SPACING.lg,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: THEME.COLORS.glassDark,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.champagneGold,
-    zIndex: 999,
-    elevation: 999,
-  },
+  defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
+  originDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2, borderColor: '#FFFFFF', opacity: 0.7 },
+  recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
   animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
   pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
-  markerIconShadow: {
-    textShadowColor: 'rgba(0, 0, 0, 0.5)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
-    elevation: 5,
-  },
-  humanMarkerBg: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: '#FFFFFF',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    elevation: 5,
-  },
+  markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 },
+  humanMarkerBg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 3, elevation: 5 },
   carMarkerContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
-  carMarkerBg: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: '#1E1E1E',
-    borderWidth: 2,
-    borderColor: THEME.COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
-  },
+  carMarkerBg: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#1E1E1E', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 6 },
 });
 
 export default React.memo(MapCard);

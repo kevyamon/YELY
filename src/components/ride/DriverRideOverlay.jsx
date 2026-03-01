@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
   Linking,
@@ -32,14 +32,10 @@ import RideRouteDisplay from './RideRouteDisplay';
 
 const { width } = Dimensions.get('window');
 
-// Doit etre identique a BOARDING_DISPLAY_DELAY_MS dans DriverHome
-const BOARDING_DISPLAY_DELAY_MS = 60000;
-
 const DRIVER_STATUS = {
   APPROACHING: 'approaching',
   ARRIVED: 'arrived',
-  BOARDING: 'boarding',
-  ONGOING: 'ongoing',
+  IN_PROGRESS: 'in_progress',
 };
 
 const BANNER_CONFIG = {
@@ -49,18 +45,12 @@ const BANNER_CONFIG = {
     containerStyle: null,
   },
   [DRIVER_STATUS.ARRIVED]: {
-    label: 'Chauffeur arrive',
+    label: 'Attendez le client',
     dotStyle: 'dotArrived',
     containerStyle: 'passiveStatusArrived',
-    subLabel: 'En attente du client...',
+    subLabel: 'Veuillez confirmer l\'embarquement du client.',
   },
-  [DRIVER_STATUS.BOARDING]: {
-    label: 'Client a bord',
-    dotStyle: 'dotBoarding',
-    containerStyle: 'passiveStatusBoarding',
-    subLabel: 'Depart imminent...',
-  },
-  [DRIVER_STATUS.ONGOING]: {
+  [DRIVER_STATUS.IN_PROGRESS]: {
     label: 'TRAJET EN COURS',
     dotStyle: 'dotOngoing',
     containerStyle: 'passiveStatusOngoing',
@@ -78,7 +68,6 @@ const DriverRideOverlay = () => {
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
-  const boardingTimerRef = useRef(null);
 
   const translateY = useSharedValue(300);
 
@@ -95,41 +84,18 @@ const DriverRideOverlay = () => {
     }
   }, [currentRide?.status, localStatus]);
 
+  // Synchronisation stricte avec le statut du Backend
   useEffect(() => {
-    if (boardingTimerRef.current) {
-      clearTimeout(boardingTimerRef.current);
-      boardingTimerRef.current = null;
-    }
-
-    const arrivedAt = currentRide?.arrivedAt;
     const status = currentRide?.status;
 
-    if (status === 'ongoing') {
-      setDriverStatus(DRIVER_STATUS.ONGOING);
-      return;
-    }
-
-    if (!arrivedAt) {
-      setDriverStatus(DRIVER_STATUS.APPROACHING);
-      return;
-    }
-
-    const elapsed = Date.now() - arrivedAt;
-    const remaining = BOARDING_DISPLAY_DELAY_MS - elapsed;
-
-    if (remaining <= 0) {
-      setDriverStatus(DRIVER_STATUS.BOARDING);
-    } else {
+    if (status === 'in_progress') {
+      setDriverStatus(DRIVER_STATUS.IN_PROGRESS);
+    } else if (status === 'arrived') {
       setDriverStatus(DRIVER_STATUS.ARRIVED);
-      boardingTimerRef.current = setTimeout(() => {
-        setDriverStatus(DRIVER_STATUS.BOARDING);
-      }, remaining);
+    } else {
+      setDriverStatus(DRIVER_STATUS.APPROACHING);
     }
-
-    return () => {
-      if (boardingTimerRef.current) clearTimeout(boardingTimerRef.current);
-    };
-  }, [currentRide?.arrivedAt, currentRide?.status]);
+  }, [currentRide?.status]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -137,7 +103,7 @@ const DriverRideOverlay = () => {
 
   if (!currentRide) return null;
 
-  const isOngoing = localStatus === 'ongoing';
+  const isOngoing = localStatus === 'in_progress';
   const target = isOngoing ? currentRide.destination : currentRide.origin;
   const targetLat = target?.coordinates?.[1] || target?.latitude;
   const targetLng = target?.coordinates?.[0] || target?.longitude;
@@ -161,7 +127,7 @@ const DriverRideOverlay = () => {
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de lancer l\'appel.' }));
     });
   };
 
@@ -304,7 +270,6 @@ const styles = StyleSheet.create({
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
   dotOngoing: { backgroundColor: THEME.COLORS.success },
   dotArrived: { backgroundColor: THEME.COLORS.info },
-  dotBoarding: { backgroundColor: '#9B59B6' },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
   avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
@@ -321,9 +286,8 @@ const styles = StyleSheet.create({
   passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
   passiveStatusOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
   passiveStatusArrived: { backgroundColor: 'rgba(52, 152, 219, 0.1)', borderColor: 'rgba(52, 152, 219, 0.4)' },
-  passiveStatusBoarding: { backgroundColor: 'rgba(155, 89, 182, 0.1)', borderColor: 'rgba(155, 89, 182, 0.4)' },
   passiveStatusTitle: { color: THEME.COLORS.textPrimary, fontWeight: '900', fontSize: 15, letterSpacing: 1, marginBottom: 4 },
-  passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600' },
+  passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
 });
 
 export default DriverRideOverlay;
