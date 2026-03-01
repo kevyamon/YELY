@@ -9,7 +9,8 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
-    const isOngoing = currentRide.status === 'ongoing';
+    // CORRECTION : Alignement strict sur le vocabulaire du Backend / Redux
+    const isOngoing = currentRide.status === 'in_progress';
 
     const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
     const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;

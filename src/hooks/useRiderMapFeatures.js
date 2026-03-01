@@ -8,7 +8,8 @@ import THEME from '../theme/theme';
 const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location }) => {
   const mapMarkers = useMemo(() => {
     if (isRideActive && currentRide) {
-      const isOngoing = currentRide.status === 'ongoing';
+      // CORRECTION : Alignement strict sur le vocabulaire du Backend / Redux
+      const isOngoing = currentRide.status === 'in_progress';
 
       if (isOngoing) {
         const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;

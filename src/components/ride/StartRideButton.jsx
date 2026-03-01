@@ -8,7 +8,7 @@ import { StyleSheet, Text, TouchableOpacity } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useStartRideMutation } from '../../store/api/ridesApiSlice';
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -45,8 +45,17 @@ const StartRideButton = () => {
     try {
       // 3. ENVOI DU PAYLOAD SECURISE
       await startRide({ rideId: targetRideId }).unwrap();
+
+      // 4. PIVOT DE L'ETAT LOCAL (Correction du desequilibre de flux)
+      // On force la bascule dans Redux immediatement apres le succes de l'API
+      // Cela declenche la disparition du bouton, le recalcul de la carte et le radar de destination.
+      dispatch(updateRideStatus({
+        status: 'in_progress',
+        startedAt: Date.now()
+      }));
+
     } catch (err) {
-      // 4. TRACEABILITE CHIRURGICALE DES ERREURS BACKEND (ZOD)
+      // 5. TRACEABILITE CHIRURGICALE DES ERREURS BACKEND (ZOD)
       let errorMessage = 'Impossible de demarrer la course. Verifiez votre connexion.';
 
       if (err?.data?.errors && Array.isArray(err.data.errors) && err.data.errors.length > 0) {
