@@ -72,6 +72,10 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
+  const activeMarkers = (isRideActive && currentRide?.status === 'in_progress')
+    ? mapMarkers.filter(m => m.type !== 'pickup')
+    : mapMarkers;
+
   return (
     <View style={styles.screenWrapper}>
       
@@ -84,7 +88,7 @@ const RiderHome = ({ navigation }) => {
              showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
-             markers={mapMarkers}
+             markers={activeMarkers}
              recenterBottomPadding={mapBottomPadding} 
            />
          ) : (

@@ -68,7 +68,8 @@ const DriverHome = ({ navigation }) => {
           <MapCard
             ref={mapRef}
             location={location}
-            showUserMarker={true}
+            driverLocation={location}
+            showUserMarker={false}
             showRecenterButton={true}
             floating={false}
             markers={mapMarkers}
