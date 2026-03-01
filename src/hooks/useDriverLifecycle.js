@@ -132,7 +132,8 @@ const useDriverLifecycle = ({
 
   useEffect(() => {
     const handlePromptArrival = ({ rideId }) => {
-      if (currentRide && currentRide._id === rideId && !snoozeTimerRef.current && currentRide.status === 'in_progress') {
+      const currentId = currentRide?._id || currentRide?.id;
+      if (currentId === rideId && !snoozeTimerRef.current && currentRide?.status === 'in_progress') {
         setIsArrivalModalVisible(true);
       }
     };
@@ -165,7 +166,7 @@ const useDriverLifecycle = ({
       const lat = target?.coordinates?.[1] || target?.latitude;
       const lng = target?.coordinates?.[0] || target?.longitude;
 
-      if (lat && lng) {
+      if (lat !== undefined && lng !== undefined) {
         const distance = MapService.calculateDistance(
           location,
           { latitude: Number(lat), longitude: Number(lng) }
@@ -176,10 +177,13 @@ const useDriverLifecycle = ({
           
           dispatch(updateRideStatus({ arrivedAt: Date.now(), status: 'arrived' }));
           
-          markAsArrived({ rideId: currentRide._id }).unwrap().catch(err => {
-            console.warn('[DriverLifecycle] Erreur notification d\'arrivee:', err);
-            isProcessingPickupRef.current = false; 
-          });
+          const rideId = currentRide._id || currentRide.id;
+          if (rideId) {
+            markAsArrived({ rideId }).unwrap().catch(err => {
+              console.warn('[DriverLifecycle] Echec de la notification d\'arrivee');
+              isProcessingPickupRef.current = false; 
+            });
+          }
         }
       }
     }
@@ -189,7 +193,7 @@ const useDriverLifecycle = ({
       const lat = target?.coordinates?.[1] || target?.latitude;
       const lng = target?.coordinates?.[0] || target?.longitude;
 
-      if (lat && lng) {
+      if (lat !== undefined && lng !== undefined) {
         const distance = MapService.calculateDistance(
           location,
           { latitude: Number(lat), longitude: Number(lng) }
@@ -238,8 +242,11 @@ const useDriverLifecycle = ({
 
   const handleConfirmArrival = async () => {
     if (!currentRide) return;
+    const rideId = currentRide._id || currentRide.id;
+    if (!rideId) return;
+
     try {
-      const res = await completeRide({ rideId: currentRide._id }).unwrap();
+      const res = await completeRide({ rideId }).unwrap();
       setIsArrivalModalVisible(false);
       
       if (res.data && res.data.stats) {
@@ -257,7 +264,7 @@ const useDriverLifecycle = ({
     } catch (err) {
       dispatch(showErrorToast({
         title: 'Erreur de cloture',
-        message: err?.data?.message || 'Impossible de terminer la course. Etes-vous assez proche ?',
+        message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',
       }));
     }
   };
