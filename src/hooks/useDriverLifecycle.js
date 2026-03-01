@@ -1,5 +1,5 @@
 // src/hooks/useDriverLifecycle.js
-// HOOK METIER - Cycle de vie du chauffeur, Geofencing et Timers
+// HOOK METIER - Cycle de vie du chauffeur, Geofencing et Modale d'Arrivee
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -14,11 +14,8 @@ import { setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlic
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
-const DROPOFF_RADIUS_METERS = 20; // Synchronise avec la tolerance Backend
-
-const BOARDING_DISPLAY_DELAY_MS = 60000;
-const BOARDING_GRACE_DELAY_MS = 20000;
-const TOTAL_BOARDING_TO_START_MS = BOARDING_DISPLAY_DELAY_MS + BOARDING_GRACE_DELAY_MS;
+const DROPOFF_FALLBACK_RADIUS_METERS = 15;
+const SNOOZE_DELAY_MS = 120000;
 
 const useDriverLifecycle = ({
   user,
@@ -34,15 +31,16 @@ const useDriverLifecycle = ({
   const dispatch = useDispatch();
   const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
-  const isProcessingDropoffRef = useRef(false);
-  const boardingStartTimerRef = useRef(null);
+  const snoozeTimerRef = useRef(null);
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
   const [startRide] = useStartRideMutation();
-  const [completeRide] = useCompleteRideMutation();
+  const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
 
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
@@ -119,56 +117,32 @@ const useDriverLifecycle = ({
   useEffect(() => {
     if (!currentRide) {
       isProcessingPickupRef.current = false;
-      isProcessingDropoffRef.current = false;
-    } else if (currentRide.status === 'ongoing') {
+      setIsArrivalModalVisible(false);
+      if (snoozeTimerRef.current) {
+        clearTimeout(snoozeTimerRef.current);
+        snoozeTimerRef.current = null;
+      }
+    } else if (currentRide.status === 'in_progress') {
       isProcessingPickupRef.current = true;
-      isProcessingDropoffRef.current = false;
     } else if (currentRide.status === 'accepted') {
       isProcessingPickupRef.current = false;
-      isProcessingDropoffRef.current = false;
     }
   }, [currentRide?.status]);
 
+  // Ecouteur WebSocket pour declencher la modale d'arrivee depuis le Backend
   useEffect(() => {
-    if (boardingStartTimerRef.current) {
-      clearTimeout(boardingStartTimerRef.current);
-      boardingStartTimerRef.current = null;
-    }
-
-    const arrivedAt = currentRide?.arrivedAt;
-    const status = currentRide?.status;
-
-    if (!arrivedAt || status !== 'accepted') return;
-
-    const elapsed = Date.now() - arrivedAt;
-    const remaining = TOTAL_BOARDING_TO_START_MS - elapsed;
-
-    const triggerBoardingDeparture = async () => {
-      if (!currentRide || currentRide.status !== 'accepted') return;
-      try {
-        dispatch(updateRideStatus({ status: 'ongoing' }));
-        dispatch(showSuccessToast({
-          title: 'Depart',
-          message: 'En route vers la destination.',
-        }));
-        await startRide({ rideId: currentRide._id }).unwrap();
-      } catch (err) {
-        console.warn('[DriverLifecycle] Erreur de transition de depart');
+    const handlePromptArrival = ({ rideId }) => {
+      if (currentRide && currentRide._id === rideId && !snoozeTimerRef.current && currentRide.status === 'in_progress') {
+        setIsArrivalModalVisible(true);
       }
     };
 
-    if (remaining <= 0) {
-      triggerBoardingDeparture();
-    } else {
-      boardingStartTimerRef.current = setTimeout(() => {
-        triggerBoardingDeparture();
-      }, remaining);
-    }
+    socketService.on('prompt_arrival_confirm', handlePromptArrival);
 
     return () => {
-      if (boardingStartTimerRef.current) clearTimeout(boardingStartTimerRef.current);
+      socketService.off('prompt_arrival_confirm', handlePromptArrival);
     };
-  }, [currentRide?.arrivedAt, currentRide?.status, currentRide?._id, dispatch, startRide]);
+  }, [currentRide]);
 
   useEffect(() => {
     if (!currentRide) {
@@ -181,6 +155,7 @@ const useDriverLifecycle = ({
     }
   }, [currentRide, simulatedLocation, setSimulatedLocation, mapRef]);
 
+  // Logique Geofencing (Fallback & Prise en charge initiale)
   useEffect(() => {
     if (!location || !currentRide) return;
 
@@ -204,7 +179,8 @@ const useDriverLifecycle = ({
       }
     }
 
-    if (status === 'ongoing' && !isProcessingDropoffRef.current) {
+    // Redondance du declencheur de la modale cote client (en cas de perte socket)
+    if (status === 'in_progress' && !isArrivalModalVisible && !snoozeTimerRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
       const lng = target?.coordinates?.[0] || target?.longitude;
@@ -215,32 +191,12 @@ const useDriverLifecycle = ({
           { latitude: Number(lat), longitude: Number(lng) }
         );
 
-        if (distance <= DROPOFF_RADIUS_METERS) {
-          isProcessingDropoffRef.current = true;
-          
-          const handleAutoCompleteRide = async () => {
-            try {
-              // Appel de redondance API - Le backend gère l'idempotence
-              const res = await completeRide({ rideId: currentRide._id }).unwrap();
-              
-              if (res.data && res.data.stats) {
-                dispatch(updateUserInfo({ 
-                  totalRides: res.data.stats.totalRides,
-                  totalEarnings: res.data.stats.totalEarnings,
-                  rating: res.data.stats.rating
-                }));
-              }
-            } catch (err) {
-              console.warn('[DriverLifecycle] Tentative redondante annulee (Geree par le Backend)');
-              isProcessingDropoffRef.current = false;
-            }
-          };
-
-          handleAutoCompleteRide();
+        if (distance <= DROPOFF_FALLBACK_RADIUS_METERS) {
+          setIsArrivalModalVisible(true);
         }
       }
     }
-  }, [location, currentRide, dispatch, completeRide]);
+  }, [location, currentRide, dispatch, isArrivalModalVisible]);
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
@@ -276,11 +232,51 @@ const useDriverLifecycle = ({
     }
   };
 
+  const handleConfirmArrival = async () => {
+    if (!currentRide) return;
+    try {
+      const res = await completeRide({ rideId: currentRide._id }).unwrap();
+      setIsArrivalModalVisible(false);
+      
+      if (res.data && res.data.stats) {
+        dispatch(updateUserInfo({ 
+          totalRides: res.data.stats.totalRides,
+          totalEarnings: res.data.stats.totalEarnings,
+          rating: res.data.stats.rating
+        }));
+      }
+
+      dispatch(showSuccessToast({
+        title: 'Course terminee',
+        message: 'Vos gains ont ete credites avec succes.',
+      }));
+    } catch (err) {
+      dispatch(showErrorToast({
+        title: 'Erreur de cloture',
+        message: err?.data?.message || 'Impossible de terminer la course. Etes-vous assez proche ?',
+      }));
+    }
+  };
+
+  const handleSnoozeArrival = () => {
+    setIsArrivalModalVisible(false);
+    snoozeTimerRef.current = setTimeout(() => {
+      snoozeTimerRef.current = null;
+      if (currentRide && currentRide.status === 'in_progress') {
+        setIsArrivalModalVisible(true);
+      }
+    }, SNOOZE_DELAY_MS);
+  };
+
   return {
     isAvailable,
     currentAddress,
     isToggling,
     handleToggleAvailability,
+    isArrivalModalVisible,
+    isCompletingRide,
+    handleConfirmArrival,
+    handleSnoozeArrival
   };
 };
 

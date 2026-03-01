@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard';
+import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import SmartFooter from '../../components/ui/SmartFooter';
@@ -35,13 +36,17 @@ const DriverHome = ({ navigation }) => {
   const location = simulatedLocation || realLocation;
 
   const isDriverInZone = isLocationInMafereZone(location);
-  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
+  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
     isAvailable,
     currentAddress,
     isToggling,
     handleToggleAvailability,
+    isArrivalModalVisible,
+    isCompletingRide,
+    handleConfirmArrival,
+    handleSnoozeArrival
   } = useDriverLifecycle({
     user,
     currentRide,
@@ -103,6 +108,13 @@ const DriverHome = ({ navigation }) => {
       )}
 
       <DriverRequestModal />
+
+      <ArrivalConfirmModal 
+        visible={isArrivalModalVisible}
+        onConfirm={handleConfirmArrival}
+        onSnooze={handleSnoozeArrival}
+        isLoading={isCompletingRide}
+      />
     </View>
   );
 };

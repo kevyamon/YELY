@@ -17,7 +17,7 @@ const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
 const LIGHT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; OSM';
 
-// Icones vectorielles pures (SVG) pour remplacer les anciens Emojis
+// Icones vectorielles pures (SVG) pour la version Web
 const SVG_PIN = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="20" height="20"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 const SVG_USER = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
 const SVG_FLAG = `<svg viewBox="0 0 24 24" fill="#E74C3C" width="26" height="26"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
@@ -136,7 +136,6 @@ const MapAutoFitter = ({ location, driverLocation, markers }) => {
     const destMarker = markers.find((m) => m.type === 'destination');
     const activeTarget = pickupMarker || destMarker;
 
-    // S'il y a un objectif actif (course en cours ou en apercu)
     if (activeTarget) {
       const boundsOrigin = driverLocation?.latitude ? driverLocation : location;
       if (boundsOrigin) {
@@ -156,7 +155,6 @@ const MapAutoFitter = ({ location, driverLocation, markers }) => {
       return;
     }
 
-    // Comportement de retour a la normale (course terminee et nettoyee)
     if (location && markers.length === 0) {
       setTimeout(() => {
         map.flyTo([location.latitude, location.longitude], 15, { duration: 1.2 });
@@ -220,6 +218,9 @@ const MapCard = forwardRef(({
     return generateBezierCurve(arcOrigin, activeTarget);
   }, [route, location, driverLocation, markers]);
 
+  const isDestinationTargeted = markers.some((m) => m.type === 'pickup_origin') || (markers.length === 1 && markers[0].type === 'destination');
+  const shouldShowUserMarker = showUserMarker && !isDestinationTargeted;
+
   return (
     <View style={[styles.container, style]}>
       <style>{`
@@ -257,7 +258,7 @@ const MapCard = forwardRef(({
           />
         )}
 
-        {showUserMarker && location && (
+        {shouldShowUserMarker && location && (
           <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
         )}
 

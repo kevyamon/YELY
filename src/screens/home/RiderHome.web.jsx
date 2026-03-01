@@ -7,7 +7,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
-import MapCard from '../../components/map/MapCard';
+import MapCard from '../../components/map/MapCard.web';
 import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
@@ -15,7 +15,7 @@ import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
-import useGeolocation from '../../hooks/useGeolocation';
+import useGeolocation from '../../hooks/useGeolocation.web';
 import useRiderLifecycle from '../../hooks/useRiderLifecycle';
 import useRiderMapFeatures from '../../hooks/useRiderMapFeatures';
 
@@ -34,7 +34,7 @@ const RiderHome = ({ navigation }) => {
   
   const { location, errorMsg } = useGeolocation(); 
   const isUserInZone = isLocationInMafereZone(location);
-  const isRideActive = currentRide && ['accepted', 'ongoing'].includes(currentRide.status);
+  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
     currentAddress,
