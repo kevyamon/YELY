@@ -1,5 +1,6 @@
 // src/components/ride/DriverRideOverlay.jsx
 // PANNEAU CHAUFFEUR - Guidage, Statuts de Proximite & Affichage Embarquement
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
@@ -26,25 +27,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import { selectCurrentRide, selectEffectiveLocation } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+import { calculateDistanceInMeters } from '../../utils/distanceUtils';
+import RideRouteDisplay from './RideRouteDisplay';
 
 const { width } = Dimensions.get('window');
 
 // Doit etre identique a BOARDING_DISPLAY_DELAY_MS dans DriverHome
 const BOARDING_DISPLAY_DELAY_MS = 60000;
-
-const calculateDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-  if (!lat1 || !lon1 || !lat2 || !lon2) return Infinity;
-  const R = 6371e3;
-  const p1 = lat1 * Math.PI / 180;
-  const p2 = lat2 * Math.PI / 180;
-  const dp = (lat2 - lat1) * Math.PI / 180;
-  const dl = (lon2 - lon1) * Math.PI / 180;
-  const a =
-    Math.sin(dp / 2) * Math.sin(dp / 2) +
-    Math.cos(p1) * Math.cos(p2) *
-    Math.sin(dl / 2) * Math.sin(dl / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
 
 const DRIVER_STATUS = {
   APPROACHING: 'approaching',
@@ -84,7 +73,6 @@ const DriverRideOverlay = () => {
   const navigation = useNavigation();
 
   const currentRide = useSelector(selectCurrentRide);
-  // Position effective publiee par DriverHome (simulee en dev, GPS reel en prod)
   const effectiveLocation = useSelector(selectEffectiveLocation);
 
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
@@ -107,9 +95,6 @@ const DriverRideOverlay = () => {
     }
   }, [currentRide?.status, localStatus]);
 
-  // Gestion du statut d'affichage embarquement.
-  // arrivedAt est pose par DriverHome quand le chauffeur arrive au pickup.
-  // Ce composant ne fait qu'afficher — le depart reel est pilote par DriverHome.
   useEffect(() => {
     if (boardingTimerRef.current) {
       clearTimeout(boardingTimerRef.current);
@@ -272,18 +257,12 @@ const DriverRideOverlay = () => {
           </View>
         </View>
 
-        <View style={styles.routeContainer}>
-          <View style={styles.routeRow}>
-            <Ionicons
-              name="navigate-circle"
-              size={20}
-              color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger}
-            />
-            <Text style={styles.routeText} numberOfLines={2}>
-              {target?.address || 'Adresse de rencontre'}
-            </Text>
-          </View>
-        </View>
+        <RideRouteDisplay
+          originAddress={currentRide.origin?.address}
+          destinationAddress={currentRide.destination?.address}
+          isOngoing={isOngoing}
+          variant="driver"
+        />
 
         <View style={styles.actionsWrapper}>
           {!isOngoing && (
@@ -336,9 +315,6 @@ const styles = StyleSheet.create({
   topActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   callButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.success, justifyContent: 'center', alignItems: 'center' },
   pancarteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.glassDark, borderWidth: 1, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center' },
-  routeContainer: { backgroundColor: THEME.COLORS.glassLight, padding: THEME.SPACING.md, borderRadius: 16, marginBottom: THEME.SPACING.md },
-  routeRow: { flexDirection: 'row', alignItems: 'center' },
-  routeText: { marginLeft: 8, color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, fontWeight: '700' },
   actionsWrapper: { gap: THEME.SPACING.sm, marginTop: THEME.SPACING.xs },
   secondaryGpsButton: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
   secondaryGpsText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', marginLeft: 8, fontSize: 13 },

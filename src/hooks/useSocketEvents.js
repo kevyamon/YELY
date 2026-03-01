@@ -1,5 +1,6 @@
 // src/hooks/useSocketEvents.js
 // ECOUTEURS SOCKET - Gestion stricte des flux et Telemetrie GPS
+// CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
@@ -81,7 +82,6 @@ const useSocketEvents = () => {
       }));
     };
 
-    // Nettoyage centralise et absolu de la fin de course
     const handleRideCompleted = (data) => {
       dispatch(setRideToRate(data));
       
@@ -94,6 +94,11 @@ const useSocketEvents = () => {
       }
 
       dispatch(clearCurrentRide());
+
+      dispatch(showSuccessToast({
+        title: 'Course terminee',
+        message: 'Vous etes arrive a destination.',
+      }));
     };
 
     const handleRideStatusUpdate = (data) => {
@@ -102,6 +107,10 @@ const useSocketEvents = () => {
       if (data.status === 'completed') {
         dispatch(setRideToRate(data.ride || data));
         dispatch(clearCurrentRide());
+        dispatch(showSuccessToast({
+          title: 'Course terminee',
+          message: 'Vous etes arrive a destination.',
+        }));
         return;
       }
 
@@ -109,6 +118,14 @@ const useSocketEvents = () => {
         dispatch(updateRideStatus({
           status: 'ongoing',
           startedAt: data?.ride?.startedAt,
+        }));
+        return;
+      }
+
+      if (data.status === 'arrived') {
+        dispatch(updateRideStatus({
+          status: 'accepted',
+          arrivedAt: Date.now(),
         }));
       }
     };

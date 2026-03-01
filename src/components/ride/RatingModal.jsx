@@ -1,34 +1,50 @@
 // src/components/ride/RatingModal.jsx
-// MODALE DE NOTATION - Autonome et Nettoyage d'Etat Integre
+// MODALE DE NOTATION - Autonome (Redux) & Compatible Web
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, TouchableWithoutFeedback, View } from 'react-native';
-import { useDispatch } from 'react-redux';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { useRateRideMutation } from '../../store/api/ridesApiSlice';
-import { clearCurrentRide } from '../../store/slices/rideSlice';
+import { clearRideToRate, selectRideToRate } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-const RatingModal = ({ visible, rideId, driverName, onClose }) => {
+const RatingModal = () => {
   const dispatch = useDispatch();
+  const rideToRate = useSelector(selectRideToRate);
   const [rateRide, { isLoading }] = useRateRideMutation();
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
 
+  const isVisible = !!rideToRate;
+  const rideId = rideToRate?._id || rideToRate?.rideId;
+  const driverName = rideToRate?.driverName || rideToRate?.driver?.name || 'le chauffeur';
+
+  useEffect(() => {
+    if (isVisible) {
+      setRating(0);
+      setComment('');
+    }
+  }, [isVisible]);
+
+  const handleClose = () => {
+    dispatch(clearRideToRate());
+  };
+
   const handleStarPress = (selectedRating) => {
     setRating(selectedRating);
   };
 
-  const handleCleanupAndClose = () => {
-    // Purge explicite de la course du store pour liberer l'interface client
-    dispatch(clearCurrentRide());
-    if (onClose) onClose();
-  };
-
   const handleSubmit = async () => {
+    if (!rideId) {
+      handleClose();
+      return;
+    }
+
     if (rating === 0) {
       dispatch(showErrorToast({ title: "Validation requise", message: "Veuillez attribuer une note avant de valider." }));
       return;
@@ -37,84 +53,91 @@ const RatingModal = ({ visible, rideId, driverName, onClose }) => {
     try {
       await rateRide({ rideId, rating, comment: comment.trim() }).unwrap();
       dispatch(showSuccessToast({ title: "Merci", message: "Votre avis a ete enregistre avec succes." }));
-      handleCleanupAndClose();
+      handleClose();
     } catch (error) {
       dispatch(showErrorToast({ title: "Erreur systeme", message: error?.data?.message || "Impossible d'enregistrer la note." }));
+      if (error?.status === 404) {
+        handleClose();
+      }
     }
   };
 
   return (
-    <Modal visible={visible} transparent={true} animationType="slide">
-      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
-        <KeyboardAvoidingView 
-          style={styles.modalBackdrop} 
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        >
-          <View style={styles.modalCard}>
-            
-            <View style={styles.header}>
-              <View style={styles.successIconContainer}>
-                <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
-              </View>
-              <Text style={styles.titleText}>Course Terminee</Text>
-              <Text style={styles.subtitleText}>
-                Comment s'est passe votre trajet avec {driverName || 'le chauffeur'} ?
-              </Text>
+    <Modal visible={isVisible} transparent={true} animationType="slide" onRequestClose={handleClose}>
+      <KeyboardAvoidingView 
+        style={styles.modalBackdrop} 
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <TouchableOpacity 
+          style={StyleSheet.absoluteFillObject} 
+          activeOpacity={1} 
+          onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} 
+        />
+        
+        <View style={styles.modalCard}>
+          
+          <View style={styles.header}>
+            <View style={styles.successIconContainer}>
+              <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
             </View>
-
-            <View style={styles.starsContainer}>
-              {[1, 2, 3, 4, 5].map((star) => (
-                <TouchableOpacity 
-                  key={star} 
-                  onPress={() => handleStarPress(star)}
-                  activeOpacity={0.7}
-                  style={styles.starButton}
-                >
-                  <Ionicons 
-                    name={star <= rating ? "star" : "star-outline"} 
-                    size={40} 
-                    color={star <= rating ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} 
-                  />
-                </TouchableOpacity>
-              ))}
-            </View>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={styles.textInput}
-                placeholder="Laissez un commentaire (optionnel)"
-                placeholderTextColor={THEME.COLORS.textTertiary}
-                value={comment}
-                onChangeText={setComment}
-                multiline
-                maxLength={200}
-                returnKeyType="done"
-                onSubmitEditing={Keyboard.dismiss}
-              />
-            </View>
-
-            <TouchableOpacity 
-              style={[styles.submitButton, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
-              onPress={handleSubmit}
-              disabled={rating === 0 || isLoading}
-              activeOpacity={0.8}
-            >
-              {isLoading ? (
-                <ActivityIndicator color={THEME.COLORS.background} />
-              ) : (
-                <Text style={styles.submitButtonText}>VALIDER MON AVIS</Text>
-              )}
-            </TouchableOpacity>
-
-            {!isLoading && (
-              <TouchableOpacity style={styles.skipButton} onPress={handleCleanupAndClose}>
-                <Text style={styles.skipButtonText}>Passer</Text>
-              </TouchableOpacity>
-            )}
-
+            <Text style={styles.titleText}>Course Terminee</Text>
+            <Text style={styles.subtitleText}>
+              Comment s'est passe votre trajet avec {driverName} ?
+            </Text>
           </View>
-        </KeyboardAvoidingView>
-      </TouchableWithoutFeedback>
+
+          <View style={styles.starsContainer}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity 
+                key={star} 
+                onPress={() => handleStarPress(star)}
+                activeOpacity={0.7}
+                style={styles.starButton}
+              >
+                <Ionicons 
+                  name={star <= rating ? "star" : "star-outline"} 
+                  size={40} 
+                  color={star <= rating ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} 
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={styles.textInput}
+              placeholder="Laissez un commentaire (optionnel)"
+              placeholderTextColor={THEME.COLORS.textTertiary}
+              value={comment}
+              onChangeText={setComment}
+              multiline
+              maxLength={200}
+              returnKeyType="done"
+              onSubmitEditing={Keyboard.dismiss}
+            />
+          </View>
+
+          <TouchableOpacity 
+            style={[styles.submitButton, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
+            onPress={handleSubmit}
+            disabled={rating === 0 || isLoading}
+            activeOpacity={0.8}
+          >
+            {isLoading ? (
+              <ActivityIndicator color={THEME.COLORS.background} />
+            ) : (
+              <Text style={styles.submitButtonText}>VALIDER MON AVIS</Text>
+            )}
+          </TouchableOpacity>
+
+          {!isLoading && (
+            <TouchableOpacity style={styles.skipButton} onPress={handleClose}>
+              <Text style={styles.skipButtonText}>Passer</Text>
+            </TouchableOpacity>
+          )}
+
+        </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -136,6 +159,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.2,
     shadowRadius: 20,
     elevation: 20,
+    zIndex: 2,
   },
   header: {
     alignItems: 'center',
@@ -181,12 +205,14 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
     padding: THEME.SPACING.md,
     marginBottom: THEME.SPACING.xl,
+    zIndex: 3,
   },
   textInput: {
     color: THEME.COLORS.textPrimary,
     fontSize: 15,
     minHeight: 80,
     textAlignVertical: 'top',
+    outlineStyle: 'none',
   },
   submitButton: {
     width: '100%',

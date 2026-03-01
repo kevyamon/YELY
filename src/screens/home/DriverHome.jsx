@@ -1,5 +1,6 @@
 // src/screens/home/DriverHome.jsx
 // HOME DRIVER - Auto-Online, Geofencing, Timer Embarquement & Fin de Course
+// CSCSM Level: Bank Grade
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -29,8 +30,8 @@ import THEME from '../../theme/theme';
 
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-const PICKUP_RADIUS_METERS = 10;
-const DROPOFF_RADIUS_METERS = 10;
+const PICKUP_RADIUS_METERS = 30;
+const DROPOFF_RADIUS_METERS = 30;
 
 const BOARDING_DISPLAY_DELAY_MS = 60000;
 const BOARDING_GRACE_DELAY_MS = 20000;
@@ -193,8 +194,6 @@ const DriverHome = ({ navigation }) => {
     }
   };
 
-  // Vaccin Anti-Blocage GPS : Si la course est purgee, on coupe le Fake GPS
-  // pour que la carte revienne immediatement a la vraie position physique.
   useEffect(() => {
     if (!currentRide) {
       if (simulatedLocation) {
