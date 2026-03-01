@@ -1,5 +1,6 @@
 // src/services/socketService.js
 // Singleton Socket.io - Service Reseau Agnostique
+// CSCSM Level: Bank Grade
 
 import { io } from 'socket.io-client';
 
@@ -40,28 +41,28 @@ class SocketService {
     this.socket.on('connect', () => {
       this.isConnected = true;
       this.reconnectAttempts = 0;
-      if (__DEV__) console.log('[Socket] Connecte avec succes.');
+      if (__DEV__) console.log('[SOCKET_SERVICE] Connecte avec succes au backend.');
     });
 
     this.socket.on('disconnect', (reason) => {
       this.isConnected = false;
-      if (__DEV__) console.log(`[Socket] Deconnecte. Raison: ${reason}`);
+      if (__DEV__) console.log(`[SOCKET_SERVICE] Deconnecte. Raison: ${reason}`);
     });
 
     this.socket.on('force_disconnect', (data) => {
-      if (__DEV__) console.warn(`[Socket] Deconnexion forcee par le serveur. Raison: ${data?.reason}`);
+      if (__DEV__) console.warn(`[SOCKET_SERVICE] Deconnexion forcee par le serveur. Raison: ${data?.reason}`);
       this.disconnect();
     });
 
     this.socket.on('connect_error', (error) => {
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
-        if (__DEV__) console.warn('[Socket] Acces refuse. Arret des tentatives de connexion.');
+        if (__DEV__) console.warn('[SOCKET_SERVICE] Acces refuse. Arret des tentatives de connexion.');
         this.disconnect();
         return;
       }
 
       this.reconnectAttempts++;
-      if (__DEV__) console.log(`[Socket] Tentative de reconnexion en arriere-plan... (${this.reconnectAttempts})`);
+      if (__DEV__) console.log(`[SOCKET_SERVICE] Tentative de reconnexion en arriere-plan... (${this.reconnectAttempts})`);
     });
   }
 
@@ -84,6 +85,8 @@ class SocketService {
   emit(event, data) {
     if (this.socket?.connected) {
       this.socket.emit(event, data);
+    } else {
+      if (__DEV__) console.warn(`[SOCKET_SERVICE] Tentative d'emission (${event}) annulee car deconnecte.`);
     }
   }
 
