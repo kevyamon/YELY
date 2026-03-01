@@ -1,13 +1,6 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT CARTE - Routage OSRM, Animation Progressive & Architecture Bypass Autonome
-//
-// AVERTISSEMENT ARCHITECTURAL - NE PAS MODIFIER SANS LIRE CECI :
-// La Polyline est calculee DEPUIS L'INTERIEUR de ce composant, jamais depuis le parent.
-// Sur react-native-maps/Android, passer des coordonnees de route depuis le parent
-// provoque une Race Condition sur le Native Bridge : la ligne se trace vers un marqueur
-// pas encore monte physiquement, causant un Silent Failure (ligne invisible, sans erreur).
-// Architecture : la carte observe ses propres marqueurs et deduit la route par elle-meme.
-// Ne jamais remonter ce calcul dans RiderHome.jsx ou DriverHome.jsx.
+// COMPOSANT CARTE - Routage OSRM, Animation Progressive & Securite Asynchrone
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useCallback, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -21,27 +14,16 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
-// Duree de l'animation de dessin progressif de la route (ms)
 const ROUTE_DRAW_DURATION_MS = 900;
-// Intervalle entre chaque point revele lors de l'animation (ms)
 const ROUTE_DRAW_INTERVAL_MS = 16;
-
-// Distance minimale de deplacement (metres) avant de recalculer la route.
-// Evite le recalcul a chaque micro-mouvement GPS (~1-2m de bruit).
 const REROUTE_THRESHOLD_METERS = 40;
-
-// Distance de deviation par rapport a la route calculee avant re-routage force.
-// Si le conducteur s'ecarte de plus de cette valeur, on recalcule.
 const DEVIATION_THRESHOLD_METERS = 60;
 
-// Calcule combien de points afficher a chaque frame pour
-// completer l'animation en ROUTE_DRAW_DURATION_MS.
 const computeStepSize = (totalPoints) => {
   const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
   return Math.max(1, Math.ceil(totalPoints / totalFrames));
 };
 
-// Calcule la distance haversine en metres entre deux coordonnees.
 const haversineMeters = (lat1, lng1, lat2, lng2) => {
   if (!lat1 || !lng1 || !lat2 || !lng2) return Infinity;
   const R = 6371e3;
@@ -53,8 +35,6 @@ const haversineMeters = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// Trouve l'index du point de la route le plus proche de la position actuelle.
-// Sert a "consommer" le trace deja parcouru : on n'affiche que le troncon restant.
 const findClosestPointIndex = (routePoints, currentLat, currentLng) => {
   if (!routePoints || routePoints.length === 0) return 0;
   let minDist = Infinity;
@@ -69,8 +49,6 @@ const findClosestPointIndex = (routePoints, currentLat, currentLng) => {
   return closestIdx;
 };
 
-// Calcule la distance minimale entre un point et la route calculee.
-// Sert a detecter si le conducteur s'est trop ecarte du trace prevu.
 const distanceToRoute = (lat, lng, routePoints) => {
   if (!routePoints || routePoints.length < 2) return Infinity;
   let minDist = Infinity;
@@ -206,22 +184,13 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // Tableau de coordonnees de route affiche a l'ecran.
-  // Demarre vide et se remplit progressivement (animation de dessin).
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
 
-  // Reference vers le timer d'animation pour nettoyage propre.
   const drawIntervalRef = useRef(null);
-  // Verrou de dessin : empeche le nettoyage du trace par le GPS pendant l'animation initiale.
   const isDrawingRouteRef = useRef(false);
 
-  // Ensemble complet des points de la route calculee (reference interne non-state).
-  // Permet de "consommer" le trace au fur et a mesure sans recalculer OSRM.
   const fullRoutePointsRef = useRef([]);
-  // Derniere position depuis laquelle on a calcule la route.
-  // Sert a limiter les appels OSRM au seuil REROUTE_THRESHOLD_METERS.
   const lastRouteOriginRef = useRef(null);
-  // Cle de la route courante (destination) pour detecter un changement de cible.
   const lastRouteDestKeyRef = useRef(null);
 
   const colorScheme = useColorScheme();
@@ -230,7 +199,6 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // Arrete proprement toute animation de dessin en cours et leve le verrou.
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
       clearInterval(drawIntervalRef.current);
@@ -239,8 +207,6 @@ const MapCard = forwardRef(({
     isDrawingRouteRef.current = false;
   }, []);
 
-  // Lance l'animation de dessin progressif d'un tableau de points de route.
-  // Les points se revelent de A vers B a intervalle fixe jusqu'a afficher la totalite.
   const animateRouteDraw = useCallback((fullPoints) => {
     stopDrawAnimation();
     setVisibleRoutePoints([]);
@@ -261,8 +227,6 @@ const MapCard = forwardRef(({
     }, ROUTE_DRAW_INTERVAL_MS);
   }, [stopDrawAnimation]);
 
-  // Calcule et stocke la route complete entre deux points via OSRM.
-  // Appele uniquement quand un recalcul est necessaire (nouveau depart ou deviation).
   const fetchAndStoreRoute = useCallback(async (pointA, pointB) => {
     if (!pointA || !pointB) {
       stopDrawAnimation();
@@ -278,39 +242,38 @@ const MapCard = forwardRef(({
     lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
 
     const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+
+    // VERROU D'OBSOLESCENCE (Stale Check Asynchrone)
+    // Empeche la carte de dessiner un trace "fantome" si la course a ete annulee
+    // ou nettoyee pendant le delai de resolution de la requete reseau.
+    if (lastRouteDestKeyRef.current !== destKey) {
+      return;
+    }
+
     fullRoutePointsRef.current = routePoints || [];
     animateRouteDraw(routePoints);
   }, [animateRouteDraw, stopDrawAnimation]);
 
-  // Reduit le trace en supprimant les points deja parcourus par le conducteur.
-  // Appele a chaque changement de position en phase active (pas de recalcul OSRM).
   const trimRouteFromCurrentPosition = useCallback((currentLat, currentLng) => {
     const full = fullRoutePointsRef.current;
     if (!full || full.length < 2) return;
 
     const closestIdx = findClosestPointIndex(full, currentLat, currentLng);
-    // On garde a partir du point le plus proche, le trace se "consume" visuellement
     const remaining = full.slice(closestIdx);
     if (remaining.length > 1) {
       setVisibleRoutePoints(remaining);
     }
   }, []);
 
-  // Observateur principal du trace (architecture bypass Android).
-  // La carte determine elle-meme quels points relier, sans instruction du parent.
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
 
-    // Determination de la cible finale du trace
     const targetMarker = pickupMarker || destinationMarker;
-
-    // En phase ongoing (pickup_origin present), la cible est toujours la destination
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
     if (!activeTarget || !location) {
-      // Aucun marqueur pertinent : on efface le trace
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       fullRoutePointsRef.current = [];
@@ -323,7 +286,6 @@ const MapCard = forwardRef(({
     const currentLng = location.longitude;
     const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
-    // Cas 1 : Changement de destination → recalcul complet obligatoire
     if (destKey !== lastRouteDestKeyRef.current) {
       fetchAndStoreRoute(
         { latitude: currentLat, longitude: currentLng },
@@ -334,10 +296,8 @@ const MapCard = forwardRef(({
 
     const full = fullRoutePointsRef.current;
 
-    // Cas 2 : Deviation trop importante → re-routage (comportement Google Maps)
     const deviationDist = distanceToRoute(currentLat, currentLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
-      // Blocage de re-routage intempestif si la ligne est encore en cours de dessin initial
       if (!isDrawingRouteRef.current) {
         fetchAndStoreRoute(
           { latitude: currentLat, longitude: currentLng },
@@ -347,14 +307,12 @@ const MapCard = forwardRef(({
       return;
     }
 
-    // Cas 3 : Deplacement suffisant sans deviation → reduction du trace parcouru
     const lastOrigin = lastRouteOriginRef.current;
     const movedDist = lastOrigin
       ? haversineMeters(currentLat, currentLng, lastOrigin.latitude, lastOrigin.longitude)
       : REROUTE_THRESHOLD_METERS + 1;
 
     if (movedDist >= REROUTE_THRESHOLD_METERS) {
-      // On ne coupe pas la ligne si l'animation est en cours pour eviter un trace tronque par le bruit GPS
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: currentLat, longitude: currentLng };
         trimRouteFromCurrentPosition(currentLat, currentLng);
@@ -362,7 +320,6 @@ const MapCard = forwardRef(({
     }
   }, [location, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
 
-  // Centrage automatique de la carte sur les deux points du trace actif.
   useEffect(() => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
@@ -409,7 +366,6 @@ const MapCard = forwardRef(({
     }
   }, [markers, isMapReady, location, driverLocation, recenterBottomPadding]);
 
-  // Nettoyage des timers a la destruction du composant
   useEffect(() => {
     return () => stopDrawAnimation();
   }, [stopDrawAnimation]);
@@ -526,8 +482,6 @@ const MapCard = forwardRef(({
               );
             }
 
-            // Marqueur 'pickup_origin' : point de rencontre fixe en phase ongoing chauffeur.
-            // Affiche uniquement comme repere visuel (point dore), sans interaction.
             if (marker.type === 'pickup_origin') {
               return (
                 <TrackedMarker

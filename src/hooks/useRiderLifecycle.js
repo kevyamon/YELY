@@ -54,7 +54,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   }, [destination, displayVehicles, selectedVehicle]);
 
   useEffect(() => {
-    if (rideToRate || !currentRide) {
+    // Nettoyage force de la memoire spatiale si la course est evaluee, supprimee ou annulee
+    if (rideToRate || !currentRide || currentRide?.status === 'cancelled') {
       setDestination(null);
       setSelectedVehicle(null);
       setTimeout(() => {
@@ -67,7 +68,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
-        message: 'Yely ne dessert que la ville de Mafere pour le moment.' 
+        message: 'Le service ne dessert que la zone autorisee pour le moment.' 
       }));
       setIsSearchModalVisible(false);
       return;
@@ -99,7 +100,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       return;
     }
     if (!isUserInZone) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Vous devez etre dans la zone de Mafere pour commander.' }));
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Positionnement hors de la zone de service autorisee.' }));
       return;
     }
     if (!destination) {
@@ -135,11 +136,12 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       const rideData = res.data || res; 
       
       dispatch(setCurrentRide({
-        rideId: rideData.rideId,
+        ...rideData,
+        rideId: rideData._id || rideData.rideId || res.rideId,
         status: rideData.status || 'searching',
-        origin: payload.origin.address,
-        destination: payload.destination.address,
-        forfait: payload.forfait
+        origin: rideData.origin || payload.origin,
+        destination: rideData.destination || payload.destination,
+        forfait: rideData.forfait || payload.forfait
       }));
       
     } catch (error) {

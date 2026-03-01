@@ -1,5 +1,5 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur, Statuts & Fin de Course
+// PANNEAU PASSAGER - Suivi du Chauffeur (Strictement Presentationnel)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -21,16 +21,14 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { clearCurrentRide, selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters, formatDistance } from '../../utils/distanceUtils';
-import RatingModal from './RatingModal';
 import RideRouteDisplay from './RideRouteDisplay';
 
 const { width } = Dimensions.get('window');
 
-// Doit etre identique a BOARDING_DISPLAY_DELAY_MS dans DriverHome
 const BOARDING_DISPLAY_DELAY_MS = 60000;
 
 const RIDER_STATUS = {
@@ -45,7 +43,6 @@ const RiderRideOverlay = () => {
   const dispatch = useDispatch();
   const currentRide = useSelector(selectCurrentRide);
 
-  const [showRating, setShowRating] = useState(false);
   const [riderStatus, setRiderStatus] = useState(RIDER_STATUS.APPROACHING);
   const boardingTimerRef = useRef(null);
 
@@ -57,12 +54,6 @@ const RiderRideOverlay = () => {
       easing: Easing.out(Easing.exp),
     });
   }, [translateY]);
-
-  useEffect(() => {
-    if (currentRide?.status === 'completed') {
-      setShowRating(true);
-    }
-  }, [currentRide?.status]);
 
   useEffect(() => {
     if (boardingTimerRef.current) {
@@ -100,18 +91,12 @@ const RiderRideOverlay = () => {
     };
   }, [currentRide?.arrivedAt, currentRide?.status]);
 
-  const handleCloseRating = () => {
-    setShowRating(false);
-    dispatch(clearCurrentRide());
-  };
-
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
   }));
 
   if (!currentRide) return null;
 
-  const isCompleted = currentRide.status === 'completed';
   const isOngoing = currentRide.status === 'ongoing';
 
   const driverLat =
@@ -158,67 +143,56 @@ const RiderRideOverlay = () => {
   const handleCallDriver = () => {
     const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
+      dispatch(showErrorToast({ title: 'Erreur', message: "Appel impossible." }));
     });
   };
 
   return (
-    <>
-      {!isCompleted && (
-        <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
+    <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
 
-          <View style={styles.statusBanner}>
-            <View style={styles.statusIndicator}>
-              <View style={[styles.dot, resolveDotStyle()]} />
-            </View>
-            <Text style={styles.statusText}>{resolveStatusLabel()}</Text>
+      <View style={styles.statusBanner}>
+        <View style={styles.statusIndicator}>
+          <View style={[styles.dot, resolveDotStyle()]} />
+        </View>
+        <Text style={styles.statusText}>{resolveStatusLabel()}</Text>
+      </View>
+
+      <View style={styles.driverInfoCard}>
+        <View style={styles.avatarPlaceholder}>
+          <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+        </View>
+
+        <View style={styles.driverDetails}>
+          <Text style={styles.driverName}>
+            {currentRide.driverName || 'Chauffeur Assigne'}
+          </Text>
+          <View style={styles.carBadge}>
+            <Text style={styles.carText}>Vehicule Confirme</Text>
           </View>
+        </View>
 
-          <View style={styles.driverInfoCard}>
-            <View style={styles.avatarPlaceholder}>
-              <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
-            </View>
+        <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
+          <Ionicons name="call" size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+      </View>
 
-            <View style={styles.driverDetails}>
-              <Text style={styles.driverName}>
-                {currentRide.driverName || 'Chauffeur Assigne'}
-              </Text>
-              <View style={styles.carBadge}>
-                <Text style={styles.carText}>Vehicule Confirme</Text>
-              </View>
-            </View>
-
-            <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
-              <Ionicons name="call" size={24} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-
-          <RideRouteDisplay
-            originAddress={currentRide.origin?.address}
-            destinationAddress={currentRide.destination?.address}
-            isOngoing={isOngoing}
-            variant="rider"
-          />
-
-          <View style={styles.actionsContainer}>
-            <View style={styles.priceContainer}>
-              <Text style={styles.priceLabel}>Montant Final</Text>
-              <Text style={styles.priceValue}>
-                {currentRide.proposedPrice || currentRide.price} F
-              </Text>
-            </View>
-          </View>
-
-        </Animated.View>
-      )}
-
-      <RatingModal
-        visible={showRating}
-        rideId={currentRide._id}
-        driverName={currentRide.driverName}
-        onClose={handleCloseRating}
+      <RideRouteDisplay
+        originAddress={currentRide.origin?.address}
+        destinationAddress={currentRide.destination?.address}
+        isOngoing={isOngoing}
+        variant="rider"
       />
-    </>
+
+      <View style={styles.actionsContainer}>
+        <View style={styles.priceContainer}>
+          <Text style={styles.priceLabel}>Montant Final</Text>
+          <Text style={styles.priceValue}>
+            {currentRide.proposedPrice || currentRide.price} F
+          </Text>
+        </View>
+      </View>
+
+    </Animated.View>
   );
 };
 

@@ -1,15 +1,13 @@
 // src/store/slices/rideSlice.js
-// STORE RIDE - Separation stricte Client/Chauffeur & Telemetrie
+// STORE RIDE - Gestion stricte de l'etat des courses et de la telemetrie
+// CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
   currentRide: null,
   incomingRide: null,
-  // Position effective du chauffeur (simulee en dev, GPS reel en prod).
-  // Publiee par DriverHome, lue par DriverRideOverlay.
   effectiveLocation: null,
-  // Donnes de la course a noter (declenche l'affichage du RatingModal)
   rideToRate: null,
 };
 
@@ -33,29 +31,23 @@ const rideSlice = createSlice({
         if (driverName) state.currentRide.driverName = driverName;
         if (startedAt) state.currentRide.startedAt = startedAt;
         if (finalPrice) state.currentRide.finalPrice = finalPrice;
-        // Horodatage de l'arrivee au pickup : declenche le compte a rebours
-        // "Client a bord" de 60s cote chauffeur et cote rider simultanement.
         if (arrivedAt !== undefined) state.currentRide.arrivedAt = arrivedAt;
       }
     },
-    // Telemetrie recue depuis le serveur (cote rider via socket)
     updateDriverLocation: (state, action) => {
       if (state.currentRide) {
         state.currentRide.driverLocation = action.payload;
       }
     },
-    // Position effective locale du chauffeur (simulee ou GPS reel).
-    // Mise a jour par DriverHome a chaque changement de position.
     setEffectiveLocation: (state, action) => {
       state.effectiveLocation = action.payload;
     },
-    // Nettoyage absolu de fin de course
     clearCurrentRide: (state) => {
+      // Purge absolue garantissant l'effacement total des traces sur la Map
       state.currentRide = null;
       state.effectiveLocation = null;
       state.incomingRide = null;
     },
-    // Gestion de la notation
     setRideToRate: (state, action) => {
       state.rideToRate = action.payload;
     },

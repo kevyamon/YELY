@@ -14,7 +14,7 @@ import { setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlic
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
-const DROPOFF_RADIUS_METERS = 30;
+const DROPOFF_RADIUS_METERS = 20; // Synchronise avec la tolerance Backend
 
 const BOARDING_DISPLAY_DELAY_MS = 60000;
 const BOARDING_GRACE_DELAY_MS = 20000;
@@ -80,7 +80,7 @@ const useDriverLifecycle = ({
               message: 'Pret a recevoir des courses.',
             }));
           } catch (err) {
-            console.warn('[DriverLifecycle] Erreur auto-connect:', err);
+            console.warn('[DriverLifecycle] Erreur d\'auto-connexion systeme');
           }
         }
       }
@@ -112,7 +112,7 @@ const useDriverLifecycle = ({
       };
       getAddress();
     } else if (errorMsg) {
-      setCurrentAddress('Erreur signal GPS');
+      setCurrentAddress('Erreur de signal GPS');
     }
   }, [location, errorMsg]);
 
@@ -149,11 +149,11 @@ const useDriverLifecycle = ({
         dispatch(updateRideStatus({ status: 'ongoing' }));
         dispatch(showSuccessToast({
           title: 'Depart',
-          message: 'Client a bord — En route vers la destination.',
+          message: 'En route vers la destination.',
         }));
         await startRide({ rideId: currentRide._id }).unwrap();
       } catch (err) {
-        console.warn('[DriverLifecycle] Echec depart apres embarquement:', err);
+        console.warn('[DriverLifecycle] Erreur de transition de depart');
       }
     };
 
@@ -220,7 +220,7 @@ const useDriverLifecycle = ({
           
           const handleAutoCompleteRide = async () => {
             try {
-              dispatch(updateRideStatus({ status: 'completed' }));
+              // Appel de redondance API - Le backend gère l'idempotence
               const res = await completeRide({ rideId: currentRide._id }).unwrap();
               
               if (res.data && res.data.stats) {
@@ -231,7 +231,7 @@ const useDriverLifecycle = ({
                 }));
               }
             } catch (err) {
-              console.warn('[DriverLifecycle] Echec auto-complete:', err);
+              console.warn('[DriverLifecycle] Tentative redondante annulee (Geree par le Backend)');
               isProcessingDropoffRef.current = false;
             }
           };
@@ -248,7 +248,7 @@ const useDriverLifecycle = ({
     if (newStatus && !isDriverInZone) {
       dispatch(showErrorToast({
         title: 'Acces Refuse',
-        message: 'Vous devez etre dans la zone autorisee pour vous mettre en service.',
+        message: 'Positionnement hors de la zone de service autorisee.',
       }));
       return;
     }
@@ -266,12 +266,12 @@ const useDriverLifecycle = ({
 
       dispatch(showSuccessToast({
         title: actualStatus ? 'En service' : 'Hors ligne',
-        message: actualStatus ? 'Pret pour les courses.' : 'Mode pause active.',
+        message: actualStatus ? 'Connexion au reseau de distribution active.' : 'Mode pause active.',
       }));
     } catch (err) {
       dispatch(showErrorToast({
         title: 'Erreur systeme',
-        message: 'Echec de mise a jour du statut.',
+        message: 'Impossible de modifier le statut de service.',
       }));
     }
   };

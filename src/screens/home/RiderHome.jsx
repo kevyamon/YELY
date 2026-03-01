@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Vue Modulaire (Logique deportee)
+// HOME RIDER - Orchestrateur Principal & Nettoyage Actif
 // CSCSM Level: Bank Grade
 
 import React, { useRef } from 'react';
@@ -90,7 +90,7 @@ const RiderHome = ({ navigation }) => {
          ) : (
            <View style={styles.loadingContainer}>
              <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-             <Text style={styles.loadingText}>Localisation en cours...</Text>
+             <Text style={styles.loadingText}>Synchronisation GPS en cours...</Text>
            </View>
          )}
       </View>
@@ -139,7 +139,7 @@ const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
   loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12 },
+  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12, fontWeight: '600' },
 });
 
 export default RiderHome;

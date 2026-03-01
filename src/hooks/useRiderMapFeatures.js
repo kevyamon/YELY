@@ -13,20 +13,42 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
       if (isOngoing) {
         const destLat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
         const destLng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
-        if (!destLat || !destLng) return [];
-        return [{
-          id: 'destination',
-          type: 'destination',
-          latitude: Number(destLat),
-          longitude: Number(destLng),
-          title: currentRide.destination?.address || 'Destination',
-          iconColor: THEME.COLORS.danger,
-        }];
+        const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+        const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+        
+        const markers = [];
+        
+        // Cible du routage en cours
+        if (destLat && destLng) {
+          markers.push({
+            id: 'destination',
+            type: 'destination',
+            latitude: Number(destLat),
+            longitude: Number(destLng),
+            title: currentRide.destination?.address || 'Destination',
+            iconColor: THEME.COLORS.danger,
+          });
+        }
+        
+        // Point de depart maintenu visuellement pour le contexte
+        if (originLat && originLng) {
+          markers.push({
+            id: 'pickup_origin',
+            type: 'pickup_origin',
+            latitude: Number(originLat),
+            longitude: Number(originLng),
+            title: currentRide.origin?.address || 'Depart',
+          });
+        }
+        
+        return markers;
       }
 
       const originLat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
       const originLng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
       if (!originLat || !originLng) return [];
+      
+      // Phase d'approche du chauffeur
       return [{
         id: 'pickup',
         type: 'pickup',
@@ -38,6 +60,8 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
     }
 
     if (!destination) return [];
+    
+    // Phase de selection de la destination avant commande
     return [{
       id: 'destination',
       latitude: Number(destination.latitude),

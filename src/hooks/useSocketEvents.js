@@ -29,7 +29,7 @@ const useSocketEvents = () => {
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
         title: 'Course annulee',
-        message: data?.reason || 'Cette course a ete annulee.',
+        message: data?.reason || 'Annulation confirmée par le serveur.',
       }));
     };
 
@@ -48,22 +48,22 @@ const useSocketEvents = () => {
       dispatch(clearIncomingRide());
       dispatch(showSuccessToast({
         title: 'Course confirmee',
-        message: 'Le client a accepte votre tarif. En route !',
+        message: 'Tarification validee. Demarrage de l\'itineraire d\'approche.',
       }));
     };
 
     const handleProposalRejected = () => {
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
-        title: 'Prix refuse',
-        message: 'Le client a decline votre proposition.',
+        title: 'Proposition declinee',
+        message: 'Le client a refuse la tarification soumise.',
       }));
     };
 
     const handleDriverFound = (data) => {
       dispatch(updateRideStatus({
         status: 'negotiating',
-        driverName: data?.driverName || 'Un chauffeur',
+        driverName: data?.driverName || 'Identification en cours',
       }));
     };
 
@@ -82,9 +82,12 @@ const useSocketEvents = () => {
       }));
     };
 
+    // Gestion industrielle de la fin de course
     const handleRideCompleted = (data) => {
-      dispatch(setRideToRate(data));
+      // 1. Mise en cache pour la modale de notation
+      dispatch(setRideToRate(data.ride || data));
       
+      // 2. Mise a jour des donnees financieres si disponibles
       if (data?.stats) {
         dispatch(updateUserInfo({
           totalRides: data.stats.totalRides,
@@ -93,11 +96,12 @@ const useSocketEvents = () => {
         }));
       }
 
+      // 3. Purge absolue du cache de course actif
       dispatch(clearCurrentRide());
 
       dispatch(showSuccessToast({
-        title: 'Course terminee',
-        message: 'Vous etes arrive a destination.',
+        title: 'Destination atteinte',
+        message: 'Service termine. La course a ete archivee.',
       }));
     };
 
@@ -105,12 +109,7 @@ const useSocketEvents = () => {
       if (!data?.status) return;
 
       if (data.status === 'completed') {
-        dispatch(setRideToRate(data.ride || data));
-        dispatch(clearCurrentRide());
-        dispatch(showSuccessToast({
-          title: 'Course terminee',
-          message: 'Vous etes arrive a destination.',
-        }));
+        handleRideCompleted(data);
         return;
       }
 
@@ -133,8 +132,8 @@ const useSocketEvents = () => {
     const handleSearchTimeout = (data) => {
       dispatch(clearCurrentRide());
       dispatch(showErrorToast({
-        title: 'Recherche expiree',
-        message: data?.message || "Aucun chauffeur n'est disponible dans votre zone.",
+        title: 'Delai expire',
+        message: data?.message || "Recherche infructueuse dans la zone cible.",
       }));
     };
 
@@ -152,7 +151,9 @@ const useSocketEvents = () => {
     socketService.on('proposal_accepted', handleProposalAccepted);
     socketService.on('proposal_rejected', handleProposalRejected);
     socketService.on('ride_started', handleRideStarted);
+    // Double ecoute pour garantir la reception peu importe le formatage backend
     socketService.on('ride_completed', handleRideCompleted);
+    socketService.on('RIDE_COMPLETED', handleRideCompleted);
     socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
@@ -167,6 +168,7 @@ const useSocketEvents = () => {
       socketService.off('proposal_rejected', handleProposalRejected);
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_completed', handleRideCompleted);
+      socketService.off('RIDE_COMPLETED', handleRideCompleted);
       socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
