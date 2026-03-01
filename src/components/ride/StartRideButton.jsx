@@ -1,5 +1,5 @@
 // src/components/ride/StartRideButton.jsx
-// COMPOSANT D'ACTION ISOLE - Demarrage de course avec Traceabilite des erreurs
+// COMPOSANT D'ACTION ISOLE - Demarrage de course avec Traceabilite des erreurs Zod
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -18,25 +18,53 @@ const StartRideButton = () => {
   const [startRide, { isLoading }] = useStartRideMutation();
 
   const handleStartRide = async () => {
-    if (!currentRide) return;
-    
-    try {
-      await startRide({ rideId: currentRide._id }).unwrap();
-    } catch (err) {
-      // TRACEABILITE ABSOLUE : On extrait le message exact du backend
-      let errorMessage = 'Impossible de demarrer la course. Verifiez votre connexion.';
+    if (!currentRide) {
+      dispatch(showErrorToast({
+        title: 'Action impossible',
+        message: 'Aucune course active detectee dans le contexte.'
+      }));
+      return;
+    }
+
+    // 1. EXTRACTION MULTI-NIVEAUX DE L'ID (Deep Pluck)
+    // Anticipation des normalisations de Redux Toolkit, API et WebSockets
+    const targetRideId = currentRide._id || currentRide.id || currentRide.rideId || (currentRide.ride && currentRide.ride._id);
+
+    // 2. PRE-VALIDATION FRONTEND STRICTE & AUDIT
+    if (!targetRideId) {
+      // Log d'audit strict pour le debogage de la structure Redux
+      console.error('[StartRideButton] Echec critique : Identifiant de course introuvable. Structure actuelle du state :', JSON.stringify(currentRide, null, 2));
       
-      if (err?.data?.message) {
-        errorMessage = err.data.message; // Ex: "Securite : Vous etes trop loin..."
+      dispatch(showErrorToast({
+        title: 'Erreur d\'integrite',
+        message: 'L\'identifiant unique de la course est introuvable ou corrompu.'
+      }));
+      return;
+    }
+
+    try {
+      // 3. ENVOI DU PAYLOAD SECURISE
+      await startRide({ rideId: targetRideId }).unwrap();
+    } catch (err) {
+      // 4. TRACEABILITE CHIRURGICALE DES ERREURS BACKEND (ZOD)
+      let errorMessage = 'Impossible de demarrer la course. Verifiez votre connexion.';
+
+      if (err?.data?.errors && Array.isArray(err.data.errors) && err.data.errors.length > 0) {
+        // Priorite absolue au message strict renvoye par le validateur Zod
+        errorMessage = err.data.errors[0].message;
+      } else if (err?.data?.message) {
+        // Fallback sur le message global du backend
+        errorMessage = err.data.message;
       } else if (err?.error) {
-        errorMessage = err.error; // Erreurs reseau pures (ex: "Network Error")
+        // Fallback sur l'erreur reseau pure
+        errorMessage = err.error;
       } else if (err?.status === 404) {
         errorMessage = 'Le serveur ne trouve pas la route. Avez-vous redemarre le backend ?';
       }
 
-      dispatch(showErrorToast({ 
-        title: 'Echec du demarrage', 
-        message: errorMessage 
+      dispatch(showErrorToast({
+        title: 'Echec du demarrage',
+        message: errorMessage
       }));
     }
   };
