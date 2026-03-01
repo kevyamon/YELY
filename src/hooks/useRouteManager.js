@@ -1,13 +1,11 @@
 // src/hooks/useRouteManager.js
-// HOOK METIER - Routage dynamique, Projection Orthogonale et Grignotage Fluide
-// CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
 
 const ROUTE_DRAW_DURATION_MS = 900;
 const ROUTE_DRAW_INTERVAL_MS = 16;
-const TRIM_THRESHOLD_METERS = 2; // Haute frequence : recalcul visuel tous les 2 metres (Tres fluide)
+const TRIM_THRESHOLD_METERS = 2; 
 const DEVIATION_THRESHOLD_METERS = 60;
 
 const computeStepSize = (totalPoints) => {
@@ -28,7 +26,6 @@ const haversineMeters = (lat1, lng1, lat2, lng2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// Mathematique de projection orthogonale (Snapping sur la route)
 const getProjectedPoint = (A, B, P) => {
   const dx = B.longitude - A.longitude;
   const dy = B.latitude - A.latitude;
@@ -88,7 +85,7 @@ const useRouteManager = (location, driverLocation, markers) => {
   );
 
   const fetchAndStoreRoute = useCallback(
-    async (pointA, pointB) => {
+    async (pointA, pointB, destKey) => {
       if (!pointA || !pointB) {
         stopDrawAnimation();
         setVisibleRoutePoints([]);
@@ -99,7 +96,6 @@ const useRouteManager = (location, driverLocation, markers) => {
         return;
       }
 
-      const destKey = `${pointB.latitude.toFixed(5)},${pointB.longitude.toFixed(5)}`;
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
 
@@ -202,33 +198,44 @@ const useRouteManager = (location, driverLocation, markers) => {
     const routeOriginLat = driverLocation?.latitude || location.latitude;
     const routeOriginLng = driverLocation?.longitude || location.longitude;
 
-    // 🛡️ REPARATION : "Kill Switch" de proximite (Coupe le fil si on est a moins de 25 metres)
+    // SECURITE 1 : Interdiction de tracer la route d'approche si la position du chauffeur est absente
+    if (activeTarget.type === 'pickup' && (!driverLocation?.latitude || !driverLocation?.longitude)) {
+      stopDrawAnimation();
+      setVisibleRoutePoints([]);
+      return;
+    }
+
     const distToTarget = haversineMeters(routeOriginLat, routeOriginLng, activeTarget.latitude, activeTarget.longitude);
     if (distToTarget <= 25) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       fullRoutePointsRef.current = [];
-      return; // On stoppe le routage net !
+      return; 
     }
 
-    const destKey = `${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
+    // SECURITE 2 : On integre le type de cible dans la cle pour forcer un recalcul si on passe de Client a Destination
+    const destKey = `TARGET_${activeTarget.type}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
       fetchAndStoreRoute(
         { latitude: routeOriginLat, longitude: routeOriginLng },
-        { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
+        { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
+        destKey
       );
       return;
     }
 
     const full = fullRoutePointsRef.current;
 
+    if (!full || full.length === 0) return;
+
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       if (!isDrawingRouteRef.current) {
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
-          { latitude: activeTarget.latitude, longitude: activeTarget.longitude }
+          { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
+          destKey
         );
       }
       return;

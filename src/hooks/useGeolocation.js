@@ -1,6 +1,4 @@
 // src/hooks/useGeolocation.js
-// HOOK DE GEOLOCALISATION - Suivi en temps reel
-// CSCSM Level: Bank Grade
 
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,8 +7,8 @@ const useGeolocation = (options = {}) => {
   const {
     enableHighAccuracy = true,
     watchPosition = true,
-    distanceInterval = 5,
-    timeInterval = 3000,
+    distanceInterval = 2, 
+    timeInterval = 2000, 
   } = options;
 
   const [location, setLocation] = useState(null);
@@ -37,7 +35,7 @@ const useGeolocation = (options = {}) => {
   const getCurrentPosition = useCallback(async () => {
     try {
       const loc = await Location.getCurrentPositionAsync({
-        accuracy: enableHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
+        accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
       const coords = {
         latitude: loc.coords.latitude,
@@ -66,7 +64,7 @@ const useGeolocation = (options = {}) => {
         if (watchPosition) {
           watchRef.current = await Location.watchPositionAsync(
             {
-              accuracy: enableHighAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced,
+              accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
               timeInterval,
               distanceInterval,
             },

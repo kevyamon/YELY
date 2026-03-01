@@ -1,6 +1,4 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur
-// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -37,6 +35,9 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  
+  // Ref pour garder en memoire le dernier etat de la camera
+  const lastCameraSignatureRef = useRef('');
 
   const colorScheme = useColorScheme();
   const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
@@ -47,50 +48,62 @@ const MapCard = forwardRef(({
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   useEffect(() => {
+    if (!isMapReady) return;
+
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
-    const activeTarget = pickupMarker || destinationMarker;
+    
+    // On definit la cible actuelle
+    const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
 
-    if (isMapReady && location && driverLocation && !activeTarget) {
-      const timer = setTimeout(() => {
-        mapRef.current?.fitToCoordinates(
-          [
-            { latitude: location.latitude, longitude: location.longitude },
-            { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-          ],
-          { edgePadding: { top: 150, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
-        );
-      }, 600);
-      return () => clearTimeout(timer);
-    }
+    // On cree une signature unique pour l'action en cours
+    const currentSignature = activeTarget 
+      ? `TARGET_${activeTarget.type}_${activeTarget.latitude}` 
+      : 'IDLE_CLIENT_ONLY';
 
-    if (isMapReady && pickupOriginMarker && destinationMarker && location) {
-      const timer = setTimeout(() => {
-        mapRef.current?.fitToCoordinates(
-          [
-            { latitude: location.latitude, longitude: location.longitude },
-            { latitude: destinationMarker.latitude, longitude: destinationMarker.longitude },
-          ],
-          { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
-        );
-      }, 600);
-      return () => clearTimeout(timer);
-    }
+    // La camera ne bouge QUE si la signature change (ex: debut de course, fin de course)
+    // Cela libere totalement l'icone du chauffeur qui peut avancer sans etre bloquee
+    if (lastCameraSignatureRef.current !== currentSignature) {
+      lastCameraSignatureRef.current = currentSignature;
 
-    if (isMapReady && location && activeTarget) {
-      const timer = setTimeout(() => {
-        mapRef.current?.fitToCoordinates(
-          [
-            { latitude: location.latitude, longitude: location.longitude },
-            { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-          ],
-          { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
-        );
-      }, 600);
-      return () => clearTimeout(timer);
+      if (!activeTarget && location) {
+        // Retour au client seul (ex: Fin de la course)
+        const timer = setTimeout(() => {
+          mapRef.current?.animateToRegion(
+            { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+            800
+          );
+        }, 600);
+        return () => clearTimeout(timer);
+      } else if (activeTarget && driverLocation) {
+        // Chauffeur vers Client ou Destination
+        const timer = setTimeout(() => {
+          mapRef.current?.fitToCoordinates(
+            [
+              { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
+              { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
+            ],
+            { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
+          );
+        }, 600);
+        return () => clearTimeout(timer);
+      } else if (activeTarget && location) {
+        // Client vers Destination (Avant que le chauffeur ne soit lie)
+        const timer = setTimeout(() => {
+          mapRef.current?.fitToCoordinates(
+            [
+              { latitude: location.latitude, longitude: location.longitude },
+              { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
+            ],
+            { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
+          );
+        }, 600);
+        return () => clearTimeout(timer);
+      }
     }
-  }, [markers, isMapReady, location, driverLocation, recenterBottomPadding]);
+    // SECURITE : on ne surveille plus driverLocation ni location pour la camera
+  }, [markers, isMapReady, recenterBottomPadding]);
 
   const handleRecenter = () => {
     if (isMapReady && location) {
@@ -112,7 +125,6 @@ const MapCard = forwardRef(({
     if (onMapReady) onMapReady();
   };
 
-  // 🛡️ REPARATION : On obeit strictement a l'ordre du parent (showUserMarker)
   const shouldShowUserMarker = showUserMarker;
 
   return (
