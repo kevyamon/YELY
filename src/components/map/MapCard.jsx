@@ -1,4 +1,4 @@
-// src/components/map/MapCard.jsx
+// src/components/map/MapCard.jsx (modifié)
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur
 // CSCSM Level: Bank Grade
 
@@ -48,58 +48,67 @@ const MapCard = forwardRef(({
 
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
+  const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
+  const destinationMarker = markers.find((m) => m.type === 'destination');
+  const pickupMarker = markers.find((m) => m.type === 'pickup');
+  
+  const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
+
   useEffect(() => {
     if (!isMapReady) return;
 
-    const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
-    const destinationMarker = markers.find((m) => m.type === 'destination');
-    const pickupMarker = markers.find((m) => m.type === 'pickup');
+    // 1. On récolte TOUTES les coordonnées qui doivent être visibles
+    const allCoords = [];
     
-    const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
+    if (location?.latitude && location?.longitude) {
+      allCoords.push({ latitude: location.latitude, longitude: location.longitude });
+    }
+    if (driverLocation?.latitude && driverLocation?.longitude) {
+      allCoords.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
+    }
+    markers.forEach(m => {
+      if (m.latitude && m.longitude) {
+        allCoords.push({ latitude: m.latitude, longitude: m.longitude });
+      }
+    });
+    visibleRoutePoints.forEach(p => {
+      if (p.latitude && p.longitude) {
+        allCoords.push({ latitude: p.latitude, longitude: p.longitude });
+      }
+    });
 
-    const currentSignature = activeTarget 
-      ? `TARGET_${activeTarget.type}_${activeTarget.latitude}` 
-      : 'IDLE_CLIENT_ONLY';
+    // 2. On crée une signature basée sur le nombre de points pour ne re-zoomer 
+    // que quand il y a un changement d'éléments sur la carte
+    const currentSignature = `SIG_${allCoords.length}_${activeTarget?.type || 'IDLE'}`;
 
     if (lastCameraSignatureRef.current !== currentSignature) {
       lastCameraSignatureRef.current = currentSignature;
 
-      if (!activeTarget && location) {
+      // 3. Zoom intelligent (Boîte englobante)
+      if (allCoords.length > 1) {
+        const timer = setTimeout(() => {
+          mapRef.current?.fitToCoordinates(allCoords, {
+            // On garde les paddings qui protègent la zone d'affichage
+            edgePadding: { top: 100, right: 40, bottom: recenterBottomPadding + 20, left: 40 },
+            animated: true
+          });
+        }, 600);
+        return () => clearTimeout(timer);
+      } else if (allCoords.length === 1) {
+        // S'il n'y a qu'un seul point au total, on se centre simplement dessus
         const timer = setTimeout(() => {
           mapRef.current?.animateToRegion(
-            { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
+            { latitude: allCoords[0].latitude, longitude: allCoords[0].longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
             800
-          );
-        }, 600);
-        return () => clearTimeout(timer);
-      } else if (activeTarget && driverLocation) {
-        const timer = setTimeout(() => {
-          mapRef.current?.fitToCoordinates(
-            [
-              { latitude: driverLocation.latitude, longitude: driverLocation.longitude },
-              { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-            ],
-            { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
-          );
-        }, 600);
-        return () => clearTimeout(timer);
-      } else if (activeTarget && location) {
-        const timer = setTimeout(() => {
-          mapRef.current?.fitToCoordinates(
-            [
-              { latitude: location.latitude, longitude: location.longitude },
-              { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-            ],
-            { edgePadding: { top: 280, right: 70, bottom: recenterBottomPadding + 40, left: 70 }, animated: true }
           );
         }, 600);
         return () => clearTimeout(timer);
       }
     }
-  }, [markers, isMapReady, recenterBottomPadding, location, driverLocation]);
+  }, [activeTarget, isMapReady, recenterBottomPadding, location, driverLocation, markers, visibleRoutePoints]);
 
   const handleRecenter = () => {
-    if (isMapReady && location) {
+    if (isMapReady && location && location.latitude) {
       mapRef.current?.animateToRegion(
         { latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
         800
@@ -113,13 +122,10 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
-  // REPARATION : Reintroduction de la fonction manquante
   const handleMapReady = () => {
     setIsMapReady(true);
     if (onMapReady) onMapReady();
   };
-
-  const shouldShowUserMarker = showUserMarker;
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
@@ -162,7 +168,7 @@ const MapCard = forwardRef(({
             />
           )}
 
-          {shouldShowUserMarker && location && (
+          {showUserMarker && location && location.latitude && (
             <TrackedMarker
               identifier="user_loc"
               coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
@@ -176,8 +182,11 @@ const MapCard = forwardRef(({
             </TrackedMarker>
           )}
 
-          {driverLocation && (
-            <SmoothDriverMarker coordinate={driverLocation} heading={driverLocation.heading} />
+          {driverLocation && driverLocation.latitude && driverLocation.longitude && (
+            <SmoothDriverMarker
+              coordinate={driverLocation}
+              heading={driverLocation.heading}
+            />
           )}
 
           {markers.map((marker, index) => {
@@ -213,9 +222,7 @@ const MapCard = forwardRef(({
               );
             }
 
-            if (marker.type === 'pickup_origin') {
-              return null;
-            }
+            if (marker.type === 'pickup_origin') return null;
 
             return (
               <TrackedMarker

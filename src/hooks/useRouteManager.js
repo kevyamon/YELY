@@ -55,6 +55,9 @@ const useRouteManager = (location, driverLocation, markers) => {
   const lastRouteOriginRef = useRef(null);
   const lastRouteDestKeyRef = useRef(null);
   const lastPassedIndexRef = useRef(0);
+  
+  // Le bouclier Anti-Boucle Infinie
+  const lastRouteFetchTimeRef = useRef(0);
 
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
@@ -101,6 +104,9 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
+      
+      // On enregistre l'heure exacte de la requete
+      lastRouteFetchTimeRef.current = Date.now();
 
       const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
 
@@ -240,7 +246,11 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
-      if (!isDrawingRouteRef.current) {
+      const now = Date.now();
+      // REPARATION MOTEUR ROUTE : On ne lance un nouveau calcul qu'apres un delai de 15 secondes.
+      // Cela empeche l'application de crasher lorsque le Fake GPS avance hors des routes.
+      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
+        lastRouteFetchTimeRef.current = now;
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
