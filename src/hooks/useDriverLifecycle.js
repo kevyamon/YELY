@@ -79,7 +79,7 @@ const useDriverLifecycle = ({
               message: 'Pret a recevoir des courses.',
             }));
           } catch (err) {
-            console.warn('[DriverLifecycle] Erreur d\'auto-connexion systeme');
+            console.warn('[DriverLifecycle] Erreur de connexion systeme automatique');
           }
         }
       }
@@ -180,7 +180,7 @@ const useDriverLifecycle = ({
           const rideId = currentRide._id || currentRide.id;
           if (rideId) {
             markAsArrived({ rideId }).unwrap().catch(err => {
-              console.warn('[DriverLifecycle] Echec de la notification d\'arrivee');
+              console.warn('[DriverLifecycle] Echec de la notification d\'arrivee distante');
               isProcessingPickupRef.current = false; 
             });
           }
@@ -241,13 +241,29 @@ const useDriverLifecycle = ({
   };
 
   const handleConfirmArrival = async () => {
-    if (!currentRide) return;
+    if (!currentRide) {
+      dispatch(showErrorToast({
+        title: 'Erreur Systeme',
+        message: 'Aucune course active detectee.',
+      }));
+      return;
+    }
+    
     const rideId = currentRide._id || currentRide.id;
-    if (!rideId) return;
+    if (!rideId) {
+      dispatch(showErrorToast({
+        title: 'Erreur Systeme',
+        message: 'Identifiant de course invalide.',
+      }));
+      return;
+    }
 
     try {
-      const res = await completeRide({ rideId }).unwrap();
+      // Mise a jour optimiste : On force le statut en local pour eviter le rebond de la modale
+      dispatch(updateRideStatus({ status: 'completed' }));
       setIsArrivalModalVisible(false);
+
+      const res = await completeRide({ rideId }).unwrap();
       
       if (res.data && res.data.stats) {
         dispatch(updateUserInfo({ 
@@ -262,6 +278,8 @@ const useDriverLifecycle = ({
         message: 'Vos gains ont ete credites avec succes.',
       }));
     } catch (err) {
+      // Rollback en cas d'echec serveur pour permettre une nouvelle tentative
+      dispatch(updateRideStatus({ status: 'in_progress' }));
       dispatch(showErrorToast({
         title: 'Erreur de cloture',
         message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',
