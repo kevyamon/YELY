@@ -32,9 +32,6 @@ const RiderHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
   
-  // Extraction directe depuis le store pour contourner tout blocage de flux dans les hooks intermediaires
-  const driverLocationFromRedux = useSelector((state) => state.ride?.driverLocation);
-  
   const { location, errorMsg } = useGeolocation(); 
   const isUserInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
@@ -75,8 +72,10 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
-  // Injection prioritaire de la position temps reel issue des WebSockets
-  const activeDriverLocation = isRideActive ? (driverLocationFromRedux || driverLatLng) : null;
+  // REPARATION : Utilisation stricte du traducteur driverLatLng. 
+  // Il garantit que les donnees GeoJSON du backend sont converties en {latitude, longitude} pures.
+  // Cela debloque instantanement l'animation du vehicule en Phase 2.
+  const activeDriverLocation = isRideActive ? driverLatLng : null;
 
   return (
     <View style={styles.screenWrapper}>

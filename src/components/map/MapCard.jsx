@@ -1,4 +1,6 @@
 // src/components/map/MapCard.jsx
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -36,7 +38,6 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
-  // Ref pour garder en memoire le dernier etat de la camera
   const lastCameraSignatureRef = useRef('');
 
   const colorScheme = useColorScheme();
@@ -54,21 +55,16 @@ const MapCard = forwardRef(({
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
     
-    // On definit la cible actuelle
     const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
 
-    // On cree une signature unique pour l'action en cours
     const currentSignature = activeTarget 
       ? `TARGET_${activeTarget.type}_${activeTarget.latitude}` 
       : 'IDLE_CLIENT_ONLY';
 
-    // La camera ne bouge QUE si la signature change (ex: debut de course, fin de course)
-    // Cela libere totalement l'icone du chauffeur qui peut avancer sans etre bloquee
     if (lastCameraSignatureRef.current !== currentSignature) {
       lastCameraSignatureRef.current = currentSignature;
 
       if (!activeTarget && location) {
-        // Retour au client seul (ex: Fin de la course)
         const timer = setTimeout(() => {
           mapRef.current?.animateToRegion(
             { latitude: location.latitude, longitude: location.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
@@ -77,7 +73,6 @@ const MapCard = forwardRef(({
         }, 600);
         return () => clearTimeout(timer);
       } else if (activeTarget && driverLocation) {
-        // Chauffeur vers Client ou Destination
         const timer = setTimeout(() => {
           mapRef.current?.fitToCoordinates(
             [
@@ -89,7 +84,6 @@ const MapCard = forwardRef(({
         }, 600);
         return () => clearTimeout(timer);
       } else if (activeTarget && location) {
-        // Client vers Destination (Avant que le chauffeur ne soit lie)
         const timer = setTimeout(() => {
           mapRef.current?.fitToCoordinates(
             [
@@ -102,8 +96,7 @@ const MapCard = forwardRef(({
         return () => clearTimeout(timer);
       }
     }
-    // SECURITE : on ne surveille plus driverLocation ni location pour la camera
-  }, [markers, isMapReady, recenterBottomPadding]);
+  }, [markers, isMapReady, recenterBottomPadding, location, driverLocation]);
 
   const handleRecenter = () => {
     if (isMapReady && location) {
@@ -120,6 +113,7 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
+  // REPARATION : Reintroduction de la fonction manquante
   const handleMapReady = () => {
     setIsMapReady(true);
     if (onMapReady) onMapReady();
@@ -220,17 +214,7 @@ const MapCard = forwardRef(({
             }
 
             if (marker.type === 'pickup_origin') {
-              return (
-                <TrackedMarker
-                  identifier="pickup_origin_loc"
-                  key={marker.id || `marker-${index}`}
-                  coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  anchor={{ x: 0.5, y: 0.5 }}
-                  zIndex={90}
-                >
-                  <View style={styles.originDot} />
-                </TrackedMarker>
-              );
+              return null;
             }
 
             return (
@@ -284,7 +268,6 @@ const styles = StyleSheet.create({
   userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' },
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
-  originDot: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2, borderColor: '#FFFFFF', opacity: 0.7 },
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
 });
 

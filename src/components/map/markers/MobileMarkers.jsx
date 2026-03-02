@@ -123,7 +123,7 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
 
 const styles = StyleSheet.create({
   animatedMarkerContainer: { justifyContent: 'center', alignItems: 'center', width: 50, height: 50 },
-  pulseHalo: { position: 'absolute', width: 40, height: 40, borderRadius: 20 },
+  pulseHalo: { position: 'absolute', width: 30, height: 30, borderRadius: 40 },
   markerIconShadow: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4, elevation: 5 },
   humanMarkerBg: { width: 34, height: 34, borderRadius: 17, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#FFFFFF', shadowColor: '#000', shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.4, shadowRadius: 3, elevation: 5 },
   carMarkerContainer: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
