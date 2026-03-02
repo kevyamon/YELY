@@ -1,5 +1,6 @@
 // src/components/ride/DriverRequestModal.jsx
-// MODAL CHAUFFEUR - Glow Up UI, Séquençage & Prévention de Crash
+// MODAL CHAUFFEUR - Glow Up UI, Sequencage & Affichage Passagers
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -33,8 +34,8 @@ const DriverRequestModal = () => {
   const handleAcceptAndPropose = async () => {
     if (!selectedAmount) {
       dispatch(showErrorToast({ 
-        title: 'Sélection requise', 
-        message: 'Veuillez choisir un tarif à proposer.' 
+        title: 'Selection requise', 
+        message: 'Veuillez choisir un tarif a proposer.' 
       }));
       return;
     }
@@ -47,8 +48,8 @@ const DriverRequestModal = () => {
       await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
       
       dispatch(showSuccessToast({ 
-        title: 'Offre envoyée !', 
-        message: 'En attente de la réponse du client.' 
+        title: 'Offre envoyee !', 
+        message: 'En attente de la reponse du client.' 
       }));
       
       dispatch(clearIncomingRide()); 
@@ -56,7 +57,7 @@ const DriverRequestModal = () => {
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Course indisponible', 
-        message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou le client a annulé.' 
+        message: error?.data?.message || 'Un autre chauffeur a ete plus rapide ou le client a annule.' 
       }));
       dispatch(clearIncomingRide());
     } finally {
@@ -82,28 +83,45 @@ const DriverRequestModal = () => {
 
   const forfaitColor = getForfaitColor(incomingRide.forfait);
   const priceOptions = incomingRide.priceOptions || [];
+  
+  // SECU : Extraction du nombre de passagers (Fallback a 1 pour les anciennes requetes)
+  const passengersCount = incomingRide.passengersCount || 1;
 
   return (
     <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
       
       <View style={styles.header}>
-        <View>
+        <View style={styles.headerTitles}>
           <Text style={styles.title}>Nouvelle Demande</Text>
-          <View style={[styles.badge, { backgroundColor: forfaitColor + '20' }]}>
-             <Ionicons 
-               name={incomingRide.forfait?.toUpperCase() === 'VIP' ? 'star' : 'car'} 
-               size={12} 
-               color={forfaitColor} 
-             />
-             <Text style={[styles.badgeText, { color: forfaitColor }]}>
-               Yély {getForfaitLabel(incomingRide.forfait)}
-             </Text>
+          <View style={styles.badgesRow}>
+            <View style={[styles.badge, { backgroundColor: forfaitColor + '20' }]}>
+               <Ionicons 
+                 name={incomingRide.forfait?.toUpperCase() === 'VIP' ? 'star' : 'car'} 
+                 size={12} 
+                 color={forfaitColor} 
+               />
+               <Text style={[styles.badgeText, { color: forfaitColor }]}>
+                 Yely {getForfaitLabel(incomingRide.forfait)}
+               </Text>
+            </View>
+            
+            {/* NOUVEAU BADGE : Nombre de passagers */}
+            <View style={styles.passengerBadge}>
+               <Ionicons 
+                 name={passengersCount > 1 ? 'people' : 'person'} 
+                 size={12} 
+                 color={THEME.COLORS.textSecondary} 
+               />
+               <Text style={styles.passengerBadgeText}>
+                 {passengersCount} {passengersCount > 1 ? 'Pass.' : 'Pass.'}
+               </Text>
+            </View>
           </View>
         </View>
+        
         <Text style={styles.distance}>{incomingRide.distance} km</Text>
       </View>
 
-      {/* UI TRAJET AMÉLIORÉE - Design Timeline Uber-like */}
       <View style={styles.routeTimelineContainer}>
         <View style={styles.timelineIndicators}>
           <View style={styles.dotStart} />
@@ -128,7 +146,7 @@ const DriverRequestModal = () => {
         </View>
       </View>
 
-      <Text style={styles.subtitle}>Sélectionnez votre tarif :</Text>
+      <Text style={styles.subtitle}>Selectionnez votre tarif :</Text>
       
       <View style={styles.optionsContainer}>
         {priceOptions.length > 0 ? (
@@ -167,7 +185,7 @@ const DriverRequestModal = () => {
         
         <GoldButton
           title={
-            loadingStep === 'locking' ? "Réservation..." : 
+            loadingStep === 'locking' ? "Reservation..." : 
             loadingStep === 'submitting' ? "Envoi..." : 
             "Proposer ce prix"
           }
@@ -184,8 +202,11 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     marginBottom: THEME.SPACING.lg,
+  },
+  headerTitles: {
+    flex: 1,
   },
   title: {
     fontSize: 22,
@@ -193,14 +214,19 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textPrimary,
     letterSpacing: 0.5,
   },
+  badgesRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: 6,
+    gap: 8,
+  },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
-    alignSelf: 'flex-start',
     paddingHorizontal: 8,
     paddingVertical: 4,
     borderRadius: 8,
-    marginTop: 4,
     gap: 4,
   },
   badgeText: {
@@ -208,6 +234,23 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 1,
+  },
+  passengerBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 8,
+    gap: 4,
+  },
+  passengerBadgeText: {
+    fontSize: 11,
+    fontWeight: 'bold',
+    color: THEME.COLORS.textSecondary,
+    textTransform: 'uppercase',
   },
   distance: {
     fontSize: 16,
@@ -219,6 +262,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 12,
+    marginLeft: 10,
   },
   routeTimelineContainer: {
     flexDirection: 'row',

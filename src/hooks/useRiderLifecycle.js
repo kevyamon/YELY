@@ -54,7 +54,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   }, [destination, displayVehicles, selectedVehicle]);
 
   useEffect(() => {
-    // Nettoyage force de la memoire spatiale si la course est evaluee, supprimee ou annulee
     if (rideToRate || !currentRide || currentRide?.status === 'cancelled') {
       setDestination(null);
       setSelectedVehicle(null);
@@ -94,7 +93,10 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
   };
 
-  const handleConfirmRide = async () => {
+  const handleConfirmRide = async (passengersCount = 1) => {
+    // SECURITE : Filtrage strict du parametre d'entree pour eviter l'injection d'objets cycliques (SyntheticEvent)
+    const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
+
     if (!location) {
       dispatch(showErrorToast({ title: 'Erreur GPS', message: 'Localisation introuvable. Activez votre GPS.' }));
       return;
@@ -129,7 +131,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       const payload = {
         origin: { address: safeOriginAddress, coordinates: [origLng, origLat] },
         destination: { address: safeDestAddress, coordinates: [destLng, destLat] },
-        forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase()
+        forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase(),
+        passengersCount: validPassengersCount // Utilisation de la variable filtree
       };
       
       const res = await requestRideApi(payload).unwrap();
@@ -141,7 +144,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
         status: rideData.status || 'searching',
         origin: rideData.origin || payload.origin,
         destination: rideData.destination || payload.destination,
-        forfait: rideData.forfait || payload.forfait
+        forfait: rideData.forfait || payload.forfait,
+        passengersCount: validPassengersCount
       }));
       
     } catch (error) {

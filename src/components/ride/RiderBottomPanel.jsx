@@ -1,13 +1,15 @@
 // src/components/ride/RiderBottomPanel.jsx
 // COMPOSANT PASSAGER (WEB/MOBILE) - Tracé de courbe complet & RTK Query Ready
+// CSCSM Level: Bank Grade
 
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import THEME from '../../theme/theme';
+import PassengerCountModal from './PassengerCountModal';
 import VehicleCarousel from './VehicleCarousel';
 
-// Fonction de nettoyage pour garantir qu'aucun prix n'est affiché
 const getVehicleName = (type) => {
   switch(type?.toLowerCase()) {
     case 'echo': return 'Echo';
@@ -25,10 +27,21 @@ const RiderBottomPanel = ({
   estimationData,
   estimateError,
   onConfirmRide,
-  isOrdering, // 🚀 NOUVELLE PROP : Gère l'état de chargement de la commande
+  isOrdering, 
   topContent = null 
 }) => {
   const insets = useSafeAreaInsets();
+  const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
+
+  const handleInitialConfirm = () => {
+    if (!selectedVehicle || isOrdering) return;
+    setIsPassengerModalVisible(true);
+  };
+
+  const handleFinalConfirm = (passengersCount) => {
+    setIsPassengerModalVisible(false);
+    onConfirmRide(passengersCount);
+  };
 
   return (
     <View style={[
@@ -59,7 +72,7 @@ const RiderBottomPanel = ({
            <TouchableOpacity 
              style={[styles.confirmButton, (!selectedVehicle || isOrdering) && styles.confirmButtonDisabled]}
              disabled={!selectedVehicle || isEstimating || isOrdering}
-             onPress={onConfirmRide}
+             onPress={handleInitialConfirm}
              activeOpacity={0.9}
            >
              <Text style={[styles.confirmButtonText, (!selectedVehicle || isOrdering) && styles.confirmButtonTextDisabled]}>
@@ -76,6 +89,12 @@ const RiderBottomPanel = ({
            <Text style={styles.emptyText}>Sélectionnez une destination</Text>
          </View>
       )}
+
+      <PassengerCountModal 
+        visible={isPassengerModalVisible}
+        onClose={() => setIsPassengerModalVisible(false)}
+        onConfirm={handleFinalConfirm}
+      />
 
     </View>
   );
