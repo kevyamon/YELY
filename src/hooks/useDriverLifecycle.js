@@ -32,6 +32,7 @@ const useDriverLifecycle = ({
   const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
   const snoozeTimerRef = useRef(null);
+  const isSubmittingRef = useRef(false); // Verrou mecanique anti-double-clic
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -118,6 +119,7 @@ const useDriverLifecycle = ({
   useEffect(() => {
     if (!currentRide) {
       isProcessingPickupRef.current = false;
+      isSubmittingRef.current = false; // Deverrouillage global
       setIsArrivalModalVisible(false);
       if (snoozeTimerRef.current) {
         clearTimeout(snoozeTimerRef.current);
@@ -241,7 +243,12 @@ const useDriverLifecycle = ({
   };
 
   const handleConfirmArrival = async () => {
+    // Verrouillage mecanique instantane contre le double-clic
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
     if (!currentRide) {
+      isSubmittingRef.current = false;
       dispatch(showErrorToast({
         title: 'Erreur Systeme',
         message: 'Aucune course active detectee.',
@@ -251,6 +258,7 @@ const useDriverLifecycle = ({
     
     const rideId = currentRide._id || currentRide.id || currentRide.rideId;
     if (!rideId) {
+      isSubmittingRef.current = false;
       dispatch(showErrorToast({
         title: 'Erreur Systeme',
         message: 'Identifiant de course invalide.',
@@ -259,7 +267,6 @@ const useDriverLifecycle = ({
     }
 
     try {
-      // Mise a jour optimiste : On force le statut en local pour eviter le rebond de la modale
       dispatch(updateRideStatus({ status: 'completed' }));
       setIsArrivalModalVisible(false);
 
@@ -277,9 +284,13 @@ const useDriverLifecycle = ({
         title: 'Course terminee',
         message: 'Vos gains ont ete credites avec succes.',
       }));
+      
+      // On ne deverrouille pas ici. Le deverrouillage se fait dans le useEffect
+      // quand le currentRide devient null, empechant tout clic pendant la transition.
+
     } catch (err) {
-      // Rollback en cas d'echec serveur pour permettre une nouvelle tentative
       dispatch(updateRideStatus({ status: 'in_progress' }));
+      isSubmittingRef.current = false; // Deverrouillage en cas d'echec pour reessayer
       dispatch(showErrorToast({
         title: 'Erreur de cloture',
         message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',
