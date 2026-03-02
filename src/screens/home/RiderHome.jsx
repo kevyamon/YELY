@@ -72,10 +72,15 @@ const RiderHome = ({ navigation }) => {
     location
   });
 
-  // REPARATION : Utilisation stricte du traducteur driverLatLng. 
-  // Il garantit que les donnees GeoJSON du backend sont converties en {latitude, longitude} pures.
-  // Cela debloque instantanement l'animation du vehicule en Phase 2.
-  const activeDriverLocation = isRideActive ? driverLatLng : null;
+  let activeDriverLocation = null;
+
+  if (isRideActive) {
+    if (currentRide?.status === 'in_progress') {
+      activeDriverLocation = __DEV__ ? (driverLatLng || location) : (location || driverLatLng);
+    } else {
+      activeDriverLocation = driverLatLng;
+    }
+  }
 
   return (
     <View style={styles.screenWrapper}>
