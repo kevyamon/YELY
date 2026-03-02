@@ -2,7 +2,7 @@
 // ECOUTEURS SOCKET - Gestion stricte des flux et Telemetrie GPS
 // CSCSM Level: Bank Grade
 
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
@@ -20,11 +20,21 @@ import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 const useSocketEvents = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const lastProcessedEventRef = useRef('');
 
   useEffect(() => {
     if (!isAuthenticated) return;
 
+    // Filtre Anti-Spam (Idempotence) pour eviter de flasher des Toasts en double
+    const isDuplicateEvent = (eventKey) => {
+      if (lastProcessedEventRef.current === eventKey) return true;
+      lastProcessedEventRef.current = eventKey;
+      return false;
+    };
+
     const handleRideCancelled = (data) => {
+      if (isDuplicateEvent(`cancelled_${data?.rideId}`)) return;
+      
       dispatch(clearCurrentRide());
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
@@ -44,6 +54,9 @@ const useSocketEvents = () => {
     };
 
     const handleProposalAccepted = (data) => {
+      const id = data?._id || data?.rideId;
+      if (isDuplicateEvent(`accepted_${id}`)) return;
+
       dispatch(setCurrentRide({ ...data, status: 'accepted' }));
       dispatch(clearIncomingRide());
       dispatch(showSuccessToast({
@@ -53,6 +66,8 @@ const useSocketEvents = () => {
     };
 
     const handleProposalRejected = () => {
+      if (isDuplicateEvent('proposal_rejected')) return;
+
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
         title: 'Proposition declinee',
@@ -76,6 +91,7 @@ const useSocketEvents = () => {
     };
 
     const handleRideStarted = (data) => {
+      if (isDuplicateEvent(`started_${data?.rideId}`)) return;
       dispatch(updateRideStatus({
         status: 'in_progress', 
         startedAt: data.startedAt,
@@ -83,6 +99,7 @@ const useSocketEvents = () => {
     };
 
     const handleRideArrived = (data) => {
+      if (isDuplicateEvent(`arrived_${data?.rideId}`)) return;
       dispatch(updateRideStatus({
         status: 'arrived',
         arrivedAt: data.arrivedAt || Date.now(),
@@ -90,7 +107,12 @@ const useSocketEvents = () => {
     };
 
     const handleRideCompleted = (data) => {
-      dispatch(setRideToRate(data.ride || data));
+      const ridePayload = data?.ride || data;
+      const id = ridePayload?._id || ridePayload?.id || data?.rideId;
+      
+      if (isDuplicateEvent(`completed_${id}`)) return;
+
+      dispatch(setRideToRate(ridePayload));
       
       if (data?.stats) {
         dispatch(updateUserInfo({
@@ -111,28 +133,18 @@ const useSocketEvents = () => {
     const handleRideStatusUpdate = (data) => {
       if (!data?.status) return;
 
-      if (data.status === 'completed') {
-        handleRideCompleted(data);
+      // NETTOYAGE DES DOUBLONS : On ignore les statuts qui ont deja des ecouteurs specifiques (arrived, completed, in_progress, accepted)
+      // pour eviter l'effet d'echo et le declenchement repetitif de notifications
+      if (['completed', 'arrived', 'in_progress', 'accepted', 'cancelled'].includes(data.status)) {
         return;
       }
 
-      if (data.status === 'in_progress') {
-        dispatch(updateRideStatus({
-          status: 'in_progress',
-          startedAt: data?.ride?.startedAt,
-        }));
-        return;
-      }
-
-      if (data.status === 'arrived') {
-        dispatch(updateRideStatus({
-          status: 'arrived',
-          arrivedAt: Date.now(),
-        }));
-      }
+      dispatch(updateRideStatus({ status: data.status }));
     };
 
     const handleSearchTimeout = (data) => {
+      if (isDuplicateEvent('search_timeout')) return;
+
       dispatch(clearCurrentRide());
       dispatch(showErrorToast({
         title: 'Delai expire',
@@ -145,7 +157,6 @@ const useSocketEvents = () => {
 
       let lat, lng, heading;
 
-      // Extraction robuste des coordonnees : on fouille dans le JSON selon differents formats possibles
       if (data.latitude && data.longitude) {
         lat = data.latitude;
         lng = data.longitude;
@@ -179,7 +190,7 @@ const useSocketEvents = () => {
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_arrived', handleRideArrived);
     socketService.on('ride_completed', handleRideCompleted);
-    socketService.on('RIDE_COMPLETED', handleRideCompleted);
+    // Suppression volontaire du RIDE_COMPLETED redondant
     socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
@@ -195,7 +206,6 @@ const useSocketEvents = () => {
       socketService.off('ride_started', handleRideStarted);
       socketService.off('ride_arrived', handleRideArrived);
       socketService.off('ride_completed', handleRideCompleted);
-      socketService.off('RIDE_COMPLETED', handleRideCompleted);
       socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
