@@ -1,13 +1,15 @@
 // src/components/ui/SmartFooter.jsx
-// FOOTER INTELLIGENT - Bouton de commande réactif au KML Maféré
+// FOOTER INTELLIGENT - Bouton de commande réactif au KML Maféré avec Modale Passagers
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
+import React, { useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
+import PassengerCountModal from '../ride/PassengerCountModal'; // <-- IMPORT DE LA MODALE
 import VehicleCarousel from '../ride/VehicleCarousel';
 import AvailabilityCard from './AvailabilityCard';
 
@@ -29,6 +31,9 @@ const SmartFooter = ({
   const user = useSelector(selectCurrentUser);
   const isRider = user?.role === 'rider';
 
+  // ETAT LOCAL POUR LA MODALE
+  const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
+
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
 
   // LOGIQUE METIER : Gestion de l'etat du bouton
@@ -40,6 +45,18 @@ const SmartFooter = ({
   } else if (selectedVehicle) {
     buttonText = `Commander Yély ${selectedVehicle.name}`; 
   }
+
+  // INTERCEPTION DU CLIC POUR OUVRIR LA MODALE
+  const handleInitialConfirm = () => {
+    if (isButtonDisabled) return;
+    setIsPassengerModalVisible(true);
+  };
+
+  // VALIDATION FINALE DEPUIS LA MODALE
+  const handleFinalConfirm = (passengersCount) => {
+    setIsPassengerModalVisible(false);
+    onConfirmRide(passengersCount);
+  };
 
   return (
     <View style={[styles.container, { paddingBottom }]}>
@@ -62,7 +79,7 @@ const SmartFooter = ({
                <TouchableOpacity 
                  style={[styles.confirmButton, isButtonDisabled && styles.confirmButtonDisabled]}
                  disabled={isButtonDisabled}
-                 onPress={onConfirmRide}
+                 onPress={handleInitialConfirm} // <-- ICI ON OUVRE LA MODALE
                  activeOpacity={0.9}
                >
                  <View style={styles.buttonContent}>
@@ -98,6 +115,13 @@ const SmartFooter = ({
                )}
              </View>
           )}
+
+          {/* INJECTION DE LA MODALE ICI */}
+          <PassengerCountModal 
+            visible={isPassengerModalVisible}
+            onClose={() => setIsPassengerModalVisible(false)}
+            onConfirm={handleFinalConfirm}
+          />
         </>
       ) : (
         <>
