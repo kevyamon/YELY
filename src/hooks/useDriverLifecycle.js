@@ -132,7 +132,7 @@ const useDriverLifecycle = ({
 
   useEffect(() => {
     const handlePromptArrival = ({ rideId }) => {
-      const currentId = currentRide?._id || currentRide?.id;
+      const currentId = currentRide?._id || currentRide?.id || currentRide?.rideId;
       if (currentId === rideId && !snoozeTimerRef.current && currentRide?.status === 'in_progress') {
         setIsArrivalModalVisible(true);
       }
@@ -177,7 +177,7 @@ const useDriverLifecycle = ({
           
           dispatch(updateRideStatus({ arrivedAt: Date.now(), status: 'arrived' }));
           
-          const rideId = currentRide._id || currentRide.id;
+          const rideId = currentRide._id || currentRide.id || currentRide.rideId;
           if (rideId) {
             markAsArrived({ rideId }).unwrap().catch(err => {
               console.warn('[DriverLifecycle] Echec de la notification d\'arrivee distante');
@@ -249,7 +249,7 @@ const useDriverLifecycle = ({
       return;
     }
     
-    const rideId = currentRide._id || currentRide.id;
+    const rideId = currentRide._id || currentRide.id || currentRide.rideId;
     if (!rideId) {
       dispatch(showErrorToast({
         title: 'Erreur Systeme',
