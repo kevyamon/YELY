@@ -1,19 +1,22 @@
 // src/components/ui/AppToast.jsx
-// Système de notifications Toast — Compatible Web + Mobile
+// Systeme de notifications Toast - Compatible Web + Mobile avec Swipe-to-dismiss
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, Text, View } from 'react-native';
+import { useCallback, useEffect, useRef } from 'react';
+import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
-// CORRECTION : Utilisation des variables dynamiques du thème
+const SCREEN_WIDTH = Dimensions.get('window').width;
+const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+
 const TOAST_CONFIG = {
   success: {
     icon: 'checkmark-circle',
     color: COLORS.success,
-    bgColor: COLORS.glassSurface, // S'adapte jour/nuit
-    borderColor: COLORS.border,   // Prend ta bordure grise
+    bgColor: COLORS.glassSurface,
+    borderColor: COLORS.border,
   },
   error: {
     icon: 'close-circle',
@@ -44,24 +47,96 @@ const AppToast = ({
   onHide,
 }) => {
   const insets = useSafeAreaInsets();
-  const translateY = useRef(new Animated.Value(-100)).current;
+  
+  const translateY = useRef(new Animated.Value(-150)).current;
+  const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
+  
   const hideTimerRef = useRef(null);
   const config = TOAST_CONFIG[type] || TOAST_CONFIG.info;
 
+  const clearTimer = useCallback(() => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  }, []);
+
+  const closeToast = useCallback(() => {
+    clearTimer();
+    Animated.parallel([
+      Animated.timing(translateY, {
+        toValue: -150,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start(({ finished }) => {
+      if (finished && onHide) {
+        onHide();
+      }
+    });
+  }, [translateY, opacity, onHide, clearTimer]);
+
+  const startHideTimer = useCallback(() => {
+    clearTimer();
+    hideTimerRef.current = setTimeout(() => {
+      closeToast();
+    }, duration);
+  }, [clearTimer, closeToast, duration]);
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, gestureState) => {
+        // Ne s'activer que si le mouvement horizontal est significatif
+        return Math.abs(gestureState.dx) > 5;
+      },
+      onPanResponderGrant: () => {
+        // L'utilisateur pose le doigt : on suspend la fermeture automatique
+        clearTimer();
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: translateX }],
+        { useNativeDriver: false } // dx necessite false pour la synchronisation PanResponder
+      ),
+      onPanResponderRelease: (_, gestureState) => {
+        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
+          // Seuil depasse : on ejecte la notification hors de l'ecran
+          const direction = gestureState.dx > 0 ? 1 : -1;
+          Animated.timing(translateX, {
+            toValue: direction * SCREEN_WIDTH,
+            duration: 200,
+            useNativeDriver: true,
+          }).start(() => {
+            if (onHide) onHide();
+          });
+        } else {
+          // Mouvement insuffisant : on la ramene au centre avec un effet ressort
+          Animated.spring(translateX, {
+            toValue: 0,
+            tension: 50,
+            friction: 7,
+            useNativeDriver: true,
+          }).start();
+          // On relance le minuteur
+          startHideTimer();
+        }
+      },
+    })
+  ).current;
+
   useEffect(() => {
     if (visible) {
-      // Nettoyer tout timer précédent
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-
-      // Reset à la position initiale
-      translateY.setValue(-100);
+      clearTimer();
+      translateX.setValue(0);
+      translateY.setValue(-150);
       opacity.setValue(0);
 
-      // Animation d'entrée : slide down + fade in
       Animated.parallel([
         Animated.spring(translateY, {
           toValue: 0,
@@ -74,50 +149,30 @@ const AppToast = ({
           duration: 200,
           useNativeDriver: true,
         }),
-      ]).start();
-
-      // Programmer la disparition automatique
-      hideTimerRef.current = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(translateY, {
-            toValue: -100,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.timing(opacity, {
-            toValue: 0,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-        ]).start(({ finished }) => {
-          if (finished && onHide) {
-            onHide();
-          }
-        });
-      }, duration);
+      ]).start(() => {
+        startHideTimer();
+      });
     }
 
-    return () => {
-      if (hideTimerRef.current) {
-        clearTimeout(hideTimerRef.current);
-        hideTimerRef.current = null;
-      }
-    };
-  }, [visible]);
+    return () => clearTimer();
+  }, [visible, startHideTimer, clearTimer, opacity, translateX, translateY]);
 
   if (!visible) return null;
 
   return (
     <Animated.View
-      pointerEvents="none"
+      {...panResponder.panHandlers}
       style={[
         styles.container,
         {
           top: insets.top + SPACING.sm,
           backgroundColor: config.bgColor,
           borderColor: config.borderColor,
-          transform: [{ translateY }],
           opacity,
+          transform: [
+            { translateY },
+            { translateX }
+          ],
         },
       ]}
     >
@@ -139,10 +194,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: SPACING.lg,
     borderRadius: BORDERS.radius.lg,
-    borderWidth: BORDERS.width.thin, // Utilise l'épaisseur définie dans le thème
+    borderWidth: BORDERS.width.thin,
     zIndex: 99999,
     elevation: 99999,
-    // Ajout d'une petite ombre pour détacher le toast du fond
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
