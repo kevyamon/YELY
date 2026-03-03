@@ -1,6 +1,6 @@
 // src/store/slices/apiSlice.js
 // COEUR RESEAU - Rotation Mutex & Anti-Sniffing
-// CSCSM Level: Bank Grade
+// STANDARD: Industriel / Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { Mutex } from 'async-mutex';
@@ -14,6 +14,7 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
+    // N'injecte le token que s'il existe (et s'il n'est pas pour la route refresh, gere plus bas)
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
@@ -39,47 +40,62 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         const refreshToken = api.getState().auth.refreshToken;
         
         if (!refreshToken) {
+          console.warn('[AUTH] Aucun Refresh Token disponible, deconnexion forcee.');
           api.dispatch(logout());
           return result;
         }
 
-        const refreshResult = await baseQuery(
-          { 
-            url: '/auth/refresh', 
-            method: 'POST',
-            body: { refreshToken }
+        console.info('[AUTH] Access Token expire. Tentative de rafraichissement silencieux...');
+
+        // CRITIQUE : Appel direct sans passer par baseQuery pour eviter l'injection du token expire
+        const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+            // AUCUN HEADER AUTHORIZATION ICI
           },
-          api,
-          extraOptions
-        );
+          body: JSON.stringify({ refreshToken })
+        });
 
-        // EXTRACTION ULTRA-ROBUSTE
-        // On cible directement la donnee vitale au lieu de dependre d'une clef 'success'
-        const newAccessToken = refreshResult.data?.data?.accessToken || refreshResult.data?.accessToken;
-        const newRefreshToken = refreshResult.data?.data?.refreshToken || refreshResult.data?.refreshToken || refreshToken;
+        const refreshData = await refreshResponse.json();
 
-        if (newAccessToken) {
-          api.dispatch(setCredentials({ 
-            accessToken: newAccessToken,
-            refreshToken: newRefreshToken
-          }));
-          
-          // Rejeu de la requete initiale en silence total
-          result = await baseQuery(args, api, extraOptions);
-        } else {
-          // Si on n'obtient pas de token, on verifie si c'est une coupure reseau ou un vrai rejet
-          if (refreshResult.error && refreshResult.error.status !== 'FETCH_ERROR') {
-            api.dispatch(logout());
-          } else if (!refreshResult.error) {
-            // Le serveur a repondu 200 mais le format est inattendu ou le token manque
+        if (refreshResponse.ok) {
+          const newAccessToken = refreshData?.data?.accessToken || refreshData?.accessToken;
+          const newRefreshToken = refreshData?.data?.refreshToken || refreshData?.refreshToken || refreshToken;
+
+          if (newAccessToken) {
+            console.info('[AUTH] Rafraichissement reussi. Mise a jour du store et rejeu de la requete.');
+            api.dispatch(setCredentials({ 
+              accessToken: newAccessToken,
+              refreshToken: newRefreshToken,
+              // On conserve l'utilisateur existant
+              user: api.getState().auth.user 
+            }));
+            
+            // Rejeu de la requete initiale qui avait echoue
+            result = await baseQuery(args, api, extraOptions);
+          } else {
+            console.error('[AUTH] Reponse refresh valide mais accessToken manquant dans le payload.');
             api.dispatch(logout());
           }
+        } else {
+          console.error(`[AUTH] Echec du rafraichissement (${refreshResponse.status}):`, refreshData);
+          // Le Refresh Token lui-meme est expire ou invalide
+          api.dispatch(logout());
+        }
+      } catch (error) {
+        console.error('[AUTH] Erreur reseau critique lors du rafraichissement:', error);
+        // Ne pas deconecter l'utilisateur s'il s'agit juste d'une coupure Internet (fetch failed)
+        if (error.message !== 'Network request failed') {
+           api.dispatch(logout());
         }
       } finally {
         api.dispatch(setRefreshing(false));
         release();
       }
     } else {
+      // Les requetes concurrentes attendent que le mutex se libere, puis se rejouent
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
