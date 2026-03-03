@@ -2,39 +2,35 @@
 // COMPOSANT PASSAGER (WEB/MOBILE) - Tracé de courbe complet & RTK Query Ready
 // CSCSM Level: Bank Grade
 
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import THEME from '../../theme/theme';
 import PassengerCountModal from './PassengerCountModal';
-import VehicleCarousel from './VehicleCarousel';
-
-const getVehicleName = (type) => {
-  switch(type?.toLowerCase()) {
-    case 'echo': return 'Echo';
-    case 'vip': return 'Premium';
-    default: return 'Standard';
-  }
-};
 
 const RiderBottomPanel = ({
   destination,
-  displayVehicles,
-  selectedVehicle,
-  onSelectVehicle,
   isEstimating,
   estimationData,
   estimateError,
   onConfirmRide,
-  isOrdering, 
+  isOrdering,
+  onSelectVehicle,
   topContent = null 
 }) => {
   const insets = useSafeAreaInsets();
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
 
+  // Force le type standard en arriere-plan pour satisfaire l'API sans polluer l'UI
+  useEffect(() => {
+    if (onSelectVehicle) {
+      onSelectVehicle({ type: 'standard', id: 'standard_1' });
+    }
+  }, [onSelectVehicle]);
+
   const handleInitialConfirm = () => {
-    if (!selectedVehicle || isOrdering) return;
+    if (isOrdering) return;
     setIsPassengerModalVisible(true);
   };
 
@@ -54,39 +50,25 @@ const RiderBottomPanel = ({
           {topContent}
         </View>
       )}
-
-      <View style={styles.titleRow}>
-        <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-      </View>
       
       {destination ? (
          <View style={styles.estimationWrapper}>
-           <VehicleCarousel 
-             vehicles={displayVehicles}
-             selectedVehicle={selectedVehicle}
-             onSelect={onSelectVehicle}
-             isLoading={isEstimating && !estimationData}
-             error={estimateError}
-           />
-           
            <TouchableOpacity 
-             style={[styles.confirmButton, (!selectedVehicle || isOrdering) && styles.confirmButtonDisabled]}
-             disabled={!selectedVehicle || isEstimating || isOrdering}
+             style={[styles.confirmButton, isOrdering && styles.confirmButtonDisabled]}
+             disabled={isEstimating || isOrdering}
              onPress={handleInitialConfirm}
              activeOpacity={0.9}
            >
-             <Text style={[styles.confirmButtonText, (!selectedVehicle || isOrdering) && styles.confirmButtonTextDisabled]}>
+             <Text style={[styles.confirmButtonText, isOrdering && styles.confirmButtonTextDisabled]}>
                {isOrdering 
                  ? 'Recherche en cours...' 
-                 : selectedVehicle 
-                   ? `Commander Yély ${getVehicleName(selectedVehicle.type)}`
-                   : 'Sélectionnez un véhicule'}
+                 : 'Commander un Yely'}
              </Text>
            </TouchableOpacity>
          </View>
       ) : (
          <View style={styles.emptyBox}>
-           <Text style={styles.emptyText}>Sélectionnez une destination</Text>
+           <Text style={styles.emptyText}>Selectionnez une destination</Text>
          </View>
       )}
 
@@ -124,19 +106,6 @@ const styles = StyleSheet.create({
   topContentWrapper: {
     marginBottom: 15,
   },
-  titleRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    width: '100%',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  sectionTitle: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 11,
-    fontWeight: 'bold',
-    letterSpacing: 2,
-  },
   estimationWrapper: {
     width: '100%',
     alignItems: 'center',
@@ -164,7 +133,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: 15,
+    marginTop: 5,
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,

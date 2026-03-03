@@ -65,27 +65,10 @@ const DriverRequestModal = () => {
     }
   };
 
-  const getForfaitLabel = (forfait) => {
-    switch(forfait?.toUpperCase()) {
-      case 'VIP': return 'Premium';
-      case 'ECHO': return 'Echo';
-      default: return 'Standard';
-    }
-  };
-
-  const getForfaitColor = (forfait) => {
-    switch(forfait?.toUpperCase()) {
-      case 'VIP': return THEME.COLORS.champagneGold;
-      case 'ECHO': return THEME.COLORS.success;
-      default: return THEME.COLORS.textSecondary;
-    }
-  };
-
-  const forfaitColor = getForfaitColor(incomingRide.forfait);
   const priceOptions = incomingRide.priceOptions || [];
   
-  // SECU : Extraction du nombre de passagers (Fallback a 1 pour les anciennes requetes)
-  const passengersCount = incomingRide.passengersCount || 1;
+  // SECU : Extraction ultra-robuste du nombre de passagers pour eviter la valeur par defaut a 1
+  const passengersCount = incomingRide.passengersCount || incomingRide.passengers || incomingRide.seats || incomingRide.passengerCount || 1;
 
   return (
     <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
@@ -94,26 +77,14 @@ const DriverRequestModal = () => {
         <View style={styles.headerTitles}>
           <Text style={styles.title}>Nouvelle Demande</Text>
           <View style={styles.badgesRow}>
-            <View style={[styles.badge, { backgroundColor: forfaitColor + '20' }]}>
-               <Ionicons 
-                 name={incomingRide.forfait?.toUpperCase() === 'VIP' ? 'star' : 'car'} 
-                 size={12} 
-                 color={forfaitColor} 
-               />
-               <Text style={[styles.badgeText, { color: forfaitColor }]}>
-                 Yely {getForfaitLabel(incomingRide.forfait)}
-               </Text>
-            </View>
-            
-            {/* NOUVEAU BADGE : Nombre de passagers */}
             <View style={styles.passengerBadge}>
                <Ionicons 
                  name={passengersCount > 1 ? 'people' : 'person'} 
-                 size={12} 
-                 color={THEME.COLORS.textSecondary} 
+                 size={14} 
+                 color={THEME.COLORS.textPrimary} 
                />
                <Text style={styles.passengerBadgeText}>
-                 {passengersCount} {passengersCount > 1 ? 'Pass.' : 'Pass.'}
+                 {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
                </Text>
             </View>
           </View>
@@ -218,38 +189,23 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     flexWrap: 'wrap',
-    marginTop: 6,
-    gap: 8,
-  },
-  badge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 8,
-    gap: 4,
-  },
-  badgeText: {
-    fontSize: 11,
-    fontWeight: 'bold',
-    textTransform: 'uppercase',
-    letterSpacing: 1,
+    marginTop: 8,
   },
   passengerBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
+    backgroundColor: THEME.COLORS.champagneGold + '20',
     borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
+    borderColor: THEME.COLORS.champagneGold,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
     borderRadius: 8,
-    gap: 4,
+    gap: 6,
   },
   passengerBadgeText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: 'bold',
-    color: THEME.COLORS.textSecondary,
+    color: THEME.COLORS.champagneGold,
     textTransform: 'uppercase',
   },
   distance: {

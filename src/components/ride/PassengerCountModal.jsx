@@ -8,11 +8,11 @@ import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react
 import THEME from '../../theme/theme';
 
 const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
-  const [count, setCount] = useState(2);
+  const [count, setCount] = useState(1);
 
-  // Reinitialiser le compteur a chaque ouverture
+  // Reinitialiser le compteur a 1 a chaque ouverture
   useEffect(() => {
-    if (visible) setCount(2);
+    if (visible) setCount(1);
   }, [visible]);
 
   const increment = () => {
@@ -20,16 +20,16 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
   };
 
   const decrement = () => {
-    if (count > 2) setCount(count - 1);
+    if (count > 1) setCount(count - 1);
   };
 
-  if (!visible && Platform.OS === 'web') return null; // Fallback strict pour le Web
+  if (!visible && Platform.OS === 'web') return null;
 
   return (
     <Modal 
       visible={visible} 
       transparent={true} 
-      animationType={Platform.OS === 'web' ? 'none' : 'slide'} // Le slide bug souvent sur Web
+      animationType={Platform.OS === 'web' ? 'none' : 'slide'}
       onRequestClose={onClose}
     >
       <View style={styles.modalBackdrop}>
@@ -38,30 +38,15 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
         <View style={styles.modalCard}>
           <View style={styles.dragIndicator} />
           
-          <Text style={styles.modalTitle}>Vous voyagez seul ?</Text>
-          
-          <TouchableOpacity 
-            style={styles.aloneButton} 
-            activeOpacity={0.8}
-            onPress={() => onConfirm(1)}
-          >
-            <Ionicons name="person" size={20} color={THEME.COLORS.background} style={styles.buttonIcon} />
-            <Text style={styles.aloneButtonText}>Oui, je suis seul</Text>
-          </TouchableOpacity>
-
-          <View style={styles.dividerContainer}>
-            <View style={styles.dividerLine} />
-            <Text style={styles.dividerText}>Non, nous sommes :</Text>
-            <View style={styles.dividerLine} />
-          </View>
+          <Text style={styles.modalTitle}>Combien de places ?</Text>
 
           <View style={styles.counterContainer}>
             <TouchableOpacity 
-              style={[styles.counterButton, count <= 2 && styles.counterButtonDisabled]} 
+              style={[styles.counterButton, count <= 1 && styles.counterButtonDisabled]} 
               onPress={decrement}
-              disabled={count <= 2}
+              disabled={count <= 1}
             >
-              <Ionicons name="remove" size={28} color={count <= 2 ? THEME.COLORS.border : THEME.COLORS.textPrimary} />
+              <Ionicons name="remove" size={28} color={count <= 1 ? THEME.COLORS.border : THEME.COLORS.textPrimary} />
             </TouchableOpacity>
 
             <View style={styles.countDisplay}>
@@ -83,7 +68,9 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
             activeOpacity={0.8}
             onPress={() => onConfirm(count)}
           >
-            <Text style={styles.groupButtonText}>Confirmer pour {count} personnes</Text>
+            <Text style={styles.groupButtonText}>
+              Confirmer pour {count} place{count > 1 ? 's' : ''}
+            </Text>
           </TouchableOpacity>
 
         </View>
@@ -97,7 +84,6 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'flex-end',
-    // Correction Web : S'assurer que le fond couvre tout l'ecran
     ...(Platform.OS === 'web' && {
       position: 'fixed',
       top: 0,
@@ -117,6 +103,7 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
     paddingHorizontal: THEME.SPACING.xl,
+    paddingTop: THEME.SPACING.md,
     paddingBottom: Math.max(THEME.SPACING.xxl, 40),
     alignItems: 'center',
     elevation: 20,
@@ -124,7 +111,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: -5 },
     shadowOpacity: 0.15,
     shadowRadius: 10,
-    // Max width pour le web pour ne pas avoir une modale etiree
     ...(Platform.OS === 'web' && {
       maxWidth: 500,
       alignSelf: 'center',
@@ -137,60 +123,19 @@ const styles = StyleSheet.create({
     height: 5,
     backgroundColor: THEME.COLORS.border,
     borderRadius: 3,
-    marginTop: THEME.SPACING.md,
-    marginBottom: THEME.SPACING.lg,
+    marginBottom: THEME.SPACING.xl,
   },
   modalTitle: {
     fontSize: 22,
     fontWeight: '900',
     color: THEME.COLORS.textPrimary,
-    marginBottom: THEME.SPACING.xl,
-  },
-  aloneButton: {
-    flexDirection: 'row',
-    backgroundColor: THEME.COLORS.champagneGold,
-    width: '100%',
-    paddingVertical: 18,
-    borderRadius: 16,
-    justifyContent: 'center',
-    alignItems: 'center',
-    elevation: 3,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-  },
-  aloneButtonText: {
-    color: '#121418',
-    fontWeight: '900',
-    fontSize: 18,
-  },
-  buttonIcon: {
-    marginRight: 10,
-    color: '#121418',
-  },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    width: '100%',
-    marginVertical: THEME.SPACING.xl,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: THEME.COLORS.border,
-  },
-  dividerText: {
-    marginHorizontal: 15,
-    color: THEME.COLORS.textSecondary,
-    fontSize: 14,
-    fontWeight: 'bold',
+    marginBottom: THEME.SPACING.xxl,
   },
   counterContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: THEME.SPACING.xl,
+    marginBottom: THEME.SPACING.xxl,
   },
   counterButton: {
     width: 60,
@@ -219,19 +164,22 @@ const styles = StyleSheet.create({
     marginRight: 8,
   },
   groupButton: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderWidth: 2,
-    borderColor: THEME.COLORS.textPrimary,
+    backgroundColor: THEME.COLORS.champagneGold,
     width: '100%',
-    paddingVertical: 16,
+    paddingVertical: 18,
     borderRadius: 16,
     justifyContent: 'center',
     alignItems: 'center',
+    elevation: 3,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
   },
   groupButtonText: {
-    color: THEME.COLORS.textPrimary,
-    fontWeight: 'bold',
-    fontSize: 16,
+    color: '#121418',
+    fontWeight: '900',
+    fontSize: 18,
   }
 });
 
