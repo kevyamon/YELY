@@ -1,5 +1,5 @@
 // src/store/slices/authSlice.js
-// GESTION SESSION - SÉCURISATION PII & FONCTIONS PURES REDUX
+// GESTION SESSION - SECURISATION PII & FONCTIONS PURES REDUX
 // CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
@@ -11,6 +11,12 @@ const initialState = {
   refreshToken: null,
   isAuthenticated: false,
   isRefreshing: false, 
+  // Nouvel etat pour bloquer/debloquer l'UI globalement sans requete supplementaire
+  subscriptionStatus: {
+    isActive: false,
+    isPending: false,
+    expiresAt: null
+  }
 };
 
 const authSlice = createSlice({
@@ -22,7 +28,7 @@ const authSlice = createSlice({
       const finalToken = accessToken || token;
 
       if (!user && !finalToken && !refreshToken) {
-        console.warn('[Redux] Données de connexion incomplètes');
+        console.warn('[Redux] Donnees de connexion incompletes');
       }
 
       if (user) state.user = user;
@@ -42,12 +48,18 @@ const authSlice = createSlice({
       SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
     },
 
+    // Nouvelle action pour gerer le statut de l'abonnement en temps reel
+    updateSubscriptionStatus: (state, action) => {
+      state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
+    },
+
     logout: (state) => {
       state.user = null;
       state.token = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.isRefreshing = false;
+      state.subscriptionStatus = { isActive: false, isPending: false, expiresAt: null };
       
       SecureStorageAdapter.removeItem('userInfo');
       SecureStorageAdapter.removeItem('token');
@@ -68,7 +80,14 @@ const authSlice = createSlice({
   },
 });
 
-export const { setCredentials, updateUserInfo, logout, restoreAuth, setRefreshing } = authSlice.actions;
+export const { 
+  setCredentials, 
+  updateUserInfo, 
+  updateSubscriptionStatus,
+  logout, 
+  restoreAuth, 
+  setRefreshing 
+} = authSlice.actions;
 
 /**
  * Thunk pour forcer un rafraichissement silencieux du profil et du token.
@@ -108,8 +127,10 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
 
 export default authSlice.reducer;
 
+// Selecteurs
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role;
 export const selectToken = (state) => state.auth.token;
 export const selectIsRefreshing = (state) => state.auth.isRefreshing;
+export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;

@@ -41,6 +41,9 @@ import FinanceConfig from '../screens/admin/FinanceConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
+// Abonnement (Mise a jour du chemin vers le nouveau Mur de Preuve)
+import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
+
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -82,7 +85,6 @@ const AppNavigator = () => {
           }));
 
           // VALIDATION SILENCIEUSE (Arriere-plan via le Store)
-          // On utilise la logique centralisee au lieu d'un fetch manuel
           dispatch(forceSilentRefresh());
           
         } else {
@@ -93,7 +95,6 @@ const AppNavigator = () => {
         dispatch(logout());
       } finally {
         setIsReady(true);
-        // On laisse un court delai pour que l'UI se stabilise avant de retirer le splash
         setTimeout(async () => {
           await SplashScreen.hideAsync();
         }, 100);
@@ -135,9 +136,9 @@ const AppNavigator = () => {
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
             </Stack.Group>
           ) : isDriver ? (
-             <Stack.Screen name="DriverHome" component={DriverHome} />
+                <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
-             <Stack.Screen name="RiderHome" component={RiderHome} />
+                <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
           {!isAdmin && (
@@ -163,7 +164,9 @@ const AppNavigator = () => {
               <Stack.Screen name="Profile" component={PlaceholderScreen} />
               <Stack.Screen name="History" component={PlaceholderScreen} />
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
-              <Stack.Screen name="Subscription" component={PlaceholderScreen} />
+              
+              {/* Le module d'abonnement mis a jour */}
+              <Stack.Screen name="Subscription" component={SubscriptionScreen} />
             </Stack.Group>
           )}
         </Stack.Group>
