@@ -1,19 +1,21 @@
 // src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Tour de controle centrale
-// UI: Liquid Glassmorphism (Native BlurView)
+// ECRAN COCKPIT - Refactorise avec Composants Partages (DRY)
+// UI: Liquid Glassmorphism
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import React from 'react';
+import React, { useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSelector } from 'react-redux';
+import HelpModal from '../../components/admin/HelpModal';
+import StatCard from '../../components/admin/StatCard';
 import { useGetDashboardStatsQuery } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
-const GlassCard = ({ children, style }) => (
+const GlassMenuCard = ({ children, style }) => (
   <View style={[styles.glassContainer, style]}>
     <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
     <View style={styles.glassContent}>
@@ -27,6 +29,7 @@ const AdminDashboard = () => {
   const user = useSelector(selectCurrentUser);
   const isSuperAdmin = user?.role === 'superadmin';
   
+  const [helpVisible, setHelpVisible] = useState(false);
   const { data: statsData, isLoading, refetch, isFetching } = useGetDashboardStatsQuery();
   const stats = statsData?.data || { totalUsers: 0, activeDrivers: 0, pendingValidations: 0 };
 
@@ -62,11 +65,23 @@ const AdminDashboard = () => {
     }
   ];
 
+  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\n" +
+                   "Indicateurs :\n" +
+                   "• Chauffeurs Actifs : Nombre de chauffeurs actuellement en regle et en ligne.\n" +
+                   "• En Attente : Demandes de validation de paiement non traitees.\n" +
+                   "• Utilisateurs : Total des comptes inscrits.\n\n" +
+                   "Utilisez les cartes du bas pour naviguer vers les differents modules de gestion. Certaines zones sont strictement reservees a la Direction.";
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Tour de Controle</Text>
-        <Text style={styles.headerSubtitle}>Bienvenue, {user?.name || 'Administrateur'}</Text>
+        <View>
+          <Text style={styles.headerTitle}>Tour de Controle</Text>
+          <Text style={styles.headerSubtitle}>Bienvenue, {user?.name || 'Administrateur'}</Text>
+        </View>
+        <TouchableOpacity onPress={() => setHelpVisible(true)} style={styles.helpButton}>
+          <Ionicons name="help-circle-outline" size={28} color={THEME.COLORS.champagneGold} />
+        </TouchableOpacity>
       </View>
 
       <ScrollView 
@@ -75,23 +90,22 @@ const AdminDashboard = () => {
       >
         <Text style={styles.sectionTitle}>Indicateurs Cles</Text>
         <View style={styles.statsGrid}>
-          <GlassCard style={styles.statCard}>
-            <Ionicons name="car-outline" size={24} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>{stats.activeDrivers}</Text>
-            <Text style={styles.statLabel}>Chauffeurs Actifs</Text>
-          </GlassCard>
-          
-          <GlassCard style={styles.statCard}>
-            <Ionicons name="document-text-outline" size={24} color={stats.pendingValidations > 0 ? '#FF3B30' : THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>{stats.pendingValidations}</Text>
-            <Text style={styles.statLabel}>En Attente</Text>
-          </GlassCard>
-          
-          <GlassCard style={styles.statCard}>
-            <Ionicons name="people-circle-outline" size={24} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.statValue}>{stats.totalUsers}</Text>
-            <Text style={styles.statLabel}>Utilisateurs</Text>
-          </GlassCard>
+          <StatCard 
+            title="Chauffeurs Actifs" 
+            value={stats.activeDrivers} 
+            icon="car-outline" 
+          />
+          <StatCard 
+            title="En Attente" 
+            value={stats.pendingValidations} 
+            icon="document-text-outline" 
+            iconColor={stats.pendingValidations > 0 ? '#FF3B30' : THEME.COLORS.champagneGold} 
+          />
+          <StatCard 
+            title="Utilisateurs" 
+            value={stats.totalUsers} 
+            icon="people-circle-outline" 
+          />
         </View>
 
         <Text style={styles.sectionTitle}>Modules d'Administration</Text>
@@ -103,7 +117,7 @@ const AdminDashboard = () => {
               onPress={() => navigation.navigate(item.route)}
               style={styles.menuButtonWrapper}
             >
-              <GlassCard style={styles.menuCard}>
+              <GlassMenuCard style={styles.menuCard}>
                 <View style={styles.menuIconContainer}>
                   <Ionicons name={item.icon} size={32} color={THEME.COLORS.textPrimary} />
                   {item.badge !== null && (
@@ -113,11 +127,18 @@ const AdminDashboard = () => {
                   )}
                 </View>
                 <Text style={styles.menuTitle}>{item.title}</Text>
-              </GlassCard>
+              </GlassMenuCard>
             </TouchableOpacity>
           ))}
         </View>
       </ScrollView>
+
+      <HelpModal 
+        visible={helpVisible} 
+        onClose={() => setHelpVisible(false)} 
+        title="Aide : Tour de Controle"
+        content={helpText}
+      />
     </View>
   );
 };
@@ -131,6 +152,9 @@ const styles = StyleSheet.create({
     paddingTop: 60,
     paddingHorizontal: 20,
     paddingBottom: 20,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   headerTitle: {
     fontSize: 28,
@@ -142,6 +166,11 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
     marginTop: 4,
   },
+  helpButton: {
+    padding: 8,
+    backgroundColor: 'rgba(255, 215, 0, 0.1)',
+    borderRadius: 12,
+  },
   scrollContent: {
     padding: 20,
   },
@@ -151,6 +180,11 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textPrimary,
     marginBottom: 15,
     marginTop: 10,
+  },
+  statsGrid: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 30,
   },
   glassContainer: {
     overflow: 'hidden',
@@ -163,28 +197,6 @@ const styles = StyleSheet.create({
     padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  statsGrid: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 30,
-  },
-  statCard: {
-    flex: 1,
-    marginHorizontal: 4,
-    paddingVertical: 15,
-  },
-  statValue: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
-    marginTop: 10,
-  },
-  statLabel: {
-    fontSize: 12,
-    color: THEME.COLORS.textSecondary,
-    marginTop: 4,
-    textAlign: 'center',
   },
   menuGrid: {
     flexDirection: 'row',
