@@ -1,4 +1,6 @@
 // src/hooks/useGeolocation.js
+// HOOK GEOLOCALISATION - Conformite OS & Background Location
+// STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -18,15 +20,26 @@ const useGeolocation = (options = {}) => {
 
   const requestPermission = useCallback(async () => {
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        setError('Permission refusee');
+      // 1. Demande de la permission au premier plan (Pre-requis OS obligatoire)
+      const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
+      
+      if (foregroundStatus !== 'granted') {
+        setError('Permission au premier plan refusee');
         setIsLoading(false);
         return false;
       }
+
+      // 2. Demande de la permission en arriere-plan (Critique pour le maintien VTC)
+      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      
+      if (backgroundStatus !== 'granted') {
+        console.warn('[GEOLOCATION] Permission en arriere-plan refusee. Le suivi GPS s arretera si l application est reduite.');
+        // Nous ne bloquons pas l'execution, le client/chauffeur peut toujours utiliser l'app au premier plan.
+      }
+
       return true;
     } catch (err) {
-      setError('Erreur permission');
+      setError('Erreur lors de la demande de permission');
       setIsLoading(false);
       return false;
     }
@@ -67,6 +80,9 @@ const useGeolocation = (options = {}) => {
               accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
               timeInterval,
               distanceInterval,
+              showsBackgroundLocationIndicator: true, // Requis par iOS pour l'arriere-plan
+              deferredUpdatesDistance: distanceInterval,
+              deferredUpdatesInterval: timeInterval
             },
             (loc) => {
               if (mounted) {
