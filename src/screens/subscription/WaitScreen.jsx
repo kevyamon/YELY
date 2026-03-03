@@ -1,18 +1,26 @@
 // src/screens/subscription/WaitScreen.jsx
-// ECRAN D'ATTENTE - Validation Administrative
+// ECRAN D'ATTENTE - Validation Administrative avec echappatoire securise
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useDispatch } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import { logout } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const WaitScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
+
+  const handleLogout = () => {
+    // Purge uniquement la session locale. La transaction backend reste en Pending.
+    dispatch(logout());
+  };
 
   return (
     <ScreenWrapper>
@@ -41,8 +49,8 @@ const WaitScreen = ({ navigation }) => {
           </View>
 
           <GoldButton 
-            title="RETOURNER À L'ACCUEIL"
-            onPress={() => navigation.navigate('DriverHome')}
+            title="SE DÉCONNECTER"
+            onPress={handleLogout}
             style={styles.button}
           />
         </GlassCard>
