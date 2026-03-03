@@ -210,7 +210,6 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   blockerCard: {
-    padding: 30,
     width: '100%',
     alignItems: 'center',
   },

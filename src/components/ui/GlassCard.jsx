@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     ...SHADOWS.medium, // L'ombre aide aussi à détacher la carte du fond blanc
   },
   content: {
-    flex: 1,
+    // La ligne flex: 1 a été supprimée ici pour éviter que le contenu ne soit coupé
   },
 });
 
