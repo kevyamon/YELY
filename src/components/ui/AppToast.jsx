@@ -1,10 +1,10 @@
 // src/components/ui/AppToast.jsx
-// Systeme de notifications Toast - Compatible Web + Mobile avec Swipe-to-dismiss
+// Systeme de notifications Toast - Absolute Top Layer (Modal Wrapper)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
@@ -93,20 +93,17 @@ const AppToast = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        // Ne s'activer que si le mouvement horizontal est significatif
         return Math.abs(gestureState.dx) > 5;
       },
       onPanResponderGrant: () => {
-        // L'utilisateur pose le doigt : on suspend la fermeture automatique
         clearTimer();
       },
       onPanResponderMove: Animated.event(
         [null, { dx: translateX }],
-        { useNativeDriver: false } // dx necessite false pour la synchronisation PanResponder
+        { useNativeDriver: false } 
       ),
       onPanResponderRelease: (_, gestureState) => {
         if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
-          // Seuil depasse : on ejecte la notification hors de l'ecran
           const direction = gestureState.dx > 0 ? 1 : -1;
           Animated.timing(translateX, {
             toValue: direction * SCREEN_WIDTH,
@@ -116,14 +113,12 @@ const AppToast = ({
             if (onHide) onHide();
           });
         } else {
-          // Mouvement insuffisant : on la ramene au centre avec un effet ressort
           Animated.spring(translateX, {
             toValue: 0,
             tension: 50,
             friction: 7,
             useNativeDriver: true,
           }).start();
-          // On relance le minuteur
           startHideTimer();
         }
       },
@@ -160,28 +155,37 @@ const AppToast = ({
   if (!visible) return null;
 
   return (
-    <Animated.View
-      {...panResponder.panHandlers}
-      style={[
-        styles.container,
-        {
-          top: insets.top + SPACING.sm,
-          backgroundColor: config.bgColor,
-          borderColor: config.borderColor,
-          opacity,
-          transform: [
-            { translateY },
-            { translateX }
-          ],
-        },
-      ]}
+    <Modal
+      transparent={true}
+      visible={visible}
+      animationType="none"
+      statusBarTranslucent={true}
     >
-      <Ionicons name={config.icon} size={24} color={config.color} />
-      <View style={styles.textContainer}>
-        {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
-        {message && <Text style={styles.message}>{message}</Text>}
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[
+            styles.container,
+            {
+              top: insets.top + SPACING.sm,
+              backgroundColor: config.bgColor,
+              borderColor: config.borderColor,
+              opacity,
+              transform: [
+                { translateY },
+                { translateX }
+              ],
+            },
+          ]}
+        >
+          <Ionicons name={config.icon} size={24} color={config.color} />
+          <View style={styles.textContainer}>
+            {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
+            {message && <Text style={styles.message}>{message}</Text>}
+          </View>
+        </Animated.View>
       </View>
-    </Animated.View>
+    </Modal>
   );
 };
 

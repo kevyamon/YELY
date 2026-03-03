@@ -1,12 +1,12 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Vue Modulaire (Logique deportee) & Bouclier Abonnement
+// HOME DRIVER - Vue Modulaire (Logique deportee) & Bouclier Abonnement Unifie
 // CSCSM Level: Bank Grade
 
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard';
@@ -23,7 +23,7 @@ import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { logout, selectCurrentUser } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -32,6 +32,7 @@ const DriverHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   const isFocused = useIsFocused();
+  const dispatch = useDispatch();
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -105,7 +106,12 @@ const DriverHome = ({ navigation }) => {
               <Text style={styles.blockerDesc}>
                 Votre paiement a été reçu. Un administrateur valide votre accès.
               </Text>
-              <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={{ marginTop: 20 }} />
+              <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={styles.loaderSpacing} />
+              <GoldButton 
+                title="SE DÉCONNECTER" 
+                onPress={() => dispatch(logout())} 
+                style={styles.fullWidthButton}
+              />
             </>
           ) : (
             <>
@@ -116,7 +122,7 @@ const DriverHome = ({ navigation }) => {
               <GoldButton 
                 title="Renouveler mon abonnement" 
                 onPress={() => navigation.navigate('Subscription')} 
-                style={{ width: '100%' }}
+                style={styles.fullWidthButton}
               />
             </>
           )}
@@ -231,6 +237,13 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textPrimary || '#FFFFFF',
     marginTop: 15,
     fontSize: 16,
+  },
+  loaderSpacing: {
+    marginTop: 10,
+    marginBottom: 25
+  },
+  fullWidthButton: {
+    width: '100%'
   }
 });
 

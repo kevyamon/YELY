@@ -1,16 +1,17 @@
 // src/screens/admin/ValidationCenter.jsx
-// CENTRE DE VALIDATION - Temps Reel (Polling) et Scroll To Top integre
+// CENTRE DE VALIDATION - Temps Reel (Polling), Scroll To Top et Toasts integres
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import ValidationModal from '../../components/admin/ValidationModal';
 import { useApproveTransactionMutation, useGetValidationQueueQuery, useRejectTransactionMutation } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style, onPress }) => {
@@ -26,6 +27,7 @@ const GlassCard = ({ children, style, onPress }) => {
 };
 
 const ValidationCenter = ({ navigation }) => {
+  const dispatch = useDispatch();
   const [page, setPage] = useState(1);
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -48,20 +50,24 @@ const ValidationCenter = ({ navigation }) => {
   const handleApprove = async (id) => {
     try { 
       await approveTx(id).unwrap(); 
-      setSelectedTransaction(null); 
+      setSelectedTransaction(null);
+      dispatch(showSuccessToast({ message: "Abonnement active avec succes." }));
     } catch (e) { 
       console.error("[ValidationCenter] Erreur lors de l'approbation:", e);
-      Alert.alert('Erreur', 'Impossible de valider cette transaction. Veuillez reessayer.'); 
+      const errorMessage = e?.data?.message || "Erreur serveur lors de l'activation.";
+      dispatch(showErrorToast({ message: errorMessage }));
     }
   };
 
   const handleReject = async (id, reason) => {
     try { 
       await rejectTx({ transactionId: id, reason }).unwrap(); 
-      setSelectedTransaction(null); 
+      setSelectedTransaction(null);
+      dispatch(showSuccessToast({ message: "Preuve rejetee et notifiee au chauffeur." }));
     } catch (e) { 
       console.error("[ValidationCenter] Erreur lors du rejet:", e);
-      Alert.alert('Erreur', 'Impossible de rejeter cette transaction. Veuillez reessayer.'); 
+      const errorMessage = e?.data?.message || "Erreur serveur lors du rejet.";
+      dispatch(showErrorToast({ message: errorMessage }));
     }
   };
 
@@ -84,15 +90,14 @@ const ValidationCenter = ({ navigation }) => {
     const amount = item.amount || item.metadata?.amount || 0;
     const driverName = item.user?.name || 'Chauffeur inconnu';
     
-    // Verification d'assignation
     let isAssignedToOther = false;
     let assigneeName = 'Un autre admin';
     
-    if (item.assignedAdmin) {
-      const assignedId = typeof item.assignedAdmin === 'string' ? item.assignedAdmin : item.assignedAdmin._id;
+    if (item.assignedTo) {
+      const assignedId = typeof item.assignedTo === 'string' ? item.assignedTo : item.assignedTo._id;
       if (assignedId && currentUser?._id && assignedId !== currentUser._id) {
         isAssignedToOther = true;
-        assigneeName = item.assignedAdmin.name || assigneeName;
+        assigneeName = item.assignedTo.name || assigneeName;
       }
     }
 
