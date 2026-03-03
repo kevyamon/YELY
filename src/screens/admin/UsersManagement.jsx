@@ -1,11 +1,12 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Integration stricte du theme.js
+// ECRAN UTILISATEURS - Refactorisation Layout & Custom Modals
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ConfirmModal, UserInfoModal } from '../../components/admin/AdminModals';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -25,45 +26,62 @@ const UsersManagement = ({ navigation }) => {
   const [toggleBan] = useToggleUserBanMutation();
   const [updateRole] = useUpdateUserRoleMutation();
 
+  const [confirmConfig, setConfirmConfig] = useState({ visible: false, title: '', message: '', onConfirm: null, isDestructive: false });
+  const [selectedInfoUser, setSelectedInfoUser] = useState(null);
+
   const users = usersResponse?.data?.users || usersResponse?.users || [];
+
+  const translateRole = (role) => {
+    const roles = { rider: 'Passager', driver: 'Chauffeur', admin: 'Administrateur', superadmin: 'Direction' };
+    return roles[role] || role.toUpperCase();
+  };
 
   const handleBanToggle = (user) => {
     const actionText = user.isBanned ? 'lever le bannissement de' : 'bannir';
-    Alert.alert("Confirmation", `Voulez-vous vraiment ${actionText} ${user.email} ?`, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Confirmer", style: user.isBanned ? "default" : "destructive", onPress: async () => {
-          try { await toggleBan({ userId: user._id, reason: user.isBanned ? '' : 'Violation des regles' }).unwrap(); } 
-          catch (e) { Alert.alert('Erreur', 'Impossible de modifier le statut.'); }
-        } 
+    setConfirmConfig({
+      visible: true,
+      title: "Confirmation",
+      message: `Voulez-vous vraiment ${actionText} ${user.email} ?`,
+      isDestructive: !user.isBanned,
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, visible: false }));
+        try { await toggleBan({ userId: user._id, reason: user.isBanned ? '' : 'Violation des regles' }).unwrap(); } 
+        catch (e) { /* Error handeled globally */ }
       }
-    ]);
+    });
   };
 
   const handleRoleToggle = (user) => {
     const isCurrentlyAdmin = user.role === 'admin';
     const action = isCurrentlyAdmin ? 'REVOKE' : 'PROMOTE';
     const actionText = isCurrentlyAdmin ? 'retirer les droits administrateur de' : 'promouvoir administrateur';
-    Alert.alert("Modification des droits", `Voulez-vous ${actionText} ${user.email} ?`, [
-      { text: "Annuler", style: "cancel" },
-      { text: "Confirmer", onPress: async () => {
-          try { await updateRole({ userId: user._id, action }).unwrap(); } 
-          catch (e) { Alert.alert('Erreur', 'Impossible de modifier le role.'); }
-        } 
+    setConfirmConfig({
+      visible: true,
+      title: "Droits d'Accès",
+      message: `Voulez-vous ${actionText} ${user.email} ?`,
+      isDestructive: false,
+      onConfirm: async () => {
+        setConfirmConfig(prev => ({ ...prev, visible: false }));
+        try { await updateRole({ userId: user._id, action }).unwrap(); } 
+        catch (e) { }
       }
-    ]);
+    });
   };
 
   const renderUserItem = ({ item }) => (
     <GlassCard style={styles.userCard}>
       <View style={styles.userInfo}>
-        <View>
-          <Text style={styles.userName}>{item.name}</Text>
-          <Text style={styles.userEmail}>{item.email}</Text>
+        <View style={styles.textContainer}>
+          <Text style={styles.userName} numberOfLines={1}>{item.name}</Text>
+          <Text style={styles.userEmail} numberOfLines={1} ellipsizeMode="tail">{item.email}</Text>
           <View style={styles.roleBadge}>
-            <Text style={styles.roleText}>{item.role.toUpperCase()}</Text>
+            <Text style={styles.roleText}>{translateRole(item.role)}</Text>
           </View>
         </View>
         <View style={styles.actionsContainer}>
+          <TouchableOpacity style={[styles.actionButton, styles.infoButton]} onPress={() => setSelectedInfoUser(item)}>
+            <Ionicons name="information" size={20} color={THEME.COLORS.pureWhite} />
+          </TouchableOpacity>
           <TouchableOpacity style={[styles.actionButton, item.isBanned ? styles.unbanButton : styles.banButton]} onPress={() => handleBanToggle(item)}>
             <Ionicons name={item.isBanned ? "shield-checkmark-outline" : "ban-outline"} size={20} color={THEME.COLORS.pureWhite} />
           </TouchableOpacity>
@@ -118,9 +136,24 @@ const UsersManagement = ({ navigation }) => {
           contentContainerStyle={styles.listContent}
           onRefresh={refetch}
           refreshing={isLoading}
-          ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouve.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouvé.</Text>}
         />
       )}
+
+      <ConfirmModal 
+        visible={confirmConfig.visible}
+        title={confirmConfig.title}
+        message={confirmConfig.message}
+        isDestructive={confirmConfig.isDestructive}
+        onConfirm={confirmConfig.onConfirm}
+        onCancel={() => setConfirmConfig(prev => ({ ...prev, visible: false }))}
+      />
+
+      <UserInfoModal
+        visible={!!selectedInfoUser}
+        user={selectedInfoUser}
+        onClose={() => setSelectedInfoUser(null)}
+      />
     </View>
   );
 };
@@ -142,12 +175,14 @@ const styles = StyleSheet.create({
   glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.lg, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 12 },
   glassContent: { padding: 15 },
   userInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  textContainer: { flex: 1, paddingRight: 10 },
   userName: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
   userEmail: { color: THEME.COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   roleBadge: { alignSelf: 'flex-start', backgroundColor: THEME.COLORS.overlay, paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginTop: 8 },
   roleText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: 'bold' },
-  actionsContainer: { flexDirection: 'row' },
-  actionButton: { width: 40, height: 40, borderRadius: 20, justifyContent: 'center', alignItems: 'center', marginLeft: 10 },
+  actionsContainer: { flexDirection: 'row', alignItems: 'center' },
+  actionButton: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', marginLeft: 8 },
+  infoButton: { backgroundColor: THEME.COLORS.textSecondary },
   banButton: { backgroundColor: THEME.COLORS.danger },
   unbanButton: { backgroundColor: THEME.COLORS.success },
   roleButton: { backgroundColor: THEME.COLORS.info },
