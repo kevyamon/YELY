@@ -32,8 +32,9 @@ import RiderHome from '../screens/home/RiderHome';
 // Outils Chauffeur
 import PancarteScreen from '../screens/ride/PancarteScreen';
 
-// Menu
+// Menu & Nouvelles Pages
 import MenuScreen from '../screens/MenuScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen'; // NOUVEAU
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
@@ -54,7 +55,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Ce module arrive bientot.</Text>
+    <Text style={styles.placeholderText}>Ce module arrive bientôt.</Text>
   </View>
 );
 
@@ -144,7 +145,6 @@ const AppNavigator = () => {
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
             </Stack.Group>
           ) : isSubscriptionPending ? (
-            // Isolation stricte : si en pending, l'utilisateur ne peut voir QUE le WaitScreen
             <Stack.Group>
               <Stack.Screen name="WaitSubscription" component={WaitScreen} />
             </Stack.Group>
@@ -154,7 +154,6 @@ const AppNavigator = () => {
             <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {/* Menus et Modales secondaires accessibles uniquement si on n'est pas bloque dans le sas */}
           {!isAdmin && !isSubscriptionPending && (
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen 
@@ -175,7 +174,9 @@ const AppNavigator = () => {
                 }}
               />
 
-              <Stack.Screen name="Profile" component={PlaceholderScreen} />
+              {/* INTEGRATION DU NOUVEL ECRAN DE PROFIL */}
+              <Stack.Screen name="Profile" component={ProfileScreen} />
+              
               <Stack.Screen name="History" component={PlaceholderScreen} />
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
               

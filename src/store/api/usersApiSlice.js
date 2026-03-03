@@ -24,30 +24,36 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
       }),
     }),
-    /* 
-    // MÉTHODES DÉSACTIVÉES - PAS ENCORE IMPLÉMENTÉES BACKEND
+    
+    // NOUVEAUX ENDPOINTS ACTIFS
     getUserProfile: builder.query({
-      query: () => '/auth/profile',
+      query: () => '/users/profile', // Attention, c'est /users/ pas /auth/
       providesTags: ['User'],
     }),
     updateUserProfile: builder.mutation({
       query: (data) => ({
-        url: '/auth/profile',
-        method: 'PUT',
+        url: '/users/update-profile',
+        method: 'PATCH',
         body: data,
       }),
       invalidatesTags: ['User'],
     }),
-    uploadDocuments: builder.mutation({
+    uploadProfilePicture: builder.mutation({
       query: (formData) => ({
-        url: '/auth/documents',
-        method: 'POST',
+        url: '/users/profile-picture',
+        method: 'PATCH',
         body: formData,
-        formData: true,
+        formData: true, // Très important pour Multipart
       }),
       invalidatesTags: ['User'],
     }),
-    */
+    deleteAccount: builder.mutation({
+      query: () => ({
+        url: '/users/account',
+        method: 'DELETE',
+      }),
+    }),
+    
     updateAvailability: builder.mutation({
       query: (data) => ({
         url: '/auth/availability',
@@ -62,10 +68,9 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
-  /*
   useGetUserProfileQuery,
   useUpdateUserProfileMutation,
-  useUploadDocumentsMutation,
-  */
+  useUploadProfilePictureMutation,
+  useDeleteAccountMutation,
   useUpdateAvailabilityMutation,
 } = usersApiSlice;
