@@ -9,14 +9,21 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Stats'],
     }),
     getPendingTransactions: builder.query({
-      query: ({ type }) => `/api/admin/transactions/pending${type ? `?type=${type}` : ''}`,
+      query: ({ page = 1 }) => `/api/admin/validations?page=${page}`,
       providesTags: ['Transaction'],
     }),
-    validateTransaction: builder.mutation({
-      query: ({ transactionId, action, reason }) => ({
-        url: `/api/admin/transactions/${transactionId}/validate`,
-        method: 'PUT',
-        body: { action, reason },
+    approveTransaction: builder.mutation({
+      query: ({ transactionId }) => ({
+        url: `/api/admin/approve/${transactionId}`,
+        method: 'POST',
+      }),
+      invalidatesTags: ['Transaction', 'Stats', 'Subscription'],
+    }),
+    rejectTransaction: builder.mutation({
+      query: ({ transactionId, reason }) => ({
+        url: `/api/admin/reject/${transactionId}`,
+        method: 'POST',
+        body: { reason },
       }),
       invalidatesTags: ['Transaction', 'Stats', 'Subscription'],
     }),
@@ -29,32 +36,19 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       },
       providesTags: ['User'],
     }),
-    banUser: builder.mutation({
+    toggleUserBan: builder.mutation({
       query: ({ userId, reason }) => ({
-        url: `/api/admin/users/${userId}/ban`,
-        method: 'PUT',
-        body: { reason },
+        url: `/api/admin/toggle-ban`,
+        method: 'POST',
+        body: { userId, reason },
       }),
       invalidatesTags: ['User'],
     }),
-    unbanUser: builder.mutation({
-      query: ({ userId }) => ({
-        url: `/api/admin/users/${userId}/unban`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['User'],
-    }),
-    promoteToAdmin: builder.mutation({
-      query: ({ userId }) => ({
-        url: `/api/admin/users/${userId}/promote`,
-        method: 'PUT',
-      }),
-      invalidatesTags: ['User'],
-    }),
-    revokeAdmin: builder.mutation({
-      query: ({ userId }) => ({
-        url: `/api/admin/users/${userId}/revoke`,
-        method: 'PUT',
+    updateUserRole: builder.mutation({
+      query: ({ userId, action }) => ({
+        url: `/api/admin/update-role`,
+        method: 'POST',
+        body: { userId, action },
       }),
       invalidatesTags: ['User'],
     }),
@@ -86,12 +80,11 @@ export const adminApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetDashboardStatsQuery,
   useGetPendingTransactionsQuery,
-  useValidateTransactionMutation,
+  useApproveTransactionMutation,
+  useRejectTransactionMutation,
   useGetAllUsersQuery,
-  useBanUserMutation,
-  useUnbanUserMutation,
-  usePromoteToAdminMutation,
-  useRevokeAdminMutation,
+  useToggleUserBanMutation,
+  useUpdateUserRoleMutation,
   useTogglePromoMutation,
   useGetFinanceDataQuery,
   useGetNotificationsQuery,

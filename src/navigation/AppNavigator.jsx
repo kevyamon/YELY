@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION - Démarrage Trustless (Validation de Session)
+// ORCHESTRATEUR DE NAVIGATION - Demarrage Trustless (Validation de Session)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -36,7 +36,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Cette fonctionnalité arrive bientôt.</Text>
+    <Text style={styles.placeholderText}>Cette fonctionnalite arrive bientot.</Text>
   </View>
 );
 
@@ -94,7 +94,7 @@ const AppNavigator = () => {
           dispatch(logout()); 
         }
       } catch (e) {
-        console.error('[Auth] Erreur critique au démarrage:', e);
+        console.error('[Auth] Erreur critique au demarrage:', e);
         dispatch(logout());
       } finally {
         setIsReady(true);
@@ -110,6 +110,7 @@ const AppNavigator = () => {
   }
 
   const isDriver = user?.role === 'driver';
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   return (
     <Stack.Navigator
@@ -127,39 +128,50 @@ const AppNavigator = () => {
         </Stack.Group>
       ) : (
         <Stack.Group>
-          {isDriver ? (
+          {isAdmin ? (
+            // ZONE ISOLEE ADMIN / SUPERADMIN
+            <>
+              <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
+              <Stack.Screen name="Validations" component={PlaceholderScreen} />
+              <Stack.Screen name="Drivers" component={PlaceholderScreen} />
+              <Stack.Screen name="Finance" component={PlaceholderScreen} />
+            </>
+          ) : isDriver ? (
+            // INTERFACE CHAUFFEUR
              <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
+            // INTERFACE PASSAGER
              <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          <Stack.Screen 
-            name="Menu" 
-            component={MenuScreen} 
-            options={{
-              animation: 'fade_from_bottom',
-              presentation: 'transparentModal',
-              gestureEnabled: true,
-              animationDuration: 100, 
-            }}
-          />
+          {/* ECRANS COMMUNS (Hors Admin) */}
+          {!isAdmin && (
+            <>
+              <Stack.Screen 
+                name="Menu" 
+                component={MenuScreen} 
+                options={{
+                  animation: 'fade_from_bottom',
+                  presentation: 'transparentModal',
+                  gestureEnabled: true,
+                  animationDuration: 100, 
+                }}
+              />
 
-          <Stack.Screen 
-            name="Pancarte" 
-            component={PancarteScreen} 
-            options={{
-              animation: 'slide_from_bottom',
-            }}
-          />
+              <Stack.Screen 
+                name="Pancarte" 
+                component={PancarteScreen} 
+                options={{
+                  animation: 'slide_from_bottom',
+                }}
+              />
 
-          <Stack.Screen name="Profile" component={PlaceholderScreen} />
-          <Stack.Screen name="History" component={PlaceholderScreen} />
-          <Stack.Screen name="Notifications" component={PlaceholderScreen} />
-          <Stack.Screen name="Subscription" component={PlaceholderScreen} />
-          <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
-          <Stack.Screen name="Validations" component={PlaceholderScreen} />
-          <Stack.Screen name="Drivers" component={PlaceholderScreen} />
-          <Stack.Screen name="Finance" component={PlaceholderScreen} />
+              <Stack.Screen name="Profile" component={PlaceholderScreen} />
+              <Stack.Screen name="History" component={PlaceholderScreen} />
+              <Stack.Screen name="Notifications" component={PlaceholderScreen} />
+              <Stack.Screen name="Subscription" component={PlaceholderScreen} />
+            </>
+          )}
         </Stack.Group>
       )}
     </Stack.Navigator>
