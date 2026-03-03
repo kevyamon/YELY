@@ -1,7 +1,33 @@
 // App.js
-// POINT D'ENTRÉE - Câblage Redux, Providers & Silence de Production
-// CSCSM Level: Bank Grade
+// POINT D'ENTREE - Cablage Redux, Providers & Observabilite
+// STANDARD: Industriel / Bank Grade
 
+// 1. MISE EN PLACE DE L'OBSERVABILITE GLOBALE
+const errorHandler = (error, isFatal) => {
+  const errorDetails = {
+    message: error.message,
+    name: error.name,
+    stack: error.stack,
+    isFatal,
+    timestamp: new Date().toISOString()
+  };
+  
+  // On sauve la trace via une ref a la console originale avant qu'elle ne soit muette en production
+  const originalConsoleError = console.error || console.log;
+  originalConsoleError('[FATAL CRASH DETECTED]', JSON.stringify(errorDetails));
+
+  // Note: Un outil comme Sentry interceptera ces donnees ici
+};
+
+if (global.ErrorUtils) {
+  global.ErrorUtils.setGlobalHandler(errorHandler);
+} else {
+  // Fallback pour environnement Web
+  window.addEventListener('error', (event) => errorHandler(event.error, true));
+  window.addEventListener('unhandledrejection', (event) => errorHandler(event.reason, true));
+}
+
+// 2. SILENCE DE PRODUCTION
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
@@ -43,19 +69,19 @@ const AppContent = () => {
 
   useSocket();
   useSocketEvents();
-  usePushNotifications(); // Activation du module Push
+  usePushNotifications();
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
         dispatch(showErrorToast({
           title: "PAS DE CONNEXION",
-          message: "Veuillez activer vos données mobiles ou le Wi-Fi."
+          message: "Veuillez activer vos donnees mobiles ou le Wi-Fi."
         }));
       } else if (state.isConnected && toast.visible && toast.title === "PAS DE CONNEXION") {
         dispatch(showSuccessToast({ 
-          title: "Connexion rétablie", 
-          message: "Vous êtes de nouveau en ligne." 
+          title: "Connexion retablie", 
+          message: "Vous etes de nouveau en ligne." 
         }));
       }
     });
