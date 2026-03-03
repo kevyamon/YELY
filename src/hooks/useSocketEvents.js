@@ -1,11 +1,11 @@
 // src/hooks/useSocketEvents.js
-// ECOUTEURS SOCKET - Gestion stricte des flux et Telemetrie GPS
+// ECOUTEURS SOCKET - Inclusion des actions d'Administration Temps Reel
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
+import { logout, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
   clearCurrentRide,
   clearIncomingRide,
@@ -25,7 +25,6 @@ const useSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    // Filtre Anti-Spam (Idempotence) pour eviter de flasher des Toasts en double
     const isDuplicateEvent = (eventKey) => {
       if (lastProcessedEventRef.current === eventKey) return true;
       lastProcessedEventRef.current = eventKey;
@@ -133,8 +132,6 @@ const useSocketEvents = () => {
     const handleRideStatusUpdate = (data) => {
       if (!data?.status) return;
 
-      // NETTOYAGE DES DOUBLONS : On ignore les statuts qui ont deja des ecouteurs specifiques (arrived, completed, in_progress, accepted)
-      // pour eviter l'effet d'echo et le declenchement repetitif de notifications
       if (['completed', 'arrived', 'in_progress', 'accepted', 'cancelled'].includes(data.status)) {
         return;
       }
@@ -180,6 +177,37 @@ const useSocketEvents = () => {
       }
     };
 
+    // --- EVENEMENTS D'ADMINISTRATION (Temps Reel) ---
+
+    const handleUserRoleUpdated = (data) => {
+      if (data?.newRole) {
+        dispatch(updateUserInfo({ role: data.newRole }));
+        dispatch(showSuccessToast({
+          title: 'Droits d\'acces modifies',
+          message: `L'administration a mis a jour votre profil en tant que : ${data.newRole.toUpperCase()}.`
+        }));
+      }
+    };
+
+    const handleUserBanned = (data) => {
+      dispatch(showErrorToast({
+        title: 'Acces Revoque',
+        message: data?.reason || 'Votre compte a ete suspendu par l\'administration.',
+      }));
+      // Kick immediat du systeme
+      setTimeout(() => {
+        dispatch(logout());
+      }, 3000);
+    };
+
+    const handleUserUnbanned = () => {
+      dispatch(updateUserInfo({ isBanned: false }));
+      dispatch(showSuccessToast({
+        title: 'Acces Restaure',
+        message: 'L\'administration a leve la restriction sur votre compte.',
+      }));
+    };
+
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('ride_cancelled', handleRideCancelled);
@@ -190,10 +218,14 @@ const useSocketEvents = () => {
     socketService.on('ride_started', handleRideStarted);
     socketService.on('ride_arrived', handleRideArrived);
     socketService.on('ride_completed', handleRideCompleted);
-    // Suppression volontaire du RIDE_COMPLETED redondant
     socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
+
+    // Enregistrement des ecouteurs Admin
+    socketService.on('user_role_updated', handleUserRoleUpdated);
+    socketService.on('user_banned', handleUserBanned);
+    socketService.on('user_unbanned', handleUserUnbanned);
 
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
@@ -209,6 +241,11 @@ const useSocketEvents = () => {
       socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
+      
+      // Nettoyage des ecouteurs Admin
+      socketService.off('user_role_updated', handleUserRoleUpdated);
+      socketService.off('user_banned', handleUserBanned);
+      socketService.off('user_unbanned', handleUserUnbanned);
     };
   }, [isAuthenticated, dispatch]);
 };

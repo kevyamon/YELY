@@ -1,5 +1,5 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Intégration ScrollToTop (1/2 ecran) et UserInfoModal
+// ECRAN UTILISATEURS - Correction payload Zod (Bannissement)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -31,14 +31,12 @@ const UsersManagement = ({ navigation }) => {
   const [confirmConfig, setConfirmConfig] = useState({ visible: false, title: '', message: '', onConfirm: null, isDestructive: false });
   const [selectedInfoUser, setSelectedInfoUser] = useState(null);
 
-  // LOGIQUE SCROLL TO TOP (A la moitie de l'ecran)
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const { height: screenHeight } = useWindowDimensions();
 
   const handleScroll = (event) => {
     const scrollPosition = event.nativeEvent.contentOffset.y;
-    // Le bouton s'affiche si on a defile de plus de 50% de la hauteur de l'ecran
     setShowScrollTop(scrollPosition > screenHeight / 2);
   };
 
@@ -63,10 +61,12 @@ const UsersManagement = ({ navigation }) => {
       onConfirm: async () => {
         setConfirmConfig(prev => ({ ...prev, visible: false }));
         try { 
-          await toggleBan({ userId: user._id, reason: user.isBanned ? '' : 'Violation des regles' }).unwrap(); 
+          // CORRECTION : La raison doit avoir au moins 4 caracteres pour passer Zod
+          const reasonPayload = user.isBanned ? 'Levee de la sanction' : 'Violation des regles';
+          await toggleBan({ userId: user._id, reason: reasonPayload }).unwrap(); 
         } 
         catch (e) { 
-          Alert.alert('Échec de l\'opération', e?.data?.message || 'Le serveur a rejeté la requête.'); 
+          Alert.alert('Echec de l\'operation', e?.data?.message || 'Le serveur a rejete la requete.'); 
         }
       }
     });
@@ -78,7 +78,7 @@ const UsersManagement = ({ navigation }) => {
     const actionText = isCurrentlyAdmin ? 'retirer les droits administrateur de' : 'promouvoir administrateur';
     setConfirmConfig({
       visible: true,
-      title: "Droits d'Accès",
+      title: "Droits d'Acces",
       message: `Voulez-vous ${actionText} ${user.email} ?`,
       isDestructive: false,
       onConfirm: async () => {
@@ -87,7 +87,7 @@ const UsersManagement = ({ navigation }) => {
           await updateRole({ userId: user._id, action }).unwrap(); 
         } 
         catch (e) { 
-          Alert.alert('Échec de l\'opération', e?.data?.message || 'Le serveur a rejeté la requête.'); 
+          Alert.alert('Echec de l\'operation', e?.data?.message || 'Le serveur a rejete la requete.'); 
         }
       }
     });
@@ -164,7 +164,7 @@ const UsersManagement = ({ navigation }) => {
           scrollEventThrottle={16}
           onRefresh={refetch}
           refreshing={isLoading}
-          ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouvé.</Text>}
+          ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouve.</Text>}
         />
       )}
 
