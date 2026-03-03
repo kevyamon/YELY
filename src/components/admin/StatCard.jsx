@@ -1,5 +1,5 @@
 // src/components/admin/StatCard.jsx
-// COMPOSANT PARTAGE - Carte KPI KPI Liquid Glassmorphism
+// COMPOSANT PARTAGE - Carte KPI Liquid Glassmorphism Adaptif
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -8,10 +8,10 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const StatCard = ({ title, value, icon, iconColor = THEME.COLORS.champagneGold, style }) => {
+const StatCard = ({ title, value, icon, iconColor = THEME.COLORS.primary, style }) => {
   return (
     <View style={[styles.glassContainer, style]}>
-      <BlurView intensity={60} tint="dark" style={StyleSheet.absoluteFill} />
+      <BlurView intensity={60} tint="default" style={StyleSheet.absoluteFill} />
       <View style={styles.glassContent}>
         <Ionicons name={icon} size={24} color={iconColor} />
         <Text style={styles.statValue} numberOfLines={1} adjustsFontSizeToFit>
@@ -29,10 +29,10 @@ const styles = StyleSheet.create({
   glassContainer: {
     flex: 1,
     overflow: 'hidden',
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: THEME.BORDERS.radius.xl,
+    borderWidth: THEME.BORDERS.width.thin,
+    borderColor: THEME.COLORS.border,
+    backgroundColor: THEME.COLORS.overlay,
     marginHorizontal: 4,
   },
   glassContent: {

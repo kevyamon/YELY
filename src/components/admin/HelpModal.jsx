@@ -1,5 +1,5 @@
 // src/components/admin/HelpModal.jsx
-// COMPOSANT PARTAGE - Modale d'aide contextuelle standardisee
+// COMPOSANT PARTAGE - Modale d'aide contextuelle (Adaptative Light/Dark)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -17,12 +17,12 @@ const HelpModal = ({ visible, onClose, title, content }) => {
       onRequestClose={onClose}
     >
       <View style={styles.modalOverlay}>
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={80} tint="default" style={StyleSheet.absoluteFill} />
         
         <View style={styles.modalContent}>
           <View style={styles.header}>
             <View style={styles.titleContainer}>
-              <Ionicons name="information-circle-outline" size={24} color={THEME.COLORS.champagneGold} />
+              <Ionicons name="information-circle-outline" size={24} color={THEME.COLORS.primary} />
               <Text style={styles.title}>{title}</Text>
             </View>
             <TouchableOpacity onPress={onClose} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
@@ -53,11 +53,11 @@ const styles = StyleSheet.create({
   modalContent: {
     width: '100%',
     maxHeight: '80%',
-    backgroundColor: 'rgba(30, 30, 30, 0.85)',
-    borderRadius: 20,
+    backgroundColor: THEME.COLORS.glassModal,
+    borderRadius: THEME.BORDERS.radius.xl,
     padding: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderWidth: THEME.BORDERS.width.thin,
+    borderColor: THEME.COLORS.border,
   },
   header: {
     flexDirection: 'row',
@@ -71,7 +71,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   title: {
-    color: THEME.COLORS.champagneGold,
+    color: THEME.COLORS.primary,
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 10,
@@ -86,13 +86,13 @@ const styles = StyleSheet.create({
     lineHeight: 24,
   },
   closeButton: {
-    backgroundColor: THEME.COLORS.champagneGold,
+    backgroundColor: THEME.COLORS.primary,
     paddingVertical: 14,
-    borderRadius: 12,
+    borderRadius: THEME.BORDERS.radius.md,
     alignItems: 'center',
   },
   closeButtonText: {
-    color: '#121212',
+    color: THEME.COLORS.textInverse,
     fontWeight: 'bold',
     fontSize: 16,
   },

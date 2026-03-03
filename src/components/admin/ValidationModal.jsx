@@ -1,6 +1,5 @@
 // src/components/admin/ValidationModal.jsx
-// MODALE DE VALIDATION - Inspection visuelle des preuves de paiement
-// UI: Liquid Glassmorphism
+// MODALE DE VALIDATION - Nettoyee et adaptee dynamiquement (Light/Dark)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -37,7 +36,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
         style={styles.modalOverlay} 
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFill} />
+        <BlurView intensity={80} tint="default" style={StyleSheet.absoluteFill} />
         
         <View style={styles.modalContent}>
           <View style={styles.header}>
@@ -68,7 +67,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
               />
             ) : (
               <View style={styles.noImagePlaceholder}>
-                <Ionicons name="image-outline" size={48} color="rgba(255,255,255,0.3)" />
+                <Ionicons name="image-outline" size={48} color={THEME.COLORS.textTertiary} />
                 <Text style={styles.noImageText}>Aucune preuve fournie</Text>
               </View>
             )}
@@ -81,8 +80,8 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                 onPress={() => setRejectMode(true)}
                 disabled={isProcessing}
               >
-                <Ionicons name="close-circle-outline" size={20} color="#FFF" style={styles.buttonIcon} />
-                <Text style={styles.buttonTextWhite}>Rejeter</Text>
+                <Ionicons name="close-circle-outline" size={20} color={THEME.COLORS.danger} style={styles.buttonIcon} />
+                <Text style={styles.buttonTextDanger}>Rejeter</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 
@@ -91,11 +90,11 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                 disabled={isProcessing}
               >
                 {isProcessing ? (
-                  <ActivityIndicator color="#121212" />
+                  <ActivityIndicator color={THEME.COLORS.textInverse} />
                 ) : (
                   <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color="#121212" style={styles.buttonIcon} />
-                    <Text style={styles.buttonTextDark}>Valider & Activer</Text>
+                    <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse} style={styles.buttonIcon} />
+                    <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
                   </>
                 )}
               </TouchableOpacity>
@@ -106,7 +105,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
               <TextInput
                 style={styles.rejectInput}
                 placeholder="Ex: Image illisible, Montant incorrect..."
-                placeholderTextColor="rgba(255,255,255,0.3)"
+                placeholderTextColor={THEME.COLORS.textTertiary}
                 value={rejectReason}
                 onChangeText={setRejectReason}
                 autoFocus
@@ -117,7 +116,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                   onPress={() => setRejectMode(false)}
                   disabled={isProcessing}
                 >
-                  <Text style={styles.buttonTextWhite}>Annuler</Text>
+                  <Text style={styles.buttonTextPrimary}>Annuler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
                   style={[styles.button, styles.confirmRejectButton, !rejectReason.trim() && styles.buttonDisabled]} 
@@ -125,9 +124,9 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                   disabled={isProcessing || !rejectReason.trim()}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator color="#FFF" />
+                    <ActivityIndicator color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.buttonTextWhite}>Confirmer Rejet</Text>
+                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>Confirmer Rejet</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -141,29 +140,30 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', backgroundColor: 'rgba(30, 30, 30, 0.85)', borderRadius: 20, padding: 20, borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.1)' },
+  modalContent: { width: '100%', backgroundColor: THEME.COLORS.glassModal, borderRadius: THEME.BORDERS.radius.xl, padding: 20, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  title: { color: THEME.COLORS.champagneGold, fontSize: 20, fontWeight: 'bold' },
-  infoSection: { backgroundColor: 'rgba(0,0,0,0.3)', padding: 15, borderRadius: 12, marginBottom: 15 },
+  title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold' },
+  infoSection: { backgroundColor: THEME.COLORS.overlay, padding: 15, borderRadius: THEME.BORDERS.radius.md, marginBottom: 15 },
   infoText: { color: THEME.COLORS.textPrimary, fontSize: 14, marginBottom: 4 },
   bold: { fontWeight: 'bold', color: THEME.COLORS.textSecondary },
-  imageContainer: { height: 300, backgroundColor: '#000', borderRadius: 12, overflow: 'hidden', marginBottom: 20, justifyContent: 'center', alignItems: 'center' },
+  imageContainer: { height: 300, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: THEME.BORDERS.radius.md, overflow: 'hidden', marginBottom: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
   proofImage: { width: '100%', height: '100%' },
   noImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
-  noImageText: { color: 'rgba(255,255,255,0.5)', marginTop: 10 },
+  noImageText: { color: THEME.COLORS.textTertiary, marginTop: 10 },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  button: { flex: 1, flexDirection: 'row', height: 50, borderRadius: 10, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },
-  approveButton: { backgroundColor: THEME.COLORS.champagneGold },
-  rejectButton: { backgroundColor: 'rgba(255, 59, 48, 0.2)', borderWidth: 1, borderColor: '#FF3B30' },
-  cancelButton: { backgroundColor: 'rgba(255, 255, 255, 0.1)' },
-  confirmRejectButton: { backgroundColor: '#FF3B30' },
+  button: { flex: 1, flexDirection: 'row', height: 50, borderRadius: THEME.BORDERS.radius.md, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },
+  approveButton: { backgroundColor: THEME.COLORS.primary },
+  rejectButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.danger },
+  cancelButton: { backgroundColor: THEME.COLORS.overlay },
+  confirmRejectButton: { backgroundColor: THEME.COLORS.danger },
   buttonDisabled: { opacity: 0.5 },
   buttonIcon: { marginRight: 8 },
-  buttonTextDark: { color: '#121212', fontWeight: 'bold', fontSize: 16 },
-  buttonTextWhite: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
+  buttonTextInverse: { color: THEME.COLORS.textInverse, fontWeight: 'bold', fontSize: 16 },
+  buttonTextDanger: { color: THEME.COLORS.danger, fontWeight: 'bold', fontSize: 16 },
+  buttonTextPrimary: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
   rejectSection: { width: '100%' },
-  rejectLabel: { color: '#FF3B30', fontWeight: 'bold', marginBottom: 8 },
-  rejectInput: { backgroundColor: 'rgba(0,0,0,0.5)', color: '#FFF', borderRadius: 10, padding: 15, borderWidth: 1, borderColor: 'rgba(255,59,48,0.5)', marginBottom: 15 }
+  rejectLabel: { color: THEME.COLORS.danger, fontWeight: 'bold', marginBottom: 8 },
+  rejectInput: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS.radius.md, padding: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 15 }
 });
 
 export default ValidationModal;

@@ -7,27 +7,26 @@ import { apiSlice } from '../slices/apiSlice';
 export const adminApiSlice = apiSlice.injectEndpoints({
   endpoints: (builder) => ({
     getDashboardStats: builder.query({
-      query: () => '/api/admin/stats',
+      query: () => '/admin/stats',
       providesTags: ['Stats'],
     }),
     
     getValidationQueue: builder.query({
-      query: (page = 1) => `/api/admin/validations?page=${page}`,
+      query: (page = 1) => `/admin/validations?page=${page}`,
       providesTags: ['Transaction'],
     }),
     
     approveTransaction: builder.mutation({
       query: (transactionId) => ({
-        url: `/api/admin/approve/${transactionId}`,
+        url: `/admin/approve/${transactionId}`,
         method: 'POST',
       }),
-      // Invalidation agressive pour forcer le rafraichissement des listes et des KPIs
       invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification'],
     }),
     
     rejectTransaction: builder.mutation({
       query: ({ transactionId, reason }) => ({
-        url: `/api/admin/reject/${transactionId}`,
+        url: `/admin/reject/${transactionId}`,
         method: 'POST',
         body: { reason },
       }),
@@ -36,7 +35,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     
     getAllUsers: builder.query({
       query: ({ page = 1, role, search }) => {
-        let url = `/api/admin/users?page=${page}`;
+        let url = `/admin/users?page=${page}`;
         if (role) url += `&role=${role}`;
         if (search) url += `&search=${search}`;
         return url;
@@ -46,7 +45,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     
     toggleUserBan: builder.mutation({
       query: ({ userId, reason }) => ({
-        url: `/api/admin/toggle-ban`,
+        url: `/admin/toggle-ban`,
         method: 'POST',
         body: { userId, reason },
       }),
@@ -55,7 +54,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     
     updateUserRole: builder.mutation({
       query: ({ userId, action }) => ({
-        url: `/api/admin/update-role`,
+        url: `/admin/update-role`,
         method: 'POST',
         body: { userId, action },
       }),
@@ -63,13 +62,13 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     }),
     
     getFinanceData: builder.query({
-      query: ({ period }) => `/api/admin/finance?period=${period || 'month'}`,
+      query: ({ period }) => `/admin/finance?period=${period || 'month'}`,
       providesTags: ['Stats'],
     }),
     
     updateWaveLinks: builder.mutation({
       query: ({ weeklyLink, monthlyLink }) => ({
-        url: '/api/admin/finance/links',
+        url: '/admin/finance/links',
         method: 'PUT',
         body: { weeklyLink, monthlyLink },
       }),
@@ -78,7 +77,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     
     togglePromo: builder.mutation({
       query: ({ isActive }) => ({
-        url: '/api/admin/promo/toggle',
+        url: '/admin/promo/toggle',
         method: 'PUT',
         body: { isActive },
       }),
@@ -87,27 +86,27 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     
     updateMapSettings: builder.mutation({
       query: (data) => ({
-        url: '/api/admin/map-lock',
+        url: '/admin/map-lock',
         method: 'POST',
         body: data,
       }),
-      // Si la map change, on notifie potentiellement tout le monde (rechargement config globale)
       invalidatesTags: ['MapSettings'],
     }),
     
     getNotifications: builder.query({
-      query: () => '/api/notifications',
+      query: () => '/notifications',
       providesTags: ['Notification'],
     }),
     
     markNotificationsRead: builder.mutation({
       query: () => ({
-        url: '/api/notifications/mark-read',
+        url: '/notifications/mark-read',
         method: 'PUT',
       }),
       invalidatesTags: ['Notification'],
     }),
   }),
+  overrideExisting: true,
 });
 
 export const {
