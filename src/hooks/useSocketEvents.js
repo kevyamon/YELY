@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { logout, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
+import { logout, selectIsAuthenticated, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
 import {
   clearCurrentRide,
   clearIncomingRide,
@@ -208,6 +208,27 @@ const useSocketEvents = () => {
       }));
     };
 
+    const handleSubscriptionValidated = (data) => {
+      dispatch(updateUserInfo({ 
+        subscriptionStatus: 'active', 
+        subscriptionExpiresAt: data?.expiresAt 
+      }));
+      dispatch(updateSubscriptionStatus({ isPending: false, isActive: true }));
+      dispatch(showSuccessToast({
+        title: 'Abonnement Validé',
+        message: 'Félicitations, vous pouvez reprendre vos courses !'
+      }));
+    };
+
+    const handleSubscriptionRejected = (data) => {
+      dispatch(updateUserInfo({ subscriptionStatus: 'inactive' }));
+      dispatch(updateSubscriptionStatus({ isPending: false, isActive: false }));
+      dispatch(showErrorToast({
+        title: 'Paiement Refusé',
+        message: data?.reason || 'Votre preuve de paiement a été rejetée.'
+      }));
+    };
+
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('ride_cancelled', handleRideCancelled);
@@ -226,6 +247,8 @@ const useSocketEvents = () => {
     socketService.on('user_role_updated', handleUserRoleUpdated);
     socketService.on('user_banned', handleUserBanned);
     socketService.on('user_unbanned', handleUserUnbanned);
+    socketService.on('subscription_validated', handleSubscriptionValidated);
+    socketService.on('subscription_rejected', handleSubscriptionRejected);
 
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
@@ -246,6 +269,8 @@ const useSocketEvents = () => {
       socketService.off('user_role_updated', handleUserRoleUpdated);
       socketService.off('user_banned', handleUserBanned);
       socketService.off('user_unbanned', handleUserUnbanned);
+      socketService.off('subscription_validated', handleSubscriptionValidated);
+      socketService.off('subscription_rejected', handleSubscriptionRejected);
     };
   }, [isAuthenticated, dispatch]);
 };

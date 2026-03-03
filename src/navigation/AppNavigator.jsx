@@ -15,7 +15,8 @@ import {
   logout,
   restoreAuth,
   selectCurrentUser,
-  selectIsAuthenticated
+  selectIsAuthenticated,
+  selectSubscriptionStatus
 } from '../store/slices/authSlice';
 import THEME from '../theme/theme';
 
@@ -65,6 +66,7 @@ const AppNavigator = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
+  const subStatus = useSelector(selectSubscriptionStatus);
   
   const [isReady, setIsReady] = useState(false);
 
@@ -111,7 +113,11 @@ const AppNavigator = () => {
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
   // Sas de securite : Verification stricte si l'abonnement du chauffeur est en cours de validation
-  const isSubscriptionPending = isDriver && (user?.subscriptionStatus === 'pending' || user?.subscription?.status === 'pending');
+  const isSubscriptionPending = isDriver && (
+    user?.subscriptionStatus === 'pending' || 
+    user?.subscription?.status === 'pending' || 
+    subStatus?.isPending
+  );
 
   return (
     <Stack.Navigator

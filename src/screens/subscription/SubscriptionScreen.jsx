@@ -9,7 +9,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
@@ -135,6 +135,7 @@ const SubscriptionScreen = () => {
     try {
       const response = await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
+      dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
       dispatch(showSuccessToast({ 
         title: "Transmission réussie", 
         message: response.message || "Un administrateur vérifie votre paiement." 
