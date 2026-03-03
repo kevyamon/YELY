@@ -23,7 +23,8 @@ import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
-import { logout, selectCurrentUser } from '../../store/slices/authSlice';
+// Ajout de selectSubscriptionStatus pour lire la mise à jour instantanée du Socket
+import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -36,6 +37,7 @@ const DriverHome = ({ navigation }) => {
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
+  const subStatusRedux = useSelector(selectSubscriptionStatus); // <-- État local Socket
 
   const { 
     data: subscriptionData, 
@@ -45,8 +47,13 @@ const DriverHome = ({ navigation }) => {
     skip: !isFocused 
   });
 
-  const subscriptionStatus = subscriptionData?.data || { isActive: false, isPending: false };
-  const isBlocked = !subscriptionStatus.isActive;
+  // COMBINAISON DES SOURCES DE VÉRITÉ : API (Cache) + Redux (Socket temps réel)
+  const apiSubStatus = subscriptionData?.data || { isActive: false, isPending: false };
+  
+  const isActive = apiSubStatus.isActive || user?.subscriptionStatus === 'active' || subStatusRedux?.isActive;
+  const isPending = apiSubStatus.isPending || user?.subscriptionStatus === 'pending' || subStatusRedux?.isPending;
+
+  const isBlocked = !isActive;
 
   useEffect(() => {
     if (isFocused) {
@@ -86,6 +93,9 @@ const DriverHome = ({ navigation }) => {
   const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   const renderSubscriptionBlocker = () => {
+    // Si l'abonnement est actif grâce au Socket, on ne bloque pas, même si ça charge en fond
+    if (isActive) return null;
+
     if (isSubscriptionLoading) {
       return (
         <View style={styles.blockerOverlay}>
@@ -100,7 +110,7 @@ const DriverHome = ({ navigation }) => {
     return (
       <View style={styles.blockerOverlay}>
         <GlassCard style={styles.blockerCard}>
-          {subscriptionStatus.isPending ? (
+          {isPending ? (
             <>
               <Text style={styles.blockerTitle}>Vérification en cours</Text>
               <Text style={styles.blockerDesc}>
