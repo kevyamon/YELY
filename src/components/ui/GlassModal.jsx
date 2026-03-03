@@ -1,21 +1,22 @@
 // src/components/ui/GlassModal.jsx
 // Modale avec effet Glassmorphism et animations premium
+// FIX: pointerEvents moving to style prop
 
 import { BlurView } from 'expo-blur';
 import { useEffect } from 'react';
 import {
-    BackHandler,
-    Dimensions,
-    Platform,
-    StyleSheet,
-    TouchableWithoutFeedback,
-    View,
+  BackHandler,
+  Dimensions,
+  Platform,
+  StyleSheet,
+  TouchableWithoutFeedback,
+  View,
 } from 'react-native';
 import Animated, {
-    useAnimatedStyle,
-    useSharedValue,
-    withSpring,
-    withTiming
+  useAnimatedStyle,
+  useSharedValue,
+  withSpring,
+  withTiming
 } from 'react-native-reanimated';
 import { ANIMATIONS, BORDERS, COLORS, SHADOWS, SPACING } from '../../theme/theme';
 
@@ -25,9 +26,9 @@ const GlassModal = ({
   visible,
   onClose,
   children,
-  position = 'center', // 'center', 'bottom', 'top'
+  position = 'center', 
   closeOnBackdrop = true,
-  showHandle = false, // Pour les bottom sheets
+  showHandle = false, 
   fullWidth = false,
   style,
 }) => {
@@ -52,9 +53,8 @@ const GlassModal = ({
         duration: ANIMATIONS.duration.normal,
       });
     }
-  }, [visible]);
+  }, [visible, position, backdropOpacity, opacity, translateY]);
 
-  // Gestion du bouton retour Android
   useEffect(() => {
     if (!visible) return;
 
@@ -64,7 +64,7 @@ const GlassModal = ({
     });
 
     return () => backHandler.remove();
-  }, [visible]);
+  }, [visible, onClose]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
@@ -90,10 +90,7 @@ const GlassModal = ({
 
   return (
     <View style={styles.overlay}>
-      {/* Backdrop flou */}
-      <TouchableWithoutFeedback
-        onPress={closeOnBackdrop ? onClose : undefined}
-      >
+      <TouchableWithoutFeedback onPress={closeOnBackdrop ? onClose : undefined}>
         <Animated.View style={[styles.backdrop, backdropStyle]}>
           {Platform.OS === 'ios' ? (
             <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
@@ -103,8 +100,8 @@ const GlassModal = ({
         </Animated.View>
       </TouchableWithoutFeedback>
 
-      {/* Contenu de la modale */}
-      <View style={[styles.modalPositioner, getPositionStyle()]} pointerEvents="box-none">
+      {/* FIX: pointerEvents moved to style object */}
+      <View style={[styles.modalPositioner, getPositionStyle(), { pointerEvents: 'box-none' }]}>
         <Animated.View
           style={[
             styles.modalContainer,

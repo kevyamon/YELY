@@ -1,4 +1,5 @@
 // src/store/store.js
+// POINT DE VERITE REDUX - Configuration Industrielle
 
 import { configureStore } from '@reduxjs/toolkit';
 import { apiSlice } from './slices/apiSlice';
@@ -15,9 +16,9 @@ const store = configureStore({
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false,
+      serializableCheck: false, // Necessaire pour certains payloads complexes (dates, etc)
     }).concat(apiSlice.middleware),
-  devTools: __DEV__,
+  devTools: __DEV__, // Active uniquement en mode developpement
 });
 
 export default store;
