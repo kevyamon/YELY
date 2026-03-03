@@ -1,14 +1,15 @@
 // src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Intégration de la Modale de Déconnexion Glassmorphism
+// ECRAN COCKPIT - Cerveau Local, Acquittement au Clic et Clignotement
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { ConfirmModal } from '../../components/admin/AdminModals';
+import BlinkingBadge from '../../components/admin/BlinkingBadge';
 import HelpModal from '../../components/admin/HelpModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import StatCard from '../../components/admin/StatCard';
@@ -37,6 +38,12 @@ const AdminDashboard = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
+  // ÉTATS INTELLIGENTS POUR LES BADGES (Acquittement)
+  const [seenValidations, setSeenValidations] = useState(false);
+  const [seenUsers, setSeenUsers] = useState(true); 
+  const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0 });
+  const isFirstLoad = useRef(true);
+  
   const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery(undefined, {
     pollingInterval: 5000,
     refetchOnMountOrArgChange: true,
@@ -44,9 +51,48 @@ const AdminDashboard = () => {
   
   const stats = statsData?.data || statsData || { totalUsers: 0, activeDrivers: 0, pendingValidations: 0 };
 
+  // LE CERVEAU : Analyse différentielle en temps réel
+  useEffect(() => {
+    if (statsData) {
+      if (isFirstLoad.current) {
+        setSeenValidations(stats.pendingValidations === 0);
+        isFirstLoad.current = false;
+      } else {
+        if (stats.pendingValidations > prevStatsRef.current.pendingValidations) {
+          setSeenValidations(false);
+        }
+        if (stats.totalUsers > prevStatsRef.current.totalUsers) {
+          setSeenUsers(false);
+        }
+      }
+      prevStatsRef.current = { pendingValidations: stats.pendingValidations, totalUsers: stats.totalUsers };
+    }
+  }, [stats.pendingValidations, stats.totalUsers, statsData]);
+
+  // FONCTION D'ACQUITTEMENT : Le clic efface la pastille
+  const handleNavigate = (route, id) => {
+    if (id === 'validations') setSeenValidations(true);
+    if (id === 'users') setSeenUsers(true);
+    navigation.navigate(route);
+  };
+
   const menuItems = [
-    { id: 'validations', title: 'Centre de Validation', icon: 'checkmark-circle-outline', route: 'ValidationCenter', badge: stats.pendingValidations > 0 ? stats.pendingValidations : undefined, allowed: true },
-    { id: 'users', title: 'Gestion Utilisateurs', icon: 'people-outline', route: 'UsersManagement', allowed: true },
+    { 
+      id: 'validations', 
+      title: 'Centre de Validation', 
+      icon: 'checkmark-circle-outline', 
+      route: 'ValidationCenter', 
+      badge: !seenValidations && stats.pendingValidations > 0 ? stats.pendingValidations : undefined, 
+      allowed: true 
+    },
+    { 
+      id: 'users', 
+      title: 'Gestion Utilisateurs', 
+      icon: 'people-outline', 
+      route: 'UsersManagement', 
+      badge: !seenUsers ? "!" : undefined, 
+      allowed: true 
+    },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin }
   ];
@@ -105,15 +151,16 @@ const AdminDashboard = () => {
         <Text style={styles.sectionTitle}>Modules d'Administration</Text>
         <View style={styles.menuGrid}>
           {menuItems.filter(item => item.allowed).map((item) => (
-            <TouchableOpacity key={item.id} activeOpacity={0.7} onPress={() => navigation.navigate(item.route)} style={styles.menuButtonWrapper}>
+            <TouchableOpacity 
+              key={item.id} 
+              activeOpacity={0.7} 
+              onPress={() => handleNavigate(item.route, item.id)} // Interception du clic
+              style={styles.menuButtonWrapper}
+            >
               <GlassMenuCard style={styles.menuCard}>
                 <View style={styles.menuIconContainer}>
                   <Ionicons name={item.icon} size={32} color={THEME.COLORS.textPrimary} />
-                  {item.badge != null && (
-                    <View style={styles.badge}>
-                      <Text style={styles.badgeText}>{item.badge}</Text>
-                    </View>
-                  )}
+                  <BlinkingBadge count={item.badge} />
                 </View>
                 <Text style={styles.menuTitle}>{item.title}</Text>
               </GlassMenuCard>
@@ -164,9 +211,7 @@ const styles = StyleSheet.create({
   menuButtonWrapper: { width: '48%', marginBottom: 15 },
   menuCard: { height: 120 },
   menuIconContainer: { position: 'relative', marginBottom: 12 },
-  menuTitle: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '500', textAlign: 'center' },
-  badge: { position: 'absolute', top: -5, right: -10, backgroundColor: THEME.COLORS.danger, borderRadius: 12, minWidth: 24, height: 24, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6, borderWidth: 2, borderColor: THEME.COLORS.background },
-  badgeText: { color: THEME.COLORS.pureWhite, fontSize: 12, fontWeight: 'bold' }
+  menuTitle: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '500', textAlign: 'center' }
 });
 
 export default AdminDashboard;

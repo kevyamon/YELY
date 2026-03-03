@@ -1,12 +1,14 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Gestion d'Erreur Explicite
+// ECRAN UTILISATEURS - Intégration ScrollToTop (1/2 ecran) et UserInfoModal
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { ConfirmModal, UserInfoModal } from '../../components/admin/AdminModals';
+import React, { useRef, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { ConfirmModal } from '../../components/admin/AdminModals';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
+import UserInfoModal from '../../components/admin/UserInfoModal';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -28,6 +30,21 @@ const UsersManagement = ({ navigation }) => {
 
   const [confirmConfig, setConfirmConfig] = useState({ visible: false, title: '', message: '', onConfirm: null, isDestructive: false });
   const [selectedInfoUser, setSelectedInfoUser] = useState(null);
+
+  // LOGIQUE SCROLL TO TOP (A la moitie de l'ecran)
+  const flatListRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const { height: screenHeight } = useWindowDimensions();
+
+  const handleScroll = (event) => {
+    const scrollPosition = event.nativeEvent.contentOffset.y;
+    // Le bouton s'affiche si on a defile de plus de 50% de la hauteur de l'ecran
+    setShowScrollTop(scrollPosition > screenHeight / 2);
+  };
+
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
 
   const users = usersResponse?.data?.users || usersResponse?.users || [];
 
@@ -138,15 +155,20 @@ const UsersManagement = ({ navigation }) => {
         <ActivityIndicator size="large" color={THEME.COLORS.primary} style={{ marginTop: 50 }} />
       ) : (
         <FlatList
+          ref={flatListRef}
           data={users}
           keyExtractor={(item) => item._id}
           renderItem={renderUserItem}
           contentContainerStyle={styles.listContent}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           onRefresh={refetch}
           refreshing={isLoading}
           ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouvé.</Text>}
         />
       )}
+
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       <ConfirmModal 
         visible={confirmConfig.visible}
@@ -179,7 +201,7 @@ const styles = StyleSheet.create({
   errorTextContainer: { flex: 1 },
   errorTitle: { color: THEME.COLORS.pureWhite, fontWeight: 'bold', fontSize: 16 },
   errorDetail: { color: THEME.COLORS.pureWhite, fontSize: 13, marginTop: 4 },
-  listContent: { paddingHorizontal: 20, paddingBottom: 40 },
+  listContent: { paddingHorizontal: 20, paddingBottom: 80 },
   glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.lg, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 12 },
   glassContent: { padding: 15 },
   userInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
