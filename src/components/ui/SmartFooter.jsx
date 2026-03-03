@@ -1,58 +1,55 @@
 // src/components/ui/SmartFooter.jsx
-// FOOTER INTELLIGENT - Bouton de commande réactif au KML Maféré avec Modale Passagers
+// FOOTER INTELLIGENT - Bouton de commande reactif au KML Mafere avec Modale Passagers
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
-import PassengerCountModal from '../ride/PassengerCountModal'; // <-- IMPORT DE LA MODALE
-import VehicleCarousel from '../ride/VehicleCarousel';
+import PassengerCountModal from '../ride/PassengerCountModal';
 import AvailabilityCard from './AvailabilityCard';
 
 const SmartFooter = ({
   destination,
-  displayVehicles,
-  selectedVehicle,
-  onSelectVehicle,
   isEstimating,
-  estimationData,
-  estimateError,
   onConfirmRide,
   isAvailable,
   onToggle,
   isToggling,
+  onSelectVehicle,
   isUserInZone = true 
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   const isRider = user?.role === 'rider';
 
-  // ETAT LOCAL POUR LA MODALE
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
+
+  // Force le choix du vehicule standard en arriere-plan pour satisfaire le flux de donnees
+  useEffect(() => {
+    if (isRider && onSelectVehicle) {
+      onSelectVehicle({ type: 'standard', id: 'standard_1', name: 'Standard' });
+    }
+  }, [isRider, onSelectVehicle]);
 
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
 
-  // LOGIQUE METIER : Gestion de l'etat du bouton
-  const isButtonDisabled = !selectedVehicle || isEstimating || !isUserInZone;
+  // Le bouton ne depend plus de selectedVehicle, uniquement de la zone et du chargement
+  const isButtonDisabled = isEstimating || !isUserInZone;
   
-  let buttonText = 'Sélectionnez un véhicule';
+  let buttonText = 'Commander un Yely';
   if (!isUserInZone) {
     buttonText = 'Zone non couverte'; 
-  } else if (selectedVehicle) {
-    buttonText = `Commander Yély ${selectedVehicle.name}`; 
   }
 
-  // INTERCEPTION DU CLIC POUR OUVRIR LA MODALE
   const handleInitialConfirm = () => {
     if (isButtonDisabled) return;
     setIsPassengerModalVisible(true);
   };
 
-  // VALIDATION FINALE DEPUIS LA MODALE
   const handleFinalConfirm = (passengersCount) => {
     setIsPassengerModalVisible(false);
     onConfirmRide(passengersCount);
@@ -62,24 +59,12 @@ const SmartFooter = ({
     <View style={[styles.container, { paddingBottom }]}>
       {isRider ? (
         <>
-          <View style={styles.titleRow}>
-            <Text style={styles.sectionTitle}>NOS OFFRES</Text>
-          </View>
-          
           {destination ? (
              <View style={styles.estimationWrapper}>
-               <VehicleCarousel 
-                 vehicles={displayVehicles}
-                 selectedVehicle={selectedVehicle}
-                 onSelect={onSelectVehicle}
-                 isLoading={isEstimating && !estimationData}
-                 error={estimateError}
-               />
-               
                <TouchableOpacity 
                  style={[styles.confirmButton, isButtonDisabled && styles.confirmButtonDisabled]}
                  disabled={isButtonDisabled}
-                 onPress={handleInitialConfirm} // <-- ICI ON OUVRE LA MODALE
+                 onPress={handleInitialConfirm}
                  activeOpacity={0.9}
                >
                  <View style={styles.buttonContent}>
@@ -107,16 +92,15 @@ const SmartFooter = ({
                  <>
                    <Ionicons name="warning-outline" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
                    <Text style={[styles.emptyText, { color: THEME.COLORS.danger, fontWeight: 'bold' }]}>
-                     Vous êtes en dehors de la zone Yély (Maféré).
+                     Vous etes en dehors de la zone Yely (Mafere).
                    </Text>
                  </>
                ) : (
-                 <Text style={styles.emptyText}>Sélectionnez une destination</Text>
+                 <Text style={styles.emptyText}>Selectionnez une destination</Text>
                )}
              </View>
           )}
 
-          {/* INJECTION DE LA MODALE ICI */}
           <PassengerCountModal 
             visible={isPassengerModalVisible}
             onClose={() => setIsPassengerModalVisible(false)}
@@ -151,8 +135,6 @@ const StatBox = ({ icon, value, label, isGold }) => (
 
 const styles = StyleSheet.create({
   container: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: THEME.COLORS.background, paddingHorizontal: THEME.SPACING.lg, paddingTop: THEME.SPACING.xl, borderTopLeftRadius: 36, borderTopRightRadius: 36, zIndex: 10, borderWidth: 2.5, borderBottomWidth: 0, borderColor: THEME.COLORS.champagneGold, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: -8 }, shadowOpacity: 0.5, shadowRadius: 16, elevation: 15 },
-  titleRow: { flexDirection: 'row', justifyContent: 'space-between', width: '100%', alignItems: 'center', marginBottom: 10 },
-  sectionTitle: { color: THEME.COLORS.textSecondary, fontSize: 11, fontWeight: 'bold', letterSpacing: 2 },
   estimationWrapper: { width: '100%', alignItems: 'center' },
   emptyBox: { width: '100%', height: 90, backgroundColor: THEME.COLORS.glassLight, borderRadius: 16, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, justifyContent: 'center', alignItems: 'center', marginBottom: 10 },
   emptyText: { color: THEME.COLORS.textTertiary, fontStyle: 'italic', fontSize: 13, textAlign: 'center', paddingHorizontal: 20 },

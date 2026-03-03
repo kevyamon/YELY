@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -48,7 +48,7 @@ const DriverRequestModal = () => {
       await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
       
       dispatch(showSuccessToast({ 
-        title: 'Offre envoyee !', 
+        title: 'Offre envoyee', 
         message: 'En attente de la reponse du client.' 
       }));
       
@@ -67,8 +67,19 @@ const DriverRequestModal = () => {
 
   const priceOptions = incomingRide.priceOptions || [];
   
-  // SECU : Extraction ultra-robuste du nombre de passagers pour eviter la valeur par defaut a 1
+  // Extraction robuste du nombre de passagers
   const passengersCount = incomingRide.passengersCount || incomingRide.passengers || incomingRide.seats || incomingRide.passengerCount || 1;
+  const isGroupRide = passengersCount > 1;
+
+  // Dictionnaire de traduction pour remplacer le jargon par des termes locaux
+  const getLocalLabel = (backendLabel) => {
+    switch (backendLabel?.toUpperCase()) {
+      case 'ECO': return 'Tarif Normal';
+      case 'STANDARD': return 'Depart Rapide';
+      case 'PREMIUM': return 'Prix Majore';
+      default: return 'Tarif Propose';
+    }
+  };
 
   return (
     <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
@@ -76,21 +87,33 @@ const DriverRequestModal = () => {
       <View style={styles.header}>
         <View style={styles.headerTitles}>
           <Text style={styles.title}>Nouvelle Demande</Text>
-          <View style={styles.badgesRow}>
-            <View style={styles.passengerBadge}>
-               <Ionicons 
-                 name={passengersCount > 1 ? 'people' : 'person'} 
-                 size={14} 
-                 color={THEME.COLORS.textPrimary} 
-               />
-               <Text style={styles.passengerBadgeText}>
-                 {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
-               </Text>
-            </View>
-          </View>
         </View>
-        
         <Text style={styles.distance}>{incomingRide.distance} km</Text>
+      </View>
+
+      <View style={[
+        styles.passengerAlertContainer, 
+        isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle
+      ]}>
+        <Ionicons 
+          name={isGroupRide ? 'people' : 'person'} 
+          size={32} 
+          color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
+        />
+        <View style={styles.passengerAlertTextContainer}>
+          <Text style={[
+            styles.passengerAlertTitle,
+            isGroupRide && { color: THEME.COLORS.danger }
+          ]}>
+            {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
+          </Text>
+          <Text style={[
+            styles.passengerAlertSubtitle,
+            isGroupRide && { color: THEME.COLORS.danger }
+          ]}>
+            {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
+          </Text>
+        </View>
       </View>
 
       <View style={styles.routeTimelineContainer}>
@@ -102,7 +125,7 @@ const DriverRequestModal = () => {
         
         <View style={styles.addressTextContainer}>
           <View style={styles.addressBlock}>
-            <Text style={styles.addressLabel}>Lieu de prise en charge</Text>
+            <Text style={styles.addressLabel}>Prise en charge</Text>
             <Text style={styles.addressValue} numberOfLines={2}>
               {incomingRide.origin?.address || 'Position inconnue'}
             </Text>
@@ -132,7 +155,7 @@ const DriverRequestModal = () => {
                 disabled={!!loadingStep}
               >
                 <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
-                  {option.label}
+                  {getLocalLabel(option.label)}
                 </Text>
                 <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
                   {option.amount} F
@@ -174,7 +197,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    marginBottom: THEME.SPACING.lg,
+    marginBottom: THEME.SPACING.md,
   },
   headerTitles: {
     flex: 1,
@@ -184,29 +207,6 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: THEME.COLORS.textPrimary,
     letterSpacing: 0.5,
-  },
-  badgesRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-    marginTop: 8,
-  },
-  passengerBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.champagneGold + '20',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 8,
-    gap: 6,
-  },
-  passengerBadgeText: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: THEME.COLORS.champagneGold,
-    textTransform: 'uppercase',
   },
   distance: {
     fontSize: 16,
@@ -219,6 +219,39 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 12,
     marginLeft: 10,
+  },
+  passengerAlertContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: THEME.SPACING.md,
+    borderRadius: 12,
+    borderWidth: 2,
+    marginBottom: THEME.SPACING.lg,
+  },
+  passengerAlertSingle: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderColor: THEME.COLORS.border,
+  },
+  passengerAlertGroup: {
+    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+    borderColor: THEME.COLORS.danger,
+  },
+  passengerAlertTextContainer: {
+    marginLeft: 15,
+    flex: 1,
+  },
+  passengerAlertTitle: {
+    fontSize: 14,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  passengerAlertSubtitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME.COLORS.textSecondary,
+    marginTop: 2,
   },
   routeTimelineContainer: {
     flexDirection: 'row',
@@ -310,10 +343,12 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   optionLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: THEME.COLORS.textTertiary,
     marginBottom: 6,
-    fontWeight: '700',
+    fontWeight: '800',
+    textTransform: 'uppercase',
+    textAlign: 'center',
   },
   optionAmount: {
     fontSize: 17,

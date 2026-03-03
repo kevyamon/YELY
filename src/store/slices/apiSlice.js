@@ -53,17 +53,27 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           extraOptions
         );
 
-        if (refreshResult.data && refreshResult.data.success) {
+        // EXTRACTION ULTRA-ROBUSTE
+        // On cible directement la donnee vitale au lieu de dependre d'une clef 'success'
+        const newAccessToken = refreshResult.data?.data?.accessToken || refreshResult.data?.accessToken;
+        const newRefreshToken = refreshResult.data?.data?.refreshToken || refreshResult.data?.refreshToken || refreshToken;
+
+        if (newAccessToken) {
           api.dispatch(setCredentials({ 
-            accessToken: refreshResult.data.data.accessToken,
-            refreshToken: refreshResult.data.data.refreshToken || refreshToken
+            accessToken: newAccessToken,
+            refreshToken: newRefreshToken
           }));
           
+          // Rejeu de la requete initiale en silence total
           result = await baseQuery(args, api, extraOptions);
-        } else if (refreshResult.error && refreshResult.error.status !== 'FETCH_ERROR') {
-          // Rejet explicite du serveur (ex: token expire ou banni).
-          // On ne deconnecte PAS l'utilisateur sur une simple coupure reseau (FETCH_ERROR).
-          api.dispatch(logout());
+        } else {
+          // Si on n'obtient pas de token, on verifie si c'est une coupure reseau ou un vrai rejet
+          if (refreshResult.error && refreshResult.error.status !== 'FETCH_ERROR') {
+            api.dispatch(logout());
+          } else if (!refreshResult.error) {
+            // Le serveur a repondu 200 mais le format est inattendu ou le token manque
+            api.dispatch(logout());
+          }
         }
       } finally {
         api.dispatch(setRefreshing(false));
