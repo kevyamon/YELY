@@ -6,9 +6,11 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSelector } from 'react-redux';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import ValidationModal from '../../components/admin/ValidationModal';
 import { useApproveTransactionMutation, useGetValidationQueueQuery, useRejectTransactionMutation } from '../../store/api/adminApiSlice';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style, onPress }) => {
@@ -28,7 +30,8 @@ const ValidationCenter = ({ navigation }) => {
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  // TEMPS REEL : Polling toutes les 5 secondes pour recuperer les assignations
+  const currentUser = useSelector(selectCurrentUser);
+  
   const { data: queueResponse, isLoading, isFetching, refetch, error } = useGetValidationQueueQuery({ page }, {
     pollingInterval: 5000,
     refetchOnMountOrArgChange: true,
@@ -39,7 +42,6 @@ const ValidationCenter = ({ navigation }) => {
 
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-  // Extraction securisee des donnees selon le standard de reponse de notre API
   const transactions = queueResponse?.data?.transactions || [];
   const isProcessing = isApproving || isRejecting;
 
@@ -48,6 +50,7 @@ const ValidationCenter = ({ navigation }) => {
       await approveTx(id).unwrap(); 
       setSelectedTransaction(null); 
     } catch (e) { 
+      console.error("[ValidationCenter] Erreur lors de l'approbation:", e);
       Alert.alert('Erreur', 'Impossible de valider cette transaction. Veuillez reessayer.'); 
     }
   };
@@ -57,6 +60,7 @@ const ValidationCenter = ({ navigation }) => {
       await rejectTx({ transactionId: id, reason }).unwrap(); 
       setSelectedTransaction(null); 
     } catch (e) { 
+      console.error("[ValidationCenter] Erreur lors du rejet:", e);
       Alert.alert('Erreur', 'Impossible de rejeter cette transaction. Veuillez reessayer.'); 
     }
   };
@@ -75,25 +79,51 @@ const ValidationCenter = ({ navigation }) => {
     return 'INCONNU';
   };
 
-  const renderItem = ({ item }) => (
-    <GlassCard style={styles.transactionCard} onPress={() => setSelectedTransaction(item)}>
-      <View style={styles.cardHeader}>
-        <View style={styles.typeBadge}>
-          <Text style={styles.typeText}>{formatPlanName(item.planId)}</Text>
+  const renderItem = ({ item }) => {
+    const phone = item.senderPhone || item.phone || item.metadata?.senderPhone || 'Non specifie';
+    const amount = item.amount || item.metadata?.amount || 0;
+    const driverName = item.user?.name || 'Chauffeur inconnu';
+    
+    // Verification d'assignation
+    let isAssignedToOther = false;
+    let assigneeName = 'Un autre admin';
+    
+    if (item.assignedAdmin) {
+      const assignedId = typeof item.assignedAdmin === 'string' ? item.assignedAdmin : item.assignedAdmin._id;
+      if (assignedId && currentUser?._id && assignedId !== currentUser._id) {
+        isAssignedToOther = true;
+        assigneeName = item.assignedAdmin.name || assigneeName;
+      }
+    }
+
+    return (
+      <GlassCard style={styles.transactionCard} onPress={() => setSelectedTransaction(item)}>
+        <View style={styles.cardHeader}>
+          <View style={styles.headerLeft}>
+            <View style={styles.typeBadge}>
+              <Text style={styles.typeText}>{formatPlanName(item.planId)}</Text>
+            </View>
+            {isAssignedToOther && (
+              <View style={styles.assignedBadge}>
+                <Ionicons name="lock-closed" size={10} color={THEME.COLORS.warning} style={styles.assignedIcon} />
+                <Text style={styles.assignedText}>Assigne a {assigneeName}</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
         </View>
-        <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
-      </View>
-      <View style={styles.cardBody}>
-        <Ionicons name="document-attach-outline" size={24} color={THEME.COLORS.primary} style={styles.icon} />
-        <View style={styles.cardInfo}>
-          <Text style={styles.amountText}>{item.amount} FCFA</Text>
-          <Text style={styles.driverNameText}>{item.user?.name || 'Chauffeur inconnu'}</Text>
-          <Text style={styles.phoneText}>Num. Depot: {item.senderPhone || 'Non specifie'}</Text>
+        <View style={styles.cardBody}>
+          <Ionicons name="document-attach-outline" size={24} color={THEME.COLORS.primary} style={styles.icon} />
+          <View style={styles.cardInfo}>
+            <Text style={styles.amountText}>{amount} FCFA</Text>
+            <Text style={styles.driverNameText}>{driverName}</Text>
+            <Text style={styles.phoneText}>Num. Depot: {phone}</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textTertiary} />
         </View>
-        <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textTertiary} />
-      </View>
-    </GlassCard>
-  );
+      </GlassCard>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -172,8 +202,12 @@ const styles = StyleSheet.create({
   glassContent: { padding: 15 },
   transactionCard: { padding: 0 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
-  typeBadge: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  headerLeft: { flexDirection: 'column', alignItems: 'flex-start' },
+  typeBadge: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.primary, paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginBottom: 4 },
   typeText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: 'bold', letterSpacing: 1 },
+  assignedBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 193, 7, 0.1)', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 4, borderWidth: 1, borderColor: THEME.COLORS.warning },
+  assignedIcon: { marginRight: 4 },
+  assignedText: { color: THEME.COLORS.warning, fontSize: 10, fontWeight: 'bold' },
   dateText: { color: THEME.COLORS.textSecondary, fontSize: 12 },
   cardBody: { flexDirection: 'row', alignItems: 'center' },
   icon: { marginRight: 15 },

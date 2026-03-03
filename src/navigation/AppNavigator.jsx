@@ -109,6 +109,9 @@ const AppNavigator = () => {
 
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  
+  // Sas de securite : Verification stricte si l'abonnement du chauffeur est en cours de validation
+  const isSubscriptionPending = isDriver && (user?.subscriptionStatus === 'pending' || user?.subscription?.status === 'pending');
 
   return (
     <Stack.Navigator
@@ -134,13 +137,19 @@ const AppNavigator = () => {
               <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
             </Stack.Group>
+          ) : isSubscriptionPending ? (
+            // Isolation stricte : si en pending, l'utilisateur ne peut voir QUE le WaitScreen
+            <Stack.Group>
+              <Stack.Screen name="WaitSubscription" component={WaitScreen} />
+            </Stack.Group>
           ) : isDriver ? (
-                <Stack.Screen name="DriverHome" component={DriverHome} />
+            <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
-                <Stack.Screen name="RiderHome" component={RiderHome} />
+            <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {!isAdmin && (
+          {/* Menus et Modales secondaires accessibles uniquement si on n'est pas bloque dans le sas */}
+          {!isAdmin && !isSubscriptionPending && (
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen 
                 name="Menu" 
@@ -165,7 +174,6 @@ const AppNavigator = () => {
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
               
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-              <Stack.Screen name="WaitSubscription" component={WaitScreen} />
             </Stack.Group>
           )}
         </Stack.Group>

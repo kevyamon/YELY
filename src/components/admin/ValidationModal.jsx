@@ -10,12 +10,14 @@ import THEME from '../../theme/theme';
 
 const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, isProcessing }) => {
   const [rejectMode, setRejectMode] = useState(false);
+  const [confirmApproveMode, setConfirmApproveMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
 
   if (!transaction) return null;
 
   const handleClose = () => {
     setRejectMode(false);
+    setConfirmApproveMode(false);
     setRejectReason('');
     onClose();
   };
@@ -24,6 +26,9 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     if (!rejectReason.trim()) return;
     onReject(transaction._id, rejectReason);
   };
+
+  const imageUrl = transaction.proofUrl || transaction.receiptUrl || transaction.metadata?.proofUrl || transaction.metadata?.receiptUrl || null;
+  const senderPhone = transaction.senderPhone || transaction.phone || transaction.metadata?.senderPhone || 'Non specifie';
 
   return (
     <Modal
@@ -48,10 +53,10 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>
-              <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : 'MENSUEL (6000F)'}
+              <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000F)' : 'INCONNU'}
             </Text>
             <Text style={styles.infoText}>
-              <Text style={styles.bold}>Tel. Paiement :</Text> {transaction.senderPhone || 'Non specifie'}
+              <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}
             </Text>
             <Text style={styles.infoText}>
               <Text style={styles.bold}>Date :</Text> {new Date(transaction.createdAt).toLocaleString('fr-FR')}
@@ -59,21 +64,21 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
           </View>
 
           <View style={styles.imageContainer}>
-            {transaction.proofUrl ? (
+            {imageUrl ? (
               <Image 
-                source={{ uri: transaction.proofUrl }} 
+                source={{ uri: imageUrl }} 
                 style={styles.proofImage} 
                 resizeMode="contain"
               />
             ) : (
               <View style={styles.noImagePlaceholder}>
                 <Ionicons name="image-outline" size={48} color={THEME.COLORS.textTertiary} />
-                <Text style={styles.noImageText}>Aucune preuve fournie</Text>
+                <Text style={styles.noImageText}>Aucune preuve fournie ou illisible</Text>
               </View>
             )}
           </View>
 
-          {!rejectMode ? (
+          {!rejectMode && !confirmApproveMode ? (
             <View style={styles.actionButtons}>
               <TouchableOpacity 
                 style={[styles.button, styles.rejectButton]} 
@@ -86,24 +91,18 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
               
               <TouchableOpacity 
                 style={[styles.button, styles.approveButton]} 
-                onPress={() => onApprove(transaction._id)}
+                onPress={() => setConfirmApproveMode(true)}
                 disabled={isProcessing}
               >
-                {isProcessing ? (
-                  <ActivityIndicator color={THEME.COLORS.textInverse} />
-                ) : (
-                  <>
-                    <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse} style={styles.buttonIcon} />
-                    <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
-                  </>
-                )}
+                <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse || '#FFFFFF'} style={styles.buttonIcon} />
+                <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
               </TouchableOpacity>
             </View>
-          ) : (
-            <View style={styles.rejectSection}>
-              <Text style={styles.rejectLabel}>Motif du rejet :</Text>
+          ) : rejectMode ? (
+            <View style={styles.actionSection}>
+              <Text style={styles.actionLabelDanger}>Motif du rejet :</Text>
               <TextInput
-                style={styles.rejectInput}
+                style={styles.inputField}
                 placeholder="Ex: Image illisible, Montant incorrect..."
                 placeholderTextColor={THEME.COLORS.textTertiary}
                 value={rejectReason}
@@ -119,7 +118,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                   <Text style={styles.buttonTextPrimary}>Annuler</Text>
                 </TouchableOpacity>
                 <TouchableOpacity 
-                  style={[styles.button, styles.confirmRejectButton, !rejectReason.trim() && styles.buttonDisabled]} 
+                  style={[styles.button, styles.confirmDangerButton, !rejectReason.trim() && styles.buttonDisabled]} 
                   onPress={handleRejectSubmit}
                   disabled={isProcessing || !rejectReason.trim()}
                 >
@@ -127,6 +126,31 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                     <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
                   ) : (
                     <Text style={styles.buttonTextInverseBold}>Confirmer Rejet</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          ) : (
+            <View style={styles.actionSection}>
+              <Text style={styles.actionLabelSuccess}>Confirmer l'activation ?</Text>
+              <Text style={styles.actionWarningText}>Cette action prolongera l'abonnement du chauffeur immediatement et est irreversible depuis cette interface.</Text>
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.cancelButton]} 
+                  onPress={() => setConfirmApproveMode(false)}
+                  disabled={isProcessing}
+                >
+                  <Text style={styles.buttonTextPrimary}>Annuler</Text>
+                </TouchableOpacity>
+                <TouchableOpacity 
+                  style={[styles.button, styles.confirmSuccessButton]} 
+                  onPress={() => onApprove(transaction._id)}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
+                  ) : (
+                    <Text style={styles.buttonTextInverseBold}>Oui, Activer</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -155,16 +179,19 @@ const styles = StyleSheet.create({
   approveButton: { backgroundColor: THEME.COLORS.primary },
   rejectButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.danger },
   cancelButton: { backgroundColor: THEME.COLORS.overlay },
-  confirmRejectButton: { backgroundColor: THEME.COLORS.danger },
+  confirmDangerButton: { backgroundColor: THEME.COLORS.danger },
+  confirmSuccessButton: { backgroundColor: THEME.COLORS.primary },
   buttonDisabled: { opacity: 0.5 },
   buttonIcon: { marginRight: 8 },
   buttonTextInverse: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
   buttonTextInverseBold: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
   buttonTextDanger: { color: THEME.COLORS.danger, fontWeight: 'bold', fontSize: 16 },
   buttonTextPrimary: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
-  rejectSection: { width: '100%' },
-  rejectLabel: { color: THEME.COLORS.danger, fontWeight: 'bold', marginBottom: 8 },
-  rejectInput: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS?.radius?.md || 8, padding: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 15 }
+  actionSection: { width: '100%' },
+  actionLabelDanger: { color: THEME.COLORS.danger, fontWeight: 'bold', marginBottom: 8 },
+  actionLabelSuccess: { color: THEME.COLORS.primary, fontWeight: 'bold', marginBottom: 8 },
+  actionWarningText: { color: THEME.COLORS.textSecondary, fontSize: 13, marginBottom: 15, fontStyle: 'italic' },
+  inputField: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS?.radius?.md || 8, padding: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 15 }
 });
 
 export default ValidationModal;
