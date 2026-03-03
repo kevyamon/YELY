@@ -10,7 +10,13 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import SecureStorageAdapter from '../store/secureStoreAdapter';
-import { logout, restoreAuth, selectCurrentUser, selectIsAuthenticated, setCredentials } from '../store/slices/authSlice';
+import {
+  forceSilentRefresh,
+  logout,
+  restoreAuth,
+  selectCurrentUser,
+  selectIsAuthenticated
+} from '../store/slices/authSlice';
 import THEME from '../theme/theme';
 
 // Screens Auth
@@ -28,14 +34,13 @@ import PancarteScreen from '../screens/ride/PancarteScreen';
 // Menu
 import MenuScreen from '../screens/MenuScreen';
 
-// Ecrans Admin (Ajoutes)
+// Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
-// Composant temporaire pour les modules non encore developpes
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -69,35 +74,17 @@ const AppNavigator = () => {
         if (storedUserStr && storedRefreshToken && storedToken) {
           const storedUser = JSON.parse(storedUserStr);
 
-          try {
-            const API_URL = process.env.EXPO_PUBLIC_API_URL;
-            const response = await fetch(`${API_URL}/auth/refresh`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ refreshToken: storedRefreshToken }),
-            });
+          // RESTAURATION IMMEDIATE (Optimiste)
+          dispatch(restoreAuth({ 
+            user: storedUser, 
+            token: storedToken, 
+            refreshToken: storedRefreshToken 
+          }));
 
-            if (response.ok) {
-              const data = await response.json();
-              if (data.success) {
-                dispatch(setCredentials({
-                  user: storedUser,
-                  accessToken: data.data.accessToken,
-                  refreshToken: data.data.refreshToken || storedRefreshToken,
-                }));
-              } else {
-                dispatch(logout()); 
-              }
-            } else {
-              if (response.status === 401 || response.status === 403) {
-                dispatch(logout());
-              } else {
-                dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
-              }
-            }
-          } catch (networkError) {
-            dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
-          }
+          // VALIDATION SILENCIEUSE (Arriere-plan via le Store)
+          // On utilise la logique centralisee au lieu d'un fetch manuel
+          dispatch(forceSilentRefresh());
+          
         } else {
           dispatch(logout()); 
         }
@@ -106,7 +93,10 @@ const AppNavigator = () => {
         dispatch(logout());
       } finally {
         setIsReady(true);
-        await SplashScreen.hideAsync();
+        // On laisse un court delai pour que l'UI se stabilise avant de retirer le splash
+        setTimeout(async () => {
+          await SplashScreen.hideAsync();
+        }, 100);
       }
     };
 
@@ -137,31 +127,26 @@ const AppNavigator = () => {
       ) : (
         <Stack.Group>
           {isAdmin ? (
-            // FORTERESSE ADMIN (Isolation stricte des routes)
-            <>
+            <Stack.Group>
               <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
               <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
               <Stack.Screen name="UsersManagement" component={UsersManagement} />
               <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
-            </>
+            </Stack.Group>
           ) : isDriver ? (
-            // INTERFACE CHAUFFEUR
              <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
-            // INTERFACE PASSAGER
              <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {/* ECRANS COMMUNS ET OUTILS (Verrouilles pour les Admins) */}
           {!isAdmin && (
-            <>
+            <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen 
                 name="Menu" 
                 component={MenuScreen} 
                 options={{
                   animation: 'fade_from_bottom',
-                  presentation: 'transparentModal',
                   gestureEnabled: true,
                   animationDuration: 100, 
                 }}
@@ -179,7 +164,7 @@ const AppNavigator = () => {
               <Stack.Screen name="History" component={PlaceholderScreen} />
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
               <Stack.Screen name="Subscription" component={PlaceholderScreen} />
-            </>
+            </Stack.Group>
           )}
         </Stack.Group>
       )}

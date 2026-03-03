@@ -29,7 +29,7 @@ const authSlice = createSlice({
       if (finalToken) state.token = finalToken;
       if (refreshToken) state.refreshToken = refreshToken;
       
-      state.isAuthenticated = true;
+      state.isAuthenticated = !!(state.user && state.token);
 
       if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
       if (state.token) SecureStorageAdapter.setItem('token', state.token);
@@ -69,6 +69,43 @@ const authSlice = createSlice({
 });
 
 export const { setCredentials, updateUserInfo, logout, restoreAuth, setRefreshing } = authSlice.actions;
+
+/**
+ * Thunk pour forcer un rafraichissement silencieux du profil et du token.
+ * Indispensable pour mettre a jour les permissions (ex: passage en mode Admin).
+ */
+export const forceSilentRefresh = () => async (dispatch, getState) => {
+  const { auth } = getState();
+  const currentRefreshToken = auth.refreshToken;
+
+  if (!currentRefreshToken || auth.isRefreshing) return;
+
+  try {
+    dispatch(setRefreshing(true));
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+    
+    const response = await fetch(`${API_URL}/auth/refresh`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ refreshToken: currentRefreshToken })
+    });
+
+    const result = await response.json();
+
+    if (response.ok && result.success) {
+      dispatch(setCredentials({
+        user: result.data.user,
+        accessToken: result.data.accessToken,
+        refreshToken: result.data.refreshToken || currentRefreshToken
+      }));
+    }
+  } catch (error) {
+    console.error("[AUTH] Echec du rafraichissement force:", error);
+  } finally {
+    dispatch(setRefreshing(false));
+  }
+};
+
 export default authSlice.reducer;
 
 export const selectCurrentUser = (state) => state.auth.user;

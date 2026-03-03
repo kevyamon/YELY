@@ -14,7 +14,6 @@ const baseQuery = fetchBaseQuery({
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
-    // N'injecte le token que s'il existe (et s'il n'est pas pour la route refresh, gere plus bas)
     if (token) {
       headers.set('authorization', `Bearer ${token}`);
     }
@@ -31,7 +30,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   
   let result = await baseQuery(args, api, extraOptions);
 
-  if (result.error && result.error.status === 401) {
+  // GESTION DES ERREURS 401 (Expire) ET 403 (Forbidden - Changement de permissions)
+  if (result.error && (result.error.status === 401 || result.error.status === 403)) {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
       try {
@@ -45,57 +45,48 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return result;
         }
 
-        console.info('[AUTH] Access Token expire. Tentative de rafraichissement silencieux...');
+        console.info('[AUTH] Session expiree ou permissions insuffisantes. Tentative de rafraichissement...');
 
-        // CRITIQUE : Appel direct sans passer par baseQuery pour eviter l'injection du token expire
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
-            // AUCUN HEADER AUTHORIZATION ICI
           },
           body: JSON.stringify({ refreshToken })
         });
 
         const refreshData = await refreshResponse.json();
 
-        if (refreshResponse.ok) {
-          const newAccessToken = refreshData?.data?.accessToken || refreshData?.accessToken;
-          const newRefreshToken = refreshData?.data?.refreshToken || refreshData?.refreshToken || refreshToken;
+        if (refreshResponse.ok && refreshData.success) {
+          const payload = refreshData.data;
+          const newAccessToken = payload?.accessToken;
+          const newRefreshToken = payload?.refreshToken || refreshToken;
 
           if (newAccessToken) {
-            console.info('[AUTH] Rafraichissement reussi. Mise a jour du store et rejeu de la requete.');
+            console.info('[AUTH] Rafraichissement reussi. Mise a jour du profil et rejeu.');
             api.dispatch(setCredentials({ 
               accessToken: newAccessToken,
               refreshToken: newRefreshToken,
-              // On conserve l'utilisateur existant
-              user: api.getState().auth.user 
+              user: payload?.user || api.getState().auth.user 
             }));
             
-            // Rejeu de la requete initiale qui avait echoue
             result = await baseQuery(args, api, extraOptions);
           } else {
-            console.error('[AUTH] Reponse refresh valide mais accessToken manquant dans le payload.');
             api.dispatch(logout());
           }
-        } else {
-          console.error(`[AUTH] Echec du rafraichissement (${refreshResponse.status}):`, refreshData);
-          // Le Refresh Token lui-meme est expire ou invalide
+        } else if (refreshResponse.status === 401 || refreshResponse.status === 400) {
+          // On ne deconnecte que si le token est explicitement invalide
           api.dispatch(logout());
         }
       } catch (error) {
         console.error('[AUTH] Erreur reseau critique lors du rafraichissement:', error);
-        // Ne pas deconecter l'utilisateur s'il s'agit juste d'une coupure Internet (fetch failed)
-        if (error.message !== 'Network request failed') {
-           api.dispatch(logout());
-        }
+        // SECURITE : On ne deconnecte pas en cas de simple coupure internet
       } finally {
         api.dispatch(setRefreshing(false));
         release();
       }
     } else {
-      // Les requetes concurrentes attendent que le mutex se libere, puis se rejouent
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
@@ -107,7 +98,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  // DECLARATION EXHAUSTIVE DE TOUS LES TAGS DU SYSTEME
   tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification'],
   endpoints: () => ({}),
 });

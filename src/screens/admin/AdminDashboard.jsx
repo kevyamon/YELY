@@ -1,5 +1,5 @@
 // src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Cerveau Local, Acquittement au Clic et Clignotement
+// ECRAN COCKPIT - Rafraichissement des Claims Admin au Montage
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -14,7 +14,7 @@ import HelpModal from '../../components/admin/HelpModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import StatCard from '../../components/admin/StatCard';
 import { useGetDashboardStatsQuery } from '../../store/api/adminApiSlice';
-import { logout, selectCurrentUser } from '../../store/slices/authSlice';
+import { forceSilentRefresh, logout, selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const GlassMenuCard = ({ children, style }) => (
@@ -38,20 +38,23 @@ const AdminDashboard = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  // ÉTATS INTELLIGENTS POUR LES BADGES (Acquittement)
   const [seenValidations, setSeenValidations] = useState(false);
   const [seenUsers, setSeenUsers] = useState(true); 
   const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0 });
   const isFirstLoad = useRef(true);
   
+  // MISE A JOUR DES CLAIMS : On force un refresh pour verifier les droits Admin reels a l'entree
+  useEffect(() => {
+    dispatch(forceSilentRefresh());
+  }, [dispatch]);
+
   const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery(undefined, {
-    pollingInterval: 5000,
+    pollingInterval: 10000, // Ajuste a 10s pour reduire la charge, le refresh initial suffit au demarrage
     refetchOnMountOrArgChange: true,
   });
   
   const stats = statsData?.data || statsData || { totalUsers: 0, activeDrivers: 0, pendingValidations: 0 };
 
-  // LE CERVEAU : Analyse différentielle en temps réel
   useEffect(() => {
     if (statsData) {
       if (isFirstLoad.current) {
@@ -69,7 +72,6 @@ const AdminDashboard = () => {
     }
   }, [stats.pendingValidations, stats.totalUsers, statsData]);
 
-  // FONCTION D'ACQUITTEMENT : Le clic efface la pastille
   const handleNavigate = (route, id) => {
     if (id === 'validations') setSeenValidations(true);
     if (id === 'users') setSeenUsers(true);
@@ -105,7 +107,7 @@ const AdminDashboard = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en regle et en ligne.\n• En Attente : Demandes de validation de paiement non traitees.\n• Utilisateurs : Total des comptes inscrits.\n\nUtilisez les cartes du bas pour naviguer vers les differents modules de gestion.";
+  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en regle et en ligne.\n• En Attente : Demandes de validation de paiement non traitees.\n• Utilisateurs : Total des comptes inscrits.";
 
   return (
     <View style={styles.container}>
@@ -136,7 +138,7 @@ const AdminDashboard = () => {
             <Ionicons name="warning-outline" size={24} color={THEME.COLORS.pureWhite} style={styles.errorIcon} />
             <View style={styles.errorTextContainer}>
               <Text style={styles.errorTitle}>Erreur Serveur ({error?.status || 'X'})</Text>
-              <Text style={styles.errorDetail}>Connexion au Backend refusee.</Text>
+              <Text style={styles.errorDetail}>Accès refusé ou session expirée.</Text>
             </View>
           </View>
         )}
@@ -154,7 +156,7 @@ const AdminDashboard = () => {
             <TouchableOpacity 
               key={item.id} 
               activeOpacity={0.7} 
-              onPress={() => handleNavigate(item.route, item.id)} // Interception du clic
+              onPress={() => handleNavigate(item.route, item.id)}
               style={styles.menuButtonWrapper}
             >
               <GlassMenuCard style={styles.menuCard}>

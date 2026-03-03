@@ -1,9 +1,9 @@
 // src/screens/MenuScreen.jsx
-// PAGE MENU PRINCIPALE (Connectée au Store & Navigation)
-// Remplace l'ancien Drawer latéral.
+// PAGE MENU PRINCIPALE - Rafraichissement de Session au Montage
+// STANDARD: Industriel / Bank Grade
 
 import { useNavigation } from '@react-navigation/native';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -13,8 +13,8 @@ import DrawerFooter from '../components/drawer/DrawerFooter';
 import DrawerHeader from '../components/drawer/DrawerHeader';
 import DrawerMenu from '../components/drawer/DrawerMenu';
 
-// Logique Métier
-import { logout, selectCurrentUser } from '../store/slices/authSlice';
+// Logique Metier
+import { forceSilentRefresh, logout, selectCurrentUser } from '../store/slices/authSlice';
 import THEME from '../theme/theme';
 
 const MenuScreen = () => {
@@ -22,34 +22,32 @@ const MenuScreen = () => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   
-  // 1. Récupération des Données Réelles (Redux)
   const user = useSelector(selectCurrentUser);
-  const role = user?.role || 'rider'; // Fallback sécurité
+  const role = user?.role || 'rider'; 
 
-  // État local pour le loading du logout
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
-  // 2. Gestion de la fermeture
+  // MISE A JOUR SILENCIEUSE : On rafraichit le profil a chaque ouverture de menu
+  useEffect(() => {
+    dispatch(forceSilentRefresh());
+  }, [dispatch]);
+
   const handleClose = () => {
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      // Fallback si on ne peut pas revenir en arrière (ne devrait pas arriver)
       navigation.navigate(role === 'driver' ? 'DriverHome' : 'RiderHome');
     }
   };
 
-  // 3. Gestion de la Navigation
   const handleNavigate = (routeKey) => {
     try {
-      // Pour les pages en construction, ça ira vers le Placeholder défini dans AppNavigator
       navigation.navigate(routeKey);
     } catch (error) {
       console.warn("Route introuvable ou erreur navigation:", routeKey);
     }
   };
 
-  // 4. Gestion de la Déconnexion
   const handleLogout = async () => {
     setIsLoggingOut(true);
     setTimeout(() => {
@@ -64,14 +62,12 @@ const MenuScreen = () => {
       { paddingTop: insets.top, paddingBottom: insets.bottom }
     ]}>
       
-      {/* HEADER : Infos User + Bouton Fermer */}
       <DrawerHeader 
         user={user} 
         role={role} 
         onClose={handleClose} 
       />
 
-      {/* MENU : Liste des liens */}
       <ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
@@ -84,7 +80,6 @@ const MenuScreen = () => {
         />
       </ScrollView>
 
-      {/* FOOTER : Déconnexion + Version */}
       <View style={styles.footerSection}>
         <DrawerFooter 
           onLogout={handleLogout} 
