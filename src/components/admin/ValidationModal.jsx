@@ -48,7 +48,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
           <View style={styles.infoSection}>
             <Text style={styles.infoText}>
-              <Text style={styles.bold}>Type :</Text> {transaction.type === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : 'MENSUEL (6000F)'}
+              <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : 'MENSUEL (6000F)'}
             </Text>
             <Text style={styles.infoText}>
               <Text style={styles.bold}>Tel. Paiement :</Text> {transaction.senderPhone || 'Non specifie'}
@@ -59,9 +59,9 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
           </View>
 
           <View style={styles.imageContainer}>
-            {transaction.proofImageUrl ? (
+            {transaction.proofUrl ? (
               <Image 
-                source={{ uri: transaction.proofImageUrl }} 
+                source={{ uri: transaction.proofUrl }} 
                 style={styles.proofImage} 
                 resizeMode="contain"
               />
@@ -124,9 +124,9 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                   disabled={isProcessing || !rejectReason.trim()}
                 >
                   {isProcessing ? (
-                    <ActivityIndicator color="#FFFFFF" />
+                    <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
                   ) : (
-                    <Text style={{ color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 }}>Confirmer Rejet</Text>
+                    <Text style={styles.buttonTextInverseBold}>Confirmer Rejet</Text>
                   )}
                 </TouchableOpacity>
               </View>
@@ -140,30 +140,31 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
 const styles = StyleSheet.create({
   modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  modalContent: { width: '100%', backgroundColor: THEME.COLORS.glassModal, borderRadius: THEME.BORDERS.radius.xl, padding: 20, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border },
+  modalContent: { width: '100%', backgroundColor: THEME.COLORS.glassModal, borderRadius: THEME.BORDERS?.radius?.xl || 20, padding: 20, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold' },
-  infoSection: { backgroundColor: THEME.COLORS.overlay, padding: 15, borderRadius: THEME.BORDERS.radius.md, marginBottom: 15 },
+  infoSection: { backgroundColor: THEME.COLORS.overlay, padding: 15, borderRadius: THEME.BORDERS?.radius?.md || 8, marginBottom: 15 },
   infoText: { color: THEME.COLORS.textPrimary, fontSize: 14, marginBottom: 4 },
   bold: { fontWeight: 'bold', color: THEME.COLORS.textSecondary },
-  imageContainer: { height: 300, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: THEME.BORDERS.radius.md, overflow: 'hidden', marginBottom: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
+  imageContainer: { height: 300, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: THEME.BORDERS?.radius?.md || 8, overflow: 'hidden', marginBottom: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
   proofImage: { width: '100%', height: '100%' },
   noImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
   noImageText: { color: THEME.COLORS.textTertiary, marginTop: 10 },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
-  button: { flex: 1, flexDirection: 'row', height: 50, borderRadius: THEME.BORDERS.radius.md, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },
+  button: { flex: 1, flexDirection: 'row', height: 50, borderRadius: THEME.BORDERS?.radius?.md || 8, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },
   approveButton: { backgroundColor: THEME.COLORS.primary },
   rejectButton: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.danger },
   cancelButton: { backgroundColor: THEME.COLORS.overlay },
   confirmRejectButton: { backgroundColor: THEME.COLORS.danger },
   buttonDisabled: { opacity: 0.5 },
   buttonIcon: { marginRight: 8 },
-  buttonTextInverse: { color: THEME.COLORS.textInverse, fontWeight: 'bold', fontSize: 16 },
+  buttonTextInverse: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  buttonTextInverseBold: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
   buttonTextDanger: { color: THEME.COLORS.danger, fontWeight: 'bold', fontSize: 16 },
   buttonTextPrimary: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
   rejectSection: { width: '100%' },
   rejectLabel: { color: THEME.COLORS.danger, fontWeight: 'bold', marginBottom: 8 },
-  rejectInput: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS.radius.md, padding: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 15 }
+  rejectInput: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS?.radius?.md || 8, padding: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 15 }
 });
 
 export default ValidationModal;

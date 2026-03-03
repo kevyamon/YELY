@@ -28,8 +28,8 @@ const ValidationCenter = ({ navigation }) => {
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  // TEMPS REEL : Polling toutes les 5 secondes
-  const { data: queueResponse, isLoading, isFetching, refetch, error } = useGetValidationQueueQuery(page, {
+  // TEMPS REEL : Polling toutes les 5 secondes pour recuperer les assignations
+  const { data: queueResponse, isLoading, isFetching, refetch, error } = useGetValidationQueueQuery({ page }, {
     pollingInterval: 5000,
     refetchOnMountOrArgChange: true,
   });
@@ -39,17 +39,26 @@ const ValidationCenter = ({ navigation }) => {
 
   const [selectedTransaction, setSelectedTransaction] = useState(null);
 
-  const transactions = queueResponse?.data?.transactions || queueResponse?.transactions || [];
+  // Extraction securisee des donnees selon le standard de reponse de notre API
+  const transactions = queueResponse?.data?.transactions || [];
   const isProcessing = isApproving || isRejecting;
 
   const handleApprove = async (id) => {
-    try { await approveTx(id).unwrap(); setSelectedTransaction(null); } 
-    catch (e) { Alert.alert('Erreur', 'Impossible de valider cette transaction.'); }
+    try { 
+      await approveTx(id).unwrap(); 
+      setSelectedTransaction(null); 
+    } catch (e) { 
+      Alert.alert('Erreur', 'Impossible de valider cette transaction. Veuillez reessayer.'); 
+    }
   };
 
   const handleReject = async (id, reason) => {
-    try { await rejectTx({ transactionId: id, reason }).unwrap(); setSelectedTransaction(null); } 
-    catch (e) { Alert.alert('Erreur', 'Impossible de rejeter cette transaction.'); }
+    try { 
+      await rejectTx({ transactionId: id, reason }).unwrap(); 
+      setSelectedTransaction(null); 
+    } catch (e) { 
+      Alert.alert('Erreur', 'Impossible de rejeter cette transaction. Veuillez reessayer.'); 
+    }
   };
 
   const handleScroll = (event) => {
@@ -60,11 +69,17 @@ const ValidationCenter = ({ navigation }) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
+  const formatPlanName = (planId) => {
+    if (planId === 'WEEKLY') return 'PASS SEMAINE';
+    if (planId === 'MONTHLY') return 'PASS MOIS';
+    return 'INCONNU';
+  };
+
   const renderItem = ({ item }) => (
     <GlassCard style={styles.transactionCard} onPress={() => setSelectedTransaction(item)}>
       <View style={styles.cardHeader}>
         <View style={styles.typeBadge}>
-          <Text style={styles.typeText}>{item.type}</Text>
+          <Text style={styles.typeText}>{formatPlanName(item.planId)}</Text>
         </View>
         <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
       </View>
@@ -72,7 +87,8 @@ const ValidationCenter = ({ navigation }) => {
         <Ionicons name="document-attach-outline" size={24} color={THEME.COLORS.primary} style={styles.icon} />
         <View style={styles.cardInfo}>
           <Text style={styles.amountText}>{item.amount} FCFA</Text>
-          <Text style={styles.phoneText}>Expediteur: {item.senderPhone || 'Inconnu'}</Text>
+          <Text style={styles.driverNameText}>{item.user?.name || 'Chauffeur inconnu'}</Text>
+          <Text style={styles.phoneText}>Num. Depot: {item.senderPhone || 'Non specifie'}</Text>
         </View>
         <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textTertiary} />
       </View>
@@ -85,16 +101,16 @@ const ValidationCenter = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Validations</Text>
+        <Text style={styles.headerTitle}>Centre de Validation</Text>
       </View>
 
       <View style={styles.listContainer}>
         {error && (
           <View style={styles.errorBanner}>
-            <Ionicons name="warning-outline" size={24} color="#FFFFFF" style={styles.errorIcon} />
+            <Ionicons name="warning-outline" size={24} color={THEME.COLORS.textPrimary || '#FFFFFF'} style={styles.errorIcon} />
             <View style={styles.errorTextContainer}>
-              <Text style={styles.errorTitle}>Erreur Serveur ({error?.status || 'X'})</Text>
-              <Text style={styles.errorDetail}>Impossible de recuperer la file d'attente.</Text>
+              <Text style={styles.errorTitle}>Erreur Reseau ({error?.status || 'X'})</Text>
+              <Text style={styles.errorDetail}>Impossible de synchroniser avec le serveur.</Text>
             </View>
           </View>
         )}
@@ -116,8 +132,8 @@ const ValidationCenter = ({ navigation }) => {
               !error && (
                 <View style={styles.emptyContainer}>
                   <Ionicons name="checkmark-done-circle-outline" size={64} color={THEME.COLORS.textTertiary} />
-                  <Text style={styles.emptyText}>Aucune transaction en attente.</Text>
-                  <Text style={styles.emptySubtext}>Bon travail !</Text>
+                  <Text style={styles.emptyText}>Aucune assignation en attente.</Text>
+                  <Text style={styles.emptySubtext}>Votre file de travail est vide.</Text>
                 </View>
               )
             }
@@ -147,12 +163,12 @@ const styles = StyleSheet.create({
   listContainer: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 80 },
   loader: { marginTop: 50 },
-  errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.danger, padding: 15, marginHorizontal: 20, borderRadius: THEME.BORDERS.radius.md, marginBottom: 20, alignItems: 'center' },
+  errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.error || '#FF4757', padding: 15, marginHorizontal: 20, borderRadius: THEME.BORDERS?.radius?.md || 8, marginBottom: 20, alignItems: 'center' },
   errorIcon: { marginRight: 15 },
   errorTextContainer: { flex: 1 },
-  errorTitle: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  errorDetail: { color: '#FFFFFF', fontSize: 13, marginTop: 4 },
-  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.lg, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 15 },
+  errorTitle: { color: THEME.COLORS.textPrimary || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  errorDetail: { color: THEME.COLORS.textPrimary || '#FFFFFF', fontSize: 13, marginTop: 4 },
+  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS?.radius?.lg || 12, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.glassDark || 'rgba(255, 255, 255, 0.05)', marginBottom: 15 },
   glassContent: { padding: 15 },
   transactionCard: { padding: 0 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
@@ -163,6 +179,7 @@ const styles = StyleSheet.create({
   icon: { marginRight: 15 },
   cardInfo: { flex: 1 },
   amountText: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: 'bold' },
+  driverNameText: { color: THEME.COLORS.primary, fontSize: 14, marginTop: 4, fontWeight: '500' },
   phoneText: { color: THEME.COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', marginTop: 100 },
   emptyText: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: '600', marginTop: 15 },

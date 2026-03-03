@@ -11,8 +11,13 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Stats'],
     }),
     
+    // Modification: Ajout du support pour la vue globale SuperAdmin (viewAll)
     getValidationQueue: builder.query({
-      query: (page = 1) => `/admin/validations?page=${page}`,
+      query: ({ page = 1, viewAll = false } = {}) => {
+        let url = `/admin/validations?page=${page}`;
+        if (viewAll) url += `&viewAll=true`;
+        return url;
+      },
       providesTags: ['Transaction'],
     }),
     
