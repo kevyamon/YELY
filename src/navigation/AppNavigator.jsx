@@ -1,5 +1,5 @@
 // src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION - Demarrage Trustless (Validation de Session)
+// ORCHESTRATEUR DE NAVIGATION - Routage Securise et Isolation par Role
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -28,6 +28,7 @@ import PancarteScreen from '../screens/ride/PancarteScreen';
 // Menu
 import MenuScreen from '../screens/MenuScreen';
 
+// Composant temporaire pour eviter les crashs avant la Vague 4
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -36,7 +37,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Cette fonctionnalite arrive bientot.</Text>
+    <Text style={styles.placeholderText}>Ce module est en cours de developpement (Vague 4).</Text>
   </View>
 );
 
@@ -129,12 +130,13 @@ const AppNavigator = () => {
       ) : (
         <Stack.Group>
           {isAdmin ? (
-            // ZONE ISOLEE ADMIN / SUPERADMIN
+            // FORTERESSE ADMIN (Isolation stricte des routes)
             <>
               <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
-              <Stack.Screen name="Validations" component={PlaceholderScreen} />
-              <Stack.Screen name="Drivers" component={PlaceholderScreen} />
-              <Stack.Screen name="Finance" component={PlaceholderScreen} />
+              <Stack.Screen name="ValidationCenter" component={PlaceholderScreen} />
+              <Stack.Screen name="UsersManagement" component={PlaceholderScreen} />
+              <Stack.Screen name="FinanceConfig" component={PlaceholderScreen} />
+              <Stack.Screen name="AdminJournal" component={PlaceholderScreen} />
             </>
           ) : isDriver ? (
             // INTERFACE CHAUFFEUR
@@ -144,7 +146,7 @@ const AppNavigator = () => {
              <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {/* ECRANS COMMUNS (Hors Admin) */}
+          {/* ECRANS COMMUNS ET OUTILS (Verrouilles pour les Admins) */}
           {!isAdmin && (
             <>
               <Stack.Screen 
@@ -179,11 +181,40 @@ const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  placeholderContainer: { flex: 1, backgroundColor: THEME.COLORS.background, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  backButton: { position: 'absolute', top: 50, left: 20, flexDirection: 'row', alignItems: 'center' },
-  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: 'bold' },
-  placeholderTitle: { color: THEME.COLORS.champagneGold, fontSize: 28, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
-  placeholderText: { color: THEME.COLORS.textSecondary, fontSize: 16, textAlign: 'center' },
+  placeholderContainer: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.background, 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    padding: 20 
+  },
+  backButton: { 
+    position: 'absolute', 
+    top: 50, 
+    left: 20, 
+    flexDirection: 'row', 
+    alignItems: 'center',
+    padding: 10,
+    zIndex: 10
+  },
+  backText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 8, 
+    fontSize: 16, 
+    fontWeight: 'bold' 
+  },
+  placeholderTitle: { 
+    color: THEME.COLORS.champagneGold, 
+    fontSize: 28, 
+    fontWeight: 'bold', 
+    marginTop: 20, 
+    marginBottom: 10 
+  },
+  placeholderText: { 
+    color: THEME.COLORS.textSecondary, 
+    fontSize: 16, 
+    textAlign: 'center' 
+  },
 });
 
 export default AppNavigator;
