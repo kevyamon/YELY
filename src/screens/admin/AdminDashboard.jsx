@@ -1,17 +1,18 @@
 // src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Nettoye du hardcoding, utilise strictement theme.js
+// ECRAN COCKPIT - Temps Reel (Polling), Bouton Logout, ScrollToTop et Correction Badges
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
-import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import React, { useRef, useState } from 'react';
+import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import HelpModal from '../../components/admin/HelpModal';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import StatCard from '../../components/admin/StatCard';
 import { useGetDashboardStatsQuery } from '../../store/api/adminApiSlice';
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { logout, selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const GlassMenuCard = ({ children, style }) => (
@@ -25,52 +26,86 @@ const GlassMenuCard = ({ children, style }) => (
 
 const AdminDashboard = () => {
   const navigation = useNavigation();
+  const dispatch = useDispatch();
+  const scrollViewRef = useRef(null);
+  
   const user = useSelector(selectCurrentUser);
   const isSuperAdmin = user?.role === 'superadmin';
   
   const [helpVisible, setHelpVisible] = useState(false);
+  const [showScrollTop, setShowScrollTop] = useState(false);
   
-  const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery();
+  // TEMPS REEL : Polling toutes les 5 secondes (5000ms)
+  const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery(undefined, {
+    pollingInterval: 5000,
+    refetchOnMountOrArgChange: true,
+  });
+  
   const stats = statsData?.data || statsData || { totalUsers: 0, activeDrivers: 0, pendingValidations: 0 };
 
   const menuItems = [
-    { id: 'validations', title: 'Centre de Validation', icon: 'checkmark-circle-outline', route: 'ValidationCenter', badge: stats.pendingValidations > 0 ? stats.pendingValidations : null, allowed: true },
+    { id: 'validations', title: 'Centre de Validation', icon: 'checkmark-circle-outline', route: 'ValidationCenter', badge: stats.pendingValidations > 0 ? stats.pendingValidations : undefined, allowed: true },
     { id: 'users', title: 'Gestion Utilisateurs', icon: 'people-outline', route: 'UsersManagement', allowed: true },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin }
   ];
+
+  const handleLogout = () => {
+    Alert.alert(
+      "Déconnexion",
+      "Êtes-vous sûr de vouloir quitter la tour de contrôle ?",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Déconnexion", style: "destructive", onPress: () => dispatch(logout()) }
+      ]
+    );
+  };
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 100);
+  };
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en regle et en ligne.\n• En Attente : Demandes de validation de paiement non traitees.\n• Utilisateurs : Total des comptes inscrits.\n\nUtilisez les cartes du bas pour naviguer vers les differents modules de gestion.";
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <View>
-          <Text style={styles.headerTitle}>Tour de Controle</Text>
+        <View style={styles.headerTextContainer}>
+          <Text style={styles.headerTitle}>Tour de Contrôle</Text>
           <Text style={styles.headerSubtitle}>Bienvenue, {user?.name || 'Administrateur'}</Text>
         </View>
-        <TouchableOpacity onPress={() => setHelpVisible(true)} style={styles.helpButton}>
-          <Ionicons name="help-circle-outline" size={28} color={THEME.COLORS.primary} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setHelpVisible(true)} style={styles.actionButton}>
+            <Ionicons name="help-circle-outline" size={26} color={THEME.COLORS.primary} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleLogout} style={[styles.actionButton, styles.logoutButton]}>
+            <Ionicons name="log-out-outline" size={26} color={THEME.COLORS.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView 
+        ref={scrollViewRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         contentContainerStyle={styles.scrollContent}
-        refreshControl={<RefreshControl refreshing={isLoading || isFetching} onRefresh={refetch} tintColor={THEME.COLORS.primary} />}
+        refreshControl={<RefreshControl refreshing={isLoading && !isFetching} onRefresh={refetch} tintColor={THEME.COLORS.primary} />}
       >
         {error && (
           <View style={styles.errorBanner}>
             <Ionicons name="warning-outline" size={24} color={THEME.COLORS.pureWhite} style={styles.errorIcon} />
             <View style={styles.errorTextContainer}>
               <Text style={styles.errorTitle}>Erreur Serveur ({error?.status || 'X'})</Text>
-              <Text style={styles.errorDetail}>
-                {error?.data?.message || 'Connexion au Backend refusee.'}
-              </Text>
+              <Text style={styles.errorDetail}>Connexion au Backend refusee.</Text>
             </View>
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Indicateurs Cles</Text>
+        <Text style={styles.sectionTitle}>Indicateurs Clés</Text>
         <View style={styles.statsGrid}>
           <StatCard title="Chauffeurs Actifs" value={stats.activeDrivers} icon="car-outline" />
           <StatCard title="En Attente" value={stats.pendingValidations} icon="document-text-outline" iconColor={stats.pendingValidations > 0 ? THEME.COLORS.danger : THEME.COLORS.primary} />
@@ -89,7 +124,8 @@ const AdminDashboard = () => {
               <GlassMenuCard style={styles.menuCard}>
                 <View style={styles.menuIconContainer}>
                   <Ionicons name={item.icon} size={32} color={THEME.COLORS.textPrimary} />
-                  {item.badge !== null && (
+                  {/* CORRECTION DU BUG DES BADGES (Verification stricte null/undefined) */}
+                  {item.badge != null && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{item.badge}</Text>
                     </View>
@@ -103,6 +139,8 @@ const AdminDashboard = () => {
       </ScrollView>
 
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Controle" content={helpText} />
+      
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </View>
   );
 };
@@ -110,10 +148,13 @@ const AdminDashboard = () => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 20, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  headerTitle: { fontSize: 28, fontWeight: 'bold', color: THEME.COLORS.primary },
-  headerSubtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, marginTop: 4 },
-  helpButton: { padding: 8, backgroundColor: THEME.COLORS.overlay, borderRadius: THEME.BORDERS.radius.md },
-  scrollContent: { padding: 20 },
+  headerTextContainer: { flex: 1 },
+  headerTitle: { fontSize: 26, fontWeight: 'bold', color: THEME.COLORS.primary },
+  headerSubtitle: { fontSize: 14, color: THEME.COLORS.textSecondary, marginTop: 4 },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
+  actionButton: { padding: 8, backgroundColor: THEME.COLORS.overlay, borderRadius: THEME.BORDERS.radius.md, marginLeft: 10 },
+  logoutButton: { backgroundColor: 'rgba(192, 57, 43, 0.1)' },
+  scrollContent: { padding: 20, paddingBottom: 80 },
   errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.danger, padding: 15, borderRadius: THEME.BORDERS.radius.md, marginBottom: 20, alignItems: 'center' },
   errorIcon: { marginRight: 15 },
   errorTextContainer: { flex: 1 },
