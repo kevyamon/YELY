@@ -1,11 +1,11 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Refactorisation Layout & Custom Modals
+// ECRAN UTILISATEURS - Gestion d'Erreur Explicite
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { ConfirmModal, UserInfoModal } from '../../components/admin/AdminModals';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
@@ -45,8 +45,12 @@ const UsersManagement = ({ navigation }) => {
       isDestructive: !user.isBanned,
       onConfirm: async () => {
         setConfirmConfig(prev => ({ ...prev, visible: false }));
-        try { await toggleBan({ userId: user._id, reason: user.isBanned ? '' : 'Violation des regles' }).unwrap(); } 
-        catch (e) { /* Error handeled globally */ }
+        try { 
+          await toggleBan({ userId: user._id, reason: user.isBanned ? '' : 'Violation des regles' }).unwrap(); 
+        } 
+        catch (e) { 
+          Alert.alert('Échec de l\'opération', e?.data?.message || 'Le serveur a rejeté la requête.'); 
+        }
       }
     });
   };
@@ -62,8 +66,12 @@ const UsersManagement = ({ navigation }) => {
       isDestructive: false,
       onConfirm: async () => {
         setConfirmConfig(prev => ({ ...prev, visible: false }));
-        try { await updateRole({ userId: user._id, action }).unwrap(); } 
-        catch (e) { }
+        try { 
+          await updateRole({ userId: user._id, action }).unwrap(); 
+        } 
+        catch (e) { 
+          Alert.alert('Échec de l\'opération', e?.data?.message || 'Le serveur a rejeté la requête.'); 
+        }
       }
     });
   };

@@ -1,13 +1,14 @@
 // src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Temps Reel (Polling), Bouton Logout, ScrollToTop et Correction Badges
+// ECRAN COCKPIT - Intégration de la Modale de Déconnexion Glassmorphism
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
-import { Alert, RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+import { ConfirmModal } from '../../components/admin/AdminModals';
 import HelpModal from '../../components/admin/HelpModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import StatCard from '../../components/admin/StatCard';
@@ -33,9 +34,9 @@ const AdminDashboard = () => {
   const isSuperAdmin = user?.role === 'superadmin';
   
   const [helpVisible, setHelpVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  // TEMPS REEL : Polling toutes les 5 secondes (5000ms)
   const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery(undefined, {
     pollingInterval: 5000,
     refetchOnMountOrArgChange: true,
@@ -49,17 +50,6 @@ const AdminDashboard = () => {
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin }
   ];
-
-  const handleLogout = () => {
-    Alert.alert(
-      "Déconnexion",
-      "Êtes-vous sûr de vouloir quitter la tour de contrôle ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Déconnexion", style: "destructive", onPress: () => dispatch(logout()) }
-      ]
-    );
-  };
 
   const handleScroll = (event) => {
     setShowScrollTop(event.nativeEvent.contentOffset.y > 100);
@@ -82,7 +72,7 @@ const AdminDashboard = () => {
           <TouchableOpacity onPress={() => setHelpVisible(true)} style={styles.actionButton}>
             <Ionicons name="help-circle-outline" size={26} color={THEME.COLORS.primary} />
           </TouchableOpacity>
-          <TouchableOpacity onPress={handleLogout} style={[styles.actionButton, styles.logoutButton]}>
+          <TouchableOpacity onPress={() => setLogoutModalVisible(true)} style={[styles.actionButton, styles.logoutButton]}>
             <Ionicons name="log-out-outline" size={26} color={THEME.COLORS.danger} />
           </TouchableOpacity>
         </View>
@@ -115,16 +105,10 @@ const AdminDashboard = () => {
         <Text style={styles.sectionTitle}>Modules d'Administration</Text>
         <View style={styles.menuGrid}>
           {menuItems.filter(item => item.allowed).map((item) => (
-            <TouchableOpacity 
-              key={item.id} 
-              activeOpacity={0.7} 
-              onPress={() => navigation.navigate(item.route)}
-              style={styles.menuButtonWrapper}
-            >
+            <TouchableOpacity key={item.id} activeOpacity={0.7} onPress={() => navigation.navigate(item.route)} style={styles.menuButtonWrapper}>
               <GlassMenuCard style={styles.menuCard}>
                 <View style={styles.menuIconContainer}>
                   <Ionicons name={item.icon} size={32} color={THEME.COLORS.textPrimary} />
-                  {/* CORRECTION DU BUG DES BADGES (Verification stricte null/undefined) */}
                   {item.badge != null && (
                     <View style={styles.badge}>
                       <Text style={styles.badgeText}>{item.badge}</Text>
@@ -140,6 +124,18 @@ const AdminDashboard = () => {
 
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Controle" content={helpText} />
       
+      <ConfirmModal 
+        visible={logoutModalVisible}
+        title="Déconnexion"
+        message="Êtes-vous sûr de vouloir quitter la tour de contrôle ?"
+        isDestructive={true}
+        onConfirm={() => {
+          setLogoutModalVisible(false);
+          dispatch(logout());
+        }}
+        onCancel={() => setLogoutModalVisible(false)}
+      />
+
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </View>
   );
