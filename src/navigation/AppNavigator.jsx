@@ -34,7 +34,8 @@ import PancarteScreen from '../screens/ride/PancarteScreen';
 
 // Menu & Nouvelles Pages
 import MenuScreen from '../screens/MenuScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen'; // NOUVEAU
+import HistoryScreen from '../screens/history/HistoryScreen'; // NOUVEAU : Intégration de la Page 2
+import ProfileScreen from '../screens/profile/ProfileScreen';
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
@@ -145,6 +146,7 @@ const AppNavigator = () => {
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
             </Stack.Group>
           ) : isSubscriptionPending ? (
+            // Isolation stricte : si en pending, l'utilisateur ne peut voir QUE le WaitScreen
             <Stack.Group>
               <Stack.Screen name="WaitSubscription" component={WaitScreen} />
             </Stack.Group>
@@ -174,10 +176,11 @@ const AppNavigator = () => {
                 }}
               />
 
-              {/* INTEGRATION DU NOUVEL ECRAN DE PROFIL */}
+              {/* INTERFACES ACTIVES */}
               <Stack.Screen name="Profile" component={ProfileScreen} />
+              <Stack.Screen name="History" component={HistoryScreen} />
               
-              <Stack.Screen name="History" component={PlaceholderScreen} />
+              {/* PLACEHOLDERS RESTANTS (Prochaines étapes) */}
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
               
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
