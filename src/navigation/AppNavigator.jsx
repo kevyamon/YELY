@@ -28,7 +28,14 @@ import PancarteScreen from '../screens/ride/PancarteScreen';
 // Menu
 import MenuScreen from '../screens/MenuScreen';
 
-// Composant temporaire pour eviter les crashs avant la Vague 4
+// Ecrans Admin (Ajoutes)
+import AdminDashboard from '../screens/admin/AdminDashboard';
+import AdminJournal from '../screens/admin/AdminJournal';
+import FinanceConfig from '../screens/admin/FinanceConfig';
+import UsersManagement from '../screens/admin/UsersManagement';
+import ValidationCenter from '../screens/admin/ValidationCenter';
+
+// Composant temporaire pour les modules non encore developpes
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
     <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
@@ -37,7 +44,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Ce module est en cours de developpement (Vague 4).</Text>
+    <Text style={styles.placeholderText}>Ce module arrive bientot.</Text>
   </View>
 );
 
@@ -132,11 +139,11 @@ const AppNavigator = () => {
           {isAdmin ? (
             // FORTERESSE ADMIN (Isolation stricte des routes)
             <>
-              <Stack.Screen name="AdminDashboard" component={PlaceholderScreen} />
-              <Stack.Screen name="ValidationCenter" component={PlaceholderScreen} />
-              <Stack.Screen name="UsersManagement" component={PlaceholderScreen} />
-              <Stack.Screen name="FinanceConfig" component={PlaceholderScreen} />
-              <Stack.Screen name="AdminJournal" component={PlaceholderScreen} />
+              <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+              <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
+              <Stack.Screen name="UsersManagement" component={UsersManagement} />
+              <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
+              <Stack.Screen name="AdminJournal" component={AdminJournal} />
             </>
           ) : isDriver ? (
             // INTERFACE CHAUFFEUR
