@@ -5,8 +5,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
-import { useGetFinanceDataQuery, useTogglePromoMutation, useUpdateWaveLinksMutation } from '../../store/api/adminApiSlice';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useGetFinanceDataQuery, useTogglePromoMutation } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style }) => (
@@ -21,26 +21,19 @@ const GlassCard = ({ children, style }) => (
 const FinanceConfig = ({ navigation }) => {
   const { data: financeResponse, isLoading } = useGetFinanceDataQuery({ period: 'all' });
   const [togglePromo, { isLoading: isToggling }] = useTogglePromoMutation();
-  const [updateLinks, { isLoading: isUpdatingLinks }] = useUpdateWaveLinksMutation();
 
   const [isPromoActive, setIsPromoActive] = useState(false);
-  const [weeklyLink, setWeeklyLink] = useState('');
-  const [monthlyLink, setMonthlyLink] = useState('');
 
   const financeData = financeResponse?.data || financeResponse || [];
   const totalRevenue = financeData.reduce((acc, curr) => acc + curr.totalAmount, 0);
 
   const handleTogglePromo = async (value) => {
     setIsPromoActive(value);
-    try { await togglePromo({ isActive: value }).unwrap(); } 
-    catch (e) { setIsPromoActive(!value); }
-  };
-
-  const handleUpdateLinks = async () => {
-    try {
-      await updateLinks({ weeklyLink, monthlyLink }).unwrap();
-      alert('Liens Wave mis a jour.');
-    } catch (e) { alert('Erreur lors de la mise a jour.'); }
+    try { 
+      await togglePromo({ isActive: value }).unwrap(); 
+    } catch (e) { 
+      setIsPromoActive(!value); 
+    }
   };
 
   return (
@@ -81,41 +74,6 @@ const FinanceConfig = ({ navigation }) => {
           </View>
         </GlassCard>
 
-        <Text style={styles.sectionTitle}>Passerelles de Paiement (Wave)</Text>
-        <GlassCard style={styles.actionCard}>
-          <Text style={styles.inputLabel}>Lien Hebdomadaire (1200 FCFA)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://pay.wave.com/..."
-            placeholderTextColor={THEME.COLORS.textTertiary}
-            value={weeklyLink}
-            onChangeText={setWeeklyLink}
-            autoCapitalize="none"
-          />
-
-          <Text style={styles.inputLabel}>Lien Mensuel (6000 FCFA)</Text>
-          <TextInput
-            style={styles.input}
-            placeholder="https://pay.wave.com/..."
-            placeholderTextColor={THEME.COLORS.textTertiary}
-            value={monthlyLink}
-            onChangeText={setMonthlyLink}
-            autoCapitalize="none"
-          />
-
-          <TouchableOpacity 
-            style={styles.submitButton} 
-            onPress={handleUpdateLinks}
-            disabled={isUpdatingLinks}
-          >
-            {isUpdatingLinks ? (
-              <ActivityIndicator color={THEME.COLORS.textInverse} />
-            ) : (
-              <Text style={styles.submitButtonText}>Enregistrer les liens</Text>
-            )}
-          </TouchableOpacity>
-        </GlassCard>
-
       </ScrollView>
     </View>
   );
@@ -137,11 +95,7 @@ const styles = StyleSheet.create({
   actionCard: { padding: 20 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   cardTitle: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
-  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4, maxWidth: '80%' },
-  inputLabel: { color: THEME.COLORS.textPrimary, fontSize: 14, marginBottom: 8, marginTop: 10 },
-  input: { backgroundColor: THEME.COLORS.overlay, color: THEME.COLORS.textPrimary, borderRadius: THEME.BORDERS.radius.md, padding: 15, fontSize: 14, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, marginBottom: 10 },
-  submitButton: { backgroundColor: THEME.COLORS.primary, padding: 15, borderRadius: THEME.BORDERS.radius.md, alignItems: 'center', marginTop: 15 },
-  submitButtonText: { color: THEME.COLORS.textInverse, fontWeight: 'bold', fontSize: 16 }
+  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4, maxWidth: '80%' }
 });
 
 export default FinanceConfig;

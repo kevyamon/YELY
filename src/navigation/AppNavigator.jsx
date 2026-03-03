@@ -41,8 +41,9 @@ import FinanceConfig from '../screens/admin/FinanceConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
-// Abonnement (Mise a jour du chemin vers le nouveau Mur de Preuve)
+// Abonnement
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
+import WaitScreen from '../screens/subscription/WaitScreen';
 
 const PlaceholderScreen = ({ route, navigation }) => (
   <View style={styles.placeholderContainer}>
@@ -77,14 +78,12 @@ const AppNavigator = () => {
         if (storedUserStr && storedRefreshToken && storedToken) {
           const storedUser = JSON.parse(storedUserStr);
 
-          // RESTAURATION IMMEDIATE (Optimiste)
           dispatch(restoreAuth({ 
             user: storedUser, 
             token: storedToken, 
             refreshToken: storedRefreshToken 
           }));
 
-          // VALIDATION SILENCIEUSE (Arriere-plan via le Store)
           dispatch(forceSilentRefresh());
           
         } else {
@@ -165,8 +164,8 @@ const AppNavigator = () => {
               <Stack.Screen name="History" component={PlaceholderScreen} />
               <Stack.Screen name="Notifications" component={PlaceholderScreen} />
               
-              {/* Le module d'abonnement mis a jour */}
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+              <Stack.Screen name="WaitSubscription" component={WaitScreen} />
             </Stack.Group>
           )}
         </Stack.Group>

@@ -1,14 +1,16 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ÉCRAN D'ABONNEMENT - Logique Métier "Mur de Preuve"
+// ECRAN D'ABONNEMENT - Logique Metier "Mur de Preuve"
 // STANDARD: Industriel / Architecture Modulaire
 
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Alert, Linking, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
 import { updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import THEME from '../../theme/theme';
@@ -29,6 +31,7 @@ const PLAN_TYPES = {
 
 const SubscriptionScreen = () => {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   
   const { data: configData, isLoading: isConfigLoading, isError: isConfigError } = useGetConfigQuery();
   const [submitProof, { isLoading: isSubmitting }] = useSubmitProofMutation();
@@ -40,23 +43,39 @@ const SubscriptionScreen = () => {
 
   const handleSelectPlan = async (planType, paymentLink) => {
     if (!paymentLink) {
-      Alert.alert("Erreur", "Le lien de paiement n'est pas configuré pour ce forfait.");
+      dispatch(showErrorToast({ 
+        title: "Erreur de configuration", 
+        message: "Le lien de paiement n'est pas configuré." 
+      }));
       return;
     }
 
     try {
+      // Tente d'ouvrir le lien. Si c'est un deep link (wave://) et que l'app n'est pas là, cela peut rejeter.
       const supported = await Linking.canOpenURL(paymentLink);
       if (supported) {
         await Linking.openURL(paymentLink);
+        setSelectedPlan(planType);
+        setCurrentStep(STEPS.UPLOAD_PROOF);
       } else {
-        await Linking.openURL(paymentLink); 
+        throw new Error("Application non supportée ou non installée.");
       }
-      
-      setSelectedPlan(planType);
-      setCurrentStep(STEPS.UPLOAD_PROOF);
     } catch (error) {
-      console.error("[LINKING ERROR]: Impossible d'ouvrir le lien Wave", error);
-      Alert.alert("Erreur", "Impossible d'ouvrir l'application de paiement.");
+      console.error("[LINKING ERROR]:", error);
+      
+      dispatch(showErrorToast({ 
+        title: "Application requise", 
+        message: "Veuillez installer Wave pour effectuer le paiement." 
+      }));
+
+      // Fallback: Redirection automatique vers le Store approprié
+      const storeUrl = Platform.OS === 'ios' 
+        ? 'https://apps.apple.com/app/wave-mobile-money/id1486476483' 
+        : 'https://play.google.com/store/apps/details?id=com.wave.personal';
+      
+      setTimeout(() => {
+        Linking.openURL(storeUrl).catch(() => console.log("Echec ouverture Store"));
+      }, 1500);
     }
   };
 
@@ -64,13 +83,16 @@ const SubscriptionScreen = () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (permissionResult.granted === false) {
-      Alert.alert("Permission requise", "L'accès à la galerie est requis pour transmettre la preuve.");
+      dispatch(showErrorToast({ 
+        title: "Permission requise", 
+        message: "L'accès à la galerie est requis pour transmettre la preuve." 
+      }));
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.8, 
     });
 
@@ -82,11 +104,17 @@ const SubscriptionScreen = () => {
   const handleSubmitProof = async () => {
     const phoneRegex = /^\+?[0-9\s]{8,20}$/;
     if (!senderPhone || !phoneRegex.test(senderPhone)) {
-      Alert.alert("Format invalide", "Veuillez entrer un numéro de téléphone valide.");
+      dispatch(showErrorToast({ 
+        title: "Format invalide", 
+        message: "Veuillez entrer un numéro de téléphone valide." 
+      }));
       return;
     }
     if (!proofImage) {
-      Alert.alert("Capture manquante", "Veuillez joindre la capture d'écran.");
+      dispatch(showErrorToast({ 
+        title: "Capture manquante", 
+        message: "Veuillez joindre la capture d'écran." 
+      }));
       return;
     }
 
@@ -107,10 +135,16 @@ const SubscriptionScreen = () => {
     try {
       const response = await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
-      Alert.alert("Succès", response.message || "Un administrateur vérifie votre paiement.");
+      dispatch(showSuccessToast({ 
+        title: "Transmission réussie", 
+        message: response.message || "Un administrateur vérifie votre paiement." 
+      }));
     } catch (error) {
       console.error("[SUBMIT ERROR]:", error);
-      Alert.alert("Échec de l'envoi", error?.data?.message || "Erreur de transmission réseau.");
+      dispatch(showErrorToast({ 
+        title: "Échec de l'envoi", 
+        message: error?.data?.message || "Erreur de transmission réseau." 
+      }));
     }
   };
 
@@ -135,7 +169,7 @@ const SubscriptionScreen = () => {
 
   return (
     <ScreenWrapper>
-      <View style={styles.container}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top + 20, 20) }]}>
         
         {currentStep === STEPS.CHOOSE_PLAN && (
           <View style={styles.stepContainer}>
@@ -198,7 +232,8 @@ const styles = StyleSheet.create({
   },
   container: {
     flex: 1,
-    padding: 20,
+    paddingHorizontal: 20,
+    paddingBottom: 20,
     justifyContent: 'center',
   },
   stepContainer: {
