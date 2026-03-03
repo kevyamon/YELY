@@ -37,9 +37,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       try {
         api.dispatch(setRefreshing(true));
         
-        const refreshToken = api.getState().auth.refreshToken;
+        const currentRefreshToken = api.getState().auth.refreshToken;
         
-        if (!refreshToken) {
+        if (!currentRefreshToken) {
           console.warn('[AUTH] Aucun Refresh Token disponible, deconnexion forcee.');
           api.dispatch(logout());
           return result;
@@ -53,7 +53,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             'Content-Type': 'application/json',
             'Accept': 'application/json'
           },
-          body: JSON.stringify({ refreshToken })
+          body: JSON.stringify({ refreshToken: currentRefreshToken })
         });
 
         const refreshData = await refreshResponse.json();
@@ -61,22 +61,26 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         if (refreshResponse.ok && refreshData.success) {
           const payload = refreshData.data;
           const newAccessToken = payload?.accessToken;
-          const newRefreshToken = payload?.refreshToken || refreshToken;
+          const newRefreshToken = payload?.refreshToken; // <- On recupere le nouveau token recu en JSON
 
-          if (newAccessToken) {
-            console.info('[AUTH] Rafraichissement reussi. Mise a jour du profil et rejeu.');
+          if (newAccessToken && newRefreshToken) {
+            console.info('[AUTH] Rafraichissement reussi. Mise a jour des tokens.');
+            
+            // On envoie les NOUVEAUX tokens au store (qui va ecraser les anciens dans SecureStore)
             api.dispatch(setCredentials({ 
               accessToken: newAccessToken,
-              refreshToken: newRefreshToken,
+              refreshToken: newRefreshToken, 
               user: payload?.user || api.getState().auth.user 
             }));
             
+            // On rejoue la requete initiale qui avait echoue
             result = await baseQuery(args, api, extraOptions);
           } else {
+            console.warn('[AUTH] Le serveur n\'a pas renvoye les tokens attendus.');
             api.dispatch(logout());
           }
-        } else if (refreshResponse.status === 401 || refreshResponse.status === 400) {
-          // On ne deconnecte que si le token est explicitement invalide
+        } else if (refreshResponse.status === 401 || refreshResponse.status === 400 || refreshResponse.status === 403) {
+          console.warn('[AUTH] Refresh Token rejete par le serveur. Deconnexion.');
           api.dispatch(logout());
         }
       } catch (error) {
