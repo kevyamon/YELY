@@ -16,7 +16,7 @@ import {
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch, useSelector } from 'react-redux'; // 🚀 CORRECTION : Ajout de useSelector
+import { useDispatch, useSelector } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
@@ -24,7 +24,7 @@ import GoldButton from '../../components/ui/GoldButton';
 
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
-import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice'; // 🚀 CORRECTION : Ajout de clearError
+import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -34,7 +34,7 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
-  const { error } = useSelector((state) => state.ui); // 🚀 CORRECTION : On récupère l'erreur globale
+  const { error } = useSelector((state) => state.ui); 
 
   const [formData, setFormData] = useState({ identifier: '', password: '' });
   const [countryCode, setCountryCode] = useState('CI');
@@ -49,7 +49,6 @@ const LoginPage = ({ navigation }) => {
     }
   }, [formData.identifier]);
 
-  // 🚀 LOGIQUE MÉTIER : Dès qu'on touche au texte, on nettoie l'erreur rouge
   const handleIdentifierChange = (t) => {
     setFormData({ ...formData, identifier: t });
     if (error) dispatch(clearError());
@@ -74,11 +73,9 @@ const LoginPage = ({ navigation }) => {
       }
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
-      
       const { user, accessToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken }));
-
       dispatch(showSuccessToast({
         title: "Connexion réussie",
         message: `Bienvenue, ${user.name.split(' ')[0]}.`
@@ -116,7 +113,6 @@ const LoginPage = ({ navigation }) => {
           </View>
 
           <GlassCard style={styles.card}>
-            {/* 🚀 AFFICHAGE DE L'ERREUR SI ELLE EXISTE */}
             {error ? (
               <View style={styles.errorBox}>
                 <Text style={styles.errorText}>{error}</Text>
@@ -143,7 +139,7 @@ const LoginPage = ({ navigation }) => {
                     placeholder="Tél ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
-                    onChangeText={handleIdentifierChange} // 🚀 CORRECTION BRANCHÉE
+                    onChangeText={handleIdentifierChange}
                   />
                </View>
             </View>
@@ -153,8 +149,16 @@ const LoginPage = ({ navigation }) => {
               placeholder="Mot de passe"
               secureTextEntry
               value={formData.password}
-              onChangeText={handlePasswordChange} // 🚀 CORRECTION BRANCHÉE
+              onChangeText={handlePasswordChange}
             />
+
+            {/* ✅ AJOUT SENIOR : Redirection Mot de passe oublié */}
+            <TouchableOpacity 
+              onPress={() => navigation.navigate('ForgotPassword')}
+              style={styles.forgotPasswordLink}
+            >
+              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+            </TouchableOpacity>
 
             <GoldButton
               title="SE CONNECTER"
@@ -195,6 +199,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10, borderRadius: 12, height: 52, borderWidth: 1, borderColor: THEME.COLORS.glassBorder 
   },
   callingCodeText: { color: THEME.COLORS.champagneGold, marginLeft: 5, fontWeight: 'bold' },
+  forgotPasswordLink: { alignSelf: 'flex-end', marginVertical: THEME.SPACING.sm },
+  forgotPasswordText: { color: THEME.COLORS.champagneGold, fontSize: 13, fontWeight: '600' },
   loginButton: { marginTop: THEME.SPACING.md },
   footer: { marginTop: THEME.SPACING.xl, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },

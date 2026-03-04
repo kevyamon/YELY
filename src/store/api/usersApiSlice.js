@@ -25,9 +25,25 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       }),
     }),
     
-    // NOUVEAUX ENDPOINTS ACTIFS
+    // NOUVEAUTÉ : Mot de passe oublié
+    forgotPassword: builder.mutation({
+      query: (data) => ({
+        url: '/auth/forgot-password',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+    resetPassword: builder.mutation({
+      query: (data) => ({
+        url: '/auth/reset-password',
+        method: 'POST',
+        body: data,
+      }),
+    }),
+
+    // ... (le reste de tes endpoints existants)
     getUserProfile: builder.query({
-      query: () => '/users/profile', // Attention, c'est /users/ pas /auth/
+      query: () => '/users/profile',
       providesTags: ['User'],
     }),
     updateUserProfile: builder.mutation({
@@ -43,7 +59,7 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         url: '/users/profile-picture',
         method: 'PATCH',
         body: formData,
-        formData: true, // Très important pour Multipart
+        formData: true,
       }),
       invalidatesTags: ['User'],
     }),
@@ -53,7 +69,6 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         method: 'DELETE',
       }),
     }),
-    
     updateAvailability: builder.mutation({
       query: (data) => ({
         url: '/auth/availability',
@@ -68,6 +83,8 @@ export const {
   useLoginMutation,
   useRegisterMutation,
   useLogoutMutation,
+  useForgotPasswordMutation,
+  useResetPasswordMutation,
   useGetUserProfileQuery,
   useUpdateUserProfileMutation,
   useUploadProfilePictureMutation,

@@ -21,8 +21,10 @@ import {
 import THEME from '../theme/theme';
 
 // Screens Auth
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'; // ✅ AJOUT
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen'; // ✅ AJOUT
 import LandingScreen from '../screens/LandingScreen';
 
 // Homes
@@ -42,7 +44,7 @@ import ReportScreen from '../screens/report/ReportScreen';
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
-import AdminReports from '../screens/admin/AdminReports'; // <-- NOUVEL IMPORT SENIOR
+import AdminReports from '../screens/admin/AdminReports';
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
@@ -117,7 +119,6 @@ const AppNavigator = () => {
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  // Sas de securite : Verification stricte si l'abonnement du chauffeur est en cours de validation
   const isSubscriptionPending = isDriver && (
     user?.subscriptionStatus === 'pending' || 
     user?.subscription?.status === 'pending' || 
@@ -137,6 +138,8 @@ const AppNavigator = () => {
           <Stack.Screen name="Landing" component={LandingScreen} />
           <Stack.Screen name="Login" component={LoginPage} />
           <Stack.Screen name="Register" component={RegisterPage} />
+          <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
+          <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         </Stack.Group>
       ) : (
         <Stack.Group>
@@ -147,7 +150,6 @@ const AppNavigator = () => {
               <Stack.Screen name="UsersManagement" component={UsersManagement} />
               <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
-              {/* AJOUT SENIOR : L'écran de gestion des plaintes ! */}
               <Stack.Screen name="AdminReports" component={AdminReports} />
             </Stack.Group>
           ) : isSubscriptionPending ? (
@@ -160,7 +162,6 @@ const AppNavigator = () => {
             <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {/* Groupement des écrans accessibles via le Drawer Menu */}
           {!isAdmin && !isSubscriptionPending && (
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen 
@@ -181,12 +182,10 @@ const AppNavigator = () => {
                 }}
               />
 
-              {/* Écrans Utilisateurs Actifs */}
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="History" component={HistoryScreen} />
               <Stack.Screen name="Report" component={ReportScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
-              
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
             </Stack.Group>
           )}
