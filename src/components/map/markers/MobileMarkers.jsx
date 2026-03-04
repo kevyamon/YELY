@@ -1,4 +1,4 @@
-// src/components/map/markers/MobileMarkers.jsx [CORRIGÉ V4 - FIX ANDROID CLIPPING]
+// src/components/map/markers/MobileMarkers.jsx
 // COMPOSANTS VISUELS CARTE MOBILE
 // CSCSM Level: Bank Grade
 
@@ -178,7 +178,6 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
-  // À chaque fois que le nom ou la couleur change, on réactive le rendu natif
   useEffect(() => {
     setTracks(true);
   }, [name, color, icon]);
@@ -194,20 +193,19 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
       onPress={onPress}
     >
       <View style={styles.poiContainer}>
+        {/* TEXTE PUR : Sans boîte, aligné strictement à gauche de l'icône */}
+        <Text 
+          style={styles.poiText} 
+          onLayout={() => {
+            setTimeout(() => setTracks(false), 800);
+          }}
+        >
+          {name}
+        </Text>
+        
+        {/* ICÔNE */}
         <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
           <Ionicons name={icon || 'location'} size={14} color={color} />
-        </View>
-        <View style={styles.poiTextWrapper}>
-          <Text 
-            style={styles.poiText} 
-            numberOfLines={2}
-            onLayout={() => {
-              // L'arme absolue : on coupe le rendu natif 800ms APRÈS que le texte soit physiquement dessiné
-              setTimeout(() => setTracks(false), 800);
-            }}
-          >
-            {name}
-          </Text>
         </View>
       </View>
     </Marker>
@@ -258,29 +256,32 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
+  poiContainer: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   poiIconCircle: {
     width: 20,
     height: 20,
-    borderRadius: 13,
+    borderRadius: 10,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
-  },
-  poiTextWrapper: {
-    marginTop: 4, 
-    backgroundColor: 'rgba(25, 25, 25, 0.85)', 
-    paddingHorizontal: 8, 
-    paddingVertical: 4, 
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.glassBorder,
-    maxWidth: 90, 
+    zIndex: 2,
   },
   poiText: {
+    position: 'absolute',
+    right: 24, // Fixé à gauche de l'icône, sans limite de taille
     color: THEME.COLORS.textPrimary,
-    fontSize: 10,
+    fontSize: 12,
     fontWeight: 'bold',
-    textAlign: 'center',
+    textAlign: 'right', // Permet au texte de s'étendre naturellement vers la gauche
+    textShadowColor: THEME.COLORS.background, // Assure la lisibilité sur la carte
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
+    zIndex: 1,
   }
 });
