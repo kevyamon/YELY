@@ -1,7 +1,3 @@
-// src/screens/admin/AdminDashboard.jsx
-// ECRAN COCKPIT - Rafraichissement des Claims Admin au Montage
-// CSCSM Level: Bank Grade
-
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
@@ -124,7 +120,9 @@ const AdminDashboard = () => {
       allowed: true 
     },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
-    { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin }
+    { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
+    // [NOUVEAU] - Ajout du bouton Gestion de la Carte
+    { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin }
   ];
 
   const handleScroll = (event) => {

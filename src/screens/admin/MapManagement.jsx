@@ -1,138 +1,74 @@
-// src/screens/admin/MapManagement.jsx [NOUVEAU]
+// src/screens/admin/MapManagement.jsx [MODIFIÉ]
 // GESTION GÉOSPATIALE - Interface SuperAdmin (POIs)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
+import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useMemo, useRef, useState } from 'react';
-import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TouchableOpacity,
-    View
-} from 'react-native';
-
+import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
+
+import { ConfirmModal } from '../../components/admin/AdminModals';
+import PoiFormModal from '../../components/admin/PoiFormModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
-import GlassInput from '../../components/ui/GlassInput';
-import GoldButton from '../../components/ui/GoldButton';
+import GlassInput from '../../components/ui/GlassInput'; // <-- IMPORT DU VRAI CHAMP DE TEXTE
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import SearchBar from '../../components/ui/SearchBar';
-import {
-    useBulkImportPOIsMutation,
-    useCreatePOIMutation,
-    useDeletePOIMutation,
-    useGetAllPOIsQuery,
-    useUpdatePOIMutation
-} from '../../store/api/poiApiSlice';
+import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const MapManagement = () => {
+  const navigation = useNavigation();
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets(); 
   const flatListRef = useRef(null);
+  
   const [searchQuery, setSearchQuery] = useState('');
-  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isFormModalVisible, setIsFormModalVisible] = useState(false);
   const [editingPoi, setEditingPoi] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [poiToDelete, setPoiToDelete] = useState(null);
 
-  // Formulaire
-  const [formData, setFormData] = useState({
-    name: '',
-    latitude: '',
-    longitude: '',
-    icon: 'location',
-    iconColor: THEME.COLORS.champagneGold
-  });
-
-  // API Hooks
   const { data: poiResponse, isLoading: isFetching } = useGetAllPOIsQuery();
-  const [createPOI, { isLoading: isCreating }] = useCreatePOIMutation();
-  const [updatePOI, { isLoading: isUpdating }] = useUpdatePOIMutation();
   const [deletePOI] = useDeletePOIMutation();
   const [bulkImport, { isLoading: isImporting }] = useBulkImportPOIsMutation();
 
   const pois = poiResponse?.data || [];
 
-  // Algorithme de suggestion de couleur basé sur l'icône
-  const suggestColor = (iconName) => {
-    const iconKey = iconName.toLowerCase();
-    if (iconKey.includes('bus') || iconKey.includes('car') || iconKey.includes('airplane')) return '#3498db';
-    if (iconKey.includes('restaurant') || iconKey.includes('cafe') || iconKey.includes('pizza')) return '#e67e22';
-    if (iconKey.includes('medical') || iconKey.includes('hospital') || iconKey.includes('medkit')) return '#e74c3c';
-    if (iconKey.includes('cart') || iconKey.includes('basket') || iconKey.includes('shop')) return '#9b59b6';
-    if (iconKey.includes('tree') || iconKey.includes('leaf') || iconKey.includes('park')) return '#2ecc71';
-    return THEME.COLORS.champagneGold;
-  };
-
-  const handleIconChange = (icon) => {
-    const color = suggestColor(icon);
-    setFormData(prev => ({ ...prev, icon, iconColor: color }));
-  };
-
   const filteredPois = useMemo(() => {
     return pois.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [pois, searchQuery]);
 
-  const resetForm = () => {
-    setFormData({
-      name: '',
-      latitude: '',
-      longitude: '',
-      icon: 'location',
-      iconColor: THEME.COLORS.champagneGold
-    });
+  const openAddModal = () => {
     setEditingPoi(null);
+    setIsFormModalVisible(true);
   };
 
-  const handleSubmit = async () => {
-    if (!formData.name || !formData.latitude || !formData.longitude) {
-      dispatch(showToast({ message: 'Veuillez remplir tous les champs', type: 'error' }));
-      return;
-    }
+  const openEditModal = (poi) => {
+    setEditingPoi(poi);
+    setIsFormModalVisible(true);
+  };
 
+  const confirmDelete = (poi) => {
+    setPoiToDelete(poi);
+    setDeleteModalVisible(true);
+  };
+
+  const executeDelete = async () => {
+    if (!poiToDelete) return;
     try {
-      const payload = {
-        ...formData,
-        latitude: parseFloat(formData.latitude),
-        longitude: parseFloat(formData.longitude)
-      };
-
-      if (editingPoi) {
-        await updatePOI({ id: editingPoi._id, ...payload }).unwrap();
-        dispatch(showToast({ message: 'Lieu mis à jour', type: 'success' }));
-      } else {
-        await createPOI(payload).unwrap();
-        dispatch(showToast({ message: 'Nouveau lieu ajouté', type: 'success' }));
-      }
-      setIsModalVisible(false);
-      resetForm();
+      await deletePOI(poiToDelete._id).unwrap();
+      dispatch(showToast({ message: 'Lieu supprimé de la base', type: 'success' }));
     } catch (err) {
-      dispatch(showToast({ message: err.data?.message || 'Erreur lors de l\'enregistrement', type: 'error' }));
+      dispatch(showToast({ message: 'Erreur lors de la suppression', type: 'error' }));
+    } finally {
+      setDeleteModalVisible(false);
+      setPoiToDelete(null);
     }
-  };
-
-  const handleDelete = (id) => {
-    Alert.alert(
-      "Confirmation",
-      "Voulez-vous supprimer ce lieu ?",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Supprimer", style: "destructive", onPress: async () => {
-          try {
-            await deletePOI(id).unwrap();
-            dispatch(showToast({ message: 'Lieu supprimé', type: 'success' }));
-          } catch (err) {
-            dispatch(showToast({ message: 'Erreur lors de la suppression', type: 'error' }));
-          }
-        }}
-      ]
-    );
   };
 
   const handleBulkImport = async () => {
@@ -158,28 +94,18 @@ const MapManagement = () => {
   const renderPoiItem = ({ item }) => (
     <View style={styles.poiCard}>
       <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-        <Ionicons name={item.icon} size={24} color={item.iconColor} />
+        <Ionicons name={item.icon} size={28} color={item.iconColor} />
       </View>
       <View style={styles.poiInfo}>
         <Text style={styles.poiName}>{item.name}</Text>
-        <Text style={styles.poiCoords}>{item.latitude.toFixed(6)}, {item.longitude.toFixed(6)}</Text>
+        <Text style={styles.poiCoords}>Lat: {item.latitude.toFixed(5)} | Lng: {item.longitude.toFixed(5)}</Text>
       </View>
       <View style={styles.actionButtons}>
-        <TouchableOpacity onPress={() => {
-          setEditingPoi(item);
-          setFormData({
-            name: item.name,
-            latitude: item.latitude.toString(),
-            longitude: item.longitude.toString(),
-            icon: item.icon,
-            iconColor: item.iconColor
-          });
-          setIsModalVisible(true);
-        }} style={styles.editBtn}>
-          <Ionicons name="create-outline" size={20} color={THEME.COLORS.info} />
+        <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editBtn}>
+          <Ionicons name="create-outline" size={22} color={THEME.COLORS.info} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => handleDelete(item._id)} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={20} color={THEME.COLORS.error} />
+        <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteBtn}>
+          <Ionicons name="trash-outline" size={22} color={THEME.COLORS.error} />
         </TouchableOpacity>
       </View>
     </View>
@@ -187,101 +113,63 @@ const MapManagement = () => {
 
   return (
     <ScreenWrapper>
-      <View style={styles.header}>
-        <Text style={styles.title}>Gestion de la Carte</Text>
+      <View style={[styles.customHeader, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+        </TouchableOpacity>
+        
+        <Text style={styles.headerTitle}>Gestion de la Carte</Text>
+        
         <TouchableOpacity onPress={handleBulkImport} style={styles.bulkBtn}>
-          <Ionicons name="cloud-upload-outline" size={20} color={THEME.COLORS.champagneGold} />
-          <Text style={styles.bulkText}>Import JSON</Text>
+          <Ionicons name="cloud-upload" size={20} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       </View>
 
-      <SearchBar
-        placeholder="Rechercher un lieu..."
-        value={searchQuery}
-        onChangeText={setSearchQuery}
-      />
-
-      {isFetching || isImporting ? (
-        <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={filteredPois}
-          keyExtractor={(item) => item._id}
-          renderItem={renderPoiItem}
-          contentContainerStyle={styles.listContent}
-          onScroll={(e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 300)}
-          ListEmptyComponent={<Text style={styles.emptyText}>Aucun lieu enregistré</Text>}
-        />
-      )}
-
-      <GoldButton
-        title="Ajouter une position"
-        onPress={() => { resetForm(); setIsModalVisible(true); }}
-        style={styles.floatingBtn}
-      />
-
-      <Modal visible={isModalVisible} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <Text style={styles.modalTitle}>{editingPoi ? 'Editer le lieu' : 'Nouveau lieu'}</Text>
-            
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <GlassInput
-                placeholder="Nom du lieu"
-                value={formData.name}
-                onChangeText={(val) => setFormData(p => ({ ...p, name: val }))}
-              />
-              <View style={styles.row}>
-                <View style={{ flex: 1, marginRight: 8 }}>
-                  <GlassInput
-                    placeholder="Latitude"
-                    keyboardType="numeric"
-                    value={formData.latitude}
-                    onChangeText={(val) => setFormData(p => ({ ...p, latitude: val }))}
-                  />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <GlassInput
-                    placeholder="Longitude"
-                    keyboardType="numeric"
-                    value={formData.longitude}
-                    onChangeText={(val) => setFormData(p => ({ ...p, longitude: val }))}
-                  />
-                </View>
-              </View>
-
-              <Text style={styles.label}>Icône & Couleur</Text>
-              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.iconPicker}>
-                {['location', 'bus', 'restaurant', 'cart', 'hospital', 'cafe', 'school', 'home', 'construct'].map(ico => (
-                  <TouchableOpacity
-                    key={ico}
-                    onPress={() => handleIconChange(ico)}
-                    style={[styles.iconOption, formData.icon === ico && styles.selectedIcon]}
-                  >
-                    <Ionicons name={ico} size={24} color={formData.icon === ico ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} />
-                  </TouchableOpacity>
-                ))}
-              </ScrollView>
-
-              <View style={styles.previewContainer}>
-                <Text style={styles.previewLabel}>Aperçu :</Text>
-                <Ionicons name={formData.icon} size={30} color={formData.iconColor} />
-                <Text style={[styles.previewText, { color: formData.iconColor }]}>{formData.name || 'Nom du lieu'}</Text>
-              </View>
-
-              <GoldButton
-                title={editingPoi ? "Mettre à jour" : "Ajouter au catalogue"}
-                onPress={handleSubmit}
-                loading={isCreating || isUpdating}
-              />
-              <TouchableOpacity onPress={() => setIsModalVisible(false)} style={styles.cancelBtn}>
-                <Text style={styles.cancelText}>Annuler</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          </View>
+      <View style={styles.content}>
+        {/* CORRECTION SENIOR : Utilisation de GlassInput qui est un vrai TextInput */}
+        <View style={styles.searchWrapper}>
+          <GlassInput
+            placeholder="Rechercher un lieu enregistré..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+            icon="search-outline"
+          />
         </View>
-      </Modal>
+
+        {isFetching || isImporting ? (
+          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={filteredPois}
+            keyExtractor={(item) => item._id}
+            renderItem={renderPoiItem}
+            contentContainerStyle={styles.listContent}
+            onScroll={(e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 300)}
+            ListEmptyComponent={<Text style={styles.emptyText}>Aucun lieu enregistré ou trouvé</Text>}
+            showsVerticalScrollIndicator={false}
+          />
+        )}
+      </View>
+
+      <TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={openAddModal}>
+        <Ionicons name="add" size={32} color={THEME.COLORS.background} />
+      </TouchableOpacity>
+
+      <PoiFormModal 
+        visible={isFormModalVisible}
+        onClose={() => setIsFormModalVisible(false)}
+        editingPoi={editingPoi}
+      />
+
+      <ConfirmModal 
+        visible={deleteModalVisible}
+        title="Supprimer ce lieu ?"
+        message={`Êtes-vous sûr de vouloir supprimer "${poiToDelete?.name}" ? Il disparaîtra immédiatement de la carte des clients.`}
+        isDestructive={true}
+        onConfirm={executeDelete}
+        onCancel={() => setDeleteModalVisible(false)}
+      />
 
       {showScrollTop && (
         <ScrollToTopButton onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })} />
@@ -291,35 +179,24 @@ const MapManagement = () => {
 };
 
 const styles = StyleSheet.create({
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
-  bulkBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, padding: 8, borderRadius: 12 },
-  bulkText: { color: THEME.COLORS.champagneGold, marginLeft: 6, fontSize: 12, fontWeight: '600' },
+  customHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 15, backgroundColor: THEME.COLORS.background, zIndex: 10 },
+  backBtn: { padding: 5 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  bulkBtn: { padding: 8, backgroundColor: THEME.COLORS.glassLight, borderRadius: 12 },
+  content: { flex: 1, paddingHorizontal: 20 },
+  searchWrapper: { marginBottom: 15 },
   listContent: { paddingBottom: 100 },
-  poiCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, marginBottom: 12, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  iconContainer: { width: 50, height: 50, borderRadius: 25, justifyContent: 'center', alignItems: 'center' },
-  poiInfo: { flex: 1, marginLeft: 12 },
-  poiName: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
-  poiCoords: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 2 },
+  poiCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark, marginBottom: 12, padding: 15, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
+  iconContainer: { width: 54, height: 54, borderRadius: 27, justifyContent: 'center', alignItems: 'center' },
+  poiInfo: { flex: 1, marginLeft: 15 },
+  poiName: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
+  poiCoords: { color: THEME.COLORS.textSecondary, fontSize: 12 },
   actionButtons: { flexDirection: 'row' },
-  editBtn: { padding: 8 },
-  deleteBtn: { padding: 8 },
+  editBtn: { padding: 10, backgroundColor: 'rgba(52, 152, 219, 0.1)', borderRadius: 12, marginRight: 8 },
+  deleteBtn: { padding: 10, backgroundColor: 'rgba(231, 76, 60, 0.1)', borderRadius: 12 },
   loader: { marginTop: 50 },
-  floatingBtn: { position: 'absolute', bottom: 30, left: 20, right: 20 },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: THEME.COLORS.glassDark, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 25, maxHeight: '90%' },
-  modalTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.champagneGold, marginBottom: 20, textAlign: 'center' },
-  row: { flexDirection: 'row' },
-  label: { color: THEME.COLORS.textSecondary, fontSize: 14, marginTop: 15, marginBottom: 10 },
-  iconPicker: { marginBottom: 20 },
-  iconOption: { width: 50, height: 50, borderRadius: 12, backgroundColor: THEME.COLORS.glassLight, justifyContent: 'center', alignItems: 'center', marginRight: 10, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  selectedIcon: { borderColor: THEME.COLORS.champagneGold, backgroundColor: 'rgba(212, 175, 55, 0.1)' },
-  previewContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', padding: 15, borderRadius: 12, marginBottom: 25 },
-  previewLabel: { color: THEME.COLORS.textTertiary, marginRight: 10 },
-  previewText: { marginLeft: 10, fontWeight: '600' },
-  cancelBtn: { marginTop: 15, padding: 15, alignItems: 'center' },
-  cancelText: { color: THEME.COLORS.error, fontWeight: '600' },
-  emptyText: { textAlign: 'center', color: THEME.COLORS.textTertiary, marginTop: 40 }
+  fab: { position: 'absolute', bottom: 30, right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', ...THEME.SHADOWS.strong },
+  emptyText: { textAlign: 'center', color: THEME.COLORS.textTertiary, marginTop: 40, fontSize: 14 }
 });
 
 export default MapManagement;
