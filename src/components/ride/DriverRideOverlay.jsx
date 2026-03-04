@@ -7,6 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
+  Image, // AJOUT : Import du composant Image
   Linking,
   Modal,
   Platform,
@@ -197,7 +198,15 @@ const DriverRideOverlay = () => {
 
         <View style={styles.riderInfoCard}>
           <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+            {/* MODIFICATION : Affichage conditionnel de la photo du client */}
+            {currentRide.riderProfilePicture ? (
+              <Image 
+                source={{ uri: currentRide.riderProfilePicture }} 
+                style={styles.avatarImage} 
+              />
+            ) : (
+              <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+            )}
           </View>
 
           <View style={styles.riderDetails}>
@@ -239,7 +248,6 @@ const DriverRideOverlay = () => {
           )}
 
           {driverStatus === DRIVER_STATUS.ARRIVED ? (
-            // 🛡️ INJECTION DU MODULE ISOLE
             <StartRideButton />
           ) : (
             <View style={[
@@ -277,7 +285,8 @@ const styles = StyleSheet.create({
   dotArrived: { backgroundColor: THEME.COLORS.info },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
-  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
+  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, // Ajout de overflow: 'hidden'
+  avatarImage: { width: '100%', height: '100%', borderRadius: 28 }, // Nouveau style pour l'image
   riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },

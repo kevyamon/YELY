@@ -179,32 +179,29 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
-    setTracks(true);
-  }, [name, color, icon]);
+    const timer = setTimeout(() => setTracks(false), 800);
+    return () => clearTimeout(timer);
+  }, [name, icon, color]);
 
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
     <Marker
       coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
+      anchor={{ x: 1, y: 0.5 }}
       zIndex={40}
       tracksViewChanges={tracks}
       onPress={onPress}
     >
-      <View style={styles.poiContainer}>
-        {/* TEXTE PUR : Sans boîte, aligné strictement à gauche de l'icône */}
+      <View style={styles.poiRowContainer}>
         <Text 
-          style={styles.poiText} 
-          onLayout={() => {
-            setTimeout(() => setTracks(false), 800);
-          }}
+          style={styles.poiTextAdvanced}
+          numberOfLines={1}
         >
           {name}
         </Text>
         
-        {/* ICÔNE */}
-        <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
+        <View style={[styles.poiIconCircleAdvanced, { backgroundColor: THEME.COLORS.background, borderColor: color }]}>
           <Ionicons name={icon || 'location'} size={14} color={color} />
         </View>
       </View>
@@ -256,32 +253,35 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-  poiContainer: {
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
+  poiRowContainer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    paddingRight: 2,
   },
-  poiIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+  poiIconCircleAdvanced: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-    zIndex: 2,
+    marginLeft: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1,
+    elevation: 2,
   },
-  poiText: {
-    position: 'absolute',
-    right: 24, // Fixé à gauche de l'icône, sans limite de taille
+  poiTextAdvanced: {
     color: THEME.COLORS.textPrimary,
     fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'right', // Permet au texte de s'étendre naturellement vers la gauche
-    textShadowColor: THEME.COLORS.background, // Assure la lisibilité sur la carte
-    textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 3,
-    zIndex: 1,
+    fontWeight: '700',
+    textShadowColor: '#FFFFFF',
+    textShadowOffset: { width: -1, height: 1 },
+    textShadowRadius: 2,
+    shadowColor: '#FFFFFF',
+    shadowOffset: { width: 1, height: -1 },
+    shadowOpacity: 1,
+    shadowRadius: 2,
   }
 });

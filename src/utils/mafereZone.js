@@ -1,37 +1,36 @@
 // src/utils/mafereZone.js
-// DONNÉES GÉOSPATIALES & INTELLIGENCE - Zone de couverture Yély (Maféré)
+// DONNÉES GÉOSPATIALES & INTELLIGENCE - Zone de couverture Yély (Maféré V2)
 // CSCSM Level: Bank Grade
 
-// Le centre de Maféré (récupéré depuis ton point KML exact : Placemark 0710D915EA3DB5A02706)
+// Le centre de Maféré (Ajusté selon le nouveau polygone pour être bien au milieu)
 export const MAFERE_CENTER = {
-  latitude: 5.4125925,
-  longitude: -3.0325855
+  latitude: 5.420000,
+  longitude: -3.028000
 };
 
-// 🚀 ZONE KML MAFÉRÉ (Polygone extrait de ton fichier Google Earth)
-// L'application va tracer une ligne entre chaque point pour dessiner le périmètre
+// 🚀 ZONE KML MAFÉRÉ V2 (Mise à jour suite au relevé topographique "Maféré 2")
+// Ce polygone est plus précis et couvre l'expansion réelle de la ville.
 export const MAFERE_KML_ZONE = [
-  { latitude: 5.397270619269481, longitude: -3.040652168545819 },
-  { latitude: 5.397668188115847, longitude: -3.038715772727267 },
-  { latitude: 5.406008760511635, longitude: -3.01928973350801 },
-  { latitude: 5.410226011548936, longitude: -3.011328744569358 },
-  { latitude: 5.417752156206156, longitude: -3.014210822997271 },
-  { latitude: 5.425374885210843, longitude: -3.016555528345999 },
-  { latitude: 5.432107025364943, longitude: -3.023175079427676 },
-  { latitude: 5.432588116161526, longitude: -3.039256911883392 },
-  { latitude: 5.425508636610378, longitude: -3.044358393789674 },
-  { latitude: 5.416045751938407, longitude: -3.047970409295107 },
-  { latitude: 5.406546901540048, longitude: -3.053424900375111 },
-  { latitude: 5.397762357815283, longitude: -3.052274362850119 },
-  { latitude: 5.397270619269481, longitude: -3.040652168545819 } // Le dernier point rejoint le premier pour fermer la boucle
+  { latitude: 5.399031034336893, longitude: -3.049977159237306 },
+  { latitude: 5.396533530602768, longitude: -3.039240846090227 },
+  { latitude: 5.402883250165573, longitude: -3.022268123621838 },
+  { latitude: 5.398864024638002, longitude: -3.006604056658062 },
+  { latitude: 5.411066839769147, longitude: -3.000589690214418 },
+  { latitude: 5.419077431907107, longitude: -3.010884090788243 },
+  { latitude: 5.42819734613291,  longitude: -3.01724570713425 },
+  { latitude: 5.439339076645838, longitude: -3.027251167463914 },
+  { latitude: 5.443699158653338, longitude: -3.033733326531315 },
+  { latitude: 5.438598907936526, longitude: -3.040823722486742 },
+  { latitude: 5.431327875881577, longitude: -3.04648564109407 },
+  { latitude: 5.426230049035072, longitude: -3.050302653433072 },
+  { latitude: 5.416122353529494, longitude: -3.052910524503075 },
+  { latitude: 5.405230303678057, longitude: -3.055627252222842 },
+  { latitude: 5.399031034336893, longitude: -3.049977159237306 } // Fermeture de la boucle
 ];
 
 /**
  * 🧠 Algorithme de Ray-Casting :
- * LOGIQUE MÉTIER : C'est le videur de la boîte de nuit. 
- * Il trace une ligne droite imaginaire depuis ta position. 
- * S'il coupe les bords de la zone de Maféré un nombre impair de fois, 
- * ça veut dire que tu es À L'INTÉRIEUR. Sinon, tu es À L'EXTÉRIEUR (ex: Abobo).
+ * LOGIQUE MÉTIER : Vérifie si un point GPS est dans le polygone.
  */
 export const isLocationInMafereZone = (location) => {
   if (!location || !location.latitude || !location.longitude) return false;

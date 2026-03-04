@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
+  Image, // AJOUT : Import du composant Image
   Linking,
   StyleSheet,
   Text,
@@ -51,7 +52,6 @@ const RiderRideOverlay = () => {
     });
   }, [translateY]);
 
-  // Synchronisation stricte avec la machine d'etat
   useEffect(() => {
     const status = currentRide?.status;
 
@@ -87,10 +87,6 @@ const RiderRideOverlay = () => {
     return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
   }, [driverLat, driverLng, targetLat, targetLng]);
 
-  // 🛡️ VACCIN : ZERO-LATENCY UI (Geofencing Autonome Passager)
-  // Si le reseau est defaillant et que le serveur n'a pas pu envoyer le WebSocket,
-  // l'interface client prend la decision locale de basculer en 'arrived' des 30 metres.
-  // Cela elimine definitivement le bug visuel du "En approche (0m)".
   useEffect(() => {
     if (currentRide?.status === 'accepted' && liveDistance !== Infinity && liveDistance <= 30) {
       dispatch(updateRideStatus({ status: 'arrived', arrivedAt: Date.now() }));
@@ -138,7 +134,15 @@ const RiderRideOverlay = () => {
 
       <View style={styles.driverInfoCard}>
         <View style={styles.avatarPlaceholder}>
-          <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+          {/* MODIFICATION : Affichage conditionnel de la photo du chauffeur */}
+          {currentRide.driverProfilePicture ? (
+            <Image 
+              source={{ uri: currentRide.driverProfilePicture }} 
+              style={styles.avatarImage} 
+            />
+          ) : (
+            <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+          )}
         </View>
 
         <View style={styles.driverDetails}>
@@ -201,7 +205,8 @@ const styles = StyleSheet.create({
   dotArrived: { backgroundColor: THEME.COLORS.info },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   driverInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
-  avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: THEME.COLORS.champagneGold },
+  avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, // Ajout de overflow: 'hidden'
+  avatarImage: { width: '100%', height: '100%', borderRadius: 30 }, // Nouveau style pour l'image
   driverDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   driverName: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   carBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginBottom: 4, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
