@@ -85,8 +85,16 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body: { isActive },
       }),
-      // AJOUT SENIOR: On invalide 'Subscription' pour forcer la mise à jour si on utilise le même appareil
       invalidatesTags: ['Stats', 'AuditLog', 'Subscription'], 
+    }),
+
+    // NOUVELLE MUTATION : Réduction de charge (Round-Robin)
+    toggleLoadReduce: builder.mutation({
+      query: () => ({
+        url: '/admin/load-reduce/toggle',
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Stats', 'AuditLog'],
     }),
     
     updateMapSettings: builder.mutation({
@@ -130,6 +138,7 @@ export const {
   useGetFinanceDataQuery,
   useUpdateWaveLinksMutation,
   useTogglePromoMutation,
+  useToggleLoadReduceMutation, // Export du nouveau hook
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,

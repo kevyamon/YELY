@@ -61,11 +61,22 @@ const useAdminSocketEvents = () => {
       }));
     };
 
+    // ÉCOUTEUR : Changement de la politique de distribution des validations
+    const handleLoadReduceUpdated = (data) => {
+      dispatch(showSuccessToast({
+        title: 'Système mis à jour',
+        message: data?.isLoadReduced 
+          ? 'La répartition de charge (3 par 3) est maintenant ACTIVÉE.' 
+          : 'La répartition de charge est DÉSACTIVÉE.',
+      }));
+    };
+
     socketService.on('user_role_updated', handleUserRoleUpdated);
     socketService.on('user_banned', handleUserBanned);
     socketService.on('user_unbanned', handleUserUnbanned);
     socketService.on('subscription_validated', handleSubscriptionValidated);
     socketService.on('subscription_rejected', handleSubscriptionRejected);
+    socketService.on('load_reduce_updated', handleLoadReduceUpdated);
 
     return () => {
       socketService.off('user_role_updated', handleUserRoleUpdated);
@@ -73,6 +84,7 @@ const useAdminSocketEvents = () => {
       socketService.off('user_unbanned', handleUserUnbanned);
       socketService.off('subscription_validated', handleSubscriptionValidated);
       socketService.off('subscription_rejected', handleSubscriptionRejected);
+      socketService.off('load_reduce_updated', handleLoadReduceUpdated);
     };
   }, [isAuthenticated, dispatch]);
 };

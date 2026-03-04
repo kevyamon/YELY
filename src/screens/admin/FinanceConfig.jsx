@@ -7,7 +7,11 @@ import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { useGetFinanceDataQuery, useTogglePromoMutation } from '../../store/api/adminApiSlice';
+import {
+    useGetFinanceDataQuery,
+    useToggleLoadReduceMutation,
+    useTogglePromoMutation
+} from '../../store/api/adminApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -23,9 +27,12 @@ const GlassCard = ({ children, style }) => (
 const FinanceConfig = ({ navigation }) => {
   const dispatch = useDispatch();
   const { data: financeResponse, isLoading } = useGetFinanceDataQuery({ period: 'all' });
-  const [togglePromo, { isLoading: isToggling }] = useTogglePromoMutation();
+  
+  const [togglePromo, { isLoading: isTogglingPromo }] = useTogglePromoMutation();
+  const [toggleLoadReduce, { isLoading: isTogglingLoad }] = useToggleLoadReduceMutation();
 
   const [isPromoActive, setIsPromoActive] = useState(false);
+  const [isLoadReduced, setIsLoadReduced] = useState(false);
 
   const financeData = financeResponse?.data || financeResponse || [];
   
@@ -34,10 +41,8 @@ const FinanceConfig = ({ navigation }) => {
 
   const handleTogglePromo = async (value) => {
     setIsPromoActive(value);
-    
     try { 
       await togglePromo({ isActive: value }).unwrap(); 
-      // Utilisation de ton propre système de Toast via Redux
       dispatch(showSuccessToast({
         title: 'Succès',
         message: `Mode Promotionnel ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
@@ -47,6 +52,23 @@ const FinanceConfig = ({ navigation }) => {
       dispatch(showErrorToast({
         title: 'Échec',
         message: "Impossible de changer le mode promotionnel.",
+      }));
+    }
+  };
+
+  const handleToggleLoadReduce = async (value) => {
+    // Optimistic Update : on met à jour l'UI tout de suite
+    setIsLoadReduced(value);
+    try {
+      // Le backend va juste inverser la valeur actuelle dans la base
+      await toggleLoadReduce().unwrap();
+      // Le toast de succès sera aussi déclenché par le WebSocket (useAdminSocketEvents) pour plus de sûreté
+    } catch (e) {
+      // En cas d'erreur on annule l'effet visuel
+      setIsLoadReduced(!value);
+      dispatch(showErrorToast({
+        title: 'Échec',
+        message: "Impossible de modifier la répartition des validations.",
       }));
     }
   };
@@ -72,19 +94,38 @@ const FinanceConfig = ({ navigation }) => {
           )}
         </GlassCard>
 
+        {/* SECTION : OPTIMISATION ET CHARGE DE TRAVAIL */}
+        <Text style={styles.sectionTitle}>Optimisation de la Charge</Text>
+        <GlassCard style={styles.actionCard}>
+          <View style={styles.rowBetween}>
+            <View style={styles.textContainer}>
+              <Text style={styles.cardTitle}>Répartition 3 par 3</Text>
+              <Text style={styles.cardDescription}>Distribue les nouvelles demandes d'abonnement aux autres administrateurs.</Text>
+            </View>
+            <Switch
+              trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
+              thumbColor={THEME.COLORS.background}
+              onValueChange={handleToggleLoadReduce}
+              value={isLoadReduced}
+              disabled={isTogglingLoad}
+            />
+          </View>
+        </GlassCard>
+
+        {/* SECTION : MARKETING */}
         <Text style={styles.sectionTitle}>Marketing & Promotions</Text>
         <GlassCard style={styles.actionCard}>
           <View style={styles.rowBetween}>
-            <View>
+            <View style={styles.textContainer}>
               <Text style={styles.cardTitle}>Mode Promotionnel</Text>
-              <Text style={styles.cardDescription}>Active les tarifs reduits pour les chauffeurs.</Text>
+              <Text style={styles.cardDescription}>Active les tarifs réduits pour les chauffeurs.</Text>
             </View>
             <Switch
               trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
               thumbColor={THEME.COLORS.background}
               onValueChange={handleTogglePromo}
               value={isPromoActive}
-              disabled={isToggling}
+              disabled={isTogglingPromo}
             />
           </View>
         </GlassCard>
@@ -109,8 +150,9 @@ const styles = StyleSheet.create({
   revenueAmount: { color: THEME.COLORS.primary, fontSize: 36, fontWeight: 'bold', marginTop: 10 },
   actionCard: { padding: 20 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  textContainer: { flex: 1, paddingRight: 15 },
   cardTitle: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
-  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4, maxWidth: '80%' }
+  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4 }
 });
 
 export default FinanceConfig;
