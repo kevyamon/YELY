@@ -1,4 +1,4 @@
-// src/navigation/AppNavigator.jsx [MODIFIÉ]
+// src/navigation/AppNavigator.jsx
 // ORCHESTRATEUR DE NAVIGATION - Routage Securise et Isolation par Role
 // CSCSM Level: Bank Grade
 
@@ -21,10 +21,10 @@ import {
 import THEME from '../theme/theme';
 
 // Screens Auth
-import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen'; // ✅ AJOUT
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
-import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen'; // ✅ AJOUT
+import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import LandingScreen from '../screens/LandingScreen';
 
 // Homes
@@ -46,7 +46,7 @@ import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
 import AdminReports from '../screens/admin/AdminReports';
 import FinanceConfig from '../screens/admin/FinanceConfig';
-import MapManagement from '../screens/admin/MapManagement'; // ✅ AJOUT : Import de la nouvelle page
+import MapManagement from '../screens/admin/MapManagement';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
@@ -142,55 +142,51 @@ const AppNavigator = () => {
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
         </Stack.Group>
+      ) : isAdmin ? (
+        <Stack.Group>
+          <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+          <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
+          <Stack.Screen name="UsersManagement" component={UsersManagement} />
+          <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
+          <Stack.Screen name="AdminJournal" component={AdminJournal} />
+          <Stack.Screen name="AdminReports" component={AdminReports} />
+          <Stack.Screen name="MapManagement" component={MapManagement} />
+        </Stack.Group>
+      ) : isSubscriptionPending ? (
+        <Stack.Group>
+          <Stack.Screen name="WaitSubscription" component={WaitScreen} />
+        </Stack.Group>
       ) : (
         <Stack.Group>
-          {isAdmin ? (
-            <Stack.Group>
-              <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
-              <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
-              <Stack.Screen name="UsersManagement" component={UsersManagement} />
-              <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
-              <Stack.Screen name="AdminJournal" component={AdminJournal} />
-              <Stack.Screen name="AdminReports" component={AdminReports} />
-              <Stack.Screen name="MapManagement" component={MapManagement} /> {/* ✅ AJOUT DE LA ROUTE ICI */}
-            </Stack.Group>
-          ) : isSubscriptionPending ? (
-            <Stack.Group>
-              <Stack.Screen name="WaitSubscription" component={WaitScreen} />
-            </Stack.Group>
-          ) : isDriver ? (
+          {isDriver ? (
             <Stack.Screen name="DriverHome" component={DriverHome} />
           ) : (
             <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
-          {!isAdmin && !isSubscriptionPending && (
-            <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
-              <Stack.Screen 
-                name="Menu" 
-                component={MenuScreen} 
-                options={{
-                  animation: 'fade_from_bottom',
-                  gestureEnabled: true,
-                  animationDuration: 100, 
-                }}
-              />
-
-              <Stack.Screen 
-                name="Pancarte" 
-                component={PancarteScreen} 
-                options={{
-                  animation: 'slide_from_bottom',
-                }}
-              />
-
-              <Stack.Screen name="Profile" component={ProfileScreen} />
-              <Stack.Screen name="History" component={HistoryScreen} />
-              <Stack.Screen name="Report" component={ReportScreen} />
-              <Stack.Screen name="Notifications" component={NotificationsScreen} />
-              <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-            </Stack.Group>
-          )}
+          <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
+            <Stack.Screen 
+              name="Menu" 
+              component={MenuScreen} 
+              options={{
+                animation: 'fade_from_bottom',
+                gestureEnabled: true,
+                animationDuration: 100, 
+              }}
+            />
+            <Stack.Screen 
+              name="Pancarte" 
+              component={PancarteScreen} 
+              options={{
+                animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen name="Profile" component={ProfileScreen} />
+            <Stack.Screen name="History" component={HistoryScreen} />
+            <Stack.Screen name="Report" component={ReportScreen} />
+            <Stack.Screen name="Notifications" component={NotificationsScreen} />
+            <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+          </Stack.Group>
         </Stack.Group>
       )}
     </Stack.Navigator>

@@ -1,4 +1,4 @@
-// src/store/slices/apiSlice.js
+// src/store/slices/apiSlice.js [MODIFIÉ]
 // COEUR RESEAU - Rotation Mutex & Anti-Sniffing
 // STANDARD: Industriel / Bank Grade
 
@@ -106,6 +106,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog', 'Report'],
+  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog', 'Report', 'POI'],
   endpoints: () => ({}),
 });
