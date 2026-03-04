@@ -1,4 +1,4 @@
-// src/components/drawer/menuConfig.js
+// src/components/drawer/menuConfig.js [MODIFIÉ]
 // CONFIGURATION DU MENU (Données & Utilitaires)
 
 const MENU_ITEMS = {
@@ -27,6 +27,7 @@ const MENU_ITEMS = {
     { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
     { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
     { route: 'Finance', label: 'Finance', icon: 'wallet' },
+    { route: 'MapManagement', label: 'Gestion Carte', icon: 'map' }, // ✅ AJOUT DE LA PAGE CARTE
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],

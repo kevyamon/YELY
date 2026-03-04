@@ -1,4 +1,4 @@
-// src/navigation/AppNavigator.jsx
+// src/navigation/AppNavigator.jsx [MODIFIÉ]
 // ORCHESTRATEUR DE NAVIGATION - Routage Securise et Isolation par Role
 // CSCSM Level: Bank Grade
 
@@ -46,6 +46,7 @@ import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
 import AdminReports from '../screens/admin/AdminReports';
 import FinanceConfig from '../screens/admin/FinanceConfig';
+import MapManagement from '../screens/admin/MapManagement'; // ✅ AJOUT : Import de la nouvelle page
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
@@ -151,6 +152,7 @@ const AppNavigator = () => {
               <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
               <Stack.Screen name="AdminReports" component={AdminReports} />
+              <Stack.Screen name="MapManagement" component={MapManagement} /> {/* ✅ AJOUT DE LA ROUTE ICI */}
             </Stack.Group>
           ) : isSubscriptionPending ? (
             <Stack.Group>
