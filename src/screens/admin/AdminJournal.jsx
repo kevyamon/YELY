@@ -4,8 +4,9 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useMemo } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton'; // Import du composant
 import { useGetAuditLogsQuery } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -18,11 +19,29 @@ const GlassCard = ({ children, style }) => (
   </View>
 );
 
+// DICTIONNAIRE DE TRADUCTION : Transforme les logs techniques en français
+const ACTION_DICTIONARY = {
+  'PROMOTE_USER': 'Promotion Admin',
+  'REVOKE_USER': 'Révocation Admin',
+  'BAN_USER': 'Bannissement',
+  'UNBAN_USER': 'Levée de Bannissement',
+  'UPDATE_SETTINGS': 'Mise à jour Paramètres',
+  'UPDATE_MAP_SETTINGS': 'Mise à jour Zone/Carte',
+  'APPROVE_TRANSACTION': 'Transaction Financière Approuvée',
+  'REJECT_TRANSACTION': 'Transaction Financière Rejetée',
+  'APPROVE_SUBSCRIPTION': 'Abonnement Activé',
+  'REJECT_SUBSCRIPTION': 'Abonnement Refusé',
+  'TOGGLE_PROMO': 'Changement Mode Promotionnel',
+  'UPDATE_WAVE_LINKS': 'Mise à jour Liens Wave',
+  'DELETE_ACCOUNT': 'Suppression de Compte',
+  'UPDATE_PROFILE': 'Modification de Profil'
+};
+
 const AdminJournal = ({ navigation }) => {
-  // AJOUT SENIOR: Récupération des vrais logs depuis l'API !
   const { data: logsResponse, isLoading, refetch, isFetching } = useGetAuditLogsQuery({ page: 1 });
-  
-  // Extraction sécurisée
+  const sectionListRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+
   const journalHistory = logsResponse?.data?.logs || logsResponse?.logs || [];
 
   const groupedData = useMemo(() => {
@@ -47,7 +66,7 @@ const AdminJournal = ({ navigation }) => {
     });
 
     const sections = [];
-    if (periods['24h'].length > 0) sections.push({ title: 'Dernieres 24 heures', data: periods['24h'] });
+    if (periods['24h'].length > 0) sections.push({ title: 'Dernières 24 heures', data: periods['24h'] });
     if (periods['7j'].length > 0) sections.push({ title: '7 derniers jours', data: periods['7j'] });
     if (periods['15j'].length > 0) sections.push({ title: '15 derniers jours', data: periods['15j'] });
     if (periods['30j'].length > 0) sections.push({ title: '30 derniers jours', data: periods['30j'] });
@@ -55,19 +74,37 @@ const AdminJournal = ({ navigation }) => {
     return sections;
   }, [journalHistory]);
 
-  const renderItem = ({ item }) => (
-    <GlassCard style={styles.logCard}>
-      <View style={styles.logHeader}>
-        <Text style={styles.logAction}>{item.action || 'ACTION_INCONNUE'}</Text>
-        <Text style={styles.logDate}>
-            {new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
-        </Text>
-      </View>
-      <Text style={styles.logDetails}>{item.details || 'Aucun detail fourni'}</Text>
-      {/* Affichage du nom de l'admin qui a fait l'action (actor) si dispo */}
-      <Text style={styles.logTarget}>Par: {item.actor?.name || item.actor?.email || 'Système'}</Text>
-    </GlassCard>
-  );
+  const handleScroll = (event) => {
+    // Affiche le bouton si on descend de plus de 200 pixels
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowScrollTop(offsetY > 200);
+  };
+
+  const scrollToTop = () => {
+    sectionListRef.current?.scrollToLocation({
+      sectionIndex: 0,
+      itemIndex: 0,
+      animated: true,
+    });
+  };
+
+  const renderItem = ({ item }) => {
+    // Utilisation du dictionnaire avec fallback sur le nom brut si inconnu
+    const translatedAction = ACTION_DICTIONARY[item.action] || item.action || 'Action Inconnue';
+
+    return (
+      <GlassCard style={styles.logCard}>
+        <View style={styles.logHeader}>
+          <Text style={styles.logAction}>{translatedAction}</Text>
+          <Text style={styles.logDate}>
+              {new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+          </Text>
+        </View>
+        <Text style={styles.logDetails}>{item.details || 'Aucun détail fourni'}</Text>
+        <Text style={styles.logTarget}>Par: {item.actor?.name || item.actor?.email || 'Système'}</Text>
+      </GlassCard>
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -84,30 +121,36 @@ const AdminJournal = ({ navigation }) => {
             <Text style={styles.loadingText}>Chargement des archives...</Text>
         </View>
       ) : (
-        <SectionList
-            sections={groupedData}
-            keyExtractor={(item, index) => item._id || index.toString()}
-            renderItem={renderItem}
-            renderSectionHeader={({ section: { title } }) => (
-            <View style={styles.sectionHeader}>
-                <Text style={styles.sectionTitle}>{title}</Text>
-            </View>
-            )}
-            contentContainerStyle={styles.listContent}
-            onRefresh={refetch}
-            refreshing={isFetching}
-            ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-                <GlassCard style={styles.emptyCard}>
-                <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
-                <Text style={styles.emptyTitle}>Journal d'activite</Text>
-                <Text style={styles.emptyText}>
-                    Le journal est completement vide. Aucune action d'administration n'a encore ete effectuee recemment.
-                </Text>
-                </GlassCard>
-            </View>
-            }
-        />
+        <>
+          <SectionList
+              ref={sectionListRef}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              sections={groupedData}
+              keyExtractor={(item, index) => item._id || index.toString()}
+              renderItem={renderItem}
+              renderSectionHeader={({ section: { title } }) => (
+                <View style={styles.sectionHeader}>
+                    <Text style={styles.sectionTitle}>{title}</Text>
+                </View>
+              )}
+              contentContainerStyle={styles.listContent}
+              onRefresh={refetch}
+              refreshing={isFetching}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                    <GlassCard style={styles.emptyCard}>
+                    <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
+                    <Text style={styles.emptyTitle}>Journal d'activité</Text>
+                    <Text style={styles.emptyText}>
+                        Le journal est complètement vide. Aucune action d'administration n'a encore été effectuée récemment.
+                    </Text>
+                    </GlassCard>
+                </View>
+              }
+          />
+          {showScrollTop && <ScrollToTopButton onPress={scrollToTop} />}
+        </>
       )}
     </View>
   );
@@ -127,8 +170,8 @@ const styles = StyleSheet.create({
   glassContent: { padding: 15 },
   logCard: { marginBottom: 12 },
   logHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  logAction: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 14 },
-  logDate: { color: THEME.COLORS.textTertiary, fontSize: 12 },
+  logAction: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 13 },
+  logDate: { color: THEME.COLORS.textTertiary, fontSize: 11 },
   logDetails: { color: THEME.COLORS.textPrimary, fontSize: 13, marginBottom: 5 },
   logTarget: { color: THEME.COLORS.textSecondary, fontSize: 11, fontStyle: 'italic' },
   emptyContainer: { flex: 1, justifyContent: 'center', marginTop: 40 },
