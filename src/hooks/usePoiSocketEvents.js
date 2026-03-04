@@ -1,10 +1,10 @@
-// src/hooks/usePoiSocketEvents.js [NOUVEAU]
+// src/hooks/usePoiSocketEvents.js
 // HOOK DE TEMPS RÉEL - Écoute des événements de lieux (POI)
 // CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
-import { poiApiSlice } from '../store/api/poiApiSlice';
+import { apiSlice } from '../store/slices/apiSlice'; // CRITIQUE: Import de l'apiSlice global
 import useSocket from './useSocket';
 
 const usePoiSocketEvents = () => {
@@ -16,13 +16,13 @@ const usePoiSocketEvents = () => {
 
     // Quand un POI est créé, modifié ou importé en masse
     const handlePoiUpdated = () => {
-      // On invalide le cache RTK Query pour forcer le rechargement transparent
-      dispatch(poiApiSlice.util.invalidateTags(['POI']));
+      // On utilise l'apiSlice global pour être certain que l'invalidation est prise en compte
+      dispatch(apiSlice.util.invalidateTags(['POI']));
     };
 
     // Quand un POI est supprimé
     const handlePoiDeleted = () => {
-      dispatch(poiApiSlice.util.invalidateTags(['POI']));
+      dispatch(apiSlice.util.invalidateTags(['POI']));
     };
 
     // Inscription aux événements
