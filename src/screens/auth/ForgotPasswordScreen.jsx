@@ -3,28 +3,46 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Alert, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { useDispatch } from 'react-redux';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import { useForgotPasswordMutation } from '../../store/api/usersApiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice'; // ✅ AJOUT DES TOASTS
 import THEME from '../../theme/theme';
 
 const ForgotPasswordScreen = ({ navigation }) => {
+  const dispatch = useDispatch(); // ✅ AJOUT DU DISPATCH
   const [email, setEmail] = useState('');
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
   const handleSendCode = async () => {
-    if (!email || !email.includes('@')) {
-      Alert.alert("Erreur", "Veuillez entrer une adresse email valide.");
+    const cleanEmail = email.trim().toLowerCase();
+    
+    if (!cleanEmail || !cleanEmail.includes('@')) {
+      dispatch(showErrorToast({ 
+        title: "Email invalide", 
+        message: "Veuillez entrer une adresse email correcte." 
+      }));
       return;
     }
 
     try {
-      await forgotPassword({ email }).unwrap();
-      // On redirige vers l'écran de reset en passant l'email
-      navigation.navigate('ResetPassword', { email });
+      const res = await forgotPassword({ email: cleanEmail }).unwrap();
+      
+      dispatch(showSuccessToast({ 
+        title: "Code envoyé", 
+        message: "Vérifiez votre boîte de réception (et vos spams)." 
+      }));
+      
+      navigation.navigate('ResetPassword', { email: cleanEmail });
     } catch (err) {
-      Alert.alert("Erreur", err?.data?.message || "Une erreur est survenue.");
+      // ✅ UTILISATION DE TON COMPOSANT TOAST POUR L'ERREUR
+      const errorMessage = err?.data?.message || "Erreur lors de l'envoi de l'email.";
+      dispatch(showErrorToast({ 
+        title: "Échec de l'envoi", 
+        message: errorMessage 
+      }));
     }
   };
 
@@ -35,13 +53,9 @@ const ForgotPasswordScreen = ({ navigation }) => {
     >
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.headerSpacer} />
-        
         <Ionicons name="lock-open-outline" size={80} color={THEME.COLORS.champagneGold} style={styles.icon} />
-        
-        <Text style={styles.title}>Mot de passe oublié ?</Text>
-        <Text style={styles.subtitle}>
-          Entrez votre adresse email. Nous vous enverrons un code de sécurité pour réinitialiser votre accès.
-        </Text>
+        <Text style={styles.title}>Récupération</Text>
+        <Text style={styles.subtitle}>Un code de sécurité vous sera envoyé par email.</Text>
 
         <View style={styles.form}>
           <GlassInput
@@ -53,36 +67,37 @@ const ForgotPasswordScreen = ({ navigation }) => {
             autoCapitalize="none"
             icon="mail-outline"
           />
-
           <GoldButton
             title="ENVOYER LE CODE"
             onPress={handleSendCode}
             loading={isLoading}
             style={styles.button}
           />
-
-          <GoldButton
-            title="RETOUR"
+          <TouchableOpacity 
             onPress={() => navigation.goBack()}
-            variant="outline"
             style={styles.backButton}
-          />
+          >
+            <Text style={styles.backButtonText}>Retour à la connexion</Text>
+          </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 };
 
+// ... gardons tes styles actuels
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   scrollContent: { padding: 25, alignItems: 'center' },
   headerSpacer: { height: 60 },
   icon: { marginBottom: 20 },
-  title: { fontSize: 28, fontWeight: 'bold', color: THEME.COLORS.textPrimary, textAlign: 'center' },
-  subtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 10, lineHeight: 22 },
+  title: { fontSize: 32, fontWeight: 'bold', color: THEME.COLORS.champagneGold },
+  subtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 10 },
   form: { width: '100%', marginTop: 40 },
   button: { marginTop: 10 },
-  backButton: { marginTop: 15, borderColor: 'transparent' },
+  backButton: { marginTop: 25, alignSelf: 'center' },
+  backButtonText: { color: THEME.COLORS.textTertiary, fontSize: 14, textDecorationLine: 'underline' }
 });
 
+import { TouchableOpacity } from 'react-native'; // N'oublie pas l'import
 export default ForgotPasswordScreen;
