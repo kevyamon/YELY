@@ -2,10 +2,11 @@
 // ECRAN D'ABONNEMENT - Orchestrateur (Modulaire & Temps Réel)
 // STANDARD: Clean Architecture / Bank Grade
 
+import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -33,7 +34,7 @@ const PLAN_TYPES = {
   MONTHLY: 'MONTHLY'
 };
 
-const SubscriptionScreen = () => {
+const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   
@@ -45,9 +46,7 @@ const SubscriptionScreen = () => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [senderPhone, setSenderPhone] = useState('');
   const [proofImage, setProofImage] = useState(null);
-  const [timeLeft, setTimeLeft] = useState(null);
 
-  // CORRECTION SENIOR: Utilisation directe des méthodes on/off de ton socketService
   useEffect(() => {
     const handlePromoUpdate = () => {
       refetchConfig();
@@ -77,27 +76,10 @@ const SubscriptionScreen = () => {
     }
   }, [statusData, isStatusLoading]);
 
-  useEffect(() => {
-    let interval;
-    if (statusData?.data?.expiresAt && statusData.data.isActive) {
-      interval = setInterval(() => {
-        const difference = new Date(statusData.data.expiresAt) - new Date();
-        if (difference > 0) {
-          setTimeLeft({
-            days: Math.floor(difference / (1000 * 60 * 60 * 24)),
-            hours: Math.floor((difference / (1000 * 60 * 60)) % 24),
-            minutes: Math.floor((difference / 1000 / 60) % 60),
-            seconds: Math.floor((difference / 1000) % 60)
-          });
-        } else {
-          setTimeLeft(null);
-          clearInterval(interval);
-          setCurrentStep(STEPS.CHOOSE_PLAN); 
-        }
-      }, 1000);
-    }
-    return () => clearInterval(interval);
-  }, [statusData]);
+  // Fonction stabilisée avec useCallback
+  const handleProlong = useCallback(() => {
+    setCurrentStep(STEPS.CHOOSE_PLAN);
+  }, []);
 
   const handleSelectPlan = async (planType, paymentLink, price) => {
     if (!paymentLink) {
@@ -170,6 +152,34 @@ const SubscriptionScreen = () => {
     }
   };
 
+  const renderHeader = () => {
+    const isPending = statusData?.data?.isPending;
+    const isActive = statusData?.data?.isActive;
+    const isDashboard = currentStep === STEPS.DASHBOARD;
+
+    return (
+      <View style={styles.header}>
+        {isActive && isDashboard ? (
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
+            <Ionicons name="arrow-back" size={26} color={THEME.COLORS.textPrimary} />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+        
+        <Text style={styles.headerTitle}>Pass Yely</Text>
+
+        {(!isActive || isPending) ? (
+          <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
+            <Ionicons name="log-out-outline" size={26} color="#e74c3c" />
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.headerSpacer} />
+        )}
+      </View>
+    );
+  };
+
   if (isConfigLoading || isStatusLoading || !currentStep) {
     return (
       <ScreenWrapper style={styles.centerContainer}>
@@ -181,37 +191,40 @@ const SubscriptionScreen = () => {
 
   return (
     <ScreenWrapper>
-      <View style={[styles.container, { paddingTop: Math.max(insets.top + 20, 20) }]}>
+      <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) }]}>
         
-        {currentStep === STEPS.DASHBOARD && (
-          <SubscriptionDashboard 
-            status={statusData.data} 
-            timeLeft={timeLeft} 
-            onProlong={() => setCurrentStep(STEPS.CHOOSE_PLAN)} 
-          />
-        )}
+        {renderHeader()}
 
-        {currentStep === STEPS.CHOOSE_PLAN && (
-          <PlanSelection 
-            config={configData.data} 
-            status={statusData.data}
-            onSelectPlan={handleSelectPlan}
-            onBack={() => setCurrentStep(STEPS.DASHBOARD)}
-            onLogout={() => dispatch(logout())}
-          />
-        )}
+        <View style={styles.content}>
+          {currentStep === STEPS.DASHBOARD && (
+            <SubscriptionDashboard 
+              status={statusData.data} 
+              onProlong={handleProlong} 
+            />
+          )}
 
-        {currentStep === STEPS.UPLOAD_PROOF && (
-          <ProofUploadForm 
-            senderPhone={senderPhone}
-            setSenderPhone={setSenderPhone}
-            proofImage={proofImage}
-            onPickImage={pickImage}
-            onSubmit={handleSubmitProof}
-            onCancel={() => setCurrentStep(STEPS.CHOOSE_PLAN)}
-            isSubmitting={isSubmitting}
-          />
-        )}
+          {currentStep === STEPS.CHOOSE_PLAN && (
+            <PlanSelection 
+              config={configData.data} 
+              status={statusData.data}
+              onSelectPlan={handleSelectPlan}
+              onBack={() => setCurrentStep(STEPS.DASHBOARD)}
+              onLogout={() => dispatch(logout())}
+            />
+          )}
+
+          {currentStep === STEPS.UPLOAD_PROOF && (
+            <ProofUploadForm 
+              senderPhone={senderPhone}
+              setSenderPhone={setSenderPhone}
+              proofImage={proofImage}
+              onPickImage={pickImage}
+              onSubmit={handleSubmitProof}
+              onCancel={() => setCurrentStep(STEPS.CHOOSE_PLAN)}
+              isSubmitting={isSubmitting}
+            />
+          )}
+        </View>
 
       </View>
     </ScreenWrapper>
@@ -221,7 +234,22 @@ const SubscriptionScreen = () => {
 const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
-  container: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, justifyContent: 'center' }
+  container: { flex: 1 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 15,
+  },
+  headerButton: {
+    padding: 8,
+    borderRadius: 50,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+  },
+  headerSpacer: { width: 42 },
+  headerTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  content: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, justifyContent: 'center' }
 });
 
 export default SubscriptionScreen;

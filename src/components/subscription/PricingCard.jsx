@@ -70,7 +70,7 @@ const styles = StyleSheet.create({
     padding: 20,
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: 'rgba(255, 215, 0, 0.2)',
+    borderColor: 'rgba(12, 10, 0, 0.2)',
     overflow: 'hidden'
   },
   cardPromo: {
