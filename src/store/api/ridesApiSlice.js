@@ -142,6 +142,15 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       query: ({ page = 1, limit = 20 }) => `/rides/history?page=${page}&limit=${limit}`,
       providesTags: ['Ride'],
     }),
+
+    // 🚀 AJOUT SENIOR : La mutation pour masquer la course
+    hideFromHistory: builder.mutation({
+      query: (rideId) => ({
+        url: `/rides/${rideId}/history`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Ride'],
+    }),
     
     getCurrentRide: builder.query({
       query: () => '/rides/current',
@@ -168,6 +177,7 @@ export const {
   useCancelRideMutation,
   useRateRideMutation,
   useGetRideHistoryQuery,
+  useHideFromHistoryMutation, // <-- 🚀 EXPORT AJOUTÉ ICI
   useGetCurrentRideQuery,
   useEstimateRideQuery,
   useLazyEstimateRideQuery,
