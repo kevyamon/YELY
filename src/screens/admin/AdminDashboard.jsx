@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef, useState } from 'react';
-// 🚀 CORRECTION SENIOR : Import depuis 'react-native' et non 'react-redux' !
+// CORRECTION SENIOR : Import depuis 'react-native' et non 'react-redux' !
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
