@@ -8,11 +8,13 @@ import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity,
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
-import ResolveReportModal from '../../components/admin/ResolveReportModal'; // L'import propre du tiroir de résolution
+import ResolveReportModal from '../../components/admin/ResolveReportModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
-import ImagePreviewModal from '../../components/ui/ImagePreviewModal'; // L'import propre du tiroir d'image
-import { useDeleteReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
+import ImagePreviewModal from '../../components/ui/ImagePreviewModal';
+
+// AJOUT SENIOR: Import de la NOUVELLE mutation dédiée à l'administration
+import { useDeleteAdminReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -20,7 +22,9 @@ const AdminReports = ({ navigation }) => {
   const dispatch = useDispatch();
   const { data: reportsResponse, isLoading, isFetching, refetch } = useGetAllReportsQuery();
   const [resolveReport, { isLoading: isResolving }] = useResolveReportMutation();
-  const [deleteReport, { isLoading: isDeleting }] = useDeleteReportMutation();
+  
+  // AJOUT SENIOR: Hook Admin pour la suppression
+  const [deleteAdminReport, { isLoading: isDeleting }] = useDeleteAdminReportMutation();
 
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -62,7 +66,8 @@ const AdminReports = ({ navigation }) => {
   const handleDelete = async () => {
     if (!reportToDelete) return;
     try {
-      await deleteReport(reportToDelete).unwrap();
+      // Appel direct à la route Admin !
+      await deleteAdminReport(reportToDelete).unwrap();
       setReportToDelete(null);
       dispatch(showSuccessToast({ title: 'Supprimé', message: 'Signalement effacé définitivement.' }));
     } catch (error) {
@@ -180,7 +185,6 @@ const AdminReports = ({ navigation }) => {
         </>
       )}
 
-      {/* Utilisation des composants modulaires */}
       <ResolveReportModal 
         visible={isModalVisible} 
         report={selectedReport} 
@@ -208,7 +212,6 @@ const AdminReports = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  // Tout ce qui concerne les modales a été supprimé d'ici !
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center' },
   backButton: { marginRight: 15 },

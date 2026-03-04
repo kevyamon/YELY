@@ -6,14 +6,17 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef, useState } from 'react';
+// 🚀 CORRECTION SENIOR : Import depuis 'react-native' et non 'react-redux' !
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
+
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import BlinkingBadge from '../../components/admin/BlinkingBadge';
 import HelpModal from '../../components/admin/HelpModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import StatCard from '../../components/admin/StatCard';
 import { useGetDashboardStatsQuery } from '../../store/api/adminApiSlice';
+import { useGetAllReportsQuery } from '../../store/api/reportsApiSlice';
 import { forceSilentRefresh, logout, selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
@@ -40,20 +43,29 @@ const AdminDashboard = () => {
   
   const [seenValidations, setSeenValidations] = useState(false);
   const [seenUsers, setSeenUsers] = useState(true); 
+  const [seenReports, setSeenReports] = useState(false); 
+
   const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0 });
+  const prevReportsCountRef = useRef(0);
   const isFirstLoad = useRef(true);
   
-  // MISE A JOUR DES CLAIMS : On force un refresh pour verifier les droits Admin reels a l'entree
   useEffect(() => {
     dispatch(forceSilentRefresh());
   }, [dispatch]);
 
   const { data: statsData, isLoading, refetch, isFetching, error } = useGetDashboardStatsQuery(undefined, {
-    pollingInterval: 10000, // Ajuste a 10s pour reduire la charge, le refresh initial suffit au demarrage
+    pollingInterval: 10000, 
     refetchOnMountOrArgChange: true,
+  });
+
+  const { data: reportsData } = useGetAllReportsQuery(undefined, {
+    skip: user?.role !== 'admin' && user?.role !== 'superadmin',
   });
   
   const stats = statsData?.data || statsData || { totalUsers: 0, activeDrivers: 0, pendingValidations: 0 };
+  const reports = reportsData?.data || reportsData || [];
+  
+  const unresolvedReportsCount = reports.filter(r => r.status !== 'RESOLVED').length;
 
   useEffect(() => {
     if (statsData) {
@@ -72,9 +84,17 @@ const AdminDashboard = () => {
     }
   }, [stats.pendingValidations, stats.totalUsers, statsData]);
 
+  useEffect(() => {
+    if (unresolvedReportsCount > prevReportsCountRef.current) {
+      setSeenReports(false);
+    }
+    prevReportsCountRef.current = unresolvedReportsCount;
+  }, [unresolvedReportsCount]);
+
   const handleNavigate = (route, id) => {
     if (id === 'validations') setSeenValidations(true);
     if (id === 'users') setSeenUsers(true);
+    if (id === 'reports') setSeenReports(true); 
     navigation.navigate(route);
   };
 
@@ -95,12 +115,12 @@ const AdminDashboard = () => {
       badge: !seenUsers ? "!" : undefined, 
       allowed: true 
     },
-    // AJOUT SENIOR : Le module Signalements
     { 
       id: 'reports', 
       title: 'Signalements', 
       icon: 'alert-circle-outline', 
       route: 'AdminReports', 
+      badge: !seenReports && unresolvedReportsCount > 0 ? unresolvedReportsCount : undefined, 
       allowed: true 
     },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
@@ -115,7 +135,7 @@ const AdminDashboard = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en regle et en ligne.\n• En Attente : Demandes de validation de paiement non traitees.\n• Utilisateurs : Total des comptes inscrits.";
+  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en règle et en ligne.\n• En Attente : Demandes de validation de paiement non traitées.\n• Utilisateurs : Total des comptes inscrits.";
 
   return (
     <View style={styles.container}>
@@ -179,7 +199,7 @@ const AdminDashboard = () => {
         </View>
       </ScrollView>
 
-      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Controle" content={helpText} />
+      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Contrôle" content={helpText} />
       
       <ConfirmModal 
         visible={logoutModalVisible}

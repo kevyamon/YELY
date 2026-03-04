@@ -5,7 +5,8 @@ import React from 'react';
 import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
-import { useDeleteReportMutation, useGetMyReportsQuery } from '../../store/api/reportsApiSlice';
+// AJOUT SENIOR: Mise à jour du nom de l'import pour matcher avec notre modification !
+import { useDeleteMyReportMutation, useGetMyReportsQuery } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -16,13 +17,12 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
     skip: !visible || !reportId,
   });
   
-  // Hook de suppression
-  const [deleteReport, { isLoading: isDeleting }] = useDeleteReportMutation();
+  // Utilisation de la nouvelle fonction Utilisateur
+  const [deleteMyReport, { isLoading: isDeleting }] = useDeleteMyReportMutation();
 
   const reports = reportsResponse?.data || [];
   const report = reports.find((r) => r._id === reportId);
 
-  // AJOUT SENIOR: Gestion de la suppression avec sécurité (alerte)
   const handleDelete = () => {
     Alert.alert(
       "Supprimer définitivement",
@@ -34,9 +34,10 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
           style: "destructive", 
           onPress: async () => {
             try {
-              await deleteReport(reportId).unwrap();
+              // Câblé sur la nouvelle fonction !
+              await deleteMyReport(reportId).unwrap();
               dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement supprimé de votre dossier.' }));
-              onClose(); // Fermeture automatique après succès
+              onClose(); 
             } catch (error) {
               dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
             }
@@ -98,7 +99,6 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
               <Text style={styles.closeBtnText}>Fermer</Text>
             </TouchableOpacity>
 
-            {/* Le nouveau bouton de suppression intelligente n'apparaît que si le signalement existe */}
             {report && (
               <TouchableOpacity 
                 style={[styles.btn, styles.deleteBtn]} 
@@ -138,7 +138,6 @@ const styles = StyleSheet.create({
   adminNoteBox: { flexDirection: 'row', backgroundColor: 'rgba(46, 204, 113, 0.1)', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.success },
   adminNoteText: { color: THEME.COLORS.success, fontSize: 15, flex: 1, fontWeight: '500' },
   
-  // Nouveau design pour les boutons alignés
   footer: { flexDirection: 'row', gap: 10, marginTop: 10 },
   btn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
   closeBtn: { backgroundColor: THEME.COLORS.primary },

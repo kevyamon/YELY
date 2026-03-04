@@ -34,10 +34,19 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Report', 'AuditLog'], 
     }),
 
-    // AJOUT SENIOR: On pointe vers la nouvelle route utilisateur et on invalide le cache
-    deleteReport: builder.mutation({
+    // 🚀 CORRECTION SENIOR: Séparation - Mutation côté Utilisateur (Client)
+    deleteMyReport: builder.mutation({
       query: (id) => ({
         url: `/reports/my-reports/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Report'], 
+    }),
+
+    // 🚀 CORRECTION SENIOR: Séparation - Mutation côté Administration
+    deleteAdminReport: builder.mutation({
+      query: (id) => ({
+        url: `/reports/${id}`,
         method: 'DELETE',
       }),
       invalidatesTags: ['Report'], 
@@ -51,5 +60,6 @@ export const {
   useGetMyReportsQuery,
   useGetAllReportsQuery,
   useResolveReportMutation,
-  useDeleteReportMutation 
+  useDeleteMyReportMutation,   // <-- Export pour l'App Client
+  useDeleteAdminReportMutation // <-- Export pour le Dashboard Admin
 } = reportsApiSlice;
