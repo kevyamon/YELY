@@ -1,5 +1,5 @@
 // src/screens/admin/AdminReports.jsx
-// DASHBOARD SIGNALEMENTS - Vue unifiée avec résolution dynamique
+// DASHBOARD SIGNALEMENTS - Vue unifiée avec résolution dynamique et nettoyage
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -8,13 +8,14 @@ import React, { useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
+import { ConfirmModal } from '../../components/admin/AdminModals'; // Import de la modale globale unifiée
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
-import { useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
+import { useDeleteReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// --- COMPOSANT MODAL DE RÉSOLUTION (Interne) ---
+// --- COMPOSANT MODAL DE RÉSOLUTION ---
 const ResolveModal = ({ visible, report, onClose, onResolve, isSubmitting }) => {
   const [note, setNote] = useState('');
 
@@ -27,12 +28,8 @@ const ResolveModal = ({ visible, report, onClose, onResolve, isSubmitting }) => 
 
   return (
     <Modal animationType="fade" transparent={true} visible={visible} onRequestClose={onClose}>
-      <KeyboardAvoidingView 
-        style={styles.modalOverlay} 
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView style={styles.modalOverlay} behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <BlurView intensity={80} tint="default" style={StyleSheet.absoluteFill} />
-        
         <ScrollView contentContainerStyle={styles.scrollCenter} keyboardShouldPersistTaps="handled">
           <View style={styles.modalContent}>
             <View style={styles.modalHeader}>
@@ -62,16 +59,8 @@ const ResolveModal = ({ visible, report, onClose, onResolve, isSubmitting }) => 
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose} disabled={isSubmitting}>
                 <Text style={styles.modalBtnTextCancel}>Annuler</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.modalBtnConfirm, !note.trim() && { opacity: 0.5 }]} 
-                onPress={handleConfirm}
-                disabled={isSubmitting || !note.trim()}
-              >
-                {isSubmitting ? (
-                  <ActivityIndicator color={THEME.COLORS.background} />
-                ) : (
-                  <Text style={styles.modalBtnTextConfirm}>Résoudre</Text>
-                )}
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnConfirm, !note.trim() && { opacity: 0.5 }]} onPress={handleConfirm} disabled={isSubmitting || !note.trim()}>
+                {isSubmitting ? <ActivityIndicator color={THEME.COLORS.background} /> : <Text style={styles.modalBtnTextConfirm}>Résoudre</Text>}
               </TouchableOpacity>
             </View>
           </View>
@@ -86,12 +75,16 @@ const AdminReports = ({ navigation }) => {
   const dispatch = useDispatch();
   const { data: reportsResponse, isLoading, isFetching, refetch } = useGetAllReportsQuery();
   const [resolveReport, { isLoading: isResolving }] = useResolveReportMutation();
+  const [deleteReport, { isLoading: isDeleting }] = useDeleteReportMutation(); // Hook de suppression
 
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
   const [selectedReport, setSelectedReport] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  
+  // État pour la suppression
+  const [reportToDelete, setReportToDelete] = useState(null);
 
   const reports = reportsResponse?.data || reportsResponse || [];
 
@@ -120,18 +113,42 @@ const AdminReports = ({ navigation }) => {
     }
   };
 
+  const handleDelete = async () => {
+    if (!reportToDelete) return;
+    try {
+      await deleteReport(reportToDelete).unwrap();
+      setReportToDelete(null);
+      dispatch(showSuccessToast({ title: 'Supprimé', message: 'Signalement effacé définitivement.' }));
+    } catch (error) {
+      setReportToDelete(null);
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
+    }
+  };
+
   const renderItem = ({ item }) => {
     const isResolved = item.status === 'RESOLVED';
     
     return (
       <GlassCard style={styles.reportCard}>
         <View style={styles.cardHeader}>
-          <View>
+          <View style={styles.userInfoWrapper}>
             <Text style={styles.userName}>{item.user?.name || 'Utilisateur inconnu'}</Text>
             <Text style={styles.userPhone}>{item.user?.phone || 'Pas de numéro'}</Text>
           </View>
-          <View style={[styles.statusBadge, { backgroundColor: isResolved ? THEME.COLORS.success : THEME.COLORS.danger }]}>
-            <Text style={styles.statusText}>{isResolved ? 'RÉSOLU' : 'OUVERT'}</Text>
+          
+          <View style={styles.headerRightActions}>
+            <View style={[styles.statusBadge, { backgroundColor: isResolved ? THEME.COLORS.success : THEME.COLORS.danger }]}>
+              <Text style={styles.statusText}>{isResolved ? 'RÉSOLU' : 'OUVERT'}</Text>
+            </View>
+            
+            {/* AJOUT SENIOR: Bouton Corbeille en haut à droite */}
+            <TouchableOpacity 
+              style={styles.deleteIconBtn} 
+              onPress={() => setReportToDelete(item._id)}
+              disabled={isDeleting}
+            >
+              <Ionicons name="trash-outline" size={20} color={THEME.COLORS.textSecondary} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -215,6 +232,16 @@ const AdminReports = ({ navigation }) => {
         onResolve={handleResolve}
         isSubmitting={isResolving}
       />
+
+      {/* AJOUT SENIOR: Modale de suppression sécurisée */}
+      <ConfirmModal 
+        visible={!!reportToDelete}
+        title="Supprimer le signalement"
+        message="Cette action est irréversible. Les images associées seront également supprimées des serveurs."
+        isDestructive={true}
+        onConfirm={handleDelete}
+        onCancel={() => setReportToDelete(null)}
+      />
     </View>
   );
 };
@@ -230,6 +257,10 @@ const styles = StyleSheet.create({
   
   reportCard: { padding: 15, marginBottom: 15 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start' },
+  userInfoWrapper: { flex: 1 },
+  headerRightActions: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  deleteIconBtn: { padding: 4 },
+  
   userName: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
   userPhone: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 2 },
   statusBadge: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
@@ -252,7 +283,6 @@ const styles = StyleSheet.create({
   emptyText: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginTop: 15 },
   emptySubText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginTop: 5 },
 
-  // --- Modal Styles ---
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
   scrollCenter: { flexGrow: 1, justifyContent: 'center', padding: 20 },
   modalContent: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 20, padding: 20, borderWidth: 1, borderColor: THEME.COLORS.border },

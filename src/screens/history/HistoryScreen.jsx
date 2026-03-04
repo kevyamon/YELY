@@ -2,12 +2,14 @@
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
+import { ConfirmModal } from '../../components/admin/AdminModals'; // Modale partagée
 import GlassCard from '../../components/ui/GlassCard';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { useGetRideHistoryQuery } from '../../store/api/ridesApiSlice';
+import { useGetRideHistoryQuery, useHideFromHistoryMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const STATUS_CONFIG = {
@@ -18,18 +20,33 @@ const STATUS_CONFIG = {
 };
 
 const HistoryScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const user = useSelector(selectCurrentUser);
   const isDriver = user?.role === 'driver';
   
   const [page, setPage] = useState(1);
   const { data, isLoading, isFetching, refetch } = useGetRideHistoryQuery({ page, limit: 15 });
+  const [hideRide, { isLoading: isHiding }] = useHideFromHistoryMutation();
 
-  // AJOUT SENIOR: Destructuration ultra robuste pour esquiver tout changement inattendu de l'enveloppe API
+  const [rideToDelete, setRideToDelete] = useState(null);
+
   const rides = data?.data?.rides || data?.rides || [];
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
+  };
+
+  const handleHideConfirm = async () => {
+    if (!rideToDelete) return;
+    try {
+      await hideRide(rideToDelete).unwrap();
+      dispatch(showSuccessToast({ title: 'Supprimée', message: 'La course a été retirée de votre historique.' }));
+    } catch (e) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de masquer cette course.' }));
+    } finally {
+      setRideToDelete(null);
+    }
   };
 
   const renderRideItem = ({ item }) => {
@@ -66,11 +83,23 @@ const HistoryScreen = ({ navigation }) => {
                 : (item.driver?.name || 'Chauffeur Inconnu')}
             </Text>
           </View>
-          {item.price ? (
-            <Text style={styles.priceText}>{item.price.toLocaleString('fr-FR')} FCFA</Text>
-          ) : (
-            <Text style={styles.priceText}>---</Text>
-          )}
+          
+          <View style={styles.rightFooter}>
+            {item.price ? (
+              <Text style={styles.priceText}>{item.price.toLocaleString('fr-FR')} FCFA</Text>
+            ) : (
+              <Text style={styles.priceText}>---</Text>
+            )}
+            
+            {/* AJOUT SENIOR : Bouton poubelle pour cacher la course */}
+            <TouchableOpacity 
+              style={styles.deleteBtn}
+              onPress={() => setRideToDelete(item._id)}
+              disabled={isHiding}
+            >
+              <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
+            </TouchableOpacity>
+          </View>
         </View>
       </GlassCard>
     );
@@ -105,6 +134,16 @@ const HistoryScreen = ({ navigation }) => {
           refreshing={isFetching}
         />
       )}
+
+      {/* AJOUT SENIOR: Modale de suppression sécurisée */}
+      <ConfirmModal 
+        visible={!!rideToDelete}
+        title="Masquer la course"
+        message="Voulez-vous retirer cette course de votre historique ? Cette action n'impactera pas l'autre partie."
+        isDestructive={true}
+        onConfirm={handleHideConfirm}
+        onCancel={() => setRideToDelete(null)}
+      />
     </ScreenWrapper>
   );
 };
@@ -133,9 +172,12 @@ const styles = StyleSheet.create({
   addressBottom: { marginTop: 12 },
   
   cardFooter: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 15, borderTopWidth: 1, borderTopColor: THEME.COLORS.border },
-  userInfo: { flexDirection: 'row', alignItems: 'center' },
+  userInfo: { flexDirection: 'row', alignItems: 'center', flex: 1 },
   userText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginLeft: 5 },
+  
+  rightFooter: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   priceText: { color: THEME.COLORS.primary, fontSize: 16, fontWeight: 'bold' },
+  deleteBtn: { padding: 5, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderRadius: 8 }
 });
 
 export default HistoryScreen;

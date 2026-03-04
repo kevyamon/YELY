@@ -1,10 +1,14 @@
 // src/screens/notifications/NotificationsScreen.jsx
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
+
+import { ConfirmModal } from '../../components/admin/AdminModals'; // Modale partagée pour la confirmation
 import GlassCard from '../../components/ui/GlassCard';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { useGetNotificationsQuery, useMarkAsReadMutation } from '../../store/api/notificationsApiSlice';
+import { useDeleteNotificationMutation, useGetNotificationsQuery, useMarkAsReadMutation } from '../../store/api/notificationsApiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const NOTIF_ICONS = {
@@ -15,12 +19,28 @@ const NOTIF_ICONS = {
 };
 
 const NotificationsScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
   const { data, isLoading, refetch, isFetching } = useGetNotificationsQuery({ page: 1 });
   const [markRead] = useMarkAsReadMutation();
+  const [deleteNotif, { isLoading: isDeleting }] = useDeleteNotificationMutation(); // Hook de suppression
+
+  const [notifToDelete, setNotifToDelete] = useState(null);
 
   const notifications = data?.data?.notifications || [];
 
   const handleRead = (id) => markRead(id);
+
+  const handleDeleteConfirm = async () => {
+    if (!notifToDelete) return;
+    try {
+      await deleteNotif(notifToDelete).unwrap();
+      dispatch(showSuccessToast({ title: 'Supprimée', message: 'Notification effacée.' }));
+    } catch (error) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer.' }));
+    } finally {
+      setNotifToDelete(null);
+    }
+  };
 
   const renderItem = ({ item }) => {
     const config = NOTIF_ICONS[item.type] || NOTIF_ICONS.SYSTEM;
@@ -37,7 +57,19 @@ const NotificationsScreen = ({ navigation }) => {
               {!item.isRead && <View style={styles.unreadDot} />}
             </View>
             <Text style={styles.message} numberOfLines={2}>{item.message}</Text>
-            <Text style={styles.time}>{new Date(item.createdAt).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
+            
+            <View style={styles.footerRow}>
+              <Text style={styles.time}>{new Date(item.createdAt).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
+              
+              {/* 🚀 AJOUT SENIOR : Bouton de suppression unitaire */}
+              <TouchableOpacity 
+                onPress={() => setNotifToDelete(item._id)} 
+                style={styles.deleteBtn}
+                disabled={isDeleting}
+              >
+                <Ionicons name="trash-outline" size={18} color={THEME.COLORS.danger} />
+              </TouchableOpacity>
+            </View>
           </View>
         </GlassCard>
       </TouchableOpacity>
@@ -51,10 +83,17 @@ const NotificationsScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
           <Text style={styles.headerTitle}>Notifications</Text>
         </TouchableOpacity>
+        
         {notifications.length > 0 && (
-          <TouchableOpacity onPress={() => markRead('all')}>
-            <Text style={styles.markAll}>Tout lire</Text>
-          </TouchableOpacity>
+          <View style={styles.headerActions}>
+            <TouchableOpacity onPress={() => markRead('all')} style={styles.actionTextBtn}>
+              <Text style={styles.markAll}>Tout lire</Text>
+            </TouchableOpacity>
+            {/* 🚀 AJOUT SENIOR : Bouton Vider tout */}
+            <TouchableOpacity onPress={() => setNotifToDelete('all')} style={styles.actionTextBtn}>
+              <Text style={styles.deleteAll}>Vider</Text>
+            </TouchableOpacity>
+          </View>
         )}
       </View>
 
@@ -75,6 +114,16 @@ const NotificationsScreen = ({ navigation }) => {
           refreshing={isFetching}
         />
       )}
+
+      {/* 🚀 AJOUT SENIOR : Modale de suppression (gère à la fois l'ID unique et "all") */}
+      <ConfirmModal 
+        visible={!!notifToDelete}
+        title={notifToDelete === 'all' ? "Vider les notifications" : "Supprimer la notification"}
+        message={notifToDelete === 'all' ? "Êtes-vous sûr de vouloir supprimer TOUTES vos notifications ?" : "Voulez-vous vraiment supprimer cette notification ?"}
+        isDestructive={true}
+        onConfirm={handleDeleteConfirm}
+        onCancel={() => setNotifToDelete(null)}
+      />
     </ScreenWrapper>
   );
 };
@@ -83,7 +132,10 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 20 },
   backButton: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  actionTextBtn: { paddingVertical: 5 },
   markAll: { color: THEME.COLORS.textSecondary, fontSize: 14 },
+  deleteAll: { color: THEME.COLORS.danger, fontSize: 14, fontWeight: 'bold' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 40 },
   card: { flexDirection: 'row', padding: 15, marginBottom: 12, alignItems: 'center' },
@@ -94,7 +146,9 @@ const styles = StyleSheet.create({
   title: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold', flex: 1 },
   unreadDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: THEME.COLORS.primary },
   message: { color: THEME.COLORS.textSecondary, fontSize: 14, lineHeight: 20 },
-  time: { color: THEME.COLORS.textTertiary, fontSize: 11, marginTop: 8 },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
+  time: { color: THEME.COLORS.textTertiary, fontSize: 11 },
+  deleteBtn: { padding: 4 },
   emptyText: { color: THEME.COLORS.textSecondary, marginTop: 20, fontSize: 16 }
 });
 

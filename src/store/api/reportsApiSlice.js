@@ -11,7 +11,6 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
         url: '/reports/submit',
         method: 'POST',
         body: formData,
-        // On laisse fetchBaseQuery gérer le Content-Type (multipart/form-data)
       }),
       invalidatesTags: ['Report'],
     }),
@@ -21,7 +20,6 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Report'],
     }),
 
-    // --- ROUTES ADMIN ---
     getAllReports: builder.query({
       query: () => '/reports/all',
       providesTags: ['Report'],
@@ -33,7 +31,16 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
         method: 'PATCH',
         body: { note },
       }),
-      invalidatesTags: ['Report', 'AuditLog'], // Rafraîchit les signalements et le journal admin
+      invalidatesTags: ['Report', 'AuditLog'], 
+    }),
+
+    // AJOUT SENIOR: Mutation pour supprimer
+    deleteReport: builder.mutation({
+      query: (id) => ({
+        url: `/reports/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Report', 'AuditLog'],
     }),
   }),
   overrideExisting: true,
@@ -43,5 +50,6 @@ export const {
   useSubmitReportMutation, 
   useGetMyReportsQuery,
   useGetAllReportsQuery,
-  useResolveReportMutation 
+  useResolveReportMutation,
+  useDeleteReportMutation // Exporter le Hook !
 } = reportsApiSlice;

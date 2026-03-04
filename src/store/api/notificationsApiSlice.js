@@ -14,8 +14,20 @@ export const notificationsApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Notification'],
     }),
+    // 🚀 AJOUT SENIOR: Mutation pour supprimer
+    deleteNotification: builder.mutation({
+      query: (id) => ({
+        url: `/notifications/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Notification'],
+    }),
   }),
-  overrideExisting: true, // RÉPARE L'ERREUR D'INJECTION
+  overrideExisting: true, 
 });
 
-export const { useGetNotificationsQuery, useMarkAsReadMutation } = notificationsApiSlice;
+export const { 
+  useGetNotificationsQuery, 
+  useMarkAsReadMutation,
+  useDeleteNotificationMutation // <-- Export du Hook !
+} = notificationsApiSlice;
