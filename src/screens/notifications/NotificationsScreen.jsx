@@ -4,7 +4,8 @@ import React, { useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
-import { ConfirmModal } from '../../components/admin/AdminModals'; // Modale partagée pour la confirmation
+import { ConfirmModal } from '../../components/admin/AdminModals';
+import ReportResolutionModal from '../../components/notifications/ReportResolutionModal'; // AJOUT SENIOR: Import de ta nouvelle modale modulaire
 import GlassCard from '../../components/ui/GlassCard';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useDeleteNotificationMutation, useGetNotificationsQuery, useMarkAsReadMutation } from '../../store/api/notificationsApiSlice';
@@ -22,13 +23,29 @@ const NotificationsScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const { data, isLoading, refetch, isFetching } = useGetNotificationsQuery({ page: 1 });
   const [markRead] = useMarkAsReadMutation();
-  const [deleteNotif, { isLoading: isDeleting }] = useDeleteNotificationMutation(); // Hook de suppression
+  const [deleteNotif, { isLoading: isDeleting }] = useDeleteNotificationMutation();
 
   const [notifToDelete, setNotifToDelete] = useState(null);
+  
+  // AJOUT SENIOR: États pour gérer la modale de signalement
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [isReportModalVisible, setIsReportModalVisible] = useState(false);
 
   const notifications = data?.data?.notifications || [];
 
-  const handleRead = (id) => markRead(id);
+  // AJOUT SENIOR: La fonction handleRead devient plus intelligente
+  const handleRead = async (item) => {
+    // 1. On marque comme lu si ce n'est pas fait
+    if (!item.isRead) {
+      await markRead(item._id);
+    }
+    
+    // 2. Si la notification contient un reportId, on ouvre la modale !
+    if (item.metadata && item.metadata.reportId) {
+      setSelectedReportId(item.metadata.reportId);
+      setIsReportModalVisible(true);
+    }
+  };
 
   const handleDeleteConfirm = async () => {
     if (!notifToDelete) return;
@@ -46,7 +63,8 @@ const NotificationsScreen = ({ navigation }) => {
     const config = NOTIF_ICONS[item.type] || NOTIF_ICONS.SYSTEM;
     
     return (
-      <TouchableOpacity onPress={() => handleRead(item._id)} activeOpacity={0.8}>
+      // CORRECTION: On passe "item" entier à handleRead au lieu de juste "item._id"
+      <TouchableOpacity onPress={() => handleRead(item)} activeOpacity={0.8}>
         <GlassCard style={[styles.card, !item.isRead && styles.unreadCard]}>
           <View style={[styles.iconBox, { backgroundColor: config.color + '20' }]}>
             <Ionicons name={config.icon} size={24} color={config.color} />
@@ -61,7 +79,6 @@ const NotificationsScreen = ({ navigation }) => {
             <View style={styles.footerRow}>
               <Text style={styles.time}>{new Date(item.createdAt).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
               
-              {/* 🚀 AJOUT SENIOR : Bouton de suppression unitaire */}
               <TouchableOpacity 
                 onPress={() => setNotifToDelete(item._id)} 
                 style={styles.deleteBtn}
@@ -89,7 +106,6 @@ const NotificationsScreen = ({ navigation }) => {
             <TouchableOpacity onPress={() => markRead('all')} style={styles.actionTextBtn}>
               <Text style={styles.markAll}>Tout lire</Text>
             </TouchableOpacity>
-            {/* 🚀 AJOUT SENIOR : Bouton Vider tout */}
             <TouchableOpacity onPress={() => setNotifToDelete('all')} style={styles.actionTextBtn}>
               <Text style={styles.deleteAll}>Vider</Text>
             </TouchableOpacity>
@@ -115,7 +131,6 @@ const NotificationsScreen = ({ navigation }) => {
         />
       )}
 
-      {/* 🚀 AJOUT SENIOR : Modale de suppression (gère à la fois l'ID unique et "all") */}
       <ConfirmModal 
         visible={!!notifToDelete}
         title={notifToDelete === 'all' ? "Vider les notifications" : "Supprimer la notification"}
@@ -124,6 +139,14 @@ const NotificationsScreen = ({ navigation }) => {
         onConfirm={handleDeleteConfirm}
         onCancel={() => setNotifToDelete(null)}
       />
+
+      {/* AJOUT SENIOR : Intégration de la modale indépendante */}
+      <ReportResolutionModal 
+        visible={isReportModalVisible}
+        onClose={() => setIsReportModalVisible(false)}
+        reportId={selectedReportId}
+      />
+
     </ScreenWrapper>
   );
 };

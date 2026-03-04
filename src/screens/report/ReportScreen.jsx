@@ -22,12 +22,10 @@ const ReportScreen = ({ navigation }) => {
     if (!res.canceled) setImages([...images, res.assets[0]]);
   };
 
-  // AJOUT SENIOR: Fonction pour supprimer une image
   const removeImage = (indexToRemove) => {
     setImages(images.filter((_, index) => index !== indexToRemove));
   };
 
-  // AJOUT SENIOR: Fonction pour remplacer une image existante
   const replaceImage = async (indexToReplace) => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
     if (!res.canceled) {
@@ -38,6 +36,9 @@ const ReportScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
+    // AJOUT SENIOR: Verrou anti-spam. Si c'est déjà en cours d'envoi, on bloque les autres clics.
+    if (isLoading) return;
+
     if (!message.trim()) return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
     
     const formData = new FormData();
@@ -58,7 +59,9 @@ const ReportScreen = ({ navigation }) => {
   return (
     <ScreenWrapper>
       <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} /></TouchableOpacity>
+        <TouchableOpacity onPress={() => navigation.goBack()} disabled={isLoading}>
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
+        </TouchableOpacity>
         <Text style={styles.title}>Signaler un problème</Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
@@ -70,6 +73,7 @@ const ReportScreen = ({ navigation }) => {
           onChangeText={setMessage} 
           placeholder="Détaillez le problème rencontré..."
           placeholderTextColor={THEME.COLORS.textTertiary}
+          editable={!isLoading} // AJOUT SENIOR: On empêche d'écrire pendant l'envoi
         />
         
         <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
@@ -78,25 +82,34 @@ const ReportScreen = ({ navigation }) => {
             <View key={i} style={styles.imageContainer}>
               <Image source={{ uri: img.uri }} style={styles.preview} />
               
-              {/* Overlay des actions d'image */}
-              <TouchableOpacity style={styles.removeIcon} onPress={() => removeImage(i)}>
-                <Ionicons name="close-circle" size={24} color={THEME.COLORS.danger} />
-              </TouchableOpacity>
-              
-              <TouchableOpacity style={styles.replaceIcon} onPress={() => replaceImage(i)}>
-                <Ionicons name="sync-circle" size={24} color={THEME.COLORS.primary} />
-              </TouchableOpacity>
+              {!isLoading && ( // On cache les actions si ça charge
+                <>
+                  <TouchableOpacity style={styles.removeIcon} onPress={() => removeImage(i)}>
+                    <Ionicons name="close-circle" size={24} color={THEME.COLORS.danger} />
+                  </TouchableOpacity>
+                  
+                  <TouchableOpacity style={styles.replaceIcon} onPress={() => replaceImage(i)}>
+                    <Ionicons name="sync-circle" size={24} color={THEME.COLORS.primary} />
+                  </TouchableOpacity>
+                </>
+              )}
             </View>
           ))}
 
-          {images.length < 3 && (
+          {images.length < 3 && !isLoading && (
             <TouchableOpacity style={styles.addBtn} onPress={pickImage}>
               <Ionicons name="camera" size={30} color={THEME.COLORS.primary} />
             </TouchableOpacity>
           )}
         </View>
 
-        <GoldButton title="ENVOYER LE SIGNALEMENT" onPress={handleSubmit} isLoading={isLoading} style={styles.btn} />
+        <GoldButton 
+          title={isLoading ? "ENVOI EN COURS..." : "ENVOYER LE SIGNALEMENT"} 
+          onPress={handleSubmit} 
+          isLoading={isLoading} 
+          disabled={isLoading} // AJOUT SENIOR: On désactive le bouton
+          style={styles.btn} 
+        />
       </ScrollView>
     </ScreenWrapper>
   );
@@ -107,7 +120,8 @@ const styles = StyleSheet.create({
   title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
   content: { padding: 20 },
   label: { color: THEME.COLORS.textSecondary, marginBottom: 10, fontSize: 14 },
-  input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 15, padding: 15, color: '#FFF', textAlignVertical: 'top', marginBottom: 25, borderWidth: 1, borderColor: THEME.COLORS.border },
+  // CORRECTION SENIOR: color: THEME.COLORS.textPrimary au lieu de '#FFF' pour s'adapter au mode jour/nuit
+  input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 15, padding: 15, color: THEME.COLORS.textPrimary, textAlignVertical: 'top', marginBottom: 25, borderWidth: 1, borderColor: THEME.COLORS.border },
   imageRow: { flexDirection: 'row', marginBottom: 30 },
   imageContainer: { position: 'relative', marginRight: 15 },
   preview: { width: 80, height: 80, borderRadius: 10 },
