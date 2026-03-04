@@ -179,11 +179,8 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
-    // Relance le tracking de React Native Maps pour redessiner si les données changent en temps réel
     setTracks(true);
-    const timer = setTimeout(() => setTracks(false), 800);
-    return () => clearTimeout(timer);
-  }, [name, color, icon, coordinate?.latitude, coordinate?.longitude]);
+  }, [name, color, icon]);
 
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
@@ -196,12 +193,15 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
       onPress={onPress}
     >
       <View style={styles.poiContainer}>
-        {/* TEXTE DANS UNE BOÎTE FLEX (Corrige le bug de texte coupé) */}
-        <View style={styles.poiTextWrapper}>
-          <Text style={styles.poiText} numberOfLines={1}>
-            {name}
-          </Text>
-        </View>
+        {/* TEXTE PUR : Sans boîte, aligné strictement à gauche de l'icône */}
+        <Text 
+          style={styles.poiText} 
+          onLayout={() => {
+            setTimeout(() => setTracks(false), 800);
+          }}
+        >
+          {name}
+        </Text>
         
         {/* ICÔNE */}
         <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
@@ -257,32 +257,31 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   poiContainer: {
-    flexDirection: 'row',
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  poiTextWrapper: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: THEME.BORDERS.radius.sm,
-    marginRight: 6,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.border,
-    ...THEME.SHADOWS.soft,
-  },
-  poiText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: 'bold',
-  },
   poiIconCircle: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
+    width: 20,
+    height: 20,
+    borderRadius: 10,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
-    ...THEME.SHADOWS.soft,
+    zIndex: 2,
+  },
+  poiText: {
+    position: 'absolute',
+    right: 24, // Fixé à gauche de l'icône, sans limite de taille
+    color: THEME.COLORS.textPrimary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    textAlign: 'right', // Permet au texte de s'étendre naturellement vers la gauche
+    textShadowColor: THEME.COLORS.background, // Assure la lisibilité sur la carte
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
+    zIndex: 1,
   }
 });
