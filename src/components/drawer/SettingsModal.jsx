@@ -12,6 +12,11 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
     onNavigate('Profile');
   };
 
+  const handleReportNavigate = () => {
+    onClose();
+    onNavigate('Report'); // Assure-toi que la route s'appelle bien 'Report' ou 'Signalement' dans ton AppNavigator
+  };
+
   return (
     <Modal
       visible={visible}
@@ -44,6 +49,20 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
                 <Ionicons name="person-outline" size={20} color={THEME.COLORS.champagneGold} />
               </View>
               <Text style={styles.actionText}>Mon Profil</Text>
+              <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.border} />
+            </TouchableOpacity>
+
+            {/* MODIFICATION SENIOR : Nouvelle section Support & Aide ajoutée ici */}
+            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Support & Aide</Text>
+            <TouchableOpacity 
+              style={styles.actionButton} 
+              onPress={handleReportNavigate}
+              activeOpacity={0.7}
+            >
+              <View style={[styles.actionIconContainer, { backgroundColor: 'rgba(255, 59, 48, 0.1)' }]}>
+                <Ionicons name="alert-circle-outline" size={20} color={THEME.COLORS.danger} />
+              </View>
+              <Text style={styles.actionText}>Signaler un problème</Text>
               <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.border} />
             </TouchableOpacity>
 
@@ -126,6 +145,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
+    marginBottom: 8, // Ajout d'une marge pour espacer s'il y a plusieurs boutons dans une section
   },
   actionIconContainer: {
     width: 36,

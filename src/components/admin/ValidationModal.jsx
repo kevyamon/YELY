@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
 const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, isProcessing }) => {
@@ -39,131 +39,140 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     >
       <KeyboardAvoidingView 
         style={styles.modalOverlay} 
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        // MODIFICATION SENIOR: Sur Android, "padding" dans une modale pose problème. On laisse undefined pour Android.
+        behavior={Platform.OS === "ios" ? "padding" : undefined} 
       >
         <BlurView intensity={80} tint="default" style={StyleSheet.absoluteFill} />
         
-        <View style={styles.modalContent}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Inspection de Transaction</Text>
-            <TouchableOpacity onPress={handleClose} disabled={isProcessing}>
-              <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
-            </TouchableOpacity>
-          </View>
+        {/* MODIFICATION SENIOR: Ajout d'un ScrollView pour garantir que le clavier ne cache jamais le champ */}
+        <ScrollView 
+          contentContainerStyle={styles.scrollCenter} 
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Inspection de Transaction</Text>
+              <TouchableOpacity onPress={handleClose} disabled={isProcessing}>
+                <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
 
-          <View style={styles.infoSection}>
-            <Text style={styles.infoText}>
-              <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000F)' : 'INCONNU'}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}
-            </Text>
-            <Text style={styles.infoText}>
-              <Text style={styles.bold}>Date :</Text> {new Date(transaction.createdAt).toLocaleString('fr-FR')}
-            </Text>
-          </View>
+            <View style={styles.infoSection}>
+              <Text style={styles.infoText}>
+                <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000F)' : 'INCONNU'}
+              </Text>
+              <Text style={styles.infoText}>
+                <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}
+              </Text>
+              <Text style={styles.infoText}>
+                <Text style={styles.bold}>Date :</Text> {new Date(transaction.createdAt).toLocaleString('fr-FR')}
+              </Text>
+            </View>
 
-          <View style={styles.imageContainer}>
-            {imageUrl ? (
-              <Image 
-                source={{ uri: imageUrl }} 
-                style={styles.proofImage} 
-                resizeMode="contain"
-              />
+            <View style={styles.imageContainer}>
+              {imageUrl ? (
+                <Image 
+                  source={{ uri: imageUrl }} 
+                  style={styles.proofImage} 
+                  resizeMode="contain"
+                />
+              ) : (
+                <View style={styles.noImagePlaceholder}>
+                  <Ionicons name="image-outline" size={48} color={THEME.COLORS.textTertiary} />
+                  <Text style={styles.noImageText}>Aucune preuve fournie ou illisible</Text>
+                </View>
+              )}
+            </View>
+
+            {!rejectMode && !confirmApproveMode ? (
+              <View style={styles.actionButtons}>
+                <TouchableOpacity 
+                  style={[styles.button, styles.rejectButton]} 
+                  onPress={() => setRejectMode(true)}
+                  disabled={isProcessing}
+                >
+                  <Ionicons name="close-circle-outline" size={20} color={THEME.COLORS.danger} style={styles.buttonIcon} />
+                  <Text style={styles.buttonTextDanger}>Rejeter</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity 
+                  style={[styles.button, styles.approveButton]} 
+                  onPress={() => setConfirmApproveMode(true)}
+                  disabled={isProcessing}
+                >
+                  <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse || '#FFFFFF'} style={styles.buttonIcon} />
+                  <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
+                </TouchableOpacity>
+              </View>
+            ) : rejectMode ? (
+              <View style={styles.actionSection}>
+                <Text style={styles.actionLabelDanger}>Motif du rejet :</Text>
+                <TextInput
+                  style={styles.inputField}
+                  placeholder="Ex: Image illisible, Montant incorrect..."
+                  placeholderTextColor={THEME.COLORS.textTertiary}
+                  value={rejectReason}
+                  onChangeText={setRejectReason}
+                  autoFocus
+                />
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.cancelButton]} 
+                    onPress={() => setRejectMode(false)}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.buttonTextPrimary}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.confirmDangerButton, !rejectReason.trim() && styles.buttonDisabled]} 
+                    onPress={handleRejectSubmit}
+                    disabled={isProcessing || !rejectReason.trim()}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
+                    ) : (
+                      <Text style={styles.buttonTextInverseBold}>Confirmer Rejet</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
             ) : (
-              <View style={styles.noImagePlaceholder}>
-                <Ionicons name="image-outline" size={48} color={THEME.COLORS.textTertiary} />
-                <Text style={styles.noImageText}>Aucune preuve fournie ou illisible</Text>
+              <View style={styles.actionSection}>
+                <Text style={styles.actionLabelSuccess}>Confirmer l'activation ?</Text>
+                <Text style={styles.actionWarningText}>Cette action prolongera l'abonnement du chauffeur immediatement et est irreversible depuis cette interface.</Text>
+                <View style={styles.actionButtons}>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.cancelButton]} 
+                    onPress={() => setConfirmApproveMode(false)}
+                    disabled={isProcessing}
+                  >
+                    <Text style={styles.buttonTextPrimary}>Annuler</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.button, styles.confirmSuccessButton]} 
+                    onPress={() => onApprove(transaction._id)}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
+                    ) : (
+                      <Text style={styles.buttonTextInverseBold}>Oui, Activer</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
               </View>
             )}
           </View>
-
-          {!rejectMode && !confirmApproveMode ? (
-            <View style={styles.actionButtons}>
-              <TouchableOpacity 
-                style={[styles.button, styles.rejectButton]} 
-                onPress={() => setRejectMode(true)}
-                disabled={isProcessing}
-              >
-                <Ionicons name="close-circle-outline" size={20} color={THEME.COLORS.danger} style={styles.buttonIcon} />
-                <Text style={styles.buttonTextDanger}>Rejeter</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.button, styles.approveButton]} 
-                onPress={() => setConfirmApproveMode(true)}
-                disabled={isProcessing}
-              >
-                <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse || '#FFFFFF'} style={styles.buttonIcon} />
-                <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
-              </TouchableOpacity>
-            </View>
-          ) : rejectMode ? (
-            <View style={styles.actionSection}>
-              <Text style={styles.actionLabelDanger}>Motif du rejet :</Text>
-              <TextInput
-                style={styles.inputField}
-                placeholder="Ex: Image illisible, Montant incorrect..."
-                placeholderTextColor={THEME.COLORS.textTertiary}
-                value={rejectReason}
-                onChangeText={setRejectReason}
-                autoFocus
-              />
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={[styles.button, styles.cancelButton]} 
-                  onPress={() => setRejectMode(false)}
-                  disabled={isProcessing}
-                >
-                  <Text style={styles.buttonTextPrimary}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.button, styles.confirmDangerButton, !rejectReason.trim() && styles.buttonDisabled]} 
-                  onPress={handleRejectSubmit}
-                  disabled={isProcessing || !rejectReason.trim()}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
-                  ) : (
-                    <Text style={styles.buttonTextInverseBold}>Confirmer Rejet</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          ) : (
-            <View style={styles.actionSection}>
-              <Text style={styles.actionLabelSuccess}>Confirmer l'activation ?</Text>
-              <Text style={styles.actionWarningText}>Cette action prolongera l'abonnement du chauffeur immediatement et est irreversible depuis cette interface.</Text>
-              <View style={styles.actionButtons}>
-                <TouchableOpacity 
-                  style={[styles.button, styles.cancelButton]} 
-                  onPress={() => setConfirmApproveMode(false)}
-                  disabled={isProcessing}
-                >
-                  <Text style={styles.buttonTextPrimary}>Annuler</Text>
-                </TouchableOpacity>
-                <TouchableOpacity 
-                  style={[styles.button, styles.confirmSuccessButton]} 
-                  onPress={() => onApprove(transaction._id)}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
-                  ) : (
-                    <Text style={styles.buttonTextInverseBold}>Oui, Activer</Text>
-                  )}
-                </TouchableOpacity>
-              </View>
-            </View>
-          )}
-        </View>
+        </ScrollView>
       </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
-  modalOverlay: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.3)' },
+  scrollCenter: { flexGrow: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
   modalContent: { width: '100%', backgroundColor: THEME.COLORS.glassModal, borderRadius: THEME.BORDERS?.radius?.xl || 20, padding: 20, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
   title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold' },

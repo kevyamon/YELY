@@ -18,6 +18,7 @@ import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import ActionPill from './ActionPill';
 import LocationSyncGauge from './LocationSyncGauge';
+import NotificationBell from './NotificationBell'; // Ajout de notre nouveau sous-composant
 import SessionRefreshSkeleton from './SessionRefreshSkeleton';
 
 const SmartHeader = ({ 
@@ -35,7 +36,7 @@ const SmartHeader = ({
   const user = useSelector(selectCurrentUser);
   const isRefreshing = useSelector(selectIsRefreshing);
   const currentRide = useSelector(selectCurrentRide);
-  
+
   const isRider = user?.role === 'rider';
   const hasActiveRide = !!currentRide;
 
@@ -73,10 +74,9 @@ const SmartHeader = ({
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
         
         <View style={styles.topRow}>
-          <TouchableOpacity onPress={onNotificationPress} style={styles.iconButton}>
-            <Ionicons name="notifications-outline" size={24} color={THEME.COLORS.champagneGold} />
-            <View style={styles.badge} />
-          </TouchableOpacity>
+          
+          {/* UTILISATION DU COMPOSANT ISOLÉ */}
+          <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
             <View style={styles.locationTitleWrapper}>
@@ -190,15 +190,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-  },
-  badge: {
-    position: 'absolute',
-    top: 8,
-    right: 8,
-    width: 8,
-    height: 8,
-    borderRadius: 4,
-    backgroundColor: THEME.COLORS.danger,
   },
   ctaContainer: {
     marginTop: 0, 
