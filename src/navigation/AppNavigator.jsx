@@ -21,9 +21,9 @@ import {
 import THEME from '../theme/theme';
 
 // Screens Auth
-import LandingScreen from '../screens/LandingScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
+import LandingScreen from '../screens/LandingScreen';
 
 // Homes
 import DriverHome from '../screens/home/DriverHome';
@@ -33,15 +33,16 @@ import RiderHome from '../screens/home/RiderHome';
 import PancarteScreen from '../screens/ride/PancarteScreen';
 
 // Menu & Nouvelles Pages
-import MenuScreen from '../screens/MenuScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
+import MenuScreen from '../screens/MenuScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
-import ReportScreen from '../screens/report/ReportScreen'; // <-- IMPORT RÉPARÉ ICI
+import ReportScreen from '../screens/report/ReportScreen';
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
+import AdminReports from '../screens/admin/AdminReports'; // <-- NOUVEL IMPORT SENIOR
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
@@ -146,6 +147,8 @@ const AppNavigator = () => {
               <Stack.Screen name="UsersManagement" component={UsersManagement} />
               <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
               <Stack.Screen name="AdminJournal" component={AdminJournal} />
+              {/* AJOUT SENIOR : L'écran de gestion des plaintes ! */}
+              <Stack.Screen name="AdminReports" component={AdminReports} />
             </Stack.Group>
           ) : isSubscriptionPending ? (
             <Stack.Group>

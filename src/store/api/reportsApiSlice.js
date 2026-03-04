@@ -1,4 +1,7 @@
 // src/store/api/reportsApiSlice.js
+// API DES SIGNALEMENTS - RTK Query
+// CSCSM Level: Bank Grade
+
 import { apiSlice } from '../slices/apiSlice';
 
 export const reportsApiSlice = apiSlice.injectEndpoints({
@@ -8,14 +11,37 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
         url: '/reports/submit',
         method: 'POST',
         body: formData,
-        formData: true,
+        // On laisse fetchBaseQuery gérer le Content-Type (multipart/form-data)
       }),
+      invalidatesTags: ['Report'],
     }),
+    
     getMyReports: builder.query({
       query: () => '/reports/my-reports',
+      providesTags: ['Report'],
+    }),
+
+    // --- ROUTES ADMIN ---
+    getAllReports: builder.query({
+      query: () => '/reports/all',
+      providesTags: ['Report'],
+    }),
+
+    resolveReport: builder.mutation({
+      query: ({ id, note }) => ({
+        url: `/reports/${id}/resolve`,
+        method: 'PATCH',
+        body: { note },
+      }),
+      invalidatesTags: ['Report', 'AuditLog'], // Rafraîchit les signalements et le journal admin
     }),
   }),
   overrideExisting: true,
 });
 
-export const { useSubmitReportMutation, useGetMyReportsQuery } = reportsApiSlice;
+export const { 
+  useSubmitReportMutation, 
+  useGetMyReportsQuery,
+  useGetAllReportsQuery,
+  useResolveReportMutation 
+} = reportsApiSlice;

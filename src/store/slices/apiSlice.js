@@ -103,6 +103,6 @@ export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
   // CORRECTION SENIOR: Ajout de 'AuditLog' dans les tagTypes globaux
-  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog'],
+  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog' , 'Report'],
   endpoints: () => ({}),
 });
