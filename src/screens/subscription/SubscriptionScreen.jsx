@@ -2,23 +2,22 @@
 // ECRAN D'ABONNEMENT - Logique Metier "Mur de Preuve"
 // STANDARD: Industriel / Architecture Modulaire
 
-import { Ionicons } from '@expo/vector-icons'; // Ajout pour l'icône de déconnexion
+import { Ionicons } from '@expo/vector-icons';
+import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice'; // Ajout de logout
+import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
-import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import THEME from '../../theme/theme';
-
-// Import des modules d'interface
 import PricingCard from '../../components/subscription/PricingCard';
 import ProofUploadForm from '../../components/subscription/ProofUploadForm';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import THEME from '../../theme/theme';
 
 const STEPS = {
   CHOOSE_PLAN: 'CHOOSE_PLAN',
@@ -34,7 +33,8 @@ const SubscriptionScreen = () => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   
-  const { data: configData, isLoading: isConfigLoading, isError: isConfigError } = useGetConfigQuery();
+  // On récupère la fonction refetch pour forcer l'actualisation
+  const { data: configData, isLoading: isConfigLoading, isError: isConfigError, refetch } = useGetConfigQuery();
   const [submitProof, { isLoading: isSubmitting }] = useSubmitProofMutation();
 
   const [currentStep, setCurrentStep] = useState(STEPS.CHOOSE_PLAN);
@@ -42,7 +42,15 @@ const SubscriptionScreen = () => {
   const [senderPhone, setSenderPhone] = useState('');
   const [proofImage, setProofImage] = useState(null);
 
-  const handleSelectPlan = async (planType, paymentLink) => {
+  // CORRECTION SENIOR : Le useFocusEffect doit être ici pour relancer la requête (refetch) à chaque fois que la page apparaît !
+  useFocusEffect(
+    useCallback(() => {
+      refetch();
+    }, [refetch])
+  );
+
+  // AJOUT SENIOR: On récupère le "price" en 3ème paramètre
+  const handleSelectPlan = async (planType, paymentLink, price) => {
     if (!paymentLink) {
       dispatch(showErrorToast({ 
         title: "Erreur de configuration", 
@@ -52,14 +60,15 @@ const SubscriptionScreen = () => {
     }
 
     try {
-      const supported = await Linking.canOpenURL(paymentLink);
-      if (supported) {
-        await Linking.openURL(paymentLink);
-        setSelectedPlan(planType);
-        setCurrentStep(STEPS.UPLOAD_PROOF);
-      } else {
-        throw new Error("Application non supportée ou non installée.");
-      }
+      // 1. On injecte le montant directement dans l'URL pour Wave
+      const separator = paymentLink.includes('?') ? '&' : '?';
+      const finalLink = `${paymentLink}${separator}amount=${price}`;
+
+      // 2. On ouvre directement l'application, sans passer par canOpenURL (qui bloque sur Android 11+)
+      await Linking.openURL(finalLink);
+      
+      setSelectedPlan(planType);
+      setCurrentStep(STEPS.UPLOAD_PROOF);
     } catch (error) {
       console.error("[LINKING ERROR]:", error);
       
@@ -176,25 +185,26 @@ const SubscriptionScreen = () => {
             <Text style={styles.title}>Renouveler mon accès</Text>
             <Text style={styles.subtitle}>Sélectionnez votre forfait pour continuer.</Text>
 
+            {/* AJOUT SENIOR: On passe le prix de l'abonnement à la fonction */}
             <PricingCard 
               title="Pass 1 Semaine"
               price={config.weekly.price}
               crossedPrice="1000"
               isPromo={config.isPromoActive}
               description="Paiement par Wave (Caisse Principale)"
-              onPress={() => handleSelectPlan(PLAN_TYPES.WEEKLY, config.weekly.link)}
+              onPress={() => handleSelectPlan(PLAN_TYPES.WEEKLY, config.weekly.link, config.weekly.price)}
             />
 
+            {/* AJOUT SENIOR: On passe le prix de l'abonnement à la fonction */}
             <PricingCard 
               title="Pass 1 Mois"
               price={config.monthly.price}
               crossedPrice="6000"
               isPromo={config.isPromoActive}
               description="Paiement par Wave (Caisse Partenaire)"
-              onPress={() => handleSelectPlan(PLAN_TYPES.MONTHLY, config.monthly.link)}
+              onPress={() => handleSelectPlan(PLAN_TYPES.MONTHLY, config.monthly.link, config.monthly.price)}
             />
 
-            {/* MODIFICATION SENIOR : Bouton de déconnexion ajouté discrètement */}
             <TouchableOpacity 
               style={styles.logoutBtn} 
               onPress={() => dispatch(logout())}

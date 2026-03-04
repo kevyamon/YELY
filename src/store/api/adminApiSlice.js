@@ -25,7 +25,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         url: `/admin/approve/${transactionId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'], // Invalide les logs
+      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'],
     }),
     
     rejectTransaction: builder.mutation({
@@ -34,7 +34,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { reason },
       }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'], // Invalide les logs
+      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'],
     }),
     
     getAllUsers: builder.query({
@@ -53,7 +53,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { userId, reason },
       }),
-      invalidatesTags: ['User', 'Stats', 'AuditLog'], // Invalide les logs
+      invalidatesTags: ['User', 'Stats', 'AuditLog'],
     }),
     
     updateUserRole: builder.mutation({
@@ -62,7 +62,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { userId, action },
       }),
-      invalidatesTags: ['User', 'AuditLog'], // Invalide les logs
+      invalidatesTags: ['User', 'AuditLog'],
     }),
     
     getFinanceData: builder.query({
@@ -85,7 +85,8 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body: { isActive },
       }),
-      invalidatesTags: ['Stats', 'AuditLog'],
+      // AJOUT SENIOR: On invalide 'Subscription' pour forcer la mise à jour si on utilise le même appareil
+      invalidatesTags: ['Stats', 'AuditLog', 'Subscription'], 
     }),
     
     updateMapSettings: builder.mutation({
@@ -110,7 +111,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Notification'],
     }),
 
-    // AJOUT SENIOR: Endpoint pour récupérer les logs
     getAuditLogs: builder.query({
       query: ({ page = 1 }) => `/admin/logs?page=${page}`,
       providesTags: ['AuditLog'],
@@ -133,5 +133,5 @@ export const {
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,
-  useGetAuditLogsQuery, // Ne pas oublier d'exporter le Hook !
+  useGetAuditLogsQuery, 
 } = adminApiSlice;

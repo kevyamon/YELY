@@ -11,6 +11,8 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
     getConfig: builder.query({
       query: () => '/subscriptions/config',
       providesTags: ['Subscription'],
+      // AJOUT SENIOR: On interdit la mise en cache prolongée pour les données financières (Prix et Promo)
+      keepUnusedDataFor: 0, 
     }),
 
     // Verification du statut d'abonnement (Actif, Expiré, ou En attente de validation)
@@ -25,14 +27,12 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
         url: '/subscriptions/submit-proof',
         method: 'POST',
         body: formData,
-        // Ne pas forcer le Content-Type ici, RTK Query et le navigateur 
-        // genereront automatiquement le bon boundary pour le multipart/form-data
       }),
       invalidatesTags: ['Subscription'],
     }),
     
   }),
-  overrideExisting: true, // Ecrase les anciennes definitions de l'IA precedente
+  overrideExisting: true, 
 });
 
 export const {
