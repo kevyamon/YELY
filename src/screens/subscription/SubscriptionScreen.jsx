@@ -28,6 +28,11 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
+const PLAN_TYPES = {
+  WEEKLY: 'WEEKLY',
+  MONTHLY: 'MONTHLY'
+};
+
 const SubscriptionScreen = () => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
@@ -42,13 +47,17 @@ const SubscriptionScreen = () => {
   const [proofImage, setProofImage] = useState(null);
   const [timeLeft, setTimeLeft] = useState(null);
 
-  // ECOUTE TEMPS REEL DE LA PROMO (Sockets)
+  // CORRECTION SENIOR: Utilisation directe des méthodes on/off de ton socketService
   useEffect(() => {
-    const socket = socketService.getSocket();
-    if (!socket) return;
-    const handlePromoUpdate = () => refetchConfig();
-    socket.on('promo_updated', handlePromoUpdate);
-    return () => socket.off('promo_updated', handlePromoUpdate);
+    const handlePromoUpdate = () => {
+      refetchConfig();
+    };
+
+    socketService.on('promo_updated', handlePromoUpdate);
+    
+    return () => {
+      socketService.off('promo_updated', handlePromoUpdate);
+    };
   }, [refetchConfig]);
 
   useFocusEffect(
