@@ -1,4 +1,4 @@
-// src/components/map/markers/MobileMarkers.jsx [MODIFIÉ]
+// src/components/map/markers/MobileMarkers.jsx [CORRIGÉ]
 // COMPOSANTS VISUELS CARTE MOBILE - Icônes autonomes sans conteneur
 // CSCSM Level: Bank Grade
 
@@ -175,12 +175,13 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
-// NOUVEAU : Marqueur de lieu style Google Maps
+// NOUVEAU : Marqueur de lieu style Google Maps [CORRIGÉ]
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
+  // Un délai légèrement plus long pour s'assurer que le rendu Android ait fini avant de figer
   useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 1500);
+    const timer = setTimeout(() => setTracks(false), 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -194,12 +195,17 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
       tracksViewChanges={tracks}
       onPress={onPress}
     >
+      {/* SENIOR FIX : Architecture Plate
+          Au lieu de jouer avec du padding dynamique qui fait crasher Android, 
+          on donne une largeur explicite (120). La carte alloue cette taille 
+          et le contenu respire sans jamais se faire couper ni disparaître. 
+      */}
       <View style={styles.poiContainer}>
         <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
           <Ionicons name={icon || 'location'} size={14} color={color} />
         </View>
         <View style={styles.poiTextWrapper}>
-          <Text style={styles.poiText} numberOfLines={1}>{name}</Text>
+          <Text style={styles.poiText} numberOfLines={2}>{name}</Text>
         </View>
       </View>
     </Marker>
@@ -250,9 +256,13 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
+  
+  // -- CORRECTIONS DU MARQUEUR POI --
   poiContainer: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: 120, // LE BOUCLIER : Force la carte à allouer cette taille !
+    backgroundColor: 'transparent', 
   },
   poiIconCircle: {
     width: 26,
@@ -262,16 +272,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
+    // (L'ombre "elevation" a été retirée pour empêcher l'invisibilité sous Android)
   },
   poiTextWrapper: {
-    marginTop: 4,
-    backgroundColor: 'rgba(25, 25, 25, 0.85)',
-    paddingHorizontal: 6,
-    paddingVertical: 3,
+    marginTop: 4, 
+    backgroundColor: 'rgba(25, 25, 25, 0.85)', 
+    paddingHorizontal: 6, 
+    paddingVertical: 3, 
     borderRadius: 8,
     borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    maxWidth: 100,
+    maxWidth: 110, // Un peu moins que le container pour laisser de la marge
   },
   poiText: {
     color: THEME.COLORS.textPrimary,
