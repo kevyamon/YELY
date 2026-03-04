@@ -38,21 +38,24 @@ const DriverHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
 
+  // CORRECTION SENIOR : Extraction de "isLoading" ET "isFetching"
   const { 
     data: subscriptionData, 
-    isLoading: isSubscriptionLoading, 
+    isLoading, 
+    isFetching, 
     isError: isSubscriptionError,
     refetch: refetchSubscription 
   } = useGetSubscriptionStatusQuery(undefined, {
     skip: !isFocused 
   });
 
+  // Si c'est le premier chargement OU un rafraichissement en arrière-plan, on considère que ça charge
+  const isSubscriptionLoading = isLoading || isFetching;
+
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   
-  // CORRECTION SENIOR : On lit directement user.subscription.isActive comme défini dans ton modèle Mongoose
   const isLocallyActive = user?.subscription?.isActive === true;
 
-  // Si au moins l'UNE des sources nous dit que le chauffeur est actif, on le laisse passer
   const isActive = 
     apiSubStatus.isActive === true || 
     isLocallyActive === true || 

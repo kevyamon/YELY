@@ -31,7 +31,20 @@ const authSlice = createSlice({
         console.warn('[Redux] Donnees de connexion incompletes');
       }
 
-      if (user) state.user = user;
+      if (user) {
+        state.user = user;
+        
+        // AJOUT SENIOR : On synchronise le statut d'abonnement immédiatement à la connexion
+        // Ça évite le blocage fantôme le temps que la requête de la page d'accueil se fasse
+        if (user.subscription && typeof user.subscription === 'object') {
+          state.subscriptionStatus = {
+            isActive: user.subscription.isActive || false,
+            isPending: user.subscription.isPending || false,
+            expiresAt: user.subscription.expiresAt || null
+          };
+        }
+      }
+
       if (finalToken) state.token = finalToken;
       if (refreshToken) state.refreshToken = refreshToken;
       
@@ -48,7 +61,6 @@ const authSlice = createSlice({
       SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
     },
 
-    // Nouvelle action pour gerer le statut de l'abonnement en temps reel
     updateSubscriptionStatus: (state, action) => {
       state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
     },
@@ -72,6 +84,15 @@ const authSlice = createSlice({
       state.token = token;
       state.refreshToken = refreshToken;
       state.isAuthenticated = !!(user && token);
+      
+      // AJOUT SENIOR : Sécurité à la restauration (quand on ferme/rouvre l'app)
+      if (user && user.subscription && typeof user.subscription === 'object') {
+        state.subscriptionStatus = {
+          isActive: user.subscription.isActive || false,
+          isPending: user.subscription.isPending || false,
+          expiresAt: user.subscription.expiresAt || null
+        };
+      }
     },
 
     setRefreshing: (state, action) => {
@@ -89,10 +110,6 @@ export const {
   setRefreshing 
 } = authSlice.actions;
 
-/**
- * Thunk pour forcer un rafraichissement silencieux du profil et du token.
- * Indispensable pour mettre a jour les permissions (ex: passage en mode Admin).
- */
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
   const currentRefreshToken = auth.refreshToken;
@@ -127,7 +144,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
 
 export default authSlice.reducer;
 
-// Selecteurs
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role;
