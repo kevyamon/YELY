@@ -95,6 +95,14 @@ const AdminDashboard = () => {
       badge: !seenUsers ? "!" : undefined, 
       allowed: true 
     },
+    // AJOUT SENIOR : Le module Signalements
+    { 
+      id: 'reports', 
+      title: 'Signalements', 
+      icon: 'alert-circle-outline', 
+      route: 'AdminReports', 
+      allowed: true 
+    },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin }
   ];
