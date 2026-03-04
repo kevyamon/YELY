@@ -1,5 +1,5 @@
-// src/store/slices/apiSlice.js [MODIFIÉ]
-// COEUR RESEAU - Rotation Mutex & Anti-Sniffing
+// src/store/slices/apiSlice.js
+// COEUR RESEAU - Rotation Mutex & Anti-Sniffing & Persistance Robuste
 // STANDARD: Industriel / Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
@@ -56,45 +56,43 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           body: JSON.stringify({ refreshToken: currentRefreshToken })
         });
 
-        const refreshData = await refreshResponse.json();
+        const refreshData = await refreshResponse.json().catch(() => null);
 
-        if (refreshResponse.ok) {
-          // CORRECTION SENIOR : Extraction blindée (supporte { success: true, data: {...} } ou juste {...})
+        if (refreshResponse.ok && refreshData) {
           const payload = refreshData.data || refreshData;
           const newAccessToken = payload?.accessToken || payload?.token;
-          
-          // CORRECTION SENIOR : Si le backend omet le refreshToken, on CONSERVE l'actuel pour ne pas casser la boucle
           const newRefreshToken = payload?.refreshToken || currentRefreshToken; 
 
           if (newAccessToken) {
             console.info('[AUTH] Rafraichissement reussi ! Reprise des requetes.');
             
-            // On ecrase silencieusement dans Redux et le SecureStore
             api.dispatch(setCredentials({ 
               accessToken: newAccessToken,
               refreshToken: newRefreshToken, 
               user: payload?.user || api.getState().auth.user 
             }));
             
-            // On rejoue la requete initiale qui avait echoue avec le nouveau token
             result = await baseQuery(args, api, extraOptions);
           } else {
-            console.warn('[AUTH] Le serveur n\'a pas renvoye d\'Access Token.');
+            console.warn('[AUTH] Le serveur n\'a pas renvoye d\'Access Token. Deconnexion.');
             api.dispatch(logout());
           }
-        } else {
-          console.warn(`[AUTH] Refresh Token rejete (Code ${refreshResponse.status}). Deconnexion.`);
+        } else if (refreshResponse.status === 401 || refreshResponse.status === 403 || refreshResponse.status === 400) {
+          // MODIFICATION MAJEURE : On deconnecte UNIQUEMENT si le serveur rejette formellement le token (session de 30 jours expiree ou revoquee)
+          console.warn(`[AUTH] Refresh Token definitivement rejete (Code ${refreshResponse.status}). Deconnexion.`);
           api.dispatch(logout());
+        } else {
+          // MODIFICATION MAJEURE : Pour toute autre erreur (500, 502, timeout reseau), on conserve la session.
+          console.warn(`[AUTH] Erreur serveur ou reseau temporaire (Code ${refreshResponse.status}). La session est conservee intacte.`);
         }
       } catch (error) {
-        console.error('[AUTH] Erreur reseau critique lors du rafraichissement:', error);
-        // SECURITE : On ne deconnecte PAS en cas de coupure internet pendant le refresh
+        // SECURITE : On ne deconnecte PAS en cas de coupure internet ou crash local pendant le refresh
+        console.error('[AUTH] Erreur reseau critique lors du rafraichissement. Session conservee.', error);
       } finally {
         api.dispatch(setRefreshing(false));
         release();
       }
     } else {
-      // Si le Mutex est dejà verrouillé par une autre requête, on attend patiemment puis on rejoue
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
