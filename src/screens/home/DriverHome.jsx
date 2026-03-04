@@ -23,7 +23,6 @@ import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
-// Ajout de selectSubscriptionStatus pour lire la mise à jour instantanée du Socket
 import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
@@ -37,21 +36,31 @@ const DriverHome = ({ navigation }) => {
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
-  const subStatusRedux = useSelector(selectSubscriptionStatus); // <-- État local Socket
+  const subStatusRedux = useSelector(selectSubscriptionStatus); 
 
   const { 
     data: subscriptionData, 
     isLoading: isSubscriptionLoading, 
+    isError: isSubscriptionError,
     refetch: refetchSubscription 
   } = useGetSubscriptionStatusQuery(undefined, {
     skip: !isFocused 
   });
 
-  // COMBINAISON DES SOURCES DE VÉRITÉ : API (Cache) + Redux (Socket temps réel)
-  const apiSubStatus = subscriptionData?.data || { isActive: false, isPending: false };
+  const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   
-  const isActive = apiSubStatus.isActive || user?.subscriptionStatus === 'active' || subStatusRedux?.isActive;
-  const isPending = apiSubStatus.isPending || user?.subscriptionStatus === 'pending' || subStatusRedux?.isPending;
+  // CORRECTION SENIOR : On lit directement user.subscription.isActive comme défini dans ton modèle Mongoose
+  const isLocallyActive = user?.subscription?.isActive === true;
+
+  // Si au moins l'UNE des sources nous dit que le chauffeur est actif, on le laisse passer
+  const isActive = 
+    apiSubStatus.isActive === true || 
+    isLocallyActive === true || 
+    subStatusRedux?.isActive === true;
+
+  const isPending = 
+    apiSubStatus.isPending === true || 
+    subStatusRedux?.isPending === true;
 
   const isBlocked = !isActive;
 
@@ -93,10 +102,9 @@ const DriverHome = ({ navigation }) => {
   const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   const renderSubscriptionBlocker = () => {
-    // Si l'abonnement est actif grâce au Socket, on ne bloque pas, même si ça charge en fond
     if (isActive) return null;
 
-    if (isSubscriptionLoading) {
+    if (isSubscriptionLoading && !isSubscriptionError) {
       return (
         <View style={styles.blockerOverlay}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
