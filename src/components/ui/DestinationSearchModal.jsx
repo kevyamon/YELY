@@ -1,50 +1,66 @@
 // src/components/ui/DestinationSearchModal.jsx [MODIFIÉ]
-// MODALE DE RECHERCHE - UX Liquid Glass (iOS 26) + POIs Dynamiques
+// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Limitation de rendu
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
 
-// 🚀 IMPORT DU NOUVEAU PONT RÉSEAU AU LIEU DU FICHIER STATIQUE
+// IMPORT DU PONT RÉSEAU 
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
+
+// Fonction utilitaire pour normaliser le texte (retire les accents et met en minuscules)
+const normalizeSearchText = (text) => {
+  if (!text) return '';
+  return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+};
 
 const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 🚀 LOGIQUE MÉTIER : On demande les vrais lieux à notre base de données
+  // LOGIQUE MÉTIER : Récupération avec forçage de mise à jour à l'ouverture (bypass cache)
   const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
-    skip: !visible, // Astuce Pro : on ne télécharge les lieux que si la modale est ouverte pour économiser la data de l'utilisateur
+    skip: !visible, 
+    refetchOnMountOrArgChange: true, 
   });
 
   const pois = poiResponse?.data || [];
 
-  // On filtre les lieux récupérés selon ce que l'utilisateur tape
-  const filteredPOIs = pois.filter(poi =>
-    poi.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  // Lors de la sélection d'une adresse
-  const handleSelectPlace = (item) => {
-    Keyboard.dismiss(); // Baisse le clavier
+  // Filtrage optimisé, tolérant aux fautes d'accents ET limité en nombre pour la performance
+  const filteredPOIs = useMemo(() => {
+    const normalizedQuery = normalizeSearchText(searchQuery);
     
-    // Envoie les données au parent pour tracer la route
+    // Si le champ de recherche est vide : on affiche seulement 5 lieux maximum
+    if (!normalizedQuery) {
+      return pois.slice(0, 5);
+    }
+
+    // Sinon, on filtre selon la recherche
+    const results = pois.filter(poi =>
+      normalizeSearchText(poi.name).includes(normalizedQuery)
+    );
+
+    // On limite les résultats de recherche à 10 maximum pour protéger la RAM du téléphone
+    return results.slice(0, 10);
+  }, [pois, searchQuery]);
+
+  // Stabilisation de la fonction de sélection pour éviter les re-rendus inutiles
+  const handleSelectPlace = useCallback((item) => {
+    Keyboard.dismiss(); 
+    
     onDestinationSelect({
       address: item.name,
       latitude: item.latitude,
       longitude: item.longitude
     });
     
-    // Nettoyage pour la prochaine ouverture
     setSearchQuery('');
-    
-    // Ferme la modale via le parent
     onClose(); 
-  };
+  }, [onDestinationSelect, onClose]);
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity 
@@ -60,7 +76,7 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
       </View>
       <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
     </TouchableOpacity>
-  ), [onClose, onDestinationSelect]);
+  ), [handleSelectPlace]);
 
   return (
     <GlassModal
@@ -82,14 +98,15 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
           placeholder="Ex: Marché de Maféré..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          autoFocus={true} // Ouvre le clavier directement
+          autoFocus={true}
           icon="search-outline"
         />
       </View>
 
-      <Text style={styles.sectionTitle}>Lieux connus</Text>
+      <Text style={styles.sectionTitle}>
+        {searchQuery ? "Résultats" : "Lieux suggérés"}
+      </Text>
 
-      {/* Affichage conditionnel : Chargement, Erreur, ou Liste */}
       {isLoading ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
@@ -102,10 +119,10 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
       ) : (
         <FlatList
           data={filteredPOIs}
-          keyExtractor={(item) => item._id || item.id} // "_id" car c'est généré par MongoDB
+          keyExtractor={(item) => item._id || item.id} 
           renderItem={renderSuggestionItem}
           contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled" // Permet de cliquer même si le clavier est ouvert
+          keyboardShouldPersistTaps="handled" 
           style={styles.listContainer}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
@@ -120,8 +137,8 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
 const styles = StyleSheet.create({
   modalStyle: {
     padding: THEME.SPACING.md,
-    maxHeight: '85%', // Empêche la modale de prendre tout l'écran
-    marginTop: 60, // Laisse la place à l'encoche du téléphone (Notch)
+    maxHeight: '85%',
+    marginTop: 60,
     backgroundColor: THEME.COLORS.glassDark,
   },
   header: {
