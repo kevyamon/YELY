@@ -30,7 +30,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   
   let result = await baseQuery(args, api, extraOptions);
 
-  // GESTION DES ERREURS 401 (Expire) ET 403 (Forbidden - Changement de permissions)
+  // GESTION DES ERREURS 401 (Expire) ET 403 (Forbidden)
   if (result.error && (result.error.status === 401 || result.error.status === 403)) {
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
@@ -45,7 +45,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return result;
         }
 
-        console.info('[AUTH] Session expiree ou permissions insuffisantes. Tentative de rafraichissement...');
+        console.info('[AUTH] Session expiree (15min). Tentative de rafraichissement silencieux...');
 
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
@@ -58,39 +58,43 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
         const refreshData = await refreshResponse.json();
 
-        if (refreshResponse.ok && refreshData.success) {
-          const payload = refreshData.data;
-          const newAccessToken = payload?.accessToken;
-          const newRefreshToken = payload?.refreshToken; // <- On recupere le nouveau token recu en JSON
+        if (refreshResponse.ok) {
+          // CORRECTION SENIOR : Extraction blindée (supporte { success: true, data: {...} } ou juste {...})
+          const payload = refreshData.data || refreshData;
+          const newAccessToken = payload?.accessToken || payload?.token;
+          
+          // CORRECTION SENIOR : Si le backend omet le refreshToken, on CONSERVE l'actuel pour ne pas casser la boucle
+          const newRefreshToken = payload?.refreshToken || currentRefreshToken; 
 
-          if (newAccessToken && newRefreshToken) {
-            console.info('[AUTH] Rafraichissement reussi. Mise a jour des tokens.');
+          if (newAccessToken) {
+            console.info('[AUTH] Rafraichissement reussi ! Reprise des requetes.');
             
-            // On envoie les NOUVEAUX tokens au store (qui va ecraser les anciens dans SecureStore)
+            // On ecrase silencieusement dans Redux et le SecureStore
             api.dispatch(setCredentials({ 
               accessToken: newAccessToken,
               refreshToken: newRefreshToken, 
               user: payload?.user || api.getState().auth.user 
             }));
             
-            // On rejoue la requete initiale qui avait echoue
+            // On rejoue la requete initiale qui avait echoue avec le nouveau token
             result = await baseQuery(args, api, extraOptions);
           } else {
-            console.warn('[AUTH] Le serveur n\'a pas renvoye les tokens attendus.');
+            console.warn('[AUTH] Le serveur n\'a pas renvoye d\'Access Token.');
             api.dispatch(logout());
           }
-        } else if (refreshResponse.status === 401 || refreshResponse.status === 400 || refreshResponse.status === 403) {
-          console.warn('[AUTH] Refresh Token rejete par le serveur. Deconnexion.');
+        } else {
+          console.warn(`[AUTH] Refresh Token rejete (Code ${refreshResponse.status}). Deconnexion.`);
           api.dispatch(logout());
         }
       } catch (error) {
         console.error('[AUTH] Erreur reseau critique lors du rafraichissement:', error);
-        // SECURITE : On ne deconnecte pas en cas de simple coupure internet
+        // SECURITE : On ne deconnecte PAS en cas de coupure internet pendant le refresh
       } finally {
         api.dispatch(setRefreshing(false));
         release();
       }
     } else {
+      // Si le Mutex est dejà verrouillé par une autre requête, on attend patiemment puis on rejoue
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
@@ -102,7 +106,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  // CORRECTION SENIOR: Ajout de 'AuditLog' dans les tagTypes globaux
-  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog' , 'Report'],
+  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog', 'Report'],
   endpoints: () => ({}),
 });
