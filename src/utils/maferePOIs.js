@@ -1,34 +1,11 @@
-// src/utils/maferePOIs.js
-// DONNÉES GÉOSPATIALES - Points d'intérêt (POI) de Maféré
+// src/utils/maferePOIs.js [MODIFIÉ]
+// DONNÉES GÉOSPATIALES - Points d'intérêt (POI)
 // CSCSM Level: Bank Grade
 
 // 🚀 NOTE ARCHITECTE : 
-// Ces données sont statiques pour le moment. À terme, elles seront 
-// remplacées/complétées par un appel API vers le backend (Superadmin Dashboard).
+// Ce fichier est maintenant VIDÉ de ses fausses données.
+// Nous gardons l'export d'un tableau vide au cas où un autre vieux fichier de ton
+// application essaierait de l'importer, pour éviter que l'application ne plante.
+// Les vraies données viennent désormais de la base de données !
 
-export const MAFERE_POIS = [
-  {
-    id: 'poi-marche-001',
-    name: 'Marché de Maféré',
-    latitude: 5.4115,     // Coordonnées fictives proches du centre
-    longitude: -3.0315,
-    icon: 'cart',         // Nom de l'icône Ionicons
-    iconColor: '#D4AF37'  // Or Champagne
-  },
-  {
-    id: 'poi-pharmacie-001',
-    name: 'Pharmacie Principale',
-    latitude: 5.4130,
-    longitude: -3.0330,
-    icon: 'medkit',
-    iconColor: '#2ECC71'  // Vert santé
-  },
-  {
-    id: 'poi-gare-001',
-    name: 'Gare Routière',
-    latitude: 5.4080,
-    longitude: -3.0290,
-    icon: 'bus',
-    iconColor: '#E74C3C'  // Rouge
-  }
-];
+export const MAFERE_POIS = [];

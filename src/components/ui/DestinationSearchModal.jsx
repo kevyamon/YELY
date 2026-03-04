@@ -1,21 +1,30 @@
-// src/components/ui/DestinationSearchModal.jsx
-// MODALE DE RECHERCHE - UX Liquid Glass (iOS 26) + POIs Locaux
+// src/components/ui/DestinationSearchModal.jsx [MODIFIÉ]
+// MODALE DE RECHERCHE - UX Liquid Glass (iOS 26) + POIs Dynamiques
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useState } from 'react';
-import { FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import THEME from '../../theme/theme';
-import { MAFERE_POIS } from '../../utils/maferePOIs'; // 🚀 IMPORT DES LIEUX EN DUR
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
+
+// 🚀 IMPORT DU NOUVEAU PONT RÉSEAU AU LIEU DU FICHIER STATIQUE
+import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 
 const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // 🚀 LOGIQUE MÉTIER : On filtre nos lieux en dur selon la saisie
-  const filteredPOIs = MAFERE_POIS.filter(poi =>
+  // 🚀 LOGIQUE MÉTIER : On demande les vrais lieux à notre base de données
+  const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
+    skip: !visible, // Astuce Pro : on ne télécharge les lieux que si la modale est ouverte pour économiser la data de l'utilisateur
+  });
+
+  const pois = poiResponse?.data || [];
+
+  // On filtre les lieux récupérés selon ce que l'utilisateur tape
+  const filteredPOIs = pois.filter(poi =>
     poi.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -51,13 +60,13 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
       </View>
       <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
     </TouchableOpacity>
-  ), []);
+  ), [onClose, onDestinationSelect]);
 
   return (
     <GlassModal
       visible={visible}
       onClose={onClose}
-      position="top" // 🚀 L'EFFET PREMIUM : S'affiche en haut et floute le fond
+      position="top"
       fullWidth={true}
       style={styles.modalStyle}
     >
@@ -80,18 +89,30 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
 
       <Text style={styles.sectionTitle}>Lieux connus</Text>
 
-      <FlatList
-        data={filteredPOIs}
-        keyExtractor={(item) => item.id}
-        renderItem={renderSuggestionItem}
-        contentContainerStyle={styles.listContent}
-        keyboardShouldPersistTaps="handled" // Permet de cliquer même si le clavier est ouvert
-        style={styles.listContainer}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={() => (
-          <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchQuery}"</Text>
-        )}
-      />
+      {/* Affichage conditionnel : Chargement, Erreur, ou Liste */}
+      {isLoading ? (
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <Text style={styles.loadingText}>Synchronisation de la carte...</Text>
+        </View>
+      ) : isError ? (
+        <View style={styles.centerContainer}>
+          <Text style={styles.emptyText}>Impossible de charger les lieux pour le moment.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredPOIs}
+          keyExtractor={(item) => item._id || item.id} // "_id" car c'est généré par MongoDB
+          renderItem={renderSuggestionItem}
+          contentContainerStyle={styles.listContent}
+          keyboardShouldPersistTaps="handled" // Permet de cliquer même si le clavier est ouvert
+          style={styles.listContainer}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={() => (
+            <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchQuery}"</Text>
+          )}
+        />
+      )}
     </GlassModal>
   );
 };
@@ -168,6 +189,17 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textTertiary,
     marginTop: 20,
     fontStyle: 'italic',
+  },
+  centerContainer: {
+    padding: 30,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  loadingText: {
+    color: THEME.COLORS.champagneGold,
+    marginTop: 12,
+    fontSize: 14,
+    fontWeight: '500',
   }
 });
 
