@@ -1,15 +1,19 @@
 // src/screens/profile/ProfileScreen.jsx
+// ECRAN PROFIL - Orchestrateur Modulaire
+// CSCSM Level: Bank Grade
+
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
-import GlassCard from '../../components/ui/GlassCard';
-import GlassInput from '../../components/ui/GlassInput';
 import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+
+import ProfileAvatar from '../../components/profile/ProfileAvatar';
+import ProfileForm from '../../components/profile/ProfileForm';
 
 import {
     useDeleteAccountMutation,
@@ -20,6 +24,8 @@ import {
 import { logout, selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+
+const COUNTRY_CODE = '+225';
 
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -35,17 +41,24 @@ const ProfileScreen = ({ navigation }) => {
 
   const [form, setForm] = useState({
     name: '',
-    phone: '',
+    phone: '', 
     vehicleModel: '',
     vehiclePlate: '',
   });
 
+  // HYDRATATION DU FORMULAIRE : On nettoie l'indicatif pour ne garder que le numéro local
   useEffect(() => {
     if (profileData?.data) {
       const p = profileData.data;
+      let localPhone = p.phone || '';
+      
+      if (localPhone.startsWith(COUNTRY_CODE)) {
+          localPhone = localPhone.replace(COUNTRY_CODE, '').trim();
+      }
+
       setForm({
         name: p.name || '',
-        phone: p.phone || '',
+        phone: localPhone,
         vehicleModel: p.vehicle?.model || '',
         vehiclePlate: p.vehicle?.plate || '',
       });
@@ -95,10 +108,15 @@ const ProfileScreen = ({ navigation }) => {
 
   const handleSave = async () => {
     try {
-      const payload = { name: form.name, phone: form.phone };
+      // RECOMPOSITION INVISIBLE : On recolle l'indicatif et on enlève les espaces
+      const cleanLocalPhone = form.phone.replace(/\s/g, '');
+      const fullPhone = `${COUNTRY_CODE}${cleanLocalPhone}`;
+      
+      const payload = { name: form.name, phone: fullPhone };
       if (isDriver) {
         payload.vehicle = { model: form.vehicleModel, plate: form.vehiclePlate };
       }
+      
       const res = await updateProfile(payload).unwrap();
       dispatch(updateUserInfo(res.data));
       dispatch(showSuccessToast({ title: 'Profil à jour', message: 'Vos informations sont sauvegardées.' }));
@@ -128,6 +146,7 @@ const ProfileScreen = ({ navigation }) => {
   }
 
   const userPhoto = profileData?.data?.profilePicture || currentUser?.profilePicture;
+  const userEmail = profileData?.data?.email || currentUser?.email;
 
   return (
     <ScreenWrapper>
@@ -138,72 +157,21 @@ const ProfileScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
         
-        {/* AVATAR SECTION */}
-        <View style={styles.avatarSection}>
-          <TouchableOpacity onPress={handlePickImage} disabled={isUploading}>
-            <View style={styles.avatarContainer}>
-              {userPhoto ? (
-                <Image source={{ uri: userPhoto }} style={styles.avatarImage} />
-              ) : (
-                <Ionicons name="person" size={60} color={THEME.COLORS.textSecondary} />
-              )}
-              {isUploading && (
-                <View style={styles.avatarLoader}>
-                  <ActivityIndicator size="small" color={THEME.COLORS.primary} />
-                </View>
-              )}
-            </View>
-            <View style={styles.editBadge}>
-              <Ionicons name="camera" size={16} color={THEME.COLORS.background} />
-            </View>
-          </TouchableOpacity>
-          <Text style={styles.emailText}>{profileData?.data?.email || currentUser?.email}</Text>
-          <Text style={styles.roleText}>{isDriver ? 'Chauffeur Partenaire' : 'Passager'}</Text>
-        </View>
+        <ProfileAvatar 
+          userPhoto={userPhoto}
+          email={userEmail}
+          isDriver={isDriver}
+          isUploading={isUploading}
+          onPickImage={handlePickImage}
+        />
 
-        {/* INFO SECTION */}
-        <GlassCard style={styles.card}>
-          <Text style={styles.sectionTitle}>Informations Personnelles</Text>
-          
-          <Text style={styles.label}>Nom complet</Text>
-          <GlassInput 
-            value={form.name}
-            onChangeText={(txt) => setForm({...form, name: txt})}
-            placeholder="Votre nom"
-          />
-
-          <Text style={styles.label}>Téléphone</Text>
-          <GlassInput 
-            value={form.phone}
-            onChangeText={(txt) => setForm({...form, phone: txt})}
-            placeholder="Votre numéro"
-            keyboardType="phone-pad"
-          />
-        </GlassCard>
-
-        {/* DRIVER SECTION */}
-        {isDriver && (
-          <GlassCard style={styles.card}>
-            <Text style={styles.sectionTitle}>Véhicule</Text>
-            
-            <Text style={styles.label}>Modèle</Text>
-            <GlassInput 
-              value={form.vehicleModel}
-              onChangeText={(txt) => setForm({...form, vehicleModel: txt})}
-              placeholder="Ex: Toyota Corolla"
-            />
-
-            <Text style={styles.label}>Plaque d'immatriculation</Text>
-            <GlassInput 
-              value={form.vehiclePlate}
-              onChangeText={(txt) => setForm({...form, vehiclePlate: txt})}
-              placeholder="Ex: 1234 AB 01"
-              autoCapitalize="characters"
-            />
-          </GlassCard>
-        )}
+        <ProfileForm 
+          form={form}
+          setForm={setForm}
+          isDriver={isDriver}
+        />
 
         <GoldButton 
           title="SAUVEGARDER" 
@@ -212,20 +180,19 @@ const ProfileScreen = ({ navigation }) => {
           style={styles.saveBtn}
         />
 
-        {/* DANGER ZONE */}
-        <TouchableOpacity style={styles.deleteBtn} onPress={() => setIsDeleteModalVisible(true)} disabled={isDeleting}>
+        <TouchableOpacity 
+          style={styles.deleteBtn} 
+          onPress={() => setIsDeleteModalVisible(true)} 
+          disabled={isDeleting}
+        >
           <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
           <Text style={styles.deleteText}>Supprimer mon compte</Text>
         </TouchableOpacity>
 
       </ScrollView>
 
-      {/* MODALE DE CONFIRMATION DE SUPPRESSION AVEC GLASSMORPHISM */}
-      <GlassModal
-        visible={isDeleteModalVisible}
-        onClose={() => setIsDeleteModalVisible(false)}
-        position="center"
-      >
+      {/* MODALE DE SUPPRESSION */}
+      <GlassModal visible={isDeleteModalVisible} onClose={() => setIsDeleteModalVisible(false)} position="center">
         <View style={styles.modalIconContainer}>
           <Ionicons name="warning" size={48} color={THEME.COLORS.danger} />
         </View>
@@ -235,24 +202,12 @@ const ProfileScreen = ({ navigation }) => {
         </Text>
         
         <View style={styles.modalActions}>
-          <TouchableOpacity 
-            style={styles.modalCancelBtn} 
-            onPress={() => setIsDeleteModalVisible(false)}
-            disabled={isDeleting}
-          >
+          <TouchableOpacity style={styles.modalCancelBtn} onPress={() => setIsDeleteModalVisible(false)} disabled={isDeleting}>
             <Text style={styles.modalCancelText}>Annuler</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity 
-            style={styles.modalConfirmBtn} 
-            onPress={confirmDeleteAccount}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <ActivityIndicator color={THEME.COLORS.pureWhite} size="small" />
-            ) : (
-              <Text style={styles.modalConfirmText}>Supprimer</Text>
-            )}
+          <TouchableOpacity style={styles.modalConfirmBtn} onPress={confirmDeleteAccount} disabled={isDeleting}>
+            {isDeleting ? <ActivityIndicator color={THEME.COLORS.pureWhite} size="small" /> : <Text style={styles.modalConfirmText}>Supprimer</Text>}
           </TouchableOpacity>
         </View>
       </GlassModal>
@@ -268,72 +223,21 @@ const styles = StyleSheet.create({
   headerTitle: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
   
-  avatarSection: { alignItems: 'center', marginBottom: 30 },
-  avatarContainer: { 
-    width: 100, 
-    height: 100, 
-    borderRadius: 50, 
-    backgroundColor: THEME.COLORS.glassSurface, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    overflow: 'hidden', 
-    borderWidth: 2, 
-    borderColor: THEME.COLORS.primary 
-  },
-  avatarImage: { width: '100%', height: '100%' },
-  avatarLoader: { 
-    ...StyleSheet.absoluteFillObject, 
-    backgroundColor: THEME.COLORS.overlayMedium, 
-    justifyContent: 'center', 
-    alignItems: 'center' 
-  },
-  editBadge: { 
-    position: 'absolute', 
-    bottom: 0, 
-    right: 0, 
-    backgroundColor: THEME.COLORS.primary, 
-    width: 30, 
-    height: 30, 
-    borderRadius: 15, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    borderWidth: 2, 
-    borderColor: THEME.COLORS.background 
-  },
-  emailText: { color: THEME.COLORS.textPrimary, fontSize: 16, marginTop: 15, fontWeight: '500' },
-  roleText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginTop: 5 },
-  
-  card: { padding: 20, marginBottom: 20 },
-  sectionTitle: { color: THEME.COLORS.primary, fontSize: 18, fontWeight: 'bold', marginBottom: 20 },
-  label: { color: THEME.COLORS.textSecondary, fontSize: 12, marginBottom: 5, marginLeft: 5 },
-  
   saveBtn: { marginTop: 10 },
-  deleteBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 40, padding: 15 },
+  
+  deleteBtn: { 
+      flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 40, padding: 15,
+      borderWidth: 1, borderColor: THEME.COLORS.danger, borderRadius: THEME.BORDERS.radius.pill, backgroundColor: 'rgba(231, 76, 60, 0.03)',
+  },
   deleteText: { color: THEME.COLORS.danger, fontSize: 16, fontWeight: 'bold', marginLeft: 10 },
 
-  // STYLES DE LA MODALE
   modalIconContainer: { alignItems: 'center', marginBottom: 15 },
   modalTitle: { color: THEME.COLORS.danger, fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 10 },
   modalText: { color: THEME.COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 25 },
   modalActions: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10 },
-  modalCancelBtn: { 
-    flex: 1, 
-    paddingVertical: 15, 
-    borderRadius: THEME.BORDERS.radius.pill, 
-    borderWidth: 1, 
-    borderColor: THEME.COLORS.border, 
-    alignItems: 'center', 
-    marginRight: 10 
-  },
+  modalCancelBtn: { flex: 1, paddingVertical: 15, borderRadius: THEME.BORDERS.radius.pill, borderWidth: 1, borderColor: THEME.COLORS.border, alignItems: 'center', marginRight: 10 },
   modalCancelText: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
-  modalConfirmBtn: { 
-    flex: 1, 
-    paddingVertical: 15, 
-    borderRadius: THEME.BORDERS.radius.pill, 
-    backgroundColor: THEME.COLORS.danger, 
-    alignItems: 'center', 
-    marginLeft: 10 
-  },
+  modalConfirmBtn: { flex: 1, paddingVertical: 15, borderRadius: THEME.BORDERS.radius.pill, backgroundColor: THEME.COLORS.danger, alignItems: 'center', marginLeft: 10 },
   modalConfirmText: { color: THEME.COLORS.pureWhite, fontWeight: 'bold', fontSize: 16 },
 });
 
