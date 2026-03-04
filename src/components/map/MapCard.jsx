@@ -1,4 +1,4 @@
-// src/components/map/MapCard.jsx [MODIFIÉ]
+// src/components/map/MapCard.jsx [CORRIGÉ V2 - FIX TEMPS RÉEL & SNAPSHOT]
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
 // CSCSM Level: Bank Grade
 
@@ -7,6 +7,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
@@ -50,7 +51,9 @@ const MapCard = forwardRef(({
 
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  // Récupération des lieux depuis l'API pour l'effet Google Maps
+  // Écoute silencieuse des événements temps réel
+  usePoiSocketEvents();
+
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
@@ -63,7 +66,6 @@ const MapCard = forwardRef(({
   useEffect(() => {
     if (!isMapReady) return;
 
-    // Les POIs ne sont pas ajoutés ici pour ne pas perturber le zoom automatique de la course
     const allCoords = [];
     
     if (location?.latitude && location?.longitude) {
@@ -169,10 +171,11 @@ const MapCard = forwardRef(({
             />
           )}
 
-          {/* Affichage des Lieux (Effet Google Maps) */}
+          {/* LE FIX EST ICI : La clé inclut le nom et la couleur. 
+              Si une info change, React recrée entièrement le composant. */}
           {mapPOIs.map((poi) => (
             <PoiMarker
-              key={`map-poi-${poi._id || poi.id}`}
+              key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.iconColor}`}
               coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
               name={poi.name}
               icon={poi.icon}

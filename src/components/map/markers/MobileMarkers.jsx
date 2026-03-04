@@ -1,5 +1,5 @@
-// src/components/map/markers/MobileMarkers.jsx [CORRIGÉ]
-// COMPOSANTS VISUELS CARTE MOBILE - Icônes autonomes sans conteneur
+// src/components/map/markers/MobileMarkers.jsx [CORRIGÉ V4 - FIX ANDROID CLIPPING]
+// COMPOSANTS VISUELS CARTE MOBILE
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -175,15 +175,13 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
-// NOUVEAU : Marqueur de lieu style Google Maps [CORRIGÉ]
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
-  // Un délai légèrement plus long pour s'assurer que le rendu Android ait fini avant de figer
+  // À chaque fois que le nom ou la couleur change, on réactive le rendu natif
   useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 2000);
-    return () => clearTimeout(timer);
-  }, []);
+    setTracks(true);
+  }, [name, color, icon]);
 
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
@@ -191,21 +189,25 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
     <Marker
       coordinate={coordinate}
       anchor={{ x: 0.5, y: 0.5 }}
-      zIndex={40} // En dessous des éléments actifs de la course
+      zIndex={40}
       tracksViewChanges={tracks}
       onPress={onPress}
     >
-      {/* SENIOR FIX : Architecture Plate
-          Au lieu de jouer avec du padding dynamique qui fait crasher Android, 
-          on donne une largeur explicite (120). La carte alloue cette taille 
-          et le contenu respire sans jamais se faire couper ni disparaître. 
-      */}
       <View style={styles.poiContainer}>
         <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
           <Ionicons name={icon || 'location'} size={14} color={color} />
         </View>
         <View style={styles.poiTextWrapper}>
-          <Text style={styles.poiText} numberOfLines={2}>{name}</Text>
+          <Text 
+            style={styles.poiText} 
+            numberOfLines={2}
+            onLayout={() => {
+              // L'arme absolue : on coupe le rendu natif 800ms APRÈS que le texte soit physiquement dessiné
+              setTimeout(() => setTracks(false), 800);
+            }}
+          >
+            {name}
+          </Text>
         </View>
       </View>
     </Marker>
@@ -256,33 +258,24 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-  
-  // -- CORRECTIONS DU MARQUEUR POI --
-  poiContainer: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: 120, // LE BOUCLIER : Force la carte à allouer cette taille !
-    backgroundColor: 'transparent', 
-  },
   poiIconCircle: {
-    width: 26,
-    height: 26,
+    width: 20,
+    height: 20,
     borderRadius: 13,
     borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
-    // (L'ombre "elevation" a été retirée pour empêcher l'invisibilité sous Android)
   },
   poiTextWrapper: {
     marginTop: 4, 
     backgroundColor: 'rgba(25, 25, 25, 0.85)', 
-    paddingHorizontal: 6, 
-    paddingVertical: 3, 
+    paddingHorizontal: 8, 
+    paddingVertical: 4, 
     borderRadius: 8,
     borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    maxWidth: 110, // Un peu moins que le container pour laisser de la marge
+    maxWidth: 90, 
   },
   poiText: {
     color: THEME.COLORS.textPrimary,
