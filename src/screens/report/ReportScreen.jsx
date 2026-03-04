@@ -1,0 +1,88 @@
+// src/screens/report/ReportScreen.jsx
+import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
+import React, { useState } from 'react';
+import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
+import GoldButton from '../../components/ui/GoldButton';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import { useSubmitReportMutation } from '../../store/api/reportsApiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import THEME from '../../theme/theme';
+
+const ReportScreen = ({ navigation }) => {
+  const dispatch = useDispatch();
+  const [message, setMessage] = useState('');
+  const [images, setImages] = useState([]);
+  const [submitReport, { isLoading }] = useSubmitReportMutation();
+
+  const pickImage = async () => {
+    if (images.length >= 3) return;
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
+    if (!res.canceled) setImages([...images, res.assets[0]]);
+  };
+
+  const handleSubmit = async () => {
+    if (!message.trim()) return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
+    
+    const formData = new FormData();
+    formData.append('message', message);
+    images.forEach((img, i) => {
+      formData.append('captures', { uri: img.uri, name: `report_${i}.jpg`, type: 'image/jpeg' });
+    });
+
+    try {
+      await submitReport(formData).unwrap();
+      dispatch(showSuccessToast({ title: 'Envoyé', message: 'L\'admin traitera votre demande.' }));
+      navigation.goBack();
+    } catch (e) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Échec de l\'envoi.' }));
+    }
+  };
+
+  return (
+    <ScreenWrapper>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => navigation.goBack()}><Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} /></TouchableOpacity>
+        <Text style={styles.title}>Signaler un problème</Text>
+      </View>
+      <ScrollView contentContainerStyle={styles.content}>
+        <Text style={styles.label}>Décrivez votre souci</Text>
+        <TextInput 
+          style={styles.input} 
+          multiline numberOfLines={6} 
+          value={message} 
+          onChangeText={setMessage} 
+          placeholder="Détaillez le problème rencontré..."
+          placeholderTextColor={THEME.COLORS.textTertiary}
+        />
+        
+        <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
+        <View style={styles.imageRow}>
+          {images.map((img, i) => <Image key={i} source={{ uri: img.uri }} style={styles.preview} />)}
+          {images.length < 3 && (
+            <TouchableOpacity style={styles.addBtn} onPress={pickImage}>
+              <Ionicons name="camera" size={30} color={THEME.COLORS.primary} />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <GoldButton title="ENVOYER LE SIGNALEMENT" onPress={handleSubmit} isLoading={isLoading} style={styles.btn} />
+      </ScrollView>
+    </ScreenWrapper>
+  );
+};
+
+const styles = StyleSheet.create({
+  header: { flexDirection: 'row', alignItems: 'center', padding: 20, paddingTop: 50 },
+  title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
+  content: { padding: 20 },
+  label: { color: THEME.COLORS.textSecondary, marginBottom: 10, fontSize: 14 },
+  input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 15, padding: 15, color: '#FFF', textAlignVertical: 'top', marginBottom: 25, borderWidth: 1, borderColor: THEME.COLORS.border },
+  imageRow: { flexDirection: 'row', marginBottom: 30 },
+  preview: { width: 80, height: 80, borderRadius: 10, marginRight: 10 },
+  addBtn: { width: 80, height: 80, borderRadius: 10, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: THEME.COLORS.primary },
+  btn: { marginTop: 20 }
+});
+
+export default ReportScreen;

@@ -37,6 +37,7 @@ import MenuScreen from '../screens/MenuScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import ReportScreen from '../screens/report/ReportScreen'; // <-- IMPORT RÉPARÉ ICI
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
@@ -115,6 +116,7 @@ const AppNavigator = () => {
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
+  // Sas de securite : Verification stricte si l'abonnement du chauffeur est en cours de validation
   const isSubscriptionPending = isDriver && (
     user?.subscriptionStatus === 'pending' || 
     user?.subscription?.status === 'pending' || 
@@ -155,6 +157,7 @@ const AppNavigator = () => {
             <Stack.Screen name="RiderHome" component={RiderHome} />
           )}
           
+          {/* Groupement des écrans accessibles via le Drawer Menu */}
           {!isAdmin && !isSubscriptionPending && (
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen 
@@ -175,8 +178,10 @@ const AppNavigator = () => {
                 }}
               />
 
+              {/* Écrans Utilisateurs Actifs */}
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="History" component={HistoryScreen} />
+              <Stack.Screen name="Report" component={ReportScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
