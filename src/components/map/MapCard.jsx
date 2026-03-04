@@ -171,11 +171,9 @@ const MapCard = forwardRef(({
             />
           )}
 
-          {/* LE FIX EST ICI : La clé inclut le nom et la couleur. 
-              Si une info change, React recrée entièrement le composant. */}
           {mapPOIs.map((poi) => (
             <PoiMarker
-              key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.iconColor}`}
+              key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.latitude}-${poi.longitude}`}
               coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
               name={poi.name}
               icon={poi.icon}

@@ -16,8 +16,9 @@ const DrawerHeader = ({ user, role, onClose }) => {
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.name || 'Utilisateur';
 
-  // 2. Récupération de l'image (si disponible)
-  const profileImage = user?.profilePicture || user?.avatar;
+  // 2. Récupération de l'image (Vérification stricte pour éviter l'erreur de rendu)
+  const profileImage = user?.profilePicture || user?.avatar || user?.photo;
+  const hasValidImage = profileImage && typeof profileImage === 'string' && profileImage.trim() !== '';
 
   // 3. Label du Rôle
   const roleLabel = getRoleLabel(role);
@@ -46,7 +47,7 @@ const DrawerHeader = ({ user, role, onClose }) => {
         
         {/* AVATAR (Image ou Initiales) */}
         <View style={styles.avatarContainer}>
-          {profileImage ? (
+          {hasValidImage ? (
             <Image 
               source={{ uri: profileImage }} 
               style={styles.avatarImage} 
