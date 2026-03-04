@@ -1,4 +1,4 @@
-// src/components/map/MapCard.jsx [CORRIGÉ V2 - FIX TEMPS RÉEL & SNAPSHOT]
+// src/components/map/MapCard.jsx [CORRIGÉ V5 - ANTI-FLASH & BLANK NATIVE MAP]
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
 // CSCSM Level: Bank Grade
 
@@ -45,13 +45,20 @@ const MapCard = forwardRef(({
 
   const colorScheme = useColorScheme();
   const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
-  const mapBackgroundColor = isMapDark ? '#262626' : '#F5F5F5';
+  const mapBackgroundColor = isMapDark ? '#262626' : '#F4F4F4';
+
+  // LE SECRET : On crée un style qui masque absolument tout ce qui vient de Google/Apple
+  // et on peint le sol de la même couleur que ton fond CartoDB.
+  const blankMapStyle = [
+    { featureType: 'all', elementType: 'all', stylers: [{ visibility: 'off' }] },
+    { featureType: 'landscape', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: mapBackgroundColor }] },
+    { featureType: 'water', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: mapBackgroundColor }] }
+  ];
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  // Écoute silencieuse des événements temps réel
   usePoiSocketEvents();
 
   const { data: poiResponse } = useGetAllPOIsQuery();
@@ -142,10 +149,15 @@ const MapCard = forwardRef(({
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
           }}
-          mapType="none"
+          mapType="standard"
+          customMapStyle={blankMapStyle} // Applique la toile vierge qui tue les POIs Google
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
+          showsPointsOfInterest={false}
+          showsBuildings={false}
+          showsTraffic={false}
+          showsIndoors={false}
           rotateEnabled={false}
           pitchEnabled={false}
           maxZoomLevel={17}
@@ -156,10 +168,10 @@ const MapCard = forwardRef(({
             urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
             maximumZ={17}
             flipY={false}
-            shouldReplaceMapContent={true}
+            shouldReplaceMapContent={false} // Empêche la destruction brutale de l'ancienne tuile
             tileSize={256}
-            fadeDuration={0}
-            zIndex={-1}
+            fadeDuration={0} // Tue l'effet stroboscopique, l'affichage devient instantané
+            zIndex={1}
           />
 
           {visibleRoutePoints.length > 1 && (

@@ -109,9 +109,14 @@ export const {
 
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
-  const currentRefreshToken = auth.refreshToken;
+  let currentRefreshToken = auth.refreshToken;
 
-  // On bloque si on est déjà en train de rafraîchir via l'apiSlice
+  // CORRECTION MAJEURE : Fallback securise en cas de perte memoire temporaire de Redux
+  if (!currentRefreshToken) {
+     currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
+  }
+
+  // On bloque si on n'a vraiment rien ou si un rafraichissement est deja en cours
   if (!currentRefreshToken || auth.isRefreshing) return;
 
   try {
@@ -142,14 +147,13 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
           refreshToken: newRefreshToken
         }));
       }
-    } else if (response.status === 401 || response.status === 403) {
-      // Si le backend rejette formellement le token au retour de veille, on déconnecte proprement
-      console.warn("[AUTH] Refresh Token rejeté au réveil. Déconnexion.");
+    } else if (response.status === 401) {
+      console.warn("[AUTH] Refresh Token definitivement rejete au reveil. Deconnexion.");
       socketService.disconnect();
       dispatch(logout());
     }
   } catch (error) {
-    console.error("[AUTH] Echec réseau du rafraichissement forcé. Session conservée:", error);
+    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
   } finally {
     dispatch(setRefreshing(false));
   }
