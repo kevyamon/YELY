@@ -48,11 +48,14 @@ const WaitScreen = ({ navigation }) => {
             </Text>
           </View>
 
-          <GoldButton 
-            title="SE DÉCONNECTER"
-            onPress={handleLogout}
-            style={styles.button}
-          />
+          {/* MODIFICATION SENIOR : Container dédié pour un centrage absolu */}
+          <View style={styles.buttonContainer}>
+            <GoldButton 
+              title="SE DÉCONNECTER"
+              onPress={handleLogout}
+              style={styles.button}
+            />
+          </View>
         </GlassCard>
       </View>
     </ScreenWrapper>
@@ -107,6 +110,11 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
     fontSize: 14,
     fontStyle: 'italic',
+  },
+  buttonContainer: {
+    width: '100%',
+    paddingHorizontal: 20,
+    alignItems: 'center',
   },
   button: {
     width: '100%',

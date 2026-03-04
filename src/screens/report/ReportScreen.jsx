@@ -22,6 +22,21 @@ const ReportScreen = ({ navigation }) => {
     if (!res.canceled) setImages([...images, res.assets[0]]);
   };
 
+  // AJOUT SENIOR: Fonction pour supprimer une image
+  const removeImage = (indexToRemove) => {
+    setImages(images.filter((_, index) => index !== indexToRemove));
+  };
+
+  // AJOUT SENIOR: Fonction pour remplacer une image existante
+  const replaceImage = async (indexToReplace) => {
+    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
+    if (!res.canceled) {
+      const newImages = [...images];
+      newImages[indexToReplace] = res.assets[0];
+      setImages(newImages);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!message.trim()) return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
     
@@ -59,7 +74,21 @@ const ReportScreen = ({ navigation }) => {
         
         <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
         <View style={styles.imageRow}>
-          {images.map((img, i) => <Image key={i} source={{ uri: img.uri }} style={styles.preview} />)}
+          {images.map((img, i) => (
+            <View key={i} style={styles.imageContainer}>
+              <Image source={{ uri: img.uri }} style={styles.preview} />
+              
+              {/* Overlay des actions d'image */}
+              <TouchableOpacity style={styles.removeIcon} onPress={() => removeImage(i)}>
+                <Ionicons name="close-circle" size={24} color={THEME.COLORS.danger} />
+              </TouchableOpacity>
+              
+              <TouchableOpacity style={styles.replaceIcon} onPress={() => replaceImage(i)}>
+                <Ionicons name="sync-circle" size={24} color={THEME.COLORS.primary} />
+              </TouchableOpacity>
+            </View>
+          ))}
+
           {images.length < 3 && (
             <TouchableOpacity style={styles.addBtn} onPress={pickImage}>
               <Ionicons name="camera" size={30} color={THEME.COLORS.primary} />
@@ -80,7 +109,10 @@ const styles = StyleSheet.create({
   label: { color: THEME.COLORS.textSecondary, marginBottom: 10, fontSize: 14 },
   input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 15, padding: 15, color: '#FFF', textAlignVertical: 'top', marginBottom: 25, borderWidth: 1, borderColor: THEME.COLORS.border },
   imageRow: { flexDirection: 'row', marginBottom: 30 },
-  preview: { width: 80, height: 80, borderRadius: 10, marginRight: 10 },
+  imageContainer: { position: 'relative', marginRight: 15 },
+  preview: { width: 80, height: 80, borderRadius: 10 },
+  removeIcon: { position: 'absolute', top: -10, right: -10, backgroundColor: THEME.COLORS.background, borderRadius: 12 },
+  replaceIcon: { position: 'absolute', bottom: -10, right: -10, backgroundColor: THEME.COLORS.background, borderRadius: 12 },
   addBtn: { width: 80, height: 80, borderRadius: 10, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center', borderStyle: 'dashed', borderWidth: 1, borderColor: THEME.COLORS.primary },
   btn: { marginTop: 20 }
 });

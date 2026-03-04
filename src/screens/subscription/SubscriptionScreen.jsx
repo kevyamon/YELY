@@ -2,14 +2,15 @@
 // ECRAN D'ABONNEMENT - Logique Metier "Mur de Preuve"
 // STANDARD: Industriel / Architecture Modulaire
 
+import { Ionicons } from '@expo/vector-icons'; // Ajout pour l'icône de déconnexion
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { ActivityIndicator, Linking, Platform, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
+import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice'; // Ajout de logout
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
@@ -51,7 +52,6 @@ const SubscriptionScreen = () => {
     }
 
     try {
-      // Tente d'ouvrir le lien. Si c'est un deep link (wave://) et que l'app n'est pas là, cela peut rejeter.
       const supported = await Linking.canOpenURL(paymentLink);
       if (supported) {
         await Linking.openURL(paymentLink);
@@ -68,7 +68,6 @@ const SubscriptionScreen = () => {
         message: "Veuillez installer Wave pour effectuer le paiement." 
       }));
 
-      // Fallback: Redirection automatique vers le Store approprié
       const storeUrl = Platform.OS === 'ios' 
         ? 'https://apps.apple.com/app/wave-mobile-money/id1486476483' 
         : 'https://play.google.com/store/apps/details?id=com.wave.personal';
@@ -194,6 +193,15 @@ const SubscriptionScreen = () => {
               description="Paiement par Wave (Caisse Partenaire)"
               onPress={() => handleSelectPlan(PLAN_TYPES.MONTHLY, config.monthly.link)}
             />
+
+            {/* MODIFICATION SENIOR : Bouton de déconnexion ajouté discrètement */}
+            <TouchableOpacity 
+              style={styles.logoutBtn} 
+              onPress={() => dispatch(logout())}
+            >
+              <Ionicons name="log-out-outline" size={20} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.logoutText}>Se déconnecter de ce compte</Text>
+            </TouchableOpacity>
           </View>
         )}
 
@@ -253,6 +261,19 @@ const styles = StyleSheet.create({
     marginBottom: 30,
     textAlign: 'center',
   },
+  logoutBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 30,
+    padding: 15,
+  },
+  logoutText: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 14,
+    marginLeft: 8,
+    textDecorationLine: 'underline',
+  }
 });
 
 export default SubscriptionScreen;

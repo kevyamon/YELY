@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef } from 'react';
-import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
@@ -154,38 +154,35 @@ const AppToast = ({
 
   if (!visible) return null;
 
+  // MODIFICATION SENIOR: Remplacement de <Modal> par une View absolue avec pointerEvents="box-none"
+  // Cela permet de cliquer à travers l'écran transparent !
   return (
-    <Modal
-      transparent={true}
-      visible={visible}
-      animationType="none"
-      statusBarTranslucent={true}
-    >
-      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-        <Animated.View
-          {...panResponder.panHandlers}
-          style={[
-            styles.container,
-            {
-              top: insets.top + SPACING.sm,
-              backgroundColor: config.bgColor,
-              borderColor: config.borderColor,
-              opacity,
-              transform: [
-                { translateY },
-                { translateX }
-              ],
-            },
-          ]}
-        >
-          <Ionicons name={config.icon} size={24} color={config.color} />
-          <View style={styles.textContainer}>
-            {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
-            {message && <Text style={styles.message}>{message}</Text>}
-          </View>
-        </Animated.View>
-      </View>
-    </Modal>
+    <View style={[StyleSheet.absoluteFill, { zIndex: 99999, elevation: 99999 }]} pointerEvents="box-none">
+      <Animated.View
+        {...panResponder.panHandlers}
+        // pointerEvents="auto" permet d'interagir avec le toast lui-même (swipe)
+        pointerEvents="auto" 
+        style={[
+          styles.container,
+          {
+            top: insets.top + SPACING.sm,
+            backgroundColor: config.bgColor,
+            borderColor: config.borderColor,
+            opacity,
+            transform: [
+              { translateY },
+              { translateX }
+            ],
+          },
+        ]}
+      >
+        <Ionicons name={config.icon} size={24} color={config.color} />
+        <View style={styles.textContainer}>
+          {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
+          {message && <Text style={styles.message}>{message}</Text>}
+        </View>
+      </Animated.View>
+    </View>
   );
 };
 
@@ -199,8 +196,6 @@ const styles = StyleSheet.create({
     padding: SPACING.lg,
     borderRadius: BORDERS.radius.lg,
     borderWidth: BORDERS.width.thin,
-    zIndex: 99999,
-    elevation: 99999,
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
