@@ -145,11 +145,11 @@ const styles = StyleSheet.create({
   iconContainerActive: { marginBottom: 10, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(46, 204, 113, 0.1)', padding: 12, borderRadius: 50 },
   
   // Compteur Animé
-  countdownRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', marginVertical: 15 },
-  timeBlock: { alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 12, paddingHorizontal: 10, borderRadius: 12, minWidth: 60, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
-  timeValue: { fontSize: 22, fontWeight: 'bold', color: THEME.COLORS.champagneGold },
+  countdownRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', width: '100%', marginVertical: 15, paddingHorizontal: 5 },
+  timeBlock: { flex: 1, maxWidth: 80, alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.5)', paddingVertical: 12, paddingHorizontal: 2, borderRadius: 12, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+  timeValue: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.champagneGold },
   timeLabel: { fontSize: 10, color: THEME.COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase', fontWeight: 'bold' },
-  timeSeparator: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textSecondary, marginHorizontal: 6, paddingBottom: 15 },
+  timeSeparator: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textSecondary, marginHorizontal: 4, paddingBottom: 15 },
 
   // Date Statique
   dateBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.3)', paddingVertical: 15, paddingHorizontal: 20, borderRadius: 16, width: '100%', marginTop: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
