@@ -24,7 +24,8 @@ const HistoryScreen = ({ navigation }) => {
   const [page, setPage] = useState(1);
   const { data, isLoading, isFetching, refetch } = useGetRideHistoryQuery({ page, limit: 15 });
 
-  const rides = data?.data?.rides || [];
+  // AJOUT SENIOR: Destructuration ultra robuste pour esquiver tout changement inattendu de l'enveloppe API
+  const rides = data?.data?.rides || data?.rides || [];
 
   const formatDate = (dateString) => {
     const d = new Date(dateString);
@@ -65,7 +66,7 @@ const HistoryScreen = ({ navigation }) => {
                 : (item.driver?.name || 'Chauffeur Inconnu')}
             </Text>
           </View>
-          {item.price ? ( // ATTENTION: Dans ta base c'est "price" et non "agreedPrice" d'après ton completeRideSession
+          {item.price ? (
             <Text style={styles.priceText}>{item.price.toLocaleString('fr-FR')} FCFA</Text>
           ) : (
             <Text style={styles.priceText}>---</Text>
