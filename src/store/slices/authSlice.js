@@ -111,6 +111,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
   const currentRefreshToken = auth.refreshToken;
 
+  // On bloque si on est déjà en train de rafraîchir via l'apiSlice
   if (!currentRefreshToken || auth.isRefreshing) return;
 
   try {
@@ -119,28 +120,36 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 
+        'Content-Type': 'application/json',
+        'Accept': 'application/json' 
+      },
       body: JSON.stringify({ refreshToken: currentRefreshToken })
     });
 
-    const result = await response.json();
+    const result = await response.json().catch(() => null);
 
-    if (response.ok && result.success) {
-      const newAccessToken = result.data.accessToken || result.data.token;
+    if (response.ok && result?.success) {
+      const payload = result.data || result;
+      const newAccessToken = payload.accessToken || payload.token;
+      const newRefreshToken = payload.refreshToken || currentRefreshToken;
       
-      // MODIFICATION CRITIQUE : on securise le socket au retour de veille
       if (newAccessToken) {
         socketService.updateToken(newAccessToken);
+        dispatch(setCredentials({
+          user: payload.user || auth.user,
+          accessToken: newAccessToken,
+          refreshToken: newRefreshToken
+        }));
       }
-
-      dispatch(setCredentials({
-        user: result.data.user,
-        accessToken: newAccessToken,
-        refreshToken: result.data.refreshToken || currentRefreshToken
-      }));
+    } else if (response.status === 401 || response.status === 403) {
+      // Si le backend rejette formellement le token au retour de veille, on déconnecte proprement
+      console.warn("[AUTH] Refresh Token rejeté au réveil. Déconnexion.");
+      socketService.disconnect();
+      dispatch(logout());
     }
   } catch (error) {
-    console.error("[AUTH] Echec du rafraichissement force:", error);
+    console.error("[AUTH] Echec réseau du rafraichissement forcé. Session conservée:", error);
   } finally {
     dispatch(setRefreshing(false));
   }

@@ -33,7 +33,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
   // GESTION DES ERREURS 401 (Expire) ET 403 (Forbidden)
   if (result.error && (result.error.status === 401 || result.error.status === 403)) {
-    if (!mutex.isLocked()) {
+    // On vérifie le mutex ET l'état Redux pour s'aligner avec forceSilentRefresh
+    if (!mutex.isLocked() && !api.getState().auth.isRefreshing) {
       const release = await mutex.acquire();
       try {
         api.dispatch(setRefreshing(true));
@@ -68,7 +69,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           if (newAccessToken) {
             console.info('[AUTH] Rafraichissement reussi ! Reprise des requetes.');
             
-            // MODIFICATION CRITIQUE : On synchronise le socket immediatement
             socketService.updateToken(newAccessToken);
             
             api.dispatch(setCredentials({ 
@@ -83,13 +83,13 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             socketService.disconnect();
             api.dispatch(logout());
           }
-        } else if (refreshResponse.status === 401 || refreshResponse.status === 403 || refreshResponse.status === 400) {
-          // On deconnecte UNIQUEMENT si le serveur rejette formellement le token
+        } else if (refreshResponse.status === 401 || refreshResponse.status === 403) {
+          // MODIFICATION : On a retiré le code 400 d'ici. Un 400 peut être une erreur de parsage réseau temporaire.
+          // Seul un rejet clair (401/403) du token par le backend justifie une déconnexion stricte.
           console.warn(`[AUTH] Refresh Token definitivement rejete (Code ${refreshResponse.status}). Deconnexion.`);
           socketService.disconnect();
           api.dispatch(logout());
         } else {
-          // Pour toute autre erreur (500, 502, timeout reseau), on conserve la session.
           console.warn(`[AUTH] Erreur serveur ou reseau temporaire (Code ${refreshResponse.status}). La session est conservee intacte.`);
         }
       } catch (error) {
@@ -99,6 +99,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         release();
       }
     } else {
+      // Si un rafraîchissement est déjà en cours, on patiente
       await mutex.waitForUnlock();
       result = await baseQuery(args, api, extraOptions);
     }
