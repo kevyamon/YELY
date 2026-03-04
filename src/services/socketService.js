@@ -1,5 +1,5 @@
 // src/services/socketService.js
-// Singleton Socket.io - Service Reseau Agnostique
+// Singleton Socket.io - Service Reseau Agnostique & Resilient (Mise a jour a chaud)
 // CSCSM Level: Bank Grade
 
 import { io } from 'socket.io-client';
@@ -16,8 +16,25 @@ class SocketService {
   }
 
   connect(token) {
-    if (!token || !SOCKET_URL || this.socket?.connected) {
+    if (!token || !SOCKET_URL) {
       return; 
+    }
+
+    // Si deja connecte, on verifie si le token a change pour le mettre a jour a chaud
+    if (this.socket?.connected) {
+      if (this.socket.auth.token !== token) {
+        if (__DEV__) console.log('[SOCKET_SERVICE] Mise a jour du token sur un socket actif.');
+        this.socket.auth.token = token;
+        this.socket.disconnect().connect();
+      }
+      return;
+    }
+
+    // Si l'instance existe mais est deconnectee, on relance juste la connexion
+    if (this.socket) {
+      this.socket.auth.token = token;
+      this.socket.connect();
+      return;
     }
 
     this.socket = io(SOCKET_URL, {
@@ -33,6 +50,25 @@ class SocketService {
     });
 
     this._setupCoreListeners();
+  }
+
+  updateToken(newToken) {
+    if (!newToken) return;
+    
+    if (!this.socket) {
+      this.connect(newToken);
+      return;
+    }
+
+    this.socket.auth.token = newToken;
+    
+    if (!this.socket.connected) {
+      if (__DEV__) console.log('[SOCKET_SERVICE] Reconnexion avec le nouveau token...');
+      this.socket.connect(); 
+    } else {
+      if (__DEV__) console.log('[SOCKET_SERVICE] Redemarrage a chaud avec le nouveau token...');
+      this.socket.disconnect().connect();
+    }
   }
 
   _setupCoreListeners() {
@@ -51,13 +87,17 @@ class SocketService {
 
     this.socket.on('force_disconnect', (data) => {
       if (__DEV__) console.warn(`[SOCKET_SERVICE] Deconnexion forcee par le serveur. Raison: ${data?.reason}`);
-      this.disconnect();
+      // MODIFICATION CRITIQUE : On ne detruit plus les listeners, on attend juste la reconnexion avec un nouveau token.
+      if (this.socket) {
+        this.socket.disconnect();
+      }
     });
 
     this.socket.on('connect_error', (error) => {
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
-        if (__DEV__) console.warn('[SOCKET_SERVICE] Acces refuse. Arret des tentatives de connexion.');
-        this.disconnect();
+        if (__DEV__) console.warn('[SOCKET_SERVICE] Acces refuse (Token expire). En attente du Refresh Token...');
+        // MODIFICATION CRITIQUE : On ne purge plus les listeners avec this.disconnect()
+        // On laisse l'instance en pause. apiSlice appellera updateToken() apres rafraichissement HTTP.
         return;
       }
 

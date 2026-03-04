@@ -3,6 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
+import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 
 const initialState = {
@@ -11,7 +12,6 @@ const initialState = {
   refreshToken: null,
   isAuthenticated: false,
   isRefreshing: false, 
-  // Nouvel etat pour bloquer/debloquer l'UI globalement sans requete supplementaire
   subscriptionStatus: {
     isActive: false,
     isPending: false,
@@ -34,8 +34,6 @@ const authSlice = createSlice({
       if (user) {
         state.user = user;
         
-        // AJOUT SENIOR : On synchronise le statut d'abonnement immédiatement à la connexion
-        // Ça évite le blocage fantôme le temps que la requête de la page d'accueil se fasse
         if (user.subscription && typeof user.subscription === 'object') {
           state.subscriptionStatus = {
             isActive: user.subscription.isActive || false,
@@ -85,7 +83,6 @@ const authSlice = createSlice({
       state.refreshToken = refreshToken;
       state.isAuthenticated = !!(user && token);
       
-      // AJOUT SENIOR : Sécurité à la restauration (quand on ferme/rouvre l'app)
       if (user && user.subscription && typeof user.subscription === 'object') {
         state.subscriptionStatus = {
           isActive: user.subscription.isActive || false,
@@ -129,9 +126,16 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     const result = await response.json();
 
     if (response.ok && result.success) {
+      const newAccessToken = result.data.accessToken || result.data.token;
+      
+      // MODIFICATION CRITIQUE : on securise le socket au retour de veille
+      if (newAccessToken) {
+        socketService.updateToken(newAccessToken);
+      }
+
       dispatch(setCredentials({
         user: result.data.user,
-        accessToken: result.data.accessToken,
+        accessToken: newAccessToken,
         refreshToken: result.data.refreshToken || currentRefreshToken
       }));
     }

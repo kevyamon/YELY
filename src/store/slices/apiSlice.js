@@ -4,6 +4,7 @@
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import { Mutex } from 'async-mutex';
+import socketService from '../../services/socketService';
 import { logout, setCredentials, setRefreshing } from './authSlice';
 
 const mutex = new Mutex();
@@ -41,6 +42,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         
         if (!currentRefreshToken) {
           console.warn('[AUTH] Aucun Refresh Token disponible, deconnexion forcee.');
+          socketService.disconnect();
           api.dispatch(logout());
           return result;
         }
@@ -66,6 +68,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           if (newAccessToken) {
             console.info('[AUTH] Rafraichissement reussi ! Reprise des requetes.');
             
+            // MODIFICATION CRITIQUE : On synchronise le socket immediatement
+            socketService.updateToken(newAccessToken);
+            
             api.dispatch(setCredentials({ 
               accessToken: newAccessToken,
               refreshToken: newRefreshToken, 
@@ -75,18 +80,19 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             result = await baseQuery(args, api, extraOptions);
           } else {
             console.warn('[AUTH] Le serveur n\'a pas renvoye d\'Access Token. Deconnexion.');
+            socketService.disconnect();
             api.dispatch(logout());
           }
         } else if (refreshResponse.status === 401 || refreshResponse.status === 403 || refreshResponse.status === 400) {
-          // MODIFICATION MAJEURE : On deconnecte UNIQUEMENT si le serveur rejette formellement le token (session de 30 jours expiree ou revoquee)
+          // On deconnecte UNIQUEMENT si le serveur rejette formellement le token
           console.warn(`[AUTH] Refresh Token definitivement rejete (Code ${refreshResponse.status}). Deconnexion.`);
+          socketService.disconnect();
           api.dispatch(logout());
         } else {
-          // MODIFICATION MAJEURE : Pour toute autre erreur (500, 502, timeout reseau), on conserve la session.
+          // Pour toute autre erreur (500, 502, timeout reseau), on conserve la session.
           console.warn(`[AUTH] Erreur serveur ou reseau temporaire (Code ${refreshResponse.status}). La session est conservee intacte.`);
         }
       } catch (error) {
-        // SECURITE : On ne deconnecte PAS en cas de coupure internet ou crash local pendant le refresh
         console.error('[AUTH] Erreur reseau critique lors du rafraichissement. Session conservee.', error);
       } finally {
         api.dispatch(setRefreshing(false));
