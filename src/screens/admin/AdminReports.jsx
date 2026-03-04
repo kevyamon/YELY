@@ -13,7 +13,6 @@ import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal';
 
-// AJOUT SENIOR: Import de la NOUVELLE mutation dédiée à l'administration
 import { useDeleteAdminReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -23,7 +22,6 @@ const AdminReports = ({ navigation }) => {
   const { data: reportsResponse, isLoading, isFetching, refetch } = useGetAllReportsQuery();
   const [resolveReport, { isLoading: isResolving }] = useResolveReportMutation();
   
-  // AJOUT SENIOR: Hook Admin pour la suppression
   const [deleteAdminReport, { isLoading: isDeleting }] = useDeleteAdminReportMutation();
 
   const flatListRef = useRef(null);
@@ -39,12 +37,18 @@ const AdminReports = ({ navigation }) => {
   const reports = reportsResponse?.data || reportsResponse || [];
 
   const handleScroll = (event) => {
-    const offsetY = event.nativeEvent.contentOffset.y;
-    setShowScrollTop(offsetY > 200);
+    // Calcul dynamique de la moitié de l'écran visible pour déclencher le bouton
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const halfScreenHeight = layoutMeasurement.height / 2;
+    
+    setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    // Vérification de sécurité avant de scroller (évite les crashs si la liste est vide)
+    if (reports && reports.length > 0) {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
   };
 
   const openResolveModal = (report) => {
@@ -66,7 +70,6 @@ const AdminReports = ({ navigation }) => {
   const handleDelete = async () => {
     if (!reportToDelete) return;
     try {
-      // Appel direct à la route Admin !
       await deleteAdminReport(reportToDelete).unwrap();
       setReportToDelete(null);
       dispatch(showSuccessToast({ title: 'Supprimé', message: 'Signalement effacé définitivement.' }));
@@ -181,7 +184,8 @@ const AdminReports = ({ navigation }) => {
               </View>
             }
           />
-          {showScrollTop && <ScrollToTopButton onPress={scrollToTop} />}
+          {/* CRITIQUE : Ajout de la prop visible dynamique et suppression de la condition externe */}
+          <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
         </>
       )}
 

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import ScrollToTopButton from '../../components/admin/ScrollToTopButton'; // Import du composant
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { useGetAuditLogsQuery } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -19,7 +19,6 @@ const GlassCard = ({ children, style }) => (
   </View>
 );
 
-// DICTIONNAIRE DE TRADUCTION : Transforme les logs techniques en français
 const ACTION_DICTIONARY = {
   'PROMOTE_USER': 'Promotion Admin',
   'REVOKE_USER': 'Révocation Admin',
@@ -75,21 +74,26 @@ const AdminJournal = ({ navigation }) => {
   }, [journalHistory]);
 
   const handleScroll = (event) => {
-    // Affiche le bouton si on descend de plus de 200 pixels
-    const offsetY = event.nativeEvent.contentOffset.y;
-    setShowScrollTop(offsetY > 200);
+    // Calcul dynamique de la moitié de l'écran visible pour déclencher le bouton
+    // layoutMeasurement correspond à la hauteur de l'écran du téléphone
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    
+    // Le bouton s'affiche dès qu'on a défilé la moitié de la hauteur de l'écran
+    const halfScreenHeight = layoutMeasurement.height / 2;
+    setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    sectionListRef.current?.scrollToLocation({
-      sectionIndex: 0,
-      itemIndex: 0,
-      animated: true,
-    });
+    if (groupedData && groupedData.length > 0) {
+      sectionListRef.current?.scrollToLocation({
+        sectionIndex: 0,
+        itemIndex: 0,
+        animated: true,
+      });
+    }
   };
 
   const renderItem = ({ item }) => {
-    // Utilisation du dictionnaire avec fallback sur le nom brut si inconnu
     const translatedAction = ACTION_DICTIONARY[item.action] || item.action || 'Action Inconnue';
 
     return (
@@ -149,7 +153,8 @@ const AdminJournal = ({ navigation }) => {
                 </View>
               }
           />
-          {showScrollTop && <ScrollToTopButton onPress={scrollToTop} />}
+          {/* CRITIQUE : Ajout de la prop visible pour que le composant accepte de s'afficher */}
+          <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
         </>
       )}
     </View>
@@ -158,7 +163,7 @@ const AdminJournal = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center' },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
   backButton: { marginRight: 15 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },

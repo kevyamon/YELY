@@ -1,4 +1,4 @@
-// src/screens/admin/MapManagement.jsx [MODIFIÉ]
+// src/screens/admin/MapManagement.jsx
 // GESTION GÉOSPATIALE - Interface SuperAdmin (POIs)
 // CSCSM Level: Bank Grade
 
@@ -13,7 +13,7 @@ import { useDispatch } from 'react-redux';
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import PoiFormModal from '../../components/admin/PoiFormModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
-import GlassInput from '../../components/ui/GlassInput'; // <-- IMPORT DU VRAI CHAMP DE TEXTE
+import GlassInput from '../../components/ui/GlassInput';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
@@ -42,6 +42,20 @@ const MapManagement = () => {
   const filteredPois = useMemo(() => {
     return pois.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
   }, [pois, searchQuery]);
+
+  const handleScroll = (event) => {
+    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const halfScreenHeight = layoutMeasurement.height / 2;
+    setShowScrollTop(contentOffset.y > halfScreenHeight);
+  };
+
+  const scrollToTop = () => {
+    // Securite: on ne scroll que si on a des resultats
+    if (filteredPois && filteredPois.length > 0) {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
 
   const openAddModal = () => {
     setEditingPoi(null);
@@ -126,7 +140,6 @@ const MapManagement = () => {
       </View>
 
       <View style={styles.content}>
-        {/* CORRECTION SENIOR : Utilisation de GlassInput qui est un vrai TextInput */}
         <View style={styles.searchWrapper}>
           <GlassInput
             placeholder="Rechercher un lieu enregistré..."
@@ -145,7 +158,8 @@ const MapManagement = () => {
             keyExtractor={(item) => item._id}
             renderItem={renderPoiItem}
             contentContainerStyle={styles.listContent}
-            onScroll={(e) => setShowScrollTop(e.nativeEvent.contentOffset.y > 300)}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             ListEmptyComponent={<Text style={styles.emptyText}>Aucun lieu enregistré ou trouvé</Text>}
             showsVerticalScrollIndicator={false}
           />
@@ -171,9 +185,7 @@ const MapManagement = () => {
         onCancel={() => setDeleteModalVisible(false)}
       />
 
-      {showScrollTop && (
-        <ScrollToTopButton onPress={() => flatListRef.current?.scrollToOffset({ offset: 0, animated: true })} />
-      )}
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </ScreenWrapper>
   );
 };

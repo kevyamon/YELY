@@ -72,11 +72,17 @@ const ValidationCenter = ({ navigation }) => {
   };
 
   const handleScroll = (event) => {
-    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const halfScreenHeight = layoutMeasurement.height / 2;
+    setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    // Securite: on ne scroll que si on a des donnees
+    if (transactions && transactions.length > 0) {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
   };
 
   const formatPlanName = (planId) => {

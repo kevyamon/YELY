@@ -187,17 +187,15 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   return (
     <Marker
       coordinate={coordinate}
-      // Ancrage calculé au millimètre pour une boîte de 160px et une icône de 20px
-      // Le centre de l'icône est à (160 - 10) / 160 = 0.9375
-      anchor={{ x: 0.9375, y: 0.5 }}
+      anchor={{ x: 0.5, y: 0.5 }}
       zIndex={40}
       tracksViewChanges={tracks}
       onPress={onPress}
     >
       <View style={styles.poiContainer}>
+        {/* TEXTE PUR : Sans boîte, aligné strictement à gauche de l'icône */}
         <Text 
           style={styles.poiText} 
-          numberOfLines={1}
           onLayout={() => {
             setTimeout(() => setTracks(false), 800);
           }}
@@ -205,6 +203,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
           {name}
         </Text>
         
+        {/* ICÔNE */}
         <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
           <Ionicons name={icon || 'location'} size={14} color={color} />
         </View>
@@ -258,10 +257,10 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   poiContainer: {
-    width: 160, // La Boîte de Sécurité
-    flexDirection: 'row',
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'flex-end', // Pousse texte et icône tout à droite
   },
   poiIconCircle: {
     width: 20,
@@ -272,18 +271,17 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
     zIndex: 2,
-    flexShrink: 0, // CRITIQUE : Interdit au texte long d'écraser l'icône
   },
   poiText: {
+    position: 'absolute',
+    right: 24, // Fixé à gauche de l'icône, sans limite de taille
     color: THEME.COLORS.textPrimary,
     fontSize: 12,
     fontWeight: 'bold',
-    marginRight: 6,
-    textAlign: 'right', // Colle le texte contre l'icône
-    flexShrink: 1, // Autorise le texte à se couper avec "..." s'il dépasse les 134px restants
-    textShadowColor: THEME.COLORS.background,
+    textAlign: 'right', // Permet au texte de s'étendre naturellement vers la gauche
+    textShadowColor: THEME.COLORS.background, // Assure la lisibilité sur la carte
     textShadowOffset: { width: 0, height: 0 },
-    textShadowRadius: 4,
+    textShadowRadius: 3,
     zIndex: 1,
   }
 });

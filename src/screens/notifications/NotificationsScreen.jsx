@@ -1,11 +1,15 @@
 // src/screens/notifications/NotificationsScreen.jsx
+// CENTRE DE NOTIFICATIONS - Alertes systemes et retours signalements
+// CSCSM Level: Bank Grade
+
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
-import ReportResolutionModal from '../../components/notifications/ReportResolutionModal'; // AJOUT SENIOR: Import de ta nouvelle modale modulaire
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
+import ReportResolutionModal from '../../components/notifications/ReportResolutionModal';
 import GlassCard from '../../components/ui/GlassCard';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useDeleteNotificationMutation, useGetNotificationsQuery, useMarkAsReadMutation } from '../../store/api/notificationsApiSlice';
@@ -21,26 +25,36 @@ const NOTIF_ICONS = {
 
 const NotificationsScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const flatListRef = useRef(null);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  
   const { data, isLoading, refetch, isFetching } = useGetNotificationsQuery({ page: 1 });
   const [markRead] = useMarkAsReadMutation();
   const [deleteNotif, { isLoading: isDeleting }] = useDeleteNotificationMutation();
 
   const [notifToDelete, setNotifToDelete] = useState(null);
-  
-  // AJOUT SENIOR: États pour gérer la modale de signalement
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
 
   const notifications = data?.data?.notifications || [];
 
-  // AJOUT SENIOR: La fonction handleRead devient plus intelligente
+  const handleScroll = (event) => {
+    const { contentOffset, layoutMeasurement } = event.nativeEvent;
+    const halfScreenHeight = layoutMeasurement.height / 2;
+    setShowScrollTop(contentOffset.y > halfScreenHeight);
+  };
+
+  const scrollToTop = () => {
+    if (notifications && notifications.length > 0) {
+      flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    }
+  };
+
   const handleRead = async (item) => {
-    // 1. On marque comme lu si ce n'est pas fait
     if (!item.isRead) {
       await markRead(item._id);
     }
     
-    // 2. Si la notification contient un reportId, on ouvre la modale !
     if (item.metadata && item.metadata.reportId) {
       setSelectedReportId(item.metadata.reportId);
       setIsReportModalVisible(true);
@@ -63,7 +77,6 @@ const NotificationsScreen = ({ navigation }) => {
     const config = NOTIF_ICONS[item.type] || NOTIF_ICONS.SYSTEM;
     
     return (
-      // CORRECTION: On passe "item" entier à handleRead au lieu de juste "item._id"
       <TouchableOpacity onPress={() => handleRead(item)} activeOpacity={0.8}>
         <GlassCard style={[styles.card, !item.isRead && styles.unreadCard]}>
           <View style={[styles.iconBox, { backgroundColor: config.color + '20' }]}>
@@ -121,14 +134,20 @@ const NotificationsScreen = ({ navigation }) => {
           <Text style={styles.emptyText}>Aucune notification pour le moment.</Text>
         </View>
       ) : (
-        <FlatList
-          data={notifications}
-          keyExtractor={item => item._id}
-          renderItem={renderItem}
-          contentContainerStyle={styles.list}
-          onRefresh={refetch}
-          refreshing={isFetching}
-        />
+        <>
+          <FlatList
+            ref={flatListRef}
+            data={notifications}
+            keyExtractor={item => item._id}
+            renderItem={renderItem}
+            contentContainerStyle={styles.list}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onRefresh={refetch}
+            refreshing={isFetching}
+          />
+          <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
+        </>
       )}
 
       <ConfirmModal 
@@ -140,13 +159,11 @@ const NotificationsScreen = ({ navigation }) => {
         onCancel={() => setNotifToDelete(null)}
       />
 
-      {/* AJOUT SENIOR : Intégration de la modale indépendante */}
       <ReportResolutionModal 
         visible={isReportModalVisible}
         onClose={() => setIsReportModalVisible(false)}
         reportId={selectedReportId}
       />
-
     </ScreenWrapper>
   );
 };
