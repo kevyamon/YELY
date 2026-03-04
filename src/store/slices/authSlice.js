@@ -19,6 +19,19 @@ const initialState = {
   }
 };
 
+// Helpers securises pour eviter les promesses non resolues dans les reducers synchrones
+const safeStorageSet = (key, value) => {
+  Promise.resolve(SecureStorageAdapter.setItem(key, value)).catch(err => {
+    console.error(`[Redux Storage] Echec de sauvegarde pour ${key}:`, err);
+  });
+};
+
+const safeStorageRemove = (key) => {
+  Promise.resolve(SecureStorageAdapter.removeItem(key)).catch(err => {
+    console.error(`[Redux Storage] Echec de suppression pour ${key}:`, err);
+  });
+};
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -48,22 +61,25 @@ const authSlice = createSlice({
       
       state.isAuthenticated = !!(state.user && state.token);
 
-      if (state.user) SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
-      if (state.token) SecureStorageAdapter.setItem('token', state.token);
-      if (state.refreshToken) SecureStorageAdapter.setItem('refreshToken', state.refreshToken);
+      if (state.user) safeStorageSet('userInfo', JSON.stringify(state.user));
+      if (state.token) safeStorageSet('token', state.token);
+      if (state.refreshToken) safeStorageSet('refreshToken', state.refreshToken);
     },
     
     updateUserInfo: (state, action) => {
       if (!state.user) return;
       state.user = { ...state.user, ...action.payload };
-      SecureStorageAdapter.setItem('userInfo', JSON.stringify(state.user));
+      safeStorageSet('userInfo', JSON.stringify(state.user));
     },
 
     updateSubscriptionStatus: (state, action) => {
       state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
     },
 
-    logout: (state) => {
+    logout: (state, action) => {
+      const reason = action.payload?.reason || 'USER_INITIATED';
+      console.warn(`[AUTH] Deconnexion declenchee. Raison: ${reason}`);
+
       state.user = null;
       state.token = null;
       state.refreshToken = null;
@@ -71,9 +87,9 @@ const authSlice = createSlice({
       state.isRefreshing = false;
       state.subscriptionStatus = { isActive: false, isPending: false, expiresAt: null };
       
-      SecureStorageAdapter.removeItem('userInfo');
-      SecureStorageAdapter.removeItem('token');
-      SecureStorageAdapter.removeItem('refreshToken');
+      safeStorageRemove('userInfo');
+      safeStorageRemove('token');
+      safeStorageRemove('refreshToken');
     },
 
     restoreAuth: (state, action) => {
@@ -111,13 +127,14 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
   let currentRefreshToken = auth.refreshToken;
 
-  // CORRECTION MAJEURE : Fallback securise en cas de perte memoire temporaire de Redux
   if (!currentRefreshToken) {
      currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
   }
 
-  // On bloque si on n'a vraiment rien ou si un rafraichissement est deja en cours
-  if (!currentRefreshToken || auth.isRefreshing) return;
+  if (!currentRefreshToken || auth.isRefreshing) {
+    console.info('[AUTH] forceSilentRefresh annule: Aucun token ou rafraichissement deja en cours.');
+    return;
+  }
 
   try {
     dispatch(setRefreshing(true));
@@ -148,12 +165,12 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
         }));
       }
     } else if (response.status === 401) {
-      console.warn("[AUTH] Refresh Token definitivement rejete au reveil. Deconnexion.");
+      console.warn("[AUTH FATAL] Refresh Token rejete au reveil (401). Deconnexion forcee.");
       socketService.disconnect();
-      dispatch(logout());
+      dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
     }
   } catch (error) {
-    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
+    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee.", error);
   } finally {
     dispatch(setRefreshing(false));
   }
