@@ -96,7 +96,7 @@ export const AnimatedDestinationMarker = ({ color }) => {
     const animation = Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, {
-          toValue: 1, duration: 1500,
+          toValue: 0.5, duration: 1500,
           easing: Easing.inOut(Easing.ease), useNativeDriver: true,
         }),
         Animated.timing(pulseAnim, {
