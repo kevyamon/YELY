@@ -1,10 +1,10 @@
-// src/components/map/MapCard.jsx [CORRIGÉ V5 - ANTI-FLASH & BLANK NATIVE MAP]
+// src/components/map/MapCard.jsx [CORRIGÉ V7 - FORCE LIGHT MODE]
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native';
+import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -21,6 +21,8 @@ import {
 } from './markers/MobileMarkers';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+// On garde l'URL sombre au cas où tu voudrais créer un bouton "Basculer la carte" un jour, 
+// mais elle ne sera plus activée automatiquement.
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 const MapCard = forwardRef(({
@@ -30,7 +32,7 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   floating = false,
-  autoContrast = true,
+  autoContrast = true, // Conservé pour ne pas casser les props des composants parents
   onMapReady,
   onPress,
   onMarkerPress,
@@ -43,12 +45,11 @@ const MapCard = forwardRef(({
   
   const lastCameraSignatureRef = useRef('');
 
-  const colorScheme = useColorScheme();
-  const isMapDark = autoContrast ? !(colorScheme === 'dark') : (colorScheme === 'dark');
-  const mapBackgroundColor = isMapDark ? '#262626' : '#F4F4F4';
+  // MODIFICATION MAJEURE : On désactive l'écoute du mode sombre de l'OS.
+  // La carte est maintenant strictement verrouillée en mode clair avec le blanc cassé (#FAFAFA).
+  const isMapDark = false; 
+  const mapBackgroundColor = '#FAFAFA';
 
-  // LE SECRET : On crée un style qui masque absolument tout ce qui vient de Google/Apple
-  // et on peint le sol de la même couleur que ton fond CartoDB.
   const blankMapStyle = [
     { featureType: 'all', elementType: 'all', stylers: [{ visibility: 'off' }] },
     { featureType: 'landscape', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: mapBackgroundColor }] },
@@ -150,7 +151,7 @@ const MapCard = forwardRef(({
             longitudeDelta: 0.02,
           }}
           mapType="standard"
-          customMapStyle={blankMapStyle} // Applique la toile vierge qui tue les POIs Google
+          customMapStyle={blankMapStyle}
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
@@ -168,9 +169,9 @@ const MapCard = forwardRef(({
             urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
             maximumZ={17}
             flipY={false}
-            shouldReplaceMapContent={false} // Empêche la destruction brutale de l'ancienne tuile
+            shouldReplaceMapContent={false}
             tileSize={256}
-            fadeDuration={0} // Tue l'effet stroboscopique, l'affichage devient instantané
+            fadeDuration={0}
             zIndex={1}
           />
 
