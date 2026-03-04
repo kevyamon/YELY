@@ -2,19 +2,49 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React from 'react';
-import { ActivityIndicator, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useGetMyReportsQuery } from '../../store/api/reportsApiSlice';
+import { ActivityIndicator, Alert, Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
+
+import { useDeleteReportMutation, useGetMyReportsQuery } from '../../store/api/reportsApiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const ReportResolutionModal = ({ visible, onClose, reportId }) => {
-  // On ne charge les données que si la modale est ouverte et qu'on a un ID
+  const dispatch = useDispatch();
+  
   const { data: reportsResponse, isLoading } = useGetMyReportsQuery(undefined, {
     skip: !visible || !reportId,
   });
+  
+  // Hook de suppression
+  const [deleteReport, { isLoading: isDeleting }] = useDeleteReportMutation();
 
-  // On cherche le signalement spécifique dans la liste
   const reports = reportsResponse?.data || [];
   const report = reports.find((r) => r._id === reportId);
+
+  // AJOUT SENIOR: Gestion de la suppression avec sécurité (alerte)
+  const handleDelete = () => {
+    Alert.alert(
+      "Supprimer définitivement",
+      "Voulez-vous vraiment supprimer ce signalement ? Il disparaîtra de votre historique et les images seront effacées.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { 
+          text: "Supprimer", 
+          style: "destructive", 
+          onPress: async () => {
+            try {
+              await deleteReport(reportId).unwrap();
+              dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement supprimé de votre dossier.' }));
+              onClose(); // Fermeture automatique après succès
+            } catch (error) {
+              dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
+            }
+          }
+        }
+      ]
+    );
+  };
 
   if (!visible) return null;
 
@@ -29,7 +59,7 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
               <Ionicons name="shield-checkmark" size={24} color={THEME.COLORS.success} />
               <Text style={styles.title}>Signalement Résolu</Text>
             </View>
-            <TouchableOpacity onPress={onClose}>
+            <TouchableOpacity onPress={onClose} disabled={isDeleting}>
               <Ionicons name="close-circle" size={28} color={THEME.COLORS.textTertiary} />
             </TouchableOpacity>
           </View>
@@ -63,9 +93,29 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
             </ScrollView>
           )}
 
-          <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-            <Text style={styles.closeBtnText}>Fermer</Text>
-          </TouchableOpacity>
+          <View style={styles.footer}>
+            <TouchableOpacity style={[styles.btn, styles.closeBtn]} onPress={onClose} disabled={isDeleting}>
+              <Text style={styles.closeBtnText}>Fermer</Text>
+            </TouchableOpacity>
+
+            {/* Le nouveau bouton de suppression intelligente n'apparaît que si le signalement existe */}
+            {report && (
+              <TouchableOpacity 
+                style={[styles.btn, styles.deleteBtn]} 
+                onPress={handleDelete}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <ActivityIndicator size="small" color={THEME.COLORS.danger} />
+                ) : (
+                  <>
+                    <Ionicons name="trash-outline" size={18} color={THEME.COLORS.danger} style={{ marginRight: 8 }} />
+                    <Text style={styles.deleteBtnText}>Supprimer</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
       </View>
     </Modal>
@@ -87,8 +137,14 @@ const styles = StyleSheet.create({
   originalMessageText: { color: THEME.COLORS.textSecondary, fontSize: 14, fontStyle: 'italic' },
   adminNoteBox: { flexDirection: 'row', backgroundColor: 'rgba(46, 204, 113, 0.1)', padding: 15, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.success },
   adminNoteText: { color: THEME.COLORS.success, fontSize: 15, flex: 1, fontWeight: '500' },
-  closeBtn: { backgroundColor: THEME.COLORS.primary, paddingVertical: 15, borderRadius: 12, alignItems: 'center' },
-  closeBtnText: { color: THEME.COLORS.background, fontSize: 16, fontWeight: 'bold' }
+  
+  // Nouveau design pour les boutons alignés
+  footer: { flexDirection: 'row', gap: 10, marginTop: 10 },
+  btn: { flex: 1, paddingVertical: 14, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexDirection: 'row' },
+  closeBtn: { backgroundColor: THEME.COLORS.primary },
+  closeBtnText: { color: THEME.COLORS.background, fontSize: 16, fontWeight: 'bold' },
+  deleteBtn: { backgroundColor: 'transparent', borderWidth: 1, borderColor: THEME.COLORS.danger },
+  deleteBtnText: { color: THEME.COLORS.danger, fontSize: 16, fontWeight: 'bold' }
 });
 
 export default ReportResolutionModal;

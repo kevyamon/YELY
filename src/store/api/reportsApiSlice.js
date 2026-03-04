@@ -34,13 +34,13 @@ export const reportsApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Report', 'AuditLog'], 
     }),
 
-    // AJOUT SENIOR: Mutation pour supprimer
+    // AJOUT SENIOR: On pointe vers la nouvelle route utilisateur et on invalide le cache
     deleteReport: builder.mutation({
       query: (id) => ({
-        url: `/reports/${id}`,
+        url: `/reports/my-reports/${id}`,
         method: 'DELETE',
       }),
-      invalidatesTags: ['Report', 'AuditLog'],
+      invalidatesTags: ['Report'], 
     }),
   }),
   overrideExisting: true,
@@ -51,5 +51,5 @@ export const {
   useGetMyReportsQuery,
   useGetAllReportsQuery,
   useResolveReportMutation,
-  useDeleteReportMutation // Exporter le Hook !
+  useDeleteReportMutation 
 } = reportsApiSlice;
