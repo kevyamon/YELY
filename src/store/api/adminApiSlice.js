@@ -11,7 +11,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Stats'],
     }),
     
-    // Modification: Ajout du support pour la vue globale SuperAdmin (viewAll)
     getValidationQueue: builder.query({
       query: ({ page = 1, viewAll = false } = {}) => {
         let url = `/admin/validations?page=${page}`;
@@ -26,7 +25,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         url: `/admin/approve/${transactionId}`,
         method: 'POST',
       }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification'],
+      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'], // Invalide les logs
     }),
     
     rejectTransaction: builder.mutation({
@@ -35,7 +34,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { reason },
       }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification'],
+      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'], // Invalide les logs
     }),
     
     getAllUsers: builder.query({
@@ -54,7 +53,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { userId, reason },
       }),
-      invalidatesTags: ['User', 'Stats'],
+      invalidatesTags: ['User', 'Stats', 'AuditLog'], // Invalide les logs
     }),
     
     updateUserRole: builder.mutation({
@@ -63,7 +62,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: { userId, action },
       }),
-      invalidatesTags: ['User'],
+      invalidatesTags: ['User', 'AuditLog'], // Invalide les logs
     }),
     
     getFinanceData: builder.query({
@@ -77,7 +76,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body: { weeklyLink, monthlyLink },
       }),
-      invalidatesTags: ['Stats'],
+      invalidatesTags: ['Stats', 'AuditLog'],
     }),
     
     togglePromo: builder.mutation({
@@ -86,7 +85,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
         body: { isActive },
       }),
-      invalidatesTags: ['Stats'],
+      invalidatesTags: ['Stats', 'AuditLog'],
     }),
     
     updateMapSettings: builder.mutation({
@@ -95,7 +94,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: data,
       }),
-      invalidatesTags: ['MapSettings'],
+      invalidatesTags: ['MapSettings', 'AuditLog'],
     }),
     
     getNotifications: builder.query({
@@ -109,6 +108,12 @@ export const adminApiSlice = apiSlice.injectEndpoints({
         method: 'PUT',
       }),
       invalidatesTags: ['Notification'],
+    }),
+
+    // AJOUT SENIOR: Endpoint pour récupérer les logs
+    getAuditLogs: builder.query({
+      query: ({ page = 1 }) => `/admin/logs?page=${page}`,
+      providesTags: ['AuditLog'],
     }),
   }),
   overrideExisting: true,
@@ -128,4 +133,5 @@ export const {
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,
+  useGetAuditLogsQuery, // Ne pas oublier d'exporter le Hook !
 } = adminApiSlice;

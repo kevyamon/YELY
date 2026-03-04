@@ -5,7 +5,8 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo } from 'react';
-import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useGetAuditLogsQuery } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style }) => (
@@ -18,11 +19,12 @@ const GlassCard = ({ children, style }) => (
 );
 
 const AdminJournal = ({ navigation }) => {
-  // En attendant la connexion a l'API, structure preparatoire
-  // Le composant est desormais cable pour diviser par periode automatiquement.
-  const journalHistory = []; 
+  // AJOUT SENIOR: Récupération des vrais logs depuis l'API !
+  const { data: logsResponse, isLoading, refetch, isFetching } = useGetAuditLogsQuery({ page: 1 });
+  
+  // Extraction sécurisée
+  const journalHistory = logsResponse?.data?.logs || logsResponse?.logs || [];
 
-  // Filtrage et regroupement stricts : suppression logique au-dela de 30 jours
   const groupedData = useMemo(() => {
     const now = new Date();
     const periods = { '24h': [], '7j': [], '15j': [], '30j': [] };
@@ -42,7 +44,6 @@ const AdminJournal = ({ navigation }) => {
       } else if (diffDays <= 30) {
         periods['30j'].push(log);
       }
-      // Au-dela de 30 jours, la donnee est ignoree de l'interface (mais reste dans MongoDB)
     });
 
     const sections = [];
@@ -58,10 +59,13 @@ const AdminJournal = ({ navigation }) => {
     <GlassCard style={styles.logCard}>
       <View style={styles.logHeader}>
         <Text style={styles.logAction}>{item.action || 'ACTION_INCONNUE'}</Text>
-        <Text style={styles.logDate}>{new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}</Text>
+        <Text style={styles.logDate}>
+            {new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+        </Text>
       </View>
       <Text style={styles.logDetails}>{item.details || 'Aucun detail fourni'}</Text>
-      <Text style={styles.logTarget}>Cible: {item.target || 'N/A'}</Text>
+      {/* Affichage du nom de l'admin qui a fait l'action (actor) si dispo */}
+      <Text style={styles.logTarget}>Par: {item.actor?.name || item.actor?.email || 'Système'}</Text>
     </GlassCard>
   );
 
@@ -74,28 +78,37 @@ const AdminJournal = ({ navigation }) => {
         <Text style={styles.headerTitle}>Journal d'Audit</Text>
       </View>
 
-      <SectionList
-        sections={groupedData}
-        keyExtractor={(item, index) => item._id || index.toString()}
-        renderItem={renderItem}
-        renderSectionHeader={({ section: { title } }) => (
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>{title}</Text>
-          </View>
-        )}
-        contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <GlassCard style={styles.emptyCard}>
-              <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
-              <Text style={styles.emptyTitle}>Journal d'activite</Text>
-              <Text style={styles.emptyText}>
-                Cette section affiche l'historique de tracabilite des actions (Lecture seule). Aucune donnee recente n'est disponible.
-              </Text>
-            </GlassCard>
-          </View>
-        }
-      />
+      {isLoading ? (
+        <View style={styles.centerContainer}>
+            <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+            <Text style={styles.loadingText}>Chargement des archives...</Text>
+        </View>
+      ) : (
+        <SectionList
+            sections={groupedData}
+            keyExtractor={(item, index) => item._id || index.toString()}
+            renderItem={renderItem}
+            renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>{title}</Text>
+            </View>
+            )}
+            contentContainerStyle={styles.listContent}
+            onRefresh={refetch}
+            refreshing={isFetching}
+            ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+                <GlassCard style={styles.emptyCard}>
+                <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
+                <Text style={styles.emptyTitle}>Journal d'activite</Text>
+                <Text style={styles.emptyText}>
+                    Le journal est completement vide. Aucune action d'administration n'a encore ete effectuee recemment.
+                </Text>
+                </GlassCard>
+            </View>
+            }
+        />
+      )}
     </View>
   );
 };
@@ -105,6 +118,8 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center' },
   backButton: { marginRight: 15 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
+  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10 },
   listContent: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
   sectionHeader: { backgroundColor: THEME.COLORS.background, paddingVertical: 10, marginTop: 10 },
   sectionTitle: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },

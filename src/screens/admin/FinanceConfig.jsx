@@ -6,7 +6,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
 import { useGetFinanceDataQuery, useTogglePromoMutation } from '../../store/api/adminApiSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style }) => (
@@ -19,20 +21,33 @@ const GlassCard = ({ children, style }) => (
 );
 
 const FinanceConfig = ({ navigation }) => {
+  const dispatch = useDispatch();
   const { data: financeResponse, isLoading } = useGetFinanceDataQuery({ period: 'all' });
   const [togglePromo, { isLoading: isToggling }] = useTogglePromoMutation();
 
   const [isPromoActive, setIsPromoActive] = useState(false);
 
   const financeData = financeResponse?.data || financeResponse || [];
-  const totalRevenue = financeData.reduce((acc, curr) => acc + curr.totalAmount, 0);
+  
+  const safeFinanceArray = Array.isArray(financeData) ? financeData : [];
+  const totalRevenue = safeFinanceArray.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
   const handleTogglePromo = async (value) => {
     setIsPromoActive(value);
+    
     try { 
       await togglePromo({ isActive: value }).unwrap(); 
+      // Utilisation de ton propre système de Toast via Redux
+      dispatch(showSuccessToast({
+        title: 'Succès',
+        message: `Mode Promotionnel ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
+      }));
     } catch (e) { 
       setIsPromoActive(!value); 
+      dispatch(showErrorToast({
+        title: 'Échec',
+        message: "Impossible de changer le mode promotionnel.",
+      }));
     }
   };
 
@@ -86,7 +101,7 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
   scrollContent: { padding: 20 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: THEME.COLORS.textPrimary, marginBottom: 15, marginTop: 20 },
-  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.xl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 15 },
+  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS?.radius?.xl || 20, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 15 },
   glassContent: { padding: 20 },
   revenueCard: { alignItems: 'center', paddingVertical: 30 },
   iconMargin: { marginBottom: 10 },
