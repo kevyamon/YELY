@@ -1,5 +1,5 @@
-// src/components/map/MapCard.jsx (modifié)
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur
+// src/components/map/MapCard.jsx [MODIFIÉ]
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -8,11 +8,13 @@ import { StyleSheet, TouchableOpacity, View, useColorScheme } from 'react-native
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import useRouteManager from '../../hooks/useRouteManager';
+import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
+  PoiMarker,
   SmoothDriverMarker,
   TrackedMarker,
 } from './markers/MobileMarkers';
@@ -48,6 +50,10 @@ const MapCard = forwardRef(({
 
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
+  // Récupération des lieux depuis l'API pour l'effet Google Maps
+  const { data: poiResponse } = useGetAllPOIsQuery();
+  const mapPOIs = poiResponse?.data || [];
+
   const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
   const destinationMarker = markers.find((m) => m.type === 'destination');
   const pickupMarker = markers.find((m) => m.type === 'pickup');
@@ -57,7 +63,7 @@ const MapCard = forwardRef(({
   useEffect(() => {
     if (!isMapReady) return;
 
-    // 1. On récolte TOUTES les coordonnées qui doivent être visibles
+    // Les POIs ne sont pas ajoutés ici pour ne pas perturber le zoom automatique de la course
     const allCoords = [];
     
     if (location?.latitude && location?.longitude) {
@@ -77,25 +83,20 @@ const MapCard = forwardRef(({
       }
     });
 
-    // 2. On crée une signature basée sur le nombre de points pour ne re-zoomer 
-    // que quand il y a un changement d'éléments sur la carte
     const currentSignature = `SIG_${allCoords.length}_${activeTarget?.type || 'IDLE'}`;
 
     if (lastCameraSignatureRef.current !== currentSignature) {
       lastCameraSignatureRef.current = currentSignature;
 
-      // 3. Zoom intelligent (Boîte englobante)
       if (allCoords.length > 1) {
         const timer = setTimeout(() => {
           mapRef.current?.fitToCoordinates(allCoords, {
-            // On garde les paddings qui protègent la zone d'affichage
             edgePadding: { top: 100, right: 40, bottom: recenterBottomPadding + 20, left: 40 },
             animated: true
           });
         }, 600);
         return () => clearTimeout(timer);
       } else if (allCoords.length === 1) {
-        // S'il n'y a qu'un seul point au total, on se centre simplement dessus
         const timer = setTimeout(() => {
           mapRef.current?.animateToRegion(
             { latitude: allCoords[0].latitude, longitude: allCoords[0].longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
@@ -167,6 +168,18 @@ const MapCard = forwardRef(({
               zIndex={50}
             />
           )}
+
+          {/* Affichage des Lieux (Effet Google Maps) */}
+          {mapPOIs.map((poi) => (
+            <PoiMarker
+              key={`map-poi-${poi._id || poi.id}`}
+              coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
+              name={poi.name}
+              icon={poi.icon}
+              color={poi.iconColor}
+              onPress={() => onMarkerPress?.(poi)}
+            />
+          ))}
 
           {showUserMarker && location && location.latitude && (
             <TrackedMarker

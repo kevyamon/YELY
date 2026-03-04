@@ -1,14 +1,13 @@
-// src/components/map/markers/MobileMarkers.jsx
+// src/components/map/markers/MobileMarkers.jsx [MODIFIÉ]
 // COMPOSANTS VISUELS CARTE MOBILE - Icônes autonomes sans conteneur
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
 import { AnimatedRegion, Marker } from 'react-native-maps';
 import THEME from '../../../theme/theme';
 
-// ─── TRACKED MARKER ──────────────────────────────────────────────
 export const TrackedMarker = ({
   coordinate,
   anchor,
@@ -20,7 +19,6 @@ export const TrackedMarker = ({
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
-    // On garde 1000ms pour s'assurer que les ombres ont le temps de charger sur Samsung
     const timer = setTimeout(() => setTracks(false), 1000);
     return () => clearTimeout(timer);
   }, []);
@@ -40,7 +38,6 @@ export const TrackedMarker = ({
   );
 };
 
-// ─── PICKUP MARKER (Passager) ────────────────────────────────────
 export const AnimatedPickupMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -88,7 +85,6 @@ export const AnimatedPickupMarker = ({ color }) => {
   );
 };
 
-// ─── DESTINATION MARKER (Drapeau) ────────────────────────────────
 export const AnimatedDestinationMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -128,9 +124,7 @@ export const AnimatedDestinationMarker = ({ color }) => {
   );
 };
 
-// ─── DRIVER MARKER (Voiture animée) ─────────────────────────────
 export const SmoothDriverMarker = ({ coordinate, heading }) => {
-  // REPARATION ANDROID : Le bouclier anti-lag
   const [tracks, setTracks] = useState(true);
 
   useEffect(() => {
@@ -147,7 +141,6 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
     })
   );
 
-  // EXTRACTION DES CHIFFRES : C'est le secret pour débloquer le chauffeur
   const lat = coordinate?.latitude;
   const lng = coordinate?.longitude;
 
@@ -169,7 +162,7 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
       zIndex={200}
       flat={true}
       rotation={heading || 0}
-      tracksViewChanges={tracks} // <-- Application du bouclier
+      tracksViewChanges={tracks}
     >
       <Animated.View style={styles.carMarkerBg}>
         <Ionicons
@@ -182,9 +175,38 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
-// ─── STYLES - TOUT AUTONOME, ZÉRO CONTENEUR WRAPPER ─────────────
+// NOUVEAU : Marqueur de lieu style Google Maps
+export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
+  const [tracks, setTracks] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTracks(false), 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (!coordinate?.latitude || !coordinate?.longitude) return null;
+
+  return (
+    <Marker
+      coordinate={coordinate}
+      anchor={{ x: 0.5, y: 0.5 }}
+      zIndex={40} // En dessous des éléments actifs de la course
+      tracksViewChanges={tracks}
+      onPress={onPress}
+    >
+      <View style={styles.poiContainer}>
+        <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
+          <Ionicons name={icon || 'location'} size={14} color={color} />
+        </View>
+        <View style={styles.poiTextWrapper}>
+          <Text style={styles.poiText} numberOfLines={1}>{name}</Text>
+        </View>
+      </View>
+    </Marker>
+  );
+};
+
 const styles = StyleSheet.create({
-  // Passager — le rond EST le marqueur, pas de parent
   humanMarkerBg: {
     width: 35,
     height: 35,
@@ -199,8 +221,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
-
-  // Drapeau — le rond EST le marqueur
   flagMarkerBg: {
     width: 35,
     height: 35,
@@ -215,8 +235,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     elevation: 5,
   },
-
-  // Voiture — le rond EST le marqueur
   carMarkerBg: {
     width: 35,
     height: 35,
@@ -232,4 +250,33 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
+  poiContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  poiIconCircle: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    borderWidth: 1.5,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+  },
+  poiTextWrapper: {
+    marginTop: 4,
+    backgroundColor: 'rgba(25, 25, 25, 0.85)',
+    paddingHorizontal: 6,
+    paddingVertical: 3,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.glassBorder,
+    maxWidth: 100,
+  },
+  poiText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 10,
+    fontWeight: 'bold',
+    textAlign: 'center',
+  }
 });

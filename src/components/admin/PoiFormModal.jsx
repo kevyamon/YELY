@@ -1,5 +1,5 @@
-// src/components/admin/PoiFormModal.jsx [NOUVEAU]
-// FORMULAIRE DE LIEUX - Ajout et Édition
+// src/components/admin/PoiFormModal.jsx [MODIFIÉ]
+// FORMULAIRE DE LIEUX - Ajout, Édition et Sélection de Couleur
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -13,6 +13,20 @@ import THEME from '../../theme/theme';
 import GlassInput from '../ui/GlassInput';
 import GoldButton from '../ui/GoldButton';
 import IconPickerModal from './IconPickerModal';
+
+// Palette de couleurs prédéfinies
+const COLOR_PALETTE = [
+  THEME.COLORS.champagneGold,
+  '#3498db', // Bleu
+  '#e74c3c', // Rouge
+  '#2ecc71', // Vert
+  '#9b59b6', // Violet
+  '#f1c40f', // Jaune
+  '#e67e22', // Orange
+  '#1abc9c', // Turquoise
+  '#ff9ff3', // Rose
+  '#bdc3c7', // Argent
+];
 
 const suggestColor = (iconName) => {
   const iconKey = iconName.toLowerCase();
@@ -66,7 +80,14 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
     setFormData(prev => ({
       ...prev,
       icon: iconName,
-      iconColor: suggestColor(iconName)
+      iconColor: suggestColor(iconName) // Suggestion automatique qu'on peut écraser ensuite
+    }));
+  };
+
+  const handleColorSelect = (color) => {
+    setFormData(prev => ({
+      ...prev,
+      iconColor: color
     }));
   };
 
@@ -153,6 +174,27 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.textTertiary} />
             </TouchableOpacity>
 
+            <Text style={styles.label}>Couleur de l'icône</Text>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPaletteContainer}>
+              {COLOR_PALETTE.map((color, idx) => {
+                const isSelected = formData.iconColor === color;
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    activeOpacity={0.7}
+                    onPress={() => handleColorSelect(color)}
+                    style={[
+                      styles.colorSwatch,
+                      { backgroundColor: color },
+                      isSelected && styles.colorSwatchSelected
+                    ]}
+                  >
+                    {isSelected && <Ionicons name="checkmark" size={16} color="#FFF" />}
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+
             <View style={styles.spacer} />
 
             <GoldButton
@@ -188,6 +230,9 @@ const styles = StyleSheet.create({
   iconSelectorTexts: { flex: 1, marginLeft: 15 },
   iconNameText: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginBottom: 4 },
   iconInstructionText: { color: THEME.COLORS.champagneGold, fontSize: 12 },
+  colorPaletteContainer: { flexDirection: 'row', paddingVertical: 5 },
+  colorSwatch: { width: 36, height: 36, borderRadius: 18, marginRight: 12, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: 'transparent' },
+  colorSwatchSelected: { borderColor: '#FFFFFF', transform: [{ scale: 1.1 }] },
   spacer: { height: 30 }
 });
 
