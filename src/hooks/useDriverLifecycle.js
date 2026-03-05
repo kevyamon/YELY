@@ -3,11 +3,12 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
 import socketService from '../services/socketService';
-import { useCompleteRideMutation, useMarkAsArrivedMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
+import { useCompleteRideMutation, useGetCurrentRideQuery, useMarkAsArrivedMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../store/api/usersApiSlice';
 import { updateUserInfo } from '../store/slices/authSlice';
 import { setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlice';
@@ -32,7 +33,8 @@ const useDriverLifecycle = ({
   const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
   const snoozeTimerRef = useRef(null);
-  const isSubmittingRef = useRef(false); // Verrou mecanique anti-double-clic
+  const isSubmittingRef = useRef(false); 
+  const appState = useRef(AppState.currentState);
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -43,6 +45,23 @@ const useDriverLifecycle = ({
   const [markAsArrived] = useMarkAsArrivedMutation();
   const [startRide] = useStartRideMutation();
   const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
+  
+  const { refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, { skip: !currentRide });
+
+  // 🚀 Resynchronisation au retour en premier plan
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        if (currentRide) {
+          refetchCurrentRide();
+        }
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [currentRide, refetchCurrentRide]);
 
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
@@ -119,7 +138,7 @@ const useDriverLifecycle = ({
   useEffect(() => {
     if (!currentRide) {
       isProcessingPickupRef.current = false;
-      isSubmittingRef.current = false; // Deverrouillage global
+      isSubmittingRef.current = false; 
       setIsArrivalModalVisible(false);
       if (snoozeTimerRef.current) {
         clearTimeout(snoozeTimerRef.current);
@@ -243,7 +262,6 @@ const useDriverLifecycle = ({
   };
 
   const handleConfirmArrival = async () => {
-    // Verrouillage mecanique instantane contre le double-clic
     if (isSubmittingRef.current) return;
     isSubmittingRef.current = true;
 
@@ -285,12 +303,9 @@ const useDriverLifecycle = ({
         message: 'Vos gains ont ete credites avec succes.',
       }));
       
-      // On ne deverrouille pas ici. Le deverrouillage se fait dans le useEffect
-      // quand le currentRide devient null, empechant tout clic pendant la transition.
-
     } catch (err) {
       dispatch(updateRideStatus({ status: 'in_progress' }));
-      isSubmittingRef.current = false; // Deverrouillage en cas d'echec pour reessayer
+      isSubmittingRef.current = false; 
       dispatch(showErrorToast({
         title: 'Erreur de cloture',
         message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',

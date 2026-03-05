@@ -6,7 +6,7 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "yely",
-    "userInterfaceStyle": "automatic",
+    "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -67,9 +67,6 @@
           "organization": "yelyllc"
         }
       ]
-    ],
-    "experiments": {
-      "reactCompiler": true
-    }
+    ]
   }
 }

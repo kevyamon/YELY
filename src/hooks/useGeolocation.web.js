@@ -1,10 +1,9 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GÉOLOCALISATION WEB - Mocking Automatique Strict (Maféré)
-// Récupère la position et traduit en adresse via API standard (Nominatim)
+// GESTION GEOLOCALISATION WEB - API Navigateur Native
+// STANDARD: Industriel / Bank Grade
 
 import { useEffect, useState } from 'react';
 
-// Coordonnées exactes injectées pour les tests Web
 const EXACT_MOCK_LOCATION = {
   latitude: 5.414702,
   longitude: -3.028109,
@@ -16,24 +15,8 @@ const useGeolocation = () => {
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    // 🚀 Bypasse le vrai navigateur et applique directement le Mock
-    const applyMockLocation = async () => {
-      setLocation(EXACT_MOCK_LOCATION);
-      
-      // On garde TA logique de traduction d'adresse pour que l'UI affiche bien "Maféré"
-      await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
-      
-      setIsLoading(false);
-    };
-
-    applyMockLocation();
-  }, []);
-
-  // Fonction de Reverse Geocoding Web (Utilise Nominatim OpenStreetMap)
   const reverseGeocodeWeb = async (coords) => {
     try {
-      // Utilisation de l'API publique Nominatim (Respecte les standards Web/OpenSource du projet)
       const response = await fetch(
         `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${coords.latitude}&lon=${coords.longitude}`
       );
@@ -42,10 +25,9 @@ const useGeolocation = () => {
         const data = await response.json();
         const addr = data.address;
         
-        // Construction formatée similaire à la version mobile
         const components = [
-          addr.road || addr.pedestrian || addr.suburb, // Rue ou Quartier
-          addr.city || addr.town || addr.village || addr.county // Ville ou Commune
+          addr.road || addr.pedestrian || addr.suburb,
+          addr.city || addr.town || addr.village || addr.county
         ].filter(Boolean);
         
         setAddress(components.join(', ') || data.display_name);
@@ -54,9 +36,47 @@ const useGeolocation = () => {
       }
     } catch (e) {
       console.error("Erreur Geocoding Web:", e);
-      setAddress("Erreur réseau");
+      setAddress("Erreur reseau");
     }
   };
+
+  useEffect(() => {
+    const fetchRealLocation = async () => {
+      // Fallback de test si la variable d'environnement l'exige
+      if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
+        setLocation(EXACT_MOCK_LOCATION);
+        await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
+        setIsLoading(false);
+        return;
+      }
+
+      if (!navigator.geolocation) {
+        setError("La geolocalisation n'est pas supportee par ce navigateur.");
+        setIsLoading(false);
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        async (position) => {
+          const coords = {
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+          };
+          setLocation(coords);
+          await reverseGeocodeWeb(coords);
+          setIsLoading(false);
+        },
+        (err) => {
+          console.warn("Erreur API Geolocation:", err);
+          setError("Impossible de recuperer votre position exacte.");
+          setIsLoading(false);
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    };
+
+    fetchRealLocation();
+  }, []);
 
   return { location, address, error, isLoading };
 };

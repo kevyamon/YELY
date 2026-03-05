@@ -8,7 +8,7 @@ import * as Sentry from '@sentry/react-native';
 Sentry.init({
   dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
   debug: false, 
-  tracesSampleRate: 1.0, 
+  tracesSampleRate: __DEV__ ? 1.0 : 0.2, 
   environment: __DEV__ ? 'development' : 'production'
 });
 
@@ -27,7 +27,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, useColorScheme, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -50,9 +50,6 @@ import useSocketEvents from './src/hooks/useSocketEvents';
 const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
-  
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === 'dark';
 
   useSocket();
   useSocketEvents();
@@ -80,7 +77,7 @@ const AppContent = () => {
       <NavigationContainer>
         <View style={styles.container}>
           <StatusBar
-            style={isDarkMode ? 'light' : 'dark'}
+            style="dark"
             backgroundColor="transparent"
             translucent={true}
           />

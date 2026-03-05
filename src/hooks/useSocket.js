@@ -1,7 +1,9 @@
 // src/hooks/useSocket.js
 // Hook React : Orchestrateur du Cycle de Vie Socket & Couplage Redux
+// STANDARD: Industriel / Bank Grade
 
 import { useEffect, useRef } from 'react';
+import { AppState } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { logout, selectIsAuthenticated, selectToken } from '../store/slices/authSlice';
@@ -11,8 +13,26 @@ const useSocket = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const token = useSelector(selectToken);
   const wasConnected = useRef(false);
+  const appState = useRef(AppState.currentState);
 
   useEffect(() => {
+    // Gestion de la reconnexion au retour en premier plan
+    const handleAppStateChange = (nextAppState) => {
+      if (
+        appState.current.match(/inactive|background/) &&
+        nextAppState === 'active'
+      ) {
+        if (isAuthenticated && token && !socketService.getIsConnected()) {
+          console.log('[useSocket] Retour premier plan : Reconnexion forcée');
+          socketService.connect(token);
+          wasConnected.current = true;
+        }
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+
     if (isAuthenticated && token) {
       if (!wasConnected.current) {
         socketService.connect(token);
@@ -24,9 +44,6 @@ const useSocket = () => {
 
         const handleConnectError = (error) => {
           if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
-            // On ne declenche plus de message d'erreur visuel ici.
-            // Le systeme HTTP (apiSlice) gère dejà le rafraichissement du token en silence.
-            // On se contente de fermer la socket proprement en attendant le nouveau token.
             socketService.disconnect();
             wasConnected.current = false;
           }
@@ -42,6 +59,10 @@ const useSocket = () => {
         wasConnected.current = false;
       }
     }
+
+    return () => {
+      subscription.remove();
+    };
 
   }, [isAuthenticated, token, dispatch]);
 

@@ -2,11 +2,12 @@
 // HOOK METIER - Gestion de la commande, tarification et cycle passager
 // CSCSM Level: Bank Grade
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
-import { useLazyEstimateRideQuery, useRequestRideMutation } from '../store/api/ridesApiSlice';
+import { useGetCurrentRideQuery, useLazyEstimateRideQuery, useRequestRideMutation } from '../store/api/ridesApiSlice';
 import { setCurrentRide } from '../store/slices/rideSlice';
 import { showErrorToast } from '../store/slices/uiSlice';
 import { isLocationInMafereZone } from '../utils/mafereZone';
@@ -19,6 +20,7 @@ const MOCK_VEHICLES = [
 
 const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
+  const appState = useRef(AppState.currentState);
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   const [destination, setDestination] = useState(null);
@@ -27,8 +29,24 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
+  const { refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, { skip: !currentRide });
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
+
+  // 🚀 Resynchronisation au retour en premier plan
+  useEffect(() => {
+    const handleAppStateChange = (nextAppState) => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        if (currentRide) {
+          refetchCurrentRide();
+        }
+      }
+      appState.current = nextAppState;
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [currentRide, refetchCurrentRide]);
 
   useEffect(() => {
     if (location) {
@@ -94,7 +112,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   };
 
   const handleConfirmRide = async (passengersCount = 1) => {
-    // SECURITE : Filtrage strict du parametre d'entree pour eviter l'injection d'objets cycliques (SyntheticEvent)
     const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
 
     if (!location) {
@@ -132,7 +149,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
         origin: { address: safeOriginAddress, coordinates: [origLng, origLat] },
         destination: { address: safeDestAddress, coordinates: [destLng, destLat] },
         forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase(),
-        passengersCount: validPassengersCount // Utilisation de la variable filtree
+        passengersCount: validPassengersCount 
       };
       
       const res = await requestRideApi(payload).unwrap();
