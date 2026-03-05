@@ -15,6 +15,7 @@ import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
+import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -212,6 +213,8 @@ const DriverHome = ({ navigation }) => {
           />
         </>
       )}
+
+      <PwaIOSWarningModal isDriver={true} />
     </View>
   );
 };

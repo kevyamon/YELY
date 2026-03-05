@@ -13,6 +13,7 @@ import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
+import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -157,6 +158,7 @@ const RiderHome = ({ navigation }) => {
       <RiderWaitModal />
       <RatingModal />
 
+      <PwaIOSWarningModal isDriver={false} />
     </View>
   );
 };
