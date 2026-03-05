@@ -21,11 +21,17 @@ const MOCK_VEHICLES = [
 const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
   const appState = useRef(AppState.currentState);
-  const previousFetchDataRef = useRef(undefined); // FIX : Bloque la resurrection d'etat
+  const previousFetchDataRef = useRef(undefined); 
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  // NOUVEAU : État pour l'origine manuelle et le mode de la modale
+  const [manualOrigin, setManualOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
+  
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
+  const [searchModalMode, setSearchModalMode] = useState('destination'); // 'origin' ou 'destination'
+  
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
@@ -37,7 +43,9 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
 
-  // RESTAURATION ET DESTRUCTION ROBUSTE (Anti-Zombie State)
+  // L'origine effective est soit celle tapée à la main, soit le GPS
+  const effectiveOrigin = manualOrigin || location;
+
   useEffect(() => {
     if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
       previousFetchDataRef.current = fetchedRideData;
@@ -68,8 +76,11 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     return () => subscription.remove();
   }, [refetchCurrentRide]);
 
+  // LOGIQUE ADRESSE : Si origine manuelle, on l'affiche. Sinon, Reverse Geocoding du GPS
   useEffect(() => {
-    if (location) {
+    if (manualOrigin) {
+      setCurrentAddress(manualOrigin.address);
+    } else if (location) {
       const getAddress = async () => {
         try {
           const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
@@ -82,7 +93,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     } else if (errorMsg) {
       setCurrentAddress("Signal GPS perdu");
     }
-  }, [location, errorMsg]);
+  }, [location, errorMsg, manualOrigin]);
 
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
@@ -94,6 +105,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   useEffect(() => {
     if (rideToRate || (!currentRide && !fetchedRideData) || currentRide?.status === 'cancelled') {
       setDestination(null);
+      setManualOrigin(null); // On reset aussi l'origine manuelle à la fin d'une course
       setSelectedVehicle(null);
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
@@ -101,68 +113,98 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
   }, [rideToRate, currentRide, fetchedRideData, mapRef]);
 
-  const handleDestinationSelect = async (selectedPlace) => {
+  // FONCTION UNIFIÉE : Gère à la fois le choix du départ et de l'arrivée
+  const handlePlaceSelect = async (selectedPlace, mode) => {
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
-        message: 'Le service ne dessert que la zone autorisee pour le moment.' 
+        message: 'Le service ne dessert que la zone autorisée pour le moment.' 
       }));
       setIsSearchModalVisible(false);
       return;
     }
 
-    setDestination(selectedPlace);
-    setSelectedVehicle(null);
-    
-    if (location && mapRef.current) {
-      estimateRide({
-        pickupLat: location.latitude, pickupLng: location.longitude,
-        dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
-      });
+    if (mode === 'origin') {
+      setManualOrigin(selectedPlace);
+      // Si on a déjà une destination, on relance l'estimation avec la nouvelle origine
+      if (destination) {
+        estimateRide({
+          pickupLat: selectedPlace.latitude, pickupLng: selectedPlace.longitude,
+          dropoffLat: destination.latitude, dropoffLng: destination.longitude
+        });
+      }
+    } else {
+      setDestination(selectedPlace);
+      setSelectedVehicle(null);
+      
+      if (effectiveOrigin && mapRef.current) {
+        estimateRide({
+          pickupLat: effectiveOrigin.latitude, pickupLng: effectiveOrigin.longitude,
+          dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
+        });
+      }
     }
   };
 
   const handleCancelDestination = () => {
     setDestination(null);
     setSelectedVehicle(null);
-    
-    if (location && mapRef.current) {
+    if (effectiveOrigin && mapRef.current) {
       mapRef.current.centerOnUser();
     }
+  };
+
+  // NOUVEAU : Possibilité d'annuler l'origine manuelle pour repasser sur le GPS
+  const handleCancelManualOrigin = () => {
+    setManualOrigin(null);
+    if (destination && location) {
+      estimateRide({
+        pickupLat: location.latitude, pickupLng: location.longitude,
+        dropoffLat: destination.latitude, dropoffLng: destination.longitude
+      });
+    }
+  };
+
+  const openSearchModal = (mode = 'destination') => {
+    setSearchModalMode(mode);
+    setIsSearchModalVisible(true);
   };
 
   const handleConfirmRide = async (passengersCount = 1) => {
     const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
 
-    if (!location) {
-      dispatch(showErrorToast({ title: 'Erreur GPS', message: 'Localisation introuvable. Activez votre GPS.' }));
+    if (!effectiveOrigin) {
+      dispatch(showErrorToast({ title: 'Erreur Départ', message: 'Veuillez définir votre point de départ.' }));
       return;
     }
-    if (!isUserInZone) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Positionnement hors de la zone de service autorisee.' }));
+    
+    // On vérifie que le point de départ EST dans la zone (indispensable si manuel)
+    if (!isLocationInMafereZone(effectiveOrigin)) {
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre point de départ est hors de la zone de service.' }));
       return;
     }
+
     if (!destination) {
       dispatch(showErrorToast({ title: 'Destination', message: 'Veuillez choisir une destination.' }));
       return;
     }
     if (!selectedVehicle) {
-      dispatch(showErrorToast({ title: 'Vehicule', message: 'Veuillez selectionner un type de vehicule.' }));
+      dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un type de véhicule.' }));
       return;
     }
     
     try {
-      const origLng = Number(location.longitude || location.lng || 0);
-      const origLat = Number(location.latitude || location.lat || 0);
+      const origLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
+      const origLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
       const destLng = Number(destination.longitude || destination.lng || 0);
       const destLat = Number(destination.latitude || destination.lat || 0);
 
-      let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
-      if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
+      let safeOriginAddress = String(currentAddress || effectiveOrigin.address || "Position actuelle").trim();
+      if (safeOriginAddress.length < 5) safeOriginAddress += " (Départ)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
 
       let safeDestAddress = String(destination.address || destination.name || "Destination").trim();
-      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivee)";
+      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivée)";
       if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
 
       const payload = {
@@ -203,10 +245,14 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   };
 
   return {
+    effectiveOrigin,
+    manualOrigin,
     currentAddress,
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
+    searchModalMode,
+    openSearchModal,
     selectedVehicle,
     setSelectedVehicle,
     displayVehicles,
@@ -214,8 +260,9 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     isOrdering,
     estimationData,
     estimateError,
-    handleDestinationSelect,
+    handlePlaceSelect,
     handleCancelDestination,
+    handleCancelManualOrigin,
     handleConfirmRide
   };
 };

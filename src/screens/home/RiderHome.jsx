@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER - Orchestrateur Principal & Nettoyage Actif
+// HOME RIDER NATIF - Orchestrateur Principal (Synchronisé avec le fallback manuel)
 // CSCSM Level: Bank Grade
 
 import React, { useRef, useState } from 'react';
@@ -39,11 +39,16 @@ const RiderHome = ({ navigation }) => {
   const isUserInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
+  // Extraction complète depuis le nouveau hook partagé
   const {
+    effectiveOrigin,
+    manualOrigin,
     currentAddress,
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
+    searchModalMode,
+    openSearchModal,
     selectedVehicle,
     setSelectedVehicle,
     displayVehicles,
@@ -51,8 +56,9 @@ const RiderHome = ({ navigation }) => {
     isOrdering,
     estimationData,
     estimateError,
-    handleDestinationSelect,
+    handlePlaceSelect,
     handleCancelDestination,
+    handleCancelManualOrigin,
     handleConfirmRide
   } = useRiderLifecycle({
     location,
@@ -73,14 +79,14 @@ const RiderHome = ({ navigation }) => {
     destination,
     isRideActive,
     currentRide,
-    location
+    location: effectiveOrigin // La carte se base désormais sur la position choisie (manuelle ou GPS)
   });
 
   let activeDriverLocation = null;
 
   if (isRideActive) {
     if (currentRide?.status === 'in_progress') {
-      activeDriverLocation = __DEV__ ? (driverLatLng || location) : (location || driverLatLng);
+      activeDriverLocation = __DEV__ ? (driverLatLng || effectiveOrigin) : (effectiveOrigin || driverLatLng);
     } else {
       activeDriverLocation = driverLatLng;
     }
@@ -88,18 +94,19 @@ const RiderHome = ({ navigation }) => {
 
   const handlePoiSelection = (poi) => {
     setSelectedPoi(null);
-    handleDestinationSelect({
+    // Un POI sur la carte native est toujours traité comme une destination par défaut
+    handlePlaceSelect({
       latitude: poi.latitude,
       longitude: poi.longitude,
       address: poi.name,
-    });
+    }, 'destination');
   };
 
   return (
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-         {location ? (
+         {effectiveOrigin ? (
            <MapCard 
              ref={mapRef}
              location={mapTraceOrigin}
@@ -130,9 +137,12 @@ const RiderHome = ({ navigation }) => {
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={() => setIsSearchModalVisible(true)}
+        onSearchPress={() => openSearchModal('destination')}
+        onOriginPress={() => openSearchModal('origin')}
         hasDestination={!!destination && !isRideActive} 
         onCancelDestination={handleCancelDestination}
+        isManualOrigin={!!manualOrigin}
+        onCancelOrigin={handleCancelManualOrigin}
       />
 
       {isRideActive ? (
@@ -151,10 +161,12 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
+      {/* MODALES */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
+        mode={searchModalMode}
         onClose={() => setIsSearchModalVisible(false)}
-        onDestinationSelect={handleDestinationSelect}
+        onPlaceSelect={(place) => handlePlaceSelect(place, searchModalMode)}
       />
 
       <PoiDetailsModal

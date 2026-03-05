@@ -38,7 +38,6 @@ const RiderHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
   
-  // Extraction complète des statuts GPS
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation(); 
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   
@@ -47,11 +46,16 @@ const RiderHome = ({ navigation }) => {
   const isUserInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
+  // EXTRACTION DES NOUVELLES FONCTIONS DE LA VAGUE 1
   const {
+    effectiveOrigin,
+    manualOrigin,
     currentAddress,
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
+    searchModalMode,
+    openSearchModal,
     selectedVehicle,
     setSelectedVehicle,
     displayVehicles,
@@ -59,8 +63,9 @@ const RiderHome = ({ navigation }) => {
     isOrdering,
     estimationData,
     estimateError,
-    handleDestinationSelect,
+    handlePlaceSelect,
     handleCancelDestination,
+    handleCancelManualOrigin,
     handleConfirmRide
   } = useRiderLifecycle({
     location,
@@ -81,21 +86,19 @@ const RiderHome = ({ navigation }) => {
     destination,
     isRideActive,
     currentRide,
-    location
+    location: effectiveOrigin // 🧠 On trace l'itinéraire à partir de la position manuelle !
   });
 
   const handlePoiSelection = (poi) => {
     setSelectedPoi(null);
-    handleDestinationSelect({
+    handlePlaceSelect({
       latitude: poi.latitude,
       longitude: poi.longitude,
       address: poi.name,
-    });
+    }, 'destination');
   };
 
-  // LOGIQUE DE RENDU : Si on a une position OU si le chargement est fini (ex: GPS refusé), on affiche la carte.
-  // La MapCard Web est déjà configurée pour afficher Maféré par défaut si location est null.
-  const shouldShowMap = location || !isLoading;
+  const shouldShowMap = effectiveOrigin || !isLoading;
 
   return (
     <View style={styles.screenWrapper}>
@@ -106,7 +109,7 @@ const RiderHome = ({ navigation }) => {
              ref={mapRef}
              location={mapTraceOrigin}
              driverLocation={isRideActive ? driverLatLng : null}
-             showUserMarker={!isRideActive && !!location}
+             showUserMarker={!isRideActive && !!effectiveOrigin}
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
@@ -132,9 +135,14 @@ const RiderHome = ({ navigation }) => {
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={() => setIsSearchModalVisible(true)}
+        
+        // 🧠 LIAISONS POUR LES RECHERCHES MANUELLES
+        onSearchPress={() => openSearchModal('destination')}
+        onOriginPress={() => openSearchModal('origin')}
         hasDestination={!!destination && !isRideActive} 
         onCancelDestination={handleCancelDestination}
+        isManualOrigin={!!manualOrigin}
+        onCancelOrigin={handleCancelManualOrigin}
       />
 
       {!isRideActive && (
@@ -162,10 +170,12 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
+      {/* 🧠 MODALE BIDIRECTIONNELLE INJECTÉE ICI */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
+        mode={searchModalMode}
         onClose={() => setIsSearchModalVisible(false)}
-        onDestinationSelect={handleDestinationSelect}
+        onPlaceSelect={(place) => handlePlaceSelect(place, searchModalMode)}
       />
 
       <PoiDetailsModal
@@ -178,7 +188,6 @@ const RiderHome = ({ navigation }) => {
       <RiderWaitModal />
       <RatingModal />
 
-      {/* INJECTION DES MODALES PWA ET GPS */}
       <PwaIOSWarningModal isDriver={false} />
       <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
     </View>

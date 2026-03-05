@@ -1,5 +1,5 @@
-// src/components/ui/DestinationSearchModal.jsx [MODIFIÉ]
-// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Limitation de rendu
+// src/components/ui/DestinationSearchModal.jsx
+// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Mode Départ/Arrivée
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,19 +10,16 @@ import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
 
-// IMPORT DU PONT RÉSEAU 
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 
-// Fonction utilitaire pour normaliser le texte (retire les accents et met en minuscules)
 const normalizeSearchText = (text) => {
   if (!text) return '';
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
 
-const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
+const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'destination' }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // LOGIQUE MÉTIER : Récupération avec forçage de mise à jour à l'ouverture (bypass cache)
   const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
     skip: !visible, 
     refetchOnMountOrArgChange: true, 
@@ -30,29 +27,24 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
 
   const pois = poiResponse?.data || [];
 
-  // Filtrage optimisé, tolérant aux fautes d'accents ET limité en nombre pour la performance
   const filteredPOIs = useMemo(() => {
     const normalizedQuery = normalizeSearchText(searchQuery);
     
-    // Si le champ de recherche est vide : on affiche seulement 5 lieux maximum
     if (!normalizedQuery) {
       return pois.slice(0, 5);
     }
 
-    // Sinon, on filtre selon la recherche
     const results = pois.filter(poi =>
       normalizeSearchText(poi.name).includes(normalizedQuery)
     );
 
-    // On limite les résultats de recherche à 10 maximum pour protéger la RAM du téléphone
     return results.slice(0, 10);
   }, [pois, searchQuery]);
 
-  // Stabilisation de la fonction de sélection pour éviter les re-rendus inutiles
   const handleSelectPlace = useCallback((item) => {
     Keyboard.dismiss(); 
     
-    onDestinationSelect({
+    onPlaceSelect({
       address: item.name,
       latitude: item.latitude,
       longitude: item.longitude
@@ -60,7 +52,7 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
     
     setSearchQuery('');
     onClose(); 
-  }, [onDestinationSelect, onClose]);
+  }, [onPlaceSelect, onClose]);
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity 
@@ -78,6 +70,10 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
     </TouchableOpacity>
   ), [handleSelectPlace]);
 
+  // Textes dynamiques selon le mode (Départ ou Arrivée)
+  const title = mode === 'origin' ? "D'où partez-vous ?" : "Où allons-nous ?";
+  const placeholder = mode === 'origin' ? "Ex: Gare routière..." : "Ex: Marché de Maféré...";
+
   return (
     <GlassModal
       visible={visible}
@@ -87,7 +83,7 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
       style={styles.modalStyle}
     >
       <View style={styles.header}>
-        <Text style={styles.title}>Où allons-nous ?</Text>
+        <Text style={styles.title}>{title}</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close-circle" size={28} color={THEME.COLORS.textSecondary} />
         </TouchableOpacity>
@@ -95,7 +91,7 @@ const DestinationSearchModal = ({ visible, onClose, onDestinationSelect }) => {
 
       <View style={styles.inputWrapper}>
         <GlassInput
-          placeholder="Ex: Marché de Maféré..."
+          placeholder={placeholder}
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoFocus={true}
