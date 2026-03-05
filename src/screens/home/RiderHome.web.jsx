@@ -20,6 +20,7 @@ import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation.web';
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION DU HOOK TEMPS REEL
 import useRiderLifecycle from '../../hooks/useRiderLifecycle';
 import useRiderMapFeatures from '../../hooks/useRiderMapFeatures';
 
@@ -31,6 +32,9 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
+  
+  // ACTIVATION DE L'ECOUTE TEMPS REEL (RAM)
+  usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
 

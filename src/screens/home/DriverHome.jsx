@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER - Vue Modulaire (Logique deportee) & Bouclier Abonnement Unifie
+// HOME DRIVER NATIF - Orchestrateur Principal (Temps réel + POI ReadOnly)
 // CSCSM Level: Bank Grade
 
 import { useIsFocused } from '@react-navigation/native';
@@ -8,8 +8,8 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
-import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard';
+import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
@@ -21,6 +21,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION TEMPS RÉEL
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
 import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
@@ -34,13 +35,19 @@ const DriverHome = ({ navigation }) => {
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
 
+  // BRANCHEMENT DU TYMPAN TEMPS RÉEL
+  usePoiSocketEvents();
+
+  // CORRECTION DE L'ERREUR DE SYNTAXE ICI :
+  const [selectedPoi, setSelectedPoi] = useState(null);
+
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
 
   const { 
     data: subscriptionData, 
-    isLoading, 
+    isLoading: isSubLoading, 
     isFetching, 
     isError: isSubscriptionError,
     refetch: refetchSubscription 
@@ -48,7 +55,7 @@ const DriverHome = ({ navigation }) => {
     skip: !isFocused 
   });
 
-  const isSubscriptionLoading = isLoading || isFetching;
+  const isSubscriptionLoading = isSubLoading || isFetching;
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
 
@@ -69,9 +76,7 @@ const DriverHome = ({ navigation }) => {
     }
   }, [isFocused, refetchSubscription]);
 
-  const { location: realLocation, errorMsg } = useGeolocation();
-  const [simulatedLocation, setSimulatedLocation] = useState(null);
-  const location = simulatedLocation || realLocation;
+  const { location, errorMsg } = useGeolocation();
 
   const isDriverInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
@@ -89,17 +94,14 @@ const DriverHome = ({ navigation }) => {
     user,
     currentRide,
     location,
-    simulatedLocation,
-    setSimulatedLocation,
     isDriverInZone,
     mapRef,
     errorMsg,
     isRideActive,
-    isDisabled: isBlocked
+    isDisabled: isBlocked 
   });
 
-  const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
-  const mapTopPadding = 140; // Marge constante pour le SmartHeader du chauffeur
+  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   const renderSubscriptionBlocker = () => {
     if (isActive) return null;
@@ -157,24 +159,30 @@ const DriverHome = ({ navigation }) => {
             ref={mapRef}
             location={location}
             driverLocation={location}
-            showUserMarker={false}
+            showUserMarker={!!location}
             showRecenterButton={true}
             floating={false}
             markers={mapMarkers}
             mapTopPadding={mapTopPadding}
             mapBottomPadding={mapBottomPadding || 240}
+            // 🧠 AJOUT : Rendre les lieux cliquables
+            onMarkerPress={(poi) => {
+              if (!isRideActive) {
+                setSelectedPoi(poi);
+              }
+            }}
           />
         ) : (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-            <Text style={styles.loadingText}>Acquisition du signal GPS...</Text>
+            <Text style={styles.loadingText}>Synchronisation GPS en cours...</Text>
           </View>
         )}
       </View>
 
       <SmartHeader
         scrollY={scrollY}
-        address={currentAddress}
+        address={currentAddress || "Recherche..."}
         userName={user?.name?.split(' ')[0] || 'Chauffeur'}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
@@ -184,13 +192,6 @@ const DriverHome = ({ navigation }) => {
 
       {!isBlocked && (
         <>
-          <GpsTeleporter
-            currentRide={currentRide}
-            realLocation={realLocation}
-            simulatedLocation={simulatedLocation}
-            setSimulatedLocation={setSimulatedLocation}
-          />
-
           {isRideActive ? (
             <DriverRideOverlay />
           ) : (
@@ -211,6 +212,14 @@ const DriverHome = ({ navigation }) => {
           />
         </>
       )}
+
+      {/* 🧠 MODALE POI EN MODE LECTURE SEULE */}
+      <PoiDetailsModal
+        visible={!!selectedPoi}
+        poi={selectedPoi}
+        onClose={() => setSelectedPoi(null)}
+        readOnly={true} 
+      />
     </View>
   );
 };
@@ -224,7 +233,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
   },
-  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary },
+  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
   
   blockerOverlay: {
     ...StyleSheet.absoluteFillObject,

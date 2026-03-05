@@ -10,6 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard.web';
+import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
@@ -23,6 +24,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation.web';
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION TEMPS RÉEL
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
 import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
@@ -35,6 +37,11 @@ const DriverHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
+
+  // BRANCHEMENT DU TYMPAN TEMPS RÉEL
+  usePoiSocketEvents();
+
+  const [selectedPoi, setSelectedPoi] = useState(null);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -71,7 +78,6 @@ const DriverHome = ({ navigation }) => {
     }
   }, [isFocused, refetchSubscription]);
 
-  // NOUVEAU : Extraction GPS avec refus
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   const location = simulatedLocation || realLocation;
@@ -168,6 +174,12 @@ const DriverHome = ({ navigation }) => {
             markers={mapMarkers}
             mapTopPadding={mapTopPadding}
             mapBottomPadding={mapBottomPadding || 240}
+            // 🧠 AJOUT : Rendre les lieux cliquables
+            onMarkerPress={(poi) => {
+              if (!isRideActive) {
+                setSelectedPoi(poi);
+              }
+            }}
           />
         ) : (
           <View style={styles.loadingContainer}>
@@ -217,7 +229,14 @@ const DriverHome = ({ navigation }) => {
         </>
       )}
 
-      {/* INJECTION DES MODALES */}
+      {/* 🧠 MODALE POI EN MODE LECTURE SEULE */}
+      <PoiDetailsModal
+        visible={!!selectedPoi}
+        poi={selectedPoi}
+        onClose={() => setSelectedPoi(null)}
+        readOnly={true} 
+      />
+
       <PwaIOSWarningModal isDriver={true} />
       <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
     </View>
