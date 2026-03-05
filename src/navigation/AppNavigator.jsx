@@ -160,6 +160,9 @@ const AppNavigator = () => {
       ) : isAdmin ? (
         <Stack.Group>
           <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+          {/* AJOUT SENIOR: L'admin a desormais le droit d'acceder a son propre profil */}
+          <Stack.Screen name="Profile" component={ProfileScreen} />
+          
           <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
           <Stack.Screen name="UsersManagement" component={UsersManagement} />
           <Stack.Screen name="FinanceConfig" component={FinanceConfig} />

@@ -1,5 +1,5 @@
 // src/components/admin/ValidationModal.jsx
-// MODALE DE VALIDATION - Nettoyee et adaptee dynamiquement (Light/Dark)
+// MODALE DE VALIDATION - Nettoyee, adaptee et integration du viewer HD
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -7,11 +7,13 @@ import { BlurView } from 'expo-blur';
 import React, { useState } from 'react';
 import { ActivityIndicator, Image, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
+import ImagePreviewModal from '../ui/ImagePreviewModal';
 
 const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, isProcessing }) => {
   const [rejectMode, setRejectMode] = useState(false);
   const [confirmApproveMode, setConfirmApproveMode] = useState(false);
   const [rejectReason, setRejectReason] = useState('');
+  const [previewVisible, setPreviewVisible] = useState(false);
 
   if (!transaction) return null;
 
@@ -19,6 +21,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     setRejectMode(false);
     setConfirmApproveMode(false);
     setRejectReason('');
+    setPreviewVisible(false);
     onClose();
   };
 
@@ -39,12 +42,10 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     >
       <KeyboardAvoidingView 
         style={styles.modalOverlay} 
-        // MODIFICATION SENIOR: Sur Android, "padding" dans une modale pose problème. On laisse undefined pour Android.
         behavior={Platform.OS === "ios" ? "padding" : undefined} 
       >
         <BlurView intensity={80} tint="default" style={StyleSheet.absoluteFill} />
         
-        {/* MODIFICATION SENIOR: Ajout d'un ScrollView pour garantir que le clavier ne cache jamais le champ */}
         <ScrollView 
           contentContainerStyle={styles.scrollCenter} 
           keyboardShouldPersistTaps="handled"
@@ -72,11 +73,20 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
             <View style={styles.imageContainer}>
               {imageUrl ? (
-                <Image 
-                  source={{ uri: imageUrl }} 
-                  style={styles.proofImage} 
-                  resizeMode="contain"
-                />
+                <TouchableOpacity 
+                  onPress={() => setPreviewVisible(true)} 
+                  activeOpacity={0.9} 
+                  style={styles.imageWrapper}
+                >
+                  <Image 
+                    source={{ uri: imageUrl }} 
+                    style={styles.proofImage} 
+                    resizeMode="contain"
+                  />
+                  <View style={styles.zoomIconOverlay}>
+                    <Ionicons name="search" size={32} color="#FFFFFF" />
+                  </View>
+                </TouchableOpacity>
               ) : (
                 <View style={styles.noImagePlaceholder}>
                   <Ionicons name="image-outline" size={48} color={THEME.COLORS.textTertiary} />
@@ -166,6 +176,12 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      <ImagePreviewModal 
+        visible={previewVisible} 
+        imageUrl={imageUrl} 
+        onClose={() => setPreviewVisible(false)} 
+      />
     </Modal>
   );
 };
@@ -179,9 +195,11 @@ const styles = StyleSheet.create({
   infoSection: { backgroundColor: THEME.COLORS.overlay, padding: 15, borderRadius: THEME.BORDERS?.radius?.md || 8, marginBottom: 15 },
   infoText: { color: THEME.COLORS.textPrimary, fontSize: 14, marginBottom: 4 },
   bold: { fontWeight: 'bold', color: THEME.COLORS.textSecondary },
-  imageContainer: { height: 300, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: THEME.BORDERS?.radius?.md || 8, overflow: 'hidden', marginBottom: 20, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
+  imageContainer: { height: 300, backgroundColor: 'rgba(0,0,0,0.1)', borderRadius: THEME.BORDERS?.radius?.md || 8, overflow: 'hidden', marginBottom: 20, borderWidth: 1, borderColor: THEME.COLORS.border },
+  imageWrapper: { width: '100%', height: '100%', justifyContent: 'center', alignItems: 'center' },
   proofImage: { width: '100%', height: '100%' },
-  noImagePlaceholder: { alignItems: 'center', justifyContent: 'center' },
+  zoomIconOverlay: { position: 'absolute', backgroundColor: 'rgba(0,0,0,0.4)', padding: 12, borderRadius: 30 },
+  noImagePlaceholder: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   noImageText: { color: THEME.COLORS.textTertiary, marginTop: 10 },
   actionButtons: { flexDirection: 'row', justifyContent: 'space-between' },
   button: { flex: 1, flexDirection: 'row', height: 50, borderRadius: THEME.BORDERS?.radius?.md || 8, justifyContent: 'center', alignItems: 'center', marginHorizontal: 5 },

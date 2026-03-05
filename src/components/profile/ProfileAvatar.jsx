@@ -7,7 +7,19 @@ import React from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const ProfileAvatar = ({ userPhoto, email, isDriver, isUploading, onPickImage }) => {
+const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => {
+  
+  // NOUVEAU : Dictionnaire de traduction des rôles pour un affichage propre
+  const getRoleDisplayName = (userRole) => {
+    const roles = {
+      driver: 'Chauffeur Partenaire',
+      rider: 'Passager',
+      admin: 'Administrateur',
+      superadmin: 'Direction'
+    };
+    return roles[userRole] || 'Passager';
+  };
+
   return (
     <View style={styles.avatarSection}>
       <TouchableOpacity onPress={onPickImage} disabled={isUploading} activeOpacity={0.8}>
@@ -31,7 +43,7 @@ const ProfileAvatar = ({ userPhoto, email, isDriver, isUploading, onPickImage })
       </TouchableOpacity>
       
       <Text style={styles.emailText}>{email}</Text>
-      <Text style={styles.roleText}>{isDriver ? 'Chauffeur Partenaire' : 'Passager'}</Text>
+      <Text style={styles.roleText}>{getRoleDisplayName(role)}</Text>
     </View>
   );
 };

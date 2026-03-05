@@ -31,6 +31,9 @@ const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
   const isDriver = currentUser?.role === 'driver';
+  
+  // NOUVEAU : On extrait le rôle exact pour l'affichage dynamique
+  const userRole = currentUser?.role || 'rider';
 
   const { data: profileData, isLoading: isFetching, refetch } = useGetUserProfileQuery();
   const [updateProfile, { isLoading: isUpdating }] = useUpdateUserProfileMutation();
@@ -166,6 +169,7 @@ const ProfileScreen = ({ navigation }) => {
 
   const userPhoto = profileData?.data?.profilePicture || currentUser?.profilePicture;
   const userEmail = profileData?.data?.email || currentUser?.email;
+  const serverRole = profileData?.data?.role || userRole;
 
   return (
     <ScreenWrapper>
@@ -181,7 +185,7 @@ const ProfileScreen = ({ navigation }) => {
         <ProfileAvatar 
           userPhoto={userPhoto}
           email={userEmail}
-          isDriver={isDriver}
+          role={serverRole} // Transmission dynamique du rôle
           isUploading={isUploading}
           onPickImage={handlePickImage}
         />

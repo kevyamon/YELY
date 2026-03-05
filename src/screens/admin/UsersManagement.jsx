@@ -1,15 +1,18 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Correction payload Zod (Bannissement)
+// ECRAN UTILISATEURS - Correction payload Zod (Bannissement) & Sécurité UI Admin
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { useSelector } from 'react-redux';
+
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import UserInfoModal from '../../components/admin/UserInfoModal';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const GlassCard = ({ children, style }) => (
@@ -24,6 +27,7 @@ const GlassCard = ({ children, style }) => (
 const UsersManagement = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   
+  const currentUser = useSelector(selectCurrentUser);
   const { data: usersResponse, isLoading, refetch, error } = useGetAllUsersQuery({ page: 1, search: searchQuery });
   const [toggleBan] = useToggleUserBanMutation();
   const [updateRole] = useUpdateUserRoleMutation();
@@ -44,7 +48,8 @@ const UsersManagement = ({ navigation }) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const users = usersResponse?.data?.users || usersResponse?.users || [];
+  const rawUsers = usersResponse?.data?.users || usersResponse?.users || [];
+  const users = rawUsers.filter(u => u._id !== currentUser?._id);
 
   const translateRole = (role) => {
     const roles = { rider: 'Passager', driver: 'Chauffeur', admin: 'Administrateur', superadmin: 'Direction' };
@@ -61,7 +66,6 @@ const UsersManagement = ({ navigation }) => {
       onConfirm: async () => {
         setConfirmConfig(prev => ({ ...prev, visible: false }));
         try { 
-          // CORRECTION : La raison doit avoir au moins 4 caracteres pour passer Zod
           const reasonPayload = user.isBanned ? 'Levee de la sanction' : 'Violation des regles';
           await toggleBan({ userId: user._id, reason: reasonPayload }).unwrap(); 
         } 

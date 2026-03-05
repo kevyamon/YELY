@@ -1,11 +1,12 @@
+// src/screens/admin/AdminDashboard.jsx
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef, useState } from 'react';
-// CORRECTION SENIOR : Import depuis 'react-native' et non 'react-redux' !
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
+import AdminHeaderMenu from '../../components/admin/AdminHeaderMenu';
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import BlinkingBadge from '../../components/admin/BlinkingBadge';
 import HelpModal from '../../components/admin/HelpModal';
@@ -33,6 +34,7 @@ const AdminDashboard = () => {
   const user = useSelector(selectCurrentUser);
   const isSuperAdmin = user?.role === 'superadmin';
   
+  const [headerMenuVisible, setHeaderMenuVisible] = useState(false);
   const [helpVisible, setHelpVisible] = useState(false);
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -121,7 +123,6 @@ const AdminDashboard = () => {
     },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
-    // [NOUVEAU] - Ajout du bouton Gestion de la Carte
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin }
   ];
 
@@ -133,7 +134,7 @@ const AdminDashboard = () => {
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n• Chauffeurs Actifs : Nombre de chauffeurs actuellement en règle et en ligne.\n• En Attente : Demandes de validation de paiement non traitées.\n• Utilisateurs : Total des comptes inscrits.";
+  const helpText = "Bienvenue sur le Cockpit central de Yely.\n\nIndicateurs :\n- Chauffeurs Actifs : Nombre de chauffeurs actuellement en règle et en ligne.\n- En Attente : Demandes de validation de paiement non traitées.\n- Utilisateurs : Total des comptes inscrits.";
 
   return (
     <View style={styles.container}>
@@ -143,11 +144,8 @@ const AdminDashboard = () => {
           <Text style={styles.headerSubtitle}>Bienvenue, {user?.name || 'Administrateur'}</Text>
         </View>
         <View style={styles.headerActions}>
-          <TouchableOpacity onPress={() => setHelpVisible(true)} style={styles.actionButton}>
-            <Ionicons name="help-circle-outline" size={26} color={THEME.COLORS.primary} />
-          </TouchableOpacity>
-          <TouchableOpacity onPress={() => setLogoutModalVisible(true)} style={[styles.actionButton, styles.logoutButton]}>
-            <Ionicons name="log-out-outline" size={26} color={THEME.COLORS.danger} />
+          <TouchableOpacity onPress={() => setHeaderMenuVisible(true)} style={styles.actionButton}>
+            <Ionicons name="menu-outline" size={28} color={THEME.COLORS.primary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -197,6 +195,14 @@ const AdminDashboard = () => {
         </View>
       </ScrollView>
 
+      <AdminHeaderMenu 
+        visible={headerMenuVisible}
+        onClose={() => setHeaderMenuVisible(false)}
+        onProfile={() => navigation.navigate('Profile')}
+        onHelp={() => setHelpVisible(true)}
+        onLogout={() => setLogoutModalVisible(true)}
+      />
+
       <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Contrôle" content={helpText} />
       
       <ConfirmModal 
@@ -224,7 +230,6 @@ const styles = StyleSheet.create({
   headerSubtitle: { fontSize: 14, color: THEME.COLORS.textSecondary, marginTop: 4 },
   headerActions: { flexDirection: 'row', alignItems: 'center' },
   actionButton: { padding: 8, backgroundColor: THEME.COLORS.overlay, borderRadius: THEME.BORDERS.radius.md, marginLeft: 10 },
-  logoutButton: { backgroundColor: 'rgba(192, 57, 43, 0.1)' },
   scrollContent: { padding: 20, paddingBottom: 80 },
   errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.danger, padding: 15, borderRadius: THEME.BORDERS.radius.md, marginBottom: 20, alignItems: 'center' },
   errorIcon: { marginRight: 15 },
