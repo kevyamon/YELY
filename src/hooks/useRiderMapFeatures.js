@@ -81,14 +81,20 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
       iconColor: THEME.COLORS.danger,
       type: 'destination',
     }];
-  // L'isolation critique: le tableau des dependances ne contient plus l'objet global currentRide
   }, [destination, isRideActive, rideStatus, originLat, originLng, destLat, destLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
-  const mapBottomPadding = isRideActive ? 280 : (destination ? 320 : 240);
+  // GESTION SPATIALE DYNAMIQUE
+  // Top: Espace pour le SmartHeader + Safe Area (environ 140px)
+  const mapTopPadding = 140; 
+  
+  // Bottom: S'ajuste selon la hauteur du BottomSheet actif pour ne jamais cacher le tracé
+  const mapBottomPadding = isRideActive ? 320 : (destination ? 380 : 240);
+
   const mapTraceOrigin = location;
 
   return {
     mapMarkers,
+    mapTopPadding,
     mapBottomPadding,
     driverLatLng,
     mapTraceOrigin,

@@ -38,7 +38,6 @@ const DriverHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
 
-  // CORRECTION SENIOR : Extraction de "isLoading" ET "isFetching"
   const { 
     data: subscriptionData, 
     isLoading, 
@@ -49,11 +48,8 @@ const DriverHome = ({ navigation }) => {
     skip: !isFocused 
   });
 
-  // Si c'est le premier chargement OU un rafraichissement en arrière-plan, on considère que ça charge
   const isSubscriptionLoading = isLoading || isFetching;
-
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
-  
   const isLocallyActive = user?.subscription?.isActive === true;
 
   const isActive = 
@@ -103,6 +99,7 @@ const DriverHome = ({ navigation }) => {
   });
 
   const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
+  const mapTopPadding = 140; // Marge constante pour le SmartHeader du chauffeur
 
   const renderSubscriptionBlocker = () => {
     if (isActive) return null;
@@ -164,7 +161,8 @@ const DriverHome = ({ navigation }) => {
             showRecenterButton={true}
             floating={false}
             markers={mapMarkers}
-            recenterBottomPadding={mapBottomPadding}
+            mapTopPadding={mapTopPadding}
+            mapBottomPadding={mapBottomPadding || 240}
           />
         ) : (
           <View style={styles.loadingContainer}>

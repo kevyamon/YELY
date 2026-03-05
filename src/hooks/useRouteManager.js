@@ -47,6 +47,7 @@ const distSq = (p1, p2) =>
 
 const useRouteManager = (location, driverLocation, markers) => {
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
+  const [fullRoutePoints, setFullRoutePoints] = useState([]);
 
   const drawIntervalRef = useRef(null);
   const isDrawingRouteRef = useRef(false);
@@ -56,7 +57,6 @@ const useRouteManager = (location, driverLocation, markers) => {
   const lastRouteDestKeyRef = useRef(null);
   const lastPassedIndexRef = useRef(0);
   
-  // Le bouclier Anti-Boucle Infinie
   const lastRouteFetchTimeRef = useRef(0);
 
   const stopDrawAnimation = useCallback(() => {
@@ -95,6 +95,7 @@ const useRouteManager = (location, driverLocation, markers) => {
       if (!pointA || !pointB) {
         stopDrawAnimation();
         setVisibleRoutePoints([]);
+        setFullRoutePoints([]);
         fullRoutePointsRef.current = [];
         lastRouteOriginRef.current = null;
         lastRouteDestKeyRef.current = null;
@@ -104,8 +105,6 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
-      
-      // On enregistre l'heure exacte de la requete
       lastRouteFetchTimeRef.current = Date.now();
 
       const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
@@ -114,9 +113,11 @@ const useRouteManager = (location, driverLocation, markers) => {
         return;
       }
 
-      fullRoutePointsRef.current = routePoints || [];
+      const validPoints = routePoints || [];
+      fullRoutePointsRef.current = validPoints;
+      setFullRoutePoints(validPoints);
       lastPassedIndexRef.current = 0;
-      animateRouteDraw(routePoints);
+      animateRouteDraw(validPoints);
     },
     [animateRouteDraw, stopDrawAnimation]
   );
@@ -199,6 +200,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (!activeTarget || !location) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
+      setFullRoutePoints([]);
       fullRoutePointsRef.current = [];
       lastRouteOriginRef.current = null;
       lastRouteDestKeyRef.current = null;
@@ -220,6 +222,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (distToTarget <= 25) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
+      setFullRoutePoints([]);
       fullRoutePointsRef.current = [];
       return;
     }
@@ -230,6 +233,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (destKey !== lastRouteDestKeyRef.current) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
+      setFullRoutePoints([]);
       fullRoutePointsRef.current = [];
       lastPassedIndexRef.current = 0;
 
@@ -247,8 +251,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
-      // REPARATION MOTEUR ROUTE : On ne lance un nouveau calcul qu'apres un delai de 15 secondes.
-      // Cela empeche l'application de crasher lorsque le Fake GPS avance hors des routes.
       if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
         lastRouteFetchTimeRef.current = now;
         fetchAndStoreRoute(
@@ -290,7 +292,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     return () => stopDrawAnimation();
   }, [stopDrawAnimation]);
 
-  return { visibleRoutePoints };
+  return { visibleRoutePoints, fullRoutePoints };
 };
 
 export default useRouteManager;

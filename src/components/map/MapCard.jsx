@@ -1,4 +1,4 @@
-// src/components/map/MapCard.jsx [CORRIGÉ V7 - FORCE LIGHT MODE]
+// src/components/map/MapCard.jsx
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
 // CSCSM Level: Bank Grade
 
@@ -21,8 +21,6 @@ import {
 } from './markers/MobileMarkers';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-// On garde l'URL sombre au cas où tu voudrais créer un bouton "Basculer la carte" un jour, 
-// mais elle ne sera plus activée automatiquement.
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
 const MapCard = forwardRef(({
@@ -32,21 +30,20 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   floating = false,
-  autoContrast = true, // Conservé pour ne pas casser les props des composants parents
+  autoContrast = true,
+  mapTopPadding = 140,
+  mapBottomPadding = 240,
   onMapReady,
   onPress,
   onMarkerPress,
   style,
   children,
-  recenterBottomPadding = THEME.SPACING.lg,
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
   
   const lastCameraSignatureRef = useRef('');
 
-  // MODIFICATION MAJEURE : On désactive l'écoute du mode sombre de l'OS.
-  // La carte est maintenant strictement verrouillée en mode clair avec le blanc cassé (#FAFAFA).
   const isMapDark = false; 
   const mapBackgroundColor = '#FAFAFA';
 
@@ -58,7 +55,7 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
+  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
 
@@ -87,13 +84,13 @@ const MapCard = forwardRef(({
         allCoords.push({ latitude: m.latitude, longitude: m.longitude });
       }
     });
-    visibleRoutePoints.forEach(p => {
-      if (p.latitude && p.longitude) {
-        allCoords.push({ latitude: p.latitude, longitude: p.longitude });
-      }
-    });
 
-    const currentSignature = `SIG_${allCoords.length}_${activeTarget?.type || 'IDLE'}`;
+    if (fullRoutePoints && fullRoutePoints.length > 0) {
+      allCoords.push(...fullRoutePoints);
+    }
+
+    const routeKey = fullRoutePoints && fullRoutePoints.length > 0 ? `ROUTE_${fullRoutePoints.length}` : 'NO_ROUTE';
+    const currentSignature = `SIG_${activeTarget?.type || 'IDLE'}_${routeKey}`;
 
     if (lastCameraSignatureRef.current !== currentSignature) {
       lastCameraSignatureRef.current = currentSignature;
@@ -101,7 +98,12 @@ const MapCard = forwardRef(({
       if (allCoords.length > 1) {
         const timer = setTimeout(() => {
           mapRef.current?.fitToCoordinates(allCoords, {
-            edgePadding: { top: 100, right: 40, bottom: recenterBottomPadding + 20, left: 40 },
+            edgePadding: { 
+              top: mapTopPadding + 20, 
+              right: 50, 
+              bottom: mapBottomPadding + 20, 
+              left: 50 
+            },
             animated: true
           });
         }, 600);
@@ -116,7 +118,7 @@ const MapCard = forwardRef(({
         return () => clearTimeout(timer);
       }
     }
-  }, [activeTarget, isMapReady, recenterBottomPadding, location, driverLocation, markers, visibleRoutePoints]);
+  }, [activeTarget, isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, fullRoutePoints]);
 
   const handleRecenter = () => {
     if (isMapReady && location && location.latitude) {
@@ -279,7 +281,7 @@ const MapCard = forwardRef(({
 
       {showRecenterButton && (
         <TouchableOpacity
-          style={[styles.recenterButton, { bottom: recenterBottomPadding }]}
+          style={[styles.recenterButton, { bottom: mapBottomPadding + 16 }]}
           activeOpacity={0.8}
           onPress={handleRecenter}
         >

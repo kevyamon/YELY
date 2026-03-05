@@ -29,7 +29,6 @@ const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
 
-  // Nouvel état local pour la modale POI
   const [selectedPoi, setSelectedPoi] = useState(null);
 
   const user = useSelector(selectCurrentUser);
@@ -66,6 +65,7 @@ const RiderHome = ({ navigation }) => {
 
   const {
     mapMarkers,
+    mapTopPadding,
     mapBottomPadding,
     driverLatLng,
     mapTraceOrigin
@@ -86,13 +86,12 @@ const RiderHome = ({ navigation }) => {
     }
   }
 
-  // Orchestrateur pour transformer un POI en destination
   const handlePoiSelection = (poi) => {
-    setSelectedPoi(null); // On ferme la modale
+    setSelectedPoi(null);
     handleDestinationSelect({
       latitude: poi.latitude,
       longitude: poi.longitude,
-      address: poi.name, // Le nom du POI devient l'adresse de destination
+      address: poi.name,
     });
   };
 
@@ -109,9 +108,9 @@ const RiderHome = ({ navigation }) => {
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             recenterBottomPadding={mapBottomPadding}
+             mapTopPadding={mapTopPadding}
+             mapBottomPadding={mapBottomPadding}
              onMarkerPress={(poi) => {
-               // On ouvre la modale lorsqu'un POI est cliqué
                if (!isRideActive) {
                  setSelectedPoi(poi);
                }
@@ -152,7 +151,6 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
-      {/* --- MODALES --- */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
