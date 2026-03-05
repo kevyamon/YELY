@@ -3,9 +3,9 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { AnimatedRegion, Marker } from 'react-native-maps';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
+import { AnimatedRegion, Callout, Marker } from 'react-native-maps';
 import THEME from '../../../theme/theme';
 
 export const TrackedMarker = ({
@@ -175,38 +175,140 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
+// ── Helper : premier mot uniquement ──
+const getShortName = (text) => {
+  if (!text) return '';
+  const words = text.trim().split(/\s+/);
+  if (words.length <= 1) return words[0] || '';
+  return `${words[0]}…`;
+};
+
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
+  const [expanded, setExpanded] = useState(false);
+  const tooltipAnim = useRef(new Animated.Value(0)).current;
+  const hideTimer = useRef(null);
+  const markerRef = useRef(null);
 
   useEffect(() => {
     setTracks(true);
+    const timer = setTimeout(() => setTracks(false), 800);
+    return () => clearTimeout(timer);
   }, [name, color, icon]);
+
+  // Nettoyage
+  useEffect(() => {
+    return () => {
+      if (hideTimer.current) clearTimeout(hideTimer.current);
+    };
+  }, []);
+
+  // Animation tooltip
+  useEffect(() => {
+    if (expanded) {
+      setTracks(true);
+      Animated.spring(tooltipAnim, {
+        toValue: 1,
+        friction: 6,
+        tension: 100,
+        useNativeDriver: true,
+      }).start();
+
+      hideTimer.current = setTimeout(() => {
+        closeTooltip();
+      }, 5000);
+    }
+  }, [expanded]);
+
+  const closeTooltip = useCallback(() => {
+    if (hideTimer.current) clearTimeout(hideTimer.current);
+    Animated.timing(tooltipAnim, {
+      toValue: 0,
+      duration: 200,
+      easing: Easing.out(Easing.ease),
+      useNativeDriver: true,
+    }).start(() => {
+      setExpanded(false);
+      setTimeout(() => setTracks(false), 300);
+    });
+  }, [tooltipAnim]);
+
+  const handlePress = useCallback(() => {
+    if (expanded) {
+      closeTooltip();
+    } else {
+      setExpanded(true);
+    }
+    if (onPress) onPress();
+  }, [expanded, closeTooltip, onPress]);
 
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
+  const shortName = getShortName(name);
+  const hasMore = name && name.trim().split(/\s+/).length > 1;
+
+  const tooltipOpacity = tooltipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [0, 1],
+  });
+  const tooltipTranslateY = tooltipAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: [8, 0],
+  });
+  const tooltipScale = tooltipAnim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.85, 1.03, 1],
+  });
+
   return (
     <Marker
+      ref={markerRef}
       coordinate={coordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      zIndex={40}
+      anchor={{ x: 0.5, y: 1 }}
+      zIndex={expanded ? 100 : 40}
       tracksViewChanges={tracks}
-      onPress={onPress}
+      onPress={handlePress}
     >
-      <View style={styles.poiContainer}>
-        {/* TEXTE PUR : Sans boîte, aligné strictement à gauche de l'icône */}
-        <Text 
-          style={styles.poiText} 
-          onLayout={() => {
-            setTimeout(() => setTracks(false), 800);
-          }}
-        >
-          {name}
-        </Text>
-        
-        {/* ICÔNE */}
-        <View style={[styles.poiIconCircle, { backgroundColor: `${color}20`, borderColor: color }]}>
-          <Ionicons name={icon || 'location'} size={14} color={color} />
+      <View style={styles.poiWrapper}>
+
+        {/* ── TOOLTIP NOM COMPLET ── */}
+        {expanded && hasMore && (
+          <Animated.View
+            style={[
+              styles.tooltipBox,
+              {
+                backgroundColor: THEME.COLORS.background,
+                borderColor: color,
+                opacity: tooltipOpacity,
+                transform: [
+                  { translateY: tooltipTranslateY },
+                  { scale: tooltipScale },
+                ],
+              },
+            ]}
+          >
+            <Text
+              style={[styles.tooltipText, { color: THEME.COLORS.textPrimary }]}
+            >
+              {name}
+            </Text>
+            <View style={[styles.tooltipArrow, { borderTopColor: THEME.COLORS.background }]} />
+          </Animated.View>
+        )}
+
+        {/* ── ICÔNE SEULE + PETIT LABEL ── */}
+        <View style={styles.poiBottom}>
+          <View style={[styles.poiDot, { backgroundColor: color }]}>
+            <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
+          </View>
+          <Text
+            style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
+            numberOfLines={1}
+          >
+            {shortName}
+          </Text>
         </View>
+
       </View>
     </Marker>
   );
@@ -256,32 +358,71 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-  poiContainer: {
-    width: 20,
-    height: 20,
-    justifyContent: 'center',
+
+  // ── POI ──
+
+  poiWrapper: {
     alignItems: 'center',
   },
-  poiIconCircle: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
-    borderWidth: 1.5,
+
+  // Partie basse : pastille + mot court en dessous
+  poiBottom: {
+    alignItems: 'center',
+  },
+  poiDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-    zIndex: 2,
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
   },
-  poiText: {
-    position: 'absolute',
-    right: 24, // Fixé à gauche de l'icône, sans limite de taille
-    color: THEME.COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: 'bold',
-    textAlign: 'right', // Permet au texte de s'étendre naturellement vers la gauche
-    textShadowColor: THEME.COLORS.background, // Assure la lisibilité sur la carte
+  poiShortText: {
+    fontSize: 10,
+    fontWeight: '800',
+    marginTop: 2,
+    textAlign: 'center',
+    textShadowColor: 'rgba(255,255,255,0.9)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 3,
-    zIndex: 1,
-  }
+  },
+
+  // Tooltip
+  tooltipBox: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    borderWidth: 1,
+    marginBottom: 6,
+    maxWidth: 200,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 4,
+    elevation: 5,
+  },
+  tooltipText: {
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+    lineHeight: 16,
+  },
+  tooltipArrow: {
+    position: 'absolute',
+    bottom: -6,
+    width: 0,
+    height: 0,
+    borderLeftWidth: 6,
+    borderRightWidth: 6,
+    borderTopWidth: 6,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+  },
 });
