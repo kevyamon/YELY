@@ -1,15 +1,17 @@
 // src/components/drawer/DrawerHeader.jsx
 // HEADER DU MENU (Profil, Photo & Infos)
-// Gère l'affichage intelligent du nom et de l'avatar
+// Gère l'affichage intelligent du nom et de l'avatar avec état de chargement
 
 import { Ionicons } from '@expo/vector-icons';
-import { Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { useState } from 'react';
+import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
 import { getInitials, getRoleLabel } from './menuConfig';
 
 const DrawerHeader = ({ user, role, onClose }) => {
+  const [isImageLoading, setIsImageLoading] = useState(true);
   
   // 1. Reconstruction du Nom (Priorité : Full Name > Name > Utilisateur)
   const displayName = user?.firstName 
@@ -48,11 +50,20 @@ const DrawerHeader = ({ user, role, onClose }) => {
         {/* AVATAR (Image ou Initiales) */}
         <View style={styles.avatarContainer}>
           {hasValidImage ? (
-            <Image 
-              source={{ uri: profileImage }} 
-              style={styles.avatarImage} 
-              resizeMode="cover"
-            />
+            <>
+              <Image 
+                source={{ uri: profileImage }} 
+                style={styles.avatarImage} 
+                resizeMode="cover"
+                onLoadStart={() => setIsImageLoading(true)}
+                onLoadEnd={() => setIsImageLoading(false)}
+              />
+              {isImageLoading && (
+                <View style={styles.imageLoadingOverlay}>
+                  <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+                </View>
+              )}
+            </>
           ) : (
             <View style={styles.avatarPlaceholder}>
               <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
@@ -135,6 +146,8 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginRight: THEME.SPACING.md,
+    width: 64,
+    height: 64,
   },
   avatarImage: {
     width: 64,
@@ -143,11 +156,20 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: THEME.COLORS.champagneGold,
   },
+  imageLoadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 32,
+    backgroundColor: THEME.COLORS.glassDark,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: THEME.COLORS.champagneGold,
+  },
   avatarPlaceholder: {
     width: 64,
     height: 64,
     borderRadius: 32,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)', // Gold très léger
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
@@ -167,7 +189,7 @@ const styles = StyleSheet.create({
     borderRadius: 7,
     backgroundColor: THEME.COLORS.success,
     borderWidth: 2,
-    borderColor: THEME.COLORS.background, // Se fond dans le background
+    borderColor: THEME.COLORS.background,
   },
 
   // --- USER INFO ---
