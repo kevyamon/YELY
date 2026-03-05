@@ -3,13 +3,15 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState } from 'react';
 import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
 const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => {
+  // NOUVEAU : État pour le chargement initial de l'image depuis le réseau
+  const [isImageLoading, setIsImageLoading] = useState(true);
   
-  // NOUVEAU : Dictionnaire de traduction des rôles pour un affichage propre
+  // Dictionnaire de traduction des rôles pour un affichage propre
   const getRoleDisplayName = (userRole) => {
     const roles = {
       driver: 'Chauffeur Partenaire',
@@ -25,11 +27,25 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
       <TouchableOpacity onPress={onPickImage} disabled={isUploading} activeOpacity={0.8}>
         <View style={styles.avatarContainer}>
           {userPhoto ? (
-            <Image source={{ uri: userPhoto }} style={styles.avatarImage} />
+            <>
+              <Image 
+                source={{ uri: userPhoto }} 
+                style={styles.avatarImage} 
+                onLoadStart={() => setIsImageLoading(true)}
+                onLoadEnd={() => setIsImageLoading(false)}
+              />
+              {/* Affichage du loader si l'image charge du réseau (et qu'on n'est pas déjà en train d'en uploader une nouvelle) */}
+              {isImageLoading && !isUploading && (
+                <View style={styles.avatarLoader}>
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} />
+                </View>
+              )}
+            </>
           ) : (
             <Ionicons name="person" size={60} color={THEME.COLORS.textSecondary} />
           )}
           
+          {/* Loader existant pour l'upload d'une nouvelle image */}
           {isUploading && (
             <View style={styles.avatarLoader}>
               <ActivityIndicator size="small" color={THEME.COLORS.primary} />
