@@ -53,10 +53,8 @@ export const driverIcon = L.divIcon({
   iconAnchor: [22, 22],
 });
 
-export const MapAutoFitter = ({ location, driverLocation, markers, routePoints }) => {
+export const MapAutoFitter = ({ location, driverLocation, markers, routePoints, mapTopPadding = 140, mapBottomPadding = 240 }) => {
   const map = useMap();
-  
-  // Permet de lire les points du trace sans forcer un re-rendu saccade de la camera
   const routePointsRef = useRef([]);
 
   useEffect(() => {
@@ -77,7 +75,6 @@ export const MapAutoFitter = ({ location, driverLocation, markers, routePoints }
           [activeTarget.latitude, activeTarget.longitude],
         ];
         
-        // On inclut les vrais points de la route pour que la camera cadre aussi les virages
         if (routePointsRef.current && routePointsRef.current.length > 0) {
           routePointsRef.current.forEach(p => points.push([p.latitude, p.longitude]));
         }
@@ -85,11 +82,12 @@ export const MapAutoFitter = ({ location, driverLocation, markers, routePoints }
         const bounds = L.latLngBounds(points);
         
         setTimeout(() => {
+          // Leaflet padding = [horizontal, vertical] (Point in pixels)
           map.flyToBounds(bounds, {
-            paddingTopLeft: [50, 100],
-            paddingBottomRight: [50, 320],
+            paddingTopLeft: [50, mapTopPadding + 20],
+            paddingBottomRight: [50, mapBottomPadding + 60],
             duration: 1.5,
-            maxZoom: 15, // Degrade le zoom de 16 a 15 pour voir plus large
+            maxZoom: 15,
           });
         }, 300);
       }
@@ -101,10 +99,7 @@ export const MapAutoFitter = ({ location, driverLocation, markers, routePoints }
         map.flyTo([location.latitude, location.longitude], 15, { duration: 1.2 });
       }, 300);
     }
-    
-  // La camera n'est recalculee que lorsqu'on change de phase (marqueurs) 
-  // pour eviter que la carte tremble pendant que le chauffeur roule.
-  }, [markers, map]); 
+  }, [markers, map, mapTopPadding, mapBottomPadding]); 
 
   return null;
 };

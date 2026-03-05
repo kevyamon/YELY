@@ -33,6 +33,8 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   darkMode = true,
+  mapTopPadding = 140,
+  mapBottomPadding = 240,
   onMapReady,
   onMarkerPress,
   style,
@@ -62,8 +64,6 @@ const MapCard = forwardRef(({
 
   const leafletKmlPositions = MAFERE_KML_ZONE.map((coord) => [coord.latitude, coord.longitude]);
 
-  // Nettoyage strict des points fantomes : si l'utilisateur est cache (phase 2), 
-  // on eradique completement les points de depart pour eviter les residus.
   const displayMarkers = markers.filter(marker => {
     if (!showUserMarker && (marker.type === 'pickup' || marker.type === 'pickup_origin')) {
       return false;
@@ -95,6 +95,8 @@ const MapCard = forwardRef(({
           driverLocation={driverLocation} 
           markers={displayMarkers} 
           routePoints={visibleRoutePoints}
+          mapTopPadding={mapTopPadding}
+          mapBottomPadding={mapBottomPadding}
         />
 
         {leafletKmlPositions.length > 0 && (
@@ -149,7 +151,7 @@ const MapCard = forwardRef(({
 
       {showRecenterButton && (
         <TouchableOpacity
-          style={styles.recenterButton}
+          style={[styles.recenterButton, { bottom: mapBottomPadding + 16 }]}
           onPress={() => {
             if (location && mapInstanceRef.current) {
               mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
@@ -175,7 +177,6 @@ const styles = StyleSheet.create({
   },
   recenterButton: {
     position: 'absolute',
-    bottom: 300,
     right: THEME.SPACING.lg,
     width: 44,
     height: 44,

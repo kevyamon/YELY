@@ -2,12 +2,13 @@
 // HOME RIDER WEB - Vue Modulaire (Parite totale avec l'App Mobile)
 // CSCSM Level: Bank Grade
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard.web';
+import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
@@ -27,6 +28,8 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
+
+  const [selectedPoi, setSelectedPoi] = useState(null);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -62,6 +65,7 @@ const RiderHome = ({ navigation }) => {
 
   const {
     mapMarkers,
+    mapTopPadding,
     mapBottomPadding,
     driverLatLng,
     mapTraceOrigin
@@ -71,6 +75,15 @@ const RiderHome = ({ navigation }) => {
     currentRide,
     location
   });
+
+  const handlePoiSelection = (poi) => {
+    setSelectedPoi(null);
+    handleDestinationSelect({
+      latitude: poi.latitude,
+      longitude: poi.longitude,
+      address: poi.name,
+    });
+  };
 
   return (
     <View style={styles.screenWrapper}>
@@ -84,9 +97,14 @@ const RiderHome = ({ navigation }) => {
              showUserMarker={!isRideActive}
              showRecenterButton={true}
              floating={false}
-             // 🛡️ REPARATION : Purifie de la logique "bricolee" de filtrage, on fait confiance au hook
              markers={mapMarkers}
-             recenterBottomPadding={mapBottomPadding} 
+             mapTopPadding={mapTopPadding}
+             mapBottomPadding={mapBottomPadding}
+             onMarkerPress={(poi) => {
+               if (!isRideActive) {
+                 setSelectedPoi(poi);
+               }
+             }}
            />
          ) : (
            <View style={styles.loadingContainer}>
@@ -127,6 +145,13 @@ const RiderHome = ({ navigation }) => {
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
+      />
+
+      <PoiDetailsModal
+        visible={!!selectedPoi}
+        poi={selectedPoi}
+        onClose={() => setSelectedPoi(null)}
+        onSelect={handlePoiSelection}
       />
 
       <RiderWaitModal />
