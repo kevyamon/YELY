@@ -2,12 +2,13 @@
 // HOME RIDER - Orchestrateur Principal & Nettoyage Actif
 // CSCSM Level: Bank Grade
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
 import MapCard from '../../components/map/MapCard';
+import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
@@ -27,6 +28,9 @@ import { isLocationInMafereZone } from '../../utils/mafereZone';
 const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
+
+  // Nouvel état local pour la modale POI
+  const [selectedPoi, setSelectedPoi] = useState(null);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -82,6 +86,16 @@ const RiderHome = ({ navigation }) => {
     }
   }
 
+  // Orchestrateur pour transformer un POI en destination
+  const handlePoiSelection = (poi) => {
+    setSelectedPoi(null); // On ferme la modale
+    handleDestinationSelect({
+      latitude: poi.latitude,
+      longitude: poi.longitude,
+      address: poi.name, // Le nom du POI devient l'adresse de destination
+    });
+  };
+
   return (
     <View style={styles.screenWrapper}>
       
@@ -95,7 +109,13 @@ const RiderHome = ({ navigation }) => {
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
-             recenterBottomPadding={mapBottomPadding} 
+             recenterBottomPadding={mapBottomPadding}
+             onMarkerPress={(poi) => {
+               // On ouvre la modale lorsqu'un POI est cliqué
+               if (!isRideActive) {
+                 setSelectedPoi(poi);
+               }
+             }}
            />
          ) : (
            <View style={styles.loadingContainer}>
@@ -132,10 +152,18 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
+      {/* --- MODALES --- */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
         onDestinationSelect={handleDestinationSelect}
+      />
+
+      <PoiDetailsModal
+        visible={!!selectedPoi}
+        poi={selectedPoi}
+        onClose={() => setSelectedPoi(null)}
+        onSelect={handlePoiSelection}
       />
 
       <RiderWaitModal />

@@ -3,9 +3,9 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Animated, Easing, Platform, StyleSheet, Text, View } from 'react-native';
-import { AnimatedRegion, Callout, Marker } from 'react-native-maps';
+import React, { useEffect, useRef, useState } from 'react';
+import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { AnimatedRegion, Marker } from 'react-native-maps';
 import THEME from '../../../theme/theme';
 
 export const TrackedMarker = ({
@@ -183,12 +183,9 @@ const getShortName = (text) => {
   return `${words[0]}…`;
 };
 
+// COMPOSANT ALLEGÉ : Plus d'animation ni de state de tooltip, que du visuel pur
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
-  const [expanded, setExpanded] = useState(false);
-  const tooltipAnim = useRef(new Animated.Value(0)).current;
-  const hideTimer = useRef(null);
-  const markerRef = useRef(null);
 
   useEffect(() => {
     setTracks(true);
@@ -196,107 +193,19 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
     return () => clearTimeout(timer);
   }, [name, color, icon]);
 
-  // Nettoyage
-  useEffect(() => {
-    return () => {
-      if (hideTimer.current) clearTimeout(hideTimer.current);
-    };
-  }, []);
-
-  // Animation tooltip
-  useEffect(() => {
-    if (expanded) {
-      setTracks(true);
-      Animated.spring(tooltipAnim, {
-        toValue: 1,
-        friction: 6,
-        tension: 100,
-        useNativeDriver: true,
-      }).start();
-
-      hideTimer.current = setTimeout(() => {
-        closeTooltip();
-      }, 5000);
-    }
-  }, [expanded]);
-
-  const closeTooltip = useCallback(() => {
-    if (hideTimer.current) clearTimeout(hideTimer.current);
-    Animated.timing(tooltipAnim, {
-      toValue: 0,
-      duration: 200,
-      easing: Easing.out(Easing.ease),
-      useNativeDriver: true,
-    }).start(() => {
-      setExpanded(false);
-      setTimeout(() => setTracks(false), 300);
-    });
-  }, [tooltipAnim]);
-
-  const handlePress = useCallback(() => {
-    if (expanded) {
-      closeTooltip();
-    } else {
-      setExpanded(true);
-    }
-    if (onPress) onPress();
-  }, [expanded, closeTooltip, onPress]);
-
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   const shortName = getShortName(name);
-  const hasMore = name && name.trim().split(/\s+/).length > 1;
-
-  const tooltipOpacity = tooltipAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
-  const tooltipTranslateY = tooltipAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [8, 0],
-  });
-  const tooltipScale = tooltipAnim.interpolate({
-    inputRange: [0, 0.5, 1],
-    outputRange: [0.85, 1.03, 1],
-  });
 
   return (
     <Marker
-      ref={markerRef}
       coordinate={coordinate}
       anchor={{ x: 0.5, y: 1 }}
-      zIndex={expanded ? 100 : 40}
+      zIndex={40}
       tracksViewChanges={tracks}
-      onPress={handlePress}
+      onPress={onPress}
     >
       <View style={styles.poiWrapper}>
-
-        {/* ── TOOLTIP NOM COMPLET ── */}
-        {expanded && hasMore && (
-          <Animated.View
-            style={[
-              styles.tooltipBox,
-              {
-                backgroundColor: THEME.COLORS.background,
-                borderColor: color,
-                opacity: tooltipOpacity,
-                transform: [
-                  { translateY: tooltipTranslateY },
-                  { scale: tooltipScale },
-                ],
-              },
-            ]}
-          >
-            <Text
-              style={[styles.tooltipText, { color: THEME.COLORS.textPrimary }]}
-            >
-              {name}
-            </Text>
-            <View style={[styles.tooltipArrow, { borderTopColor: THEME.COLORS.background }]} />
-          </Animated.View>
-        )}
-
-        {/* ── ICÔNE SEULE + PETIT LABEL ── */}
         <View style={styles.poiBottom}>
           <View style={[styles.poiDot, { backgroundColor: color }]}>
             <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
@@ -308,7 +217,6 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
             {shortName}
           </Text>
         </View>
-
       </View>
     </Marker>
   );
@@ -358,14 +266,9 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
-
-  // ── POI ──
-
   poiWrapper: {
     alignItems: 'center',
   },
-
-  // Partie basse : pastille + mot court en dessous
   poiBottom: {
     alignItems: 'center',
   },
@@ -391,38 +294,5 @@ const styles = StyleSheet.create({
     textShadowColor: 'rgba(255,255,255,0.9)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 3,
-  },
-
-  // Tooltip
-  tooltipBox: {
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 8,
-    borderWidth: 1,
-    marginBottom: 6,
-    maxWidth: 200,
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  tooltipText: {
-    fontSize: 12,
-    fontWeight: '700',
-    textAlign: 'center',
-    lineHeight: 16,
-  },
-  tooltipArrow: {
-    position: 'absolute',
-    bottom: -6,
-    width: 0,
-    height: 0,
-    borderLeftWidth: 6,
-    borderRightWidth: 6,
-    borderTopWidth: 6,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
   },
 });
