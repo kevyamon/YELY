@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "874118617681",
+    "project_id": "yely-27b1f",
+    "storage_bucket": "yely-27b1f.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:874118617681:android:dcd1f2f31fc44fe8377670",
+        "android_client_info": {
+          "package_name": "com.yely.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDLA2HSZrfkRoQ5e3XvEHVxX1hau32YWFE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
