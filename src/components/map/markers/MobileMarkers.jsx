@@ -175,6 +175,10 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
+// PoiMarker — Style Google Maps :
+// Texte a gauche, icone a droite, ancre sur le bord droit de l'icone.
+// Aucune boite, aucun fond — le texte flotte directement sur la carte
+// avec un halo blanc multi-directionnel pour la lisibilite sur fond clair.
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 
@@ -194,15 +198,15 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
       onPress={onPress}
     >
       <View style={styles.poiRowContainer}>
-        <Text 
-          style={styles.poiTextAdvanced}
+        <Text
+          style={styles.poiLabel}
           numberOfLines={1}
         >
           {name}
         </Text>
-        
-        <View style={[styles.poiIconCircleAdvanced, { backgroundColor: THEME.COLORS.background, borderColor: color }]}>
-          <Ionicons name={icon || 'location'} size={14} color={color} />
+
+        <View style={[styles.poiIconCircle, { borderColor: color }]}>
+          <Ionicons name={icon || 'location'} size={13} color={color} />
         </View>
       </View>
     </Marker>
@@ -253,35 +257,43 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 6,
   },
+
+  // --- POI ---
+  // Conteneur horizontal : [texte] [icone]
+  // Pas de fond, pas de bordure sur le conteneur — il est completement transparent
   poiRowContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingRight: 2,
   },
-  poiIconCircleAdvanced: {
+
+  // Texte direct sur la carte, style libelle Google Maps
+  // Halo blanc obtenu par empilement de textShadow dans les 4 directions
+  poiLabel: {
+    color: '#1A1A1A',
+    fontSize: 11,
+    fontWeight: '700',
+    marginRight: THEME.SPACING.xs,
+    flexShrink: 0,
+    // Halo blanc multi-directionnel — lisible sur n'importe quel fond de carte clair
+    textShadowColor: 'rgba(255, 255, 255, 0.95)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 4,
+  },
+
+  // Icone minimaliste : cercle transparent avec uniquement la bordure coloree
+  // Aucun fond — l'icone respire sur la carte
+  poiIconCircle: {
     width: 22,
     height: 22,
     borderRadius: 11,
     borderWidth: 1.5,
+    backgroundColor: 'rgba(255, 255, 255, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: 4,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.2,
-    shadowRadius: 1,
+    shadowOpacity: 0.15,
+    shadowRadius: 2,
     elevation: 2,
   },
-  poiTextAdvanced: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 12,
-    fontWeight: '700',
-    textShadowColor: '#FFFFFF',
-    textShadowOffset: { width: -1, height: 1 },
-    textShadowRadius: 2,
-    shadowColor: '#FFFFFF',
-    shadowOffset: { width: 1, height: -1 },
-    shadowOpacity: 1,
-    shadowRadius: 2,
-  }
 });
