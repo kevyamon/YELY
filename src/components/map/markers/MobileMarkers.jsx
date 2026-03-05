@@ -291,7 +291,7 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     marginTop: 2,
     textAlign: 'center',
-    textShadowColor: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(12, 1, 1, 0.9)',
     textShadowOffset: { width: 0, height: 0 },
     textShadowRadius: 3,
   },

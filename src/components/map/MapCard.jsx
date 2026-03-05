@@ -1,10 +1,10 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface et rendu pur avec POIs
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Allégée et Optimisée
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -19,6 +19,7 @@ import {
   SmoothDriverMarker,
   TrackedMarker,
 } from './markers/MobileMarkers';
+import useMapAutoFitter from './useMapAutoFitter'; // L'import du nouveau Hook
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -30,7 +31,6 @@ const MapCard = forwardRef(({
   showUserMarker = true,
   showRecenterButton = true,
   floating = false,
-  autoContrast = true,
   mapTopPadding = 140,
   mapBottomPadding = 240,
   onMapReady,
@@ -41,8 +41,6 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
-  
-  const lastCameraSignatureRef = useRef('');
 
   const isMapDark = false; 
   const mapBackgroundColor = '#FAFAFA';
@@ -55,70 +53,25 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
+  // Calculs de trajectoire
   const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
+  // Temps Réel
   usePoiSocketEvents();
-
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
-  const destinationMarker = markers.find((m) => m.type === 'destination');
-  const pickupMarker = markers.find((m) => m.type === 'pickup');
-  
-  const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
-
-  useEffect(() => {
-    if (!isMapReady) return;
-
-    const allCoords = [];
-    
-    if (location?.latitude && location?.longitude) {
-      allCoords.push({ latitude: location.latitude, longitude: location.longitude });
-    }
-    if (driverLocation?.latitude && driverLocation?.longitude) {
-      allCoords.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
-    }
-    markers.forEach(m => {
-      if (m.latitude && m.longitude) {
-        allCoords.push({ latitude: m.latitude, longitude: m.longitude });
-      }
-    });
-
-    if (fullRoutePoints && fullRoutePoints.length > 0) {
-      allCoords.push(...fullRoutePoints);
-    }
-
-    const routeKey = fullRoutePoints && fullRoutePoints.length > 0 ? `ROUTE_${fullRoutePoints.length}` : 'NO_ROUTE';
-    const currentSignature = `SIG_${activeTarget?.type || 'IDLE'}_${routeKey}`;
-
-    if (lastCameraSignatureRef.current !== currentSignature) {
-      lastCameraSignatureRef.current = currentSignature;
-
-      if (allCoords.length > 1) {
-        const timer = setTimeout(() => {
-          mapRef.current?.fitToCoordinates(allCoords, {
-            edgePadding: { 
-              top: mapTopPadding + 20, 
-              right: 50, 
-              bottom: mapBottomPadding + 20, 
-              left: 50 
-            },
-            animated: true
-          });
-        }, 600);
-        return () => clearTimeout(timer);
-      } else if (allCoords.length === 1) {
-        const timer = setTimeout(() => {
-          mapRef.current?.animateToRegion(
-            { latitude: allCoords[0].latitude, longitude: allCoords[0].longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
-            800
-          );
-        }, 600);
-        return () => clearTimeout(timer);
-      }
-    }
-  }, [activeTarget, isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, fullRoutePoints]);
+  // UTILISATION DU NOUVEAU HOOK DÉDIÉ (Le cerveau de la caméra est déporté)
+  useMapAutoFitter({
+    isMapReady,
+    mapRef,
+    location,
+    driverLocation,
+    markers,
+    fullRoutePoints,
+    mapTopPadding,
+    mapBottomPadding
+  });
 
   const handleRecenter = () => {
     if (isMapReady && location && location.latitude) {
@@ -260,7 +213,7 @@ const MapCard = forwardRef(({
                 anchor={{ x: 0.5, y: 0.5 }}
                 zIndex={90}
               >
-                <View onTouchEnd={() => onMarkerPress?.(marker)}>
+                <View onTouchEnd={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
                   {marker.customView || (
                     <View style={[styles.defaultMarker, marker.style]}>
                       <Ionicons
@@ -269,6 +222,10 @@ const MapCard = forwardRef(({
                         color={marker.iconColor || THEME.COLORS.champagneGold}
                       />
                     </View>
+                  )}
+                  {/* CORRECTION DU TEXTE BLANC (Ajout d'une pilule de fond) */}
+                  {marker.name && (
+                    <Text style={styles.markerLabel}>{marker.name}</Text>
                   )}
                 </View>
               </TrackedMarker>
@@ -303,8 +260,29 @@ const styles = StyleSheet.create({
   userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
   userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' },
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
+  customMarkerWrapper: { alignItems: 'center', justifyContent: 'center' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
+  markerLabel: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11, backgroundColor: 'rgba(18, 20, 24, 0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden', marginTop: 4, textAlign: 'center' },
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
 });
 
-export default React.memo(MapCard);
+// L'ARME FATALE ANTI-CLIGNOTEMENT
+// On demande à React de ne reconstruire la carte QUE si les données changent de plus de 10 mètres.
+const arePropsEqual = (prevProps, nextProps) => {
+  const isSameLocation = (loc1, loc2) => {
+    if (!loc1 && !loc2) return true;
+    if (!loc1 || !loc2) return false;
+    return loc1.latitude.toFixed(4) === loc2.latitude.toFixed(4) && 
+           loc1.longitude.toFixed(4) === loc2.longitude.toFixed(4);
+  };
+
+  return (
+    isSameLocation(prevProps.location, nextProps.location) &&
+    isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
+    prevProps.markers?.length === nextProps.markers?.length &&
+    prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
+    prevProps.showUserMarker === nextProps.showUserMarker
+  );
+};
+
+export default React.memo(MapCard, arePropsEqual);
