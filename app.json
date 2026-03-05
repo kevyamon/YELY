@@ -9,6 +9,8 @@
     "userInterfaceStyle": "light",
     "ios": {
       "supportsTablet": true,
+      "bundleIdentifier": "com.yely.app",
+      "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
           "location",
@@ -17,6 +19,8 @@
       }
     },
     "android": {
+      "package": "com.yely.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
