@@ -27,6 +27,10 @@ import RegisterPage from '../screens/auth/RegisterPage';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import LandingScreen from '../screens/LandingScreen';
 
+// Ecrans Legaux
+import PrivacyPolicyScreen from '../screens/legal/PrivacyPolicyScreen';
+import TermsOfServiceScreen from '../screens/legal/TermsOfServiceScreen';
+
 // Homes
 import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
@@ -85,8 +89,6 @@ const AppNavigator = () => {
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
 
-        // MODIFICATION MAJEURE: Tolérance à la perte du userInfo
-        // On ne vérifie que la présence des tokens vitaux.
         if (storedRefreshToken && storedToken) {
           let storedUser = null;
           
@@ -152,6 +154,8 @@ const AppNavigator = () => {
           <Stack.Screen name="Register" component={RegisterPage} />
           <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
         </Stack.Group>
       ) : isAdmin ? (
         <Stack.Group>
@@ -162,6 +166,8 @@ const AppNavigator = () => {
           <Stack.Screen name="AdminJournal" component={AdminJournal} />
           <Stack.Screen name="AdminReports" component={AdminReports} />
           <Stack.Screen name="MapManagement" component={MapManagement} />
+          <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+          <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
         </Stack.Group>
       ) : isSubscriptionPending ? (
         <Stack.Group>
@@ -197,6 +203,8 @@ const AppNavigator = () => {
             <Stack.Screen name="Report" component={ReportScreen} />
             <Stack.Screen name="Notifications" component={NotificationsScreen} />
             <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
+            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
           </Stack.Group>
         </Stack.Group>
       )}

@@ -1,50 +1,51 @@
-# Welcome to your Expo app 👋
+# YELY - Application de VTC
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+Plateforme professionnelle de mise en relation entre chauffeurs et passagers, operant initialement dans la zone de Mafere. 
+Architecture developpee et maintenue selon des standards industriels stricts.
 
-## Get started
+## Architecture Technique
 
-1. Install dependencies
+- **Frontend :** React Native (Expo), Redux Toolkit (State Management), RTK Query.
+- **Backend :** Node.js, Express, MongoDB (Non inclus dans ce depot).
+- **Temps Reel :** Socket.io pour la synchronisation des etats de course et le suivi GPS bidirectionnel.
+- **Supervision :** Sentry (Echantillonnage ajuste pour la production).
+- **UI/UX :** Composants modulaires (Glassmorphism), theme centralise, mode clair natif force.
 
-   ```bash
-   npm install
-   ```
+## Pre-requis
 
-2. Start the app
+- Node.js (v18 ou superieur recommande)
+- npm ou yarn
+- Application Expo Go (pour les tests physiques) ou simulateurs/emulateurs configures.
 
-   ```bash
-   npx expo start
-   ```
+## Installation et Configuration
 
-In the output, you'll find options to open the app in a
+1. Installer les dependances du projet :
+\`\`\`bash
+npm install
+\`\`\`
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
+2. Configurer les variables d'environnement. Creer un fichier \`.env\` a la racine du projet avec les cles suivantes :
+\`\`\`env
+EXPO_PUBLIC_API_URL=url_de_votre_backend/api/v1
+EXPO_PUBLIC_SOCKET_URL=url_de_votre_serveur_websocket
+EXPO_PUBLIC_SENTRY_DSN=votre_dsn_sentry
+EXPO_PUBLIC_USE_MOCK_LOCATION=false
+\`\`\`
+*(Note : Basculer EXPO_PUBLIC_USE_MOCK_LOCATION sur "true" permet de forcer le positionnement a Mafere lors des tests web).*
 
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
+3. Lancer le serveur de developpement :
+\`\`\`bash
+npx expo start
+\`\`\`
 
-## Get a fresh project
+## Fonctionnalites Principales
 
-When you're ready, run:
+- **Module Passager :** Geolocation, estimation algorithmique des tarifs, commande, suivi d'approche en temps reel.
+- **Module Chauffeur :** Gestion de disponibilite, acceptation de courses, validation d'arrivee (par perimetre de securite), gestion d'abonnement.
+- **Module Administratif :** Ecrans de controle pour validation des paiements (Superadmin/Partenaire) et gestion de la carte.
+- **Resilience :** Gestion automatique de la reconnexion des sockets en sortie d'arriere-plan (AppState).
 
-```bash
-npm run reset-project
-```
+## Deploiement (Production)
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
-
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+Ce projet est configure pour exclure les modules experimentaux (ex: React Compiler) en production. 
+La compilation des binaires (.apk, .aab, .ipa) pour soumission aux stores necessitera l'ajout et la configuration du fichier \`eas.json\` ainsi que la definition des \`bundleIdentifier\` et \`package\` dans le fichier \`app.json\`.

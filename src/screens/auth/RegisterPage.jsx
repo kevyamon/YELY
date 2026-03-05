@@ -1,6 +1,6 @@
 // src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisée
-// STANDARD: Industriel
+// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee
+// STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -37,6 +37,7 @@ const RegisterPage = ({ navigation, route }) => {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
   const [passwordScore, setPasswordScore] = useState(0);
+  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false); // Ajout du state legal
 
   const [formData, setFormData] = useState({
     name: '',
@@ -61,8 +62,12 @@ const RegisterPage = ({ navigation, route }) => {
       return false;
     }
     if (passwordScore < 1) { 
-       dispatch(showErrorToast({ title: "Sécurité", message: "Le mot de passe doit respecter tous les critères de sécurité." }));
+       dispatch(showErrorToast({ title: "Securite", message: "Le mot de passe doit respecter tous les criteres de securite." }));
        return false;
+    }
+    if (!hasAcceptedLegal) {
+      dispatch(showErrorToast({ title: "Action requise", message: "Veuillez accepter les conditions d'utilisation et la politique de confidentialite." }));
+      return false;
     }
     return true;
   };
@@ -78,7 +83,7 @@ const RegisterPage = ({ navigation, route }) => {
       const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      dispatch(showSuccessToast({ title: "Bienvenue sur Yély", message: "Votre compte a été créé avec succès." }));
+      dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
 
     } catch (err) {
       const errorMessage = err?.data?.message || "Une erreur est survenue lors de l'inscription.";
@@ -154,8 +159,21 @@ const RegisterPage = ({ navigation, route }) => {
               onStrengthChange={setPasswordScore}
             />
 
+            <View style={styles.legalContainer}>
+              <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
+                <Ionicons 
+                  name={hasAcceptedLegal ? "checkbox" : "square-outline"} 
+                  size={24} 
+                  color={hasAcceptedLegal ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
+                />
+              </TouchableOpacity>
+              <Text style={styles.legalText}>
+                J'ai lu et j'accepte les <Text style={styles.linkText} onPress={() => navigation.navigate('TermsOfService')}>Conditions d'utilisation</Text> et la <Text style={styles.linkText} onPress={() => navigation.navigate('PrivacyPolicy')}>Politique de confidentialite</Text>.
+              </Text>
+            </View>
+
             <GoldButton
-              title="CRÉER MON COMPTE"
+              title="CREER MON COMPTE"
               onPress={handleRegister}
               loading={isLoading}
               style={styles.registerButton}
@@ -165,7 +183,7 @@ const RegisterPage = ({ navigation, route }) => {
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.footer}>
             <Text style={styles.footerText}>
-              Déjà membre ? <Text style={styles.linkText}>Se connecter</Text>
+              Deja membre ? <Text style={styles.linkText}>Se connecter</Text>
             </Text>
           </TouchableOpacity>
 
@@ -187,6 +205,9 @@ const styles = StyleSheet.create({
   roleBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: '#FFF' },
+  legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
+  checkbox: { marginRight: THEME.SPACING.sm },
+  legalText: { color: THEME.COLORS.textSecondary, fontSize: 12, lineHeight: 18, flexShrink: 1 },
   registerButton: { marginTop: THEME.SPACING.sm },
   footer: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },
