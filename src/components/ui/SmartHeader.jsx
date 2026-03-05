@@ -27,12 +27,9 @@ const SmartHeader = ({
   userName = "Passager",
   onMenuPress, 
   onNotificationPress,
-  onSearchPress, // <-- Sera appelé pour chercher une destination
-  onOriginPress, // NOUVEAU : Sera appelé pour chercher une origine
+  onSearchPress,
   hasDestination = false,
-  onCancelDestination,
-  isManualOrigin = false, // NOUVEAU : Pour afficher un indicateur visuel
-  onCancelOrigin // NOUVEAU : Pour repasser au GPS
+  onCancelDestination 
 }) => {
   const insets = useSafeAreaInsets();
   
@@ -71,7 +68,7 @@ const SmartHeader = ({
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
-        {isRider && <LocationSyncGauge isFetching={isFetchingAddress && !isManualOrigin} variant="rider" />}
+        {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -81,21 +78,10 @@ const SmartHeader = ({
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            {/* L'adresse en haut devient cliquable pour modifier le départ */}
-            <TouchableOpacity 
-              style={styles.locationTitleWrapper} 
-              onPress={onOriginPress}
-              disabled={hasActiveRide || !isRider}
-              activeOpacity={0.7}
-            >
-              <Ionicons 
-                name={isManualOrigin ? "pin" : "location"} 
-                size={14} 
-                color={isManualOrigin ? THEME.COLORS.champagneGold : THEME.COLORS.textPrimary} 
-                style={styles.locationIcon} 
-              />
+            <View style={styles.locationTitleWrapper}>
+              <Ionicons name="location" size={14} color={THEME.COLORS.textPrimary} style={styles.locationIcon} />
               <Text style={styles.locationTitle} numberOfLines={1}>{address}</Text>
-            </TouchableOpacity>
+            </View>
           </Animated.View>
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
@@ -114,31 +100,8 @@ const SmartHeader = ({
              
              {isRider && (
                <View style={styles.riderAddressRow}>
-                  {/* Bouton pour modifier le point de départ manuellement */}
-                  <TouchableOpacity 
-                    style={styles.originTouchable} 
-                    onPress={onOriginPress}
-                    disabled={hasActiveRide}
-                  >
-                    <Ionicons 
-                      name={isManualOrigin ? "pin" : "location-sharp"} 
-                      size={14} 
-                      color={isManualOrigin ? THEME.COLORS.textPrimary : THEME.COLORS.champagneGold} 
-                    />
-                    <Text style={styles.riderAddressText} numberOfLines={1}>
-                      {address}
-                    </Text>
-                    {!hasActiveRide && (
-                      <Ionicons name="chevron-down" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />
-                    )}
-                  </TouchableOpacity>
-
-                  {/* Bouton pour annuler la saisie manuelle et revenir au GPS */}
-                  {isManualOrigin && !hasActiveRide && (
-                    <TouchableOpacity onPress={onCancelOrigin} style={styles.cancelOriginBtn}>
-                      <Ionicons name="close-circle" size={18} color={THEME.COLORS.danger} />
-                    </TouchableOpacity>
-                  )}
+                  <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} />
+                  <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
                </View>
              )}
           </View>
@@ -207,8 +170,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
   },
   locationIcon: {
     marginRight: 4,
@@ -246,28 +207,15 @@ const styles = StyleSheet.create({
   riderAddressRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  originTouchable: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderRadius: 8,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    marginLeft: 4,
+    marginBottom: 4,
   },
   riderAddressText: {
     color: THEME.COLORS.textPrimary,
     fontSize: 13,
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginLeft: 4,
     opacity: 0.9,
-    flexShrink: 1,
-  },
-  cancelOriginBtn: {
-    padding: 6,
-    marginLeft: 8,
   },
   driverGpsBadge: {
     flexDirection: 'row',

@@ -287,7 +287,7 @@ const styles = StyleSheet.create({
     elevation: 3,
   },
   poiShortText: {
-    fontSize: 10,
+    fontSize: 13,
     fontWeight: '800',
     marginTop: 2,
     textAlign: 'center',
