@@ -1,5 +1,5 @@
 // src/utils/validators.js
-// VALIDATIONS METIER CENTRALISEES
+// VALIDATIONS METIER CENTRALISEES - Humaines & Précises
 // CSCSM Level: Bank Grade
 
 export const VALIDATORS = {
@@ -29,8 +29,8 @@ export const VALIDATORS = {
 };
 
 export const ERROR_MESSAGES = {
-  name: "Le nom ne doit contenir que des lettres, espaces ou tirets (min. 2 caracteres).",
-  email: "Veuillez fournir une adresse e-mail valide et autorisee.",
-  phone: "Le format du numero de telephone est incorrect.",
-  password: "Le mot de passe ne respecte pas les criteres de securite affiches."
+  name: "Votre nom ne doit contenir ni chiffres ni caractères spéciaux.",
+  email: "Veuillez fournir une adresse e-mail valide.",
+  phone: "Veuillez vérifier votre numéro de téléphone.",
+  password: "Votre mot de passe doit inclure au moins 8 caractères, une majuscule, un chiffre et un symbole."
 };

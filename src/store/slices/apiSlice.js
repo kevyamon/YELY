@@ -1,17 +1,18 @@
 // src/store/slices/apiSlice.js
-// COEUR RESEAU - Rotation Mutex & Anti-Sniffing & Persistance Robuste
+// COEUR RESEAU - Rotation Mutex & Anti-Sniffing & Persistance Robuste & Sentry
 // STANDARD: Industriel / Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
+import * as Sentry from '@sentry/react-native';
 import { Mutex } from 'async-mutex';
 import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 import { logout, setCredentials, setRefreshing } from './authSlice';
+import { showErrorToast } from './uiSlice'; // Import pour les Toasts globaux
 
 const mutex = new Mutex();
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
 
-// Fonction utilitaire pour temporiser (utile pour contourner les verrous de l'OS)
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const baseQuery = fetchBaseQuery({
@@ -36,13 +37,51 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   const tokenBeforeRequest = api.getState().auth.token;
   let result = await baseQuery(args, api, extraOptions);
 
+  // --- GESTION GLOBALE DES ERREURS API (SENTRY & TOASTS) ---
+  if (result.error) {
+    const errorStatus = result.error.status;
+    const requestUrl = typeof args === 'string' ? args : args.url;
+    
+    // Ignorer les erreurs 401 (elles sont gérées juste en bas par le mutex)
+    // Ignorer les erreurs 400, 404, 409 (erreurs de validation gérées par les composants)
+    if (errorStatus !== 401 && errorStatus !== 400 && errorStatus !== 404 && errorStatus !== 409) {
+      
+      let toastMessage = "Une erreur inattendue est survenue.";
+      
+      if (errorStatus === 'FETCH_ERROR') {
+        toastMessage = "Impossible de joindre le serveur. Vérifiez votre connexion.";
+      } else if (errorStatus >= 500) {
+        toastMessage = "Nos serveurs rencontrent un problème technique. Nous y travaillons.";
+      } else if (errorStatus === 'TIMEOUT_ERROR') {
+        toastMessage = "La requête a pris trop de temps.";
+      }
+
+      // Affichage du Toast à l'utilisateur
+      api.dispatch(showErrorToast({
+        title: "Problème réseau",
+        message: toastMessage
+      }));
+
+      // Envoi silencieux à Sentry (uniquement en prod, pour éviter le spam en dev)
+      if (!__DEV__) {
+        Sentry.captureException(new Error(`API Error [${errorStatus}] on ${requestUrl}`), {
+          extra: {
+             status: errorStatus,
+             url: requestUrl,
+             response: result.error.data || result.error.error
+          }
+        });
+      }
+    }
+  }
+  // --------------------------------------------------------
+
   if (result.error && result.error.status === 401) {
     if (!mutex.isLocked() && !api.getState().auth.isRefreshing) {
       const release = await mutex.acquire();
       try {
         const tokenAfterLock = api.getState().auth.token;
         
-        // SECURITE RACE CONDITION
         if (tokenBeforeRequest !== tokenAfterLock) {
           console.info('[API] Race condition evitee: Token deja rafraichi. Rejeu.');
           return await baseQuery(args, api, extraOptions);
@@ -55,7 +94,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         if (!currentRefreshToken) {
            currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
            
-           // MODIFICATION MAJEURE : Tolérance au verrouillage OS
            if (!currentRefreshToken) {
              console.warn('[API] SecureStore potentiellement bloque. Nouvel essai dans 500ms...');
              await sleep(500);
@@ -109,11 +147,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           socketService.disconnect();
           api.dispatch(logout({ reason: 'REFRESH_REJECTED_401' }));
         } else {
-          // MODIFICATION MAJEURE : Tolérance Réseau
           console.warn(`[API] Erreur reseau ou serveur (${refreshResponse.status}). Session conservee intacte.`);
         }
       } catch (error) {
-        // MODIFICATION MAJEURE : Tolérance Réseau
         console.error('[API] Echec du fetch de rafraichissement (Reseau coupe ?). Session conservee.', error);
       } finally {
         api.dispatch(setRefreshing(false));
