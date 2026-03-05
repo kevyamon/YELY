@@ -62,7 +62,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
     </TouchableOpacity>
     <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
     <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Ce module arrive bientôt.</Text>
+    <Text style={styles.placeholderText}>Ce module arrive bientot.</Text>
   </View>
 );
 
@@ -85,8 +85,18 @@ const AppNavigator = () => {
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
 
-        if (storedUserStr && storedRefreshToken && storedToken) {
-          const storedUser = JSON.parse(storedUserStr);
+        // MODIFICATION MAJEURE: Tolérance à la perte du userInfo
+        // On ne vérifie que la présence des tokens vitaux.
+        if (storedRefreshToken && storedToken) {
+          let storedUser = null;
+          
+          if (storedUserStr) {
+            try {
+              storedUser = JSON.parse(storedUserStr);
+            } catch (parseError) {
+              console.warn('[AUTH] Erreur de parsing du profil local. On restaure quand meme les tokens.');
+            }
+          }
 
           dispatch(restoreAuth({ 
             user: storedUser, 
@@ -97,11 +107,12 @@ const AppNavigator = () => {
           dispatch(forceSilentRefresh());
           
         } else {
-          dispatch(logout()); 
+          console.info('[AUTH] Tokens absents au demarrage. Deconnexion propre.');
+          dispatch(logout({ reason: 'MISSING_TOKENS_AT_STARTUP' })); 
         }
       } catch (e) {
-        console.error('[Auth] Erreur critique au demarrage:', e);
-        dispatch(logout());
+        console.error('[AUTH FATAL] Erreur critique au demarrage:', e);
+        dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsReady(true);
         setTimeout(async () => {

@@ -1,5 +1,6 @@
 // src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - LOGIQUE PASSIVE
+// PAGE INSCRIPTION - LOGIQUE PASSIVE & AUTO-NETTOYAGE
+// STANDARD: Industriel
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -52,7 +53,7 @@ const RegisterPage = ({ navigation, route }) => {
       length: pass.length >= 8,
       upper: /[A-Z]/.test(pass),
       number: /\d/.test(pass),
-      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(pass)
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(pass)
     };
     const validCount = Object.values(stats).filter(Boolean).length;
     setPasswordStats({ ...stats, score: validCount / 4 });
@@ -60,6 +61,7 @@ const RegisterPage = ({ navigation, route }) => {
 
   const validateForm = () => {
     const { name, email, password, phone } = formData;
+    
     if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
       dispatch(showErrorToast({ title: "Incomplet", message: "Tous les champs sont requis." }));
       return false;
@@ -73,7 +75,7 @@ const RegisterPage = ({ navigation, route }) => {
       return false;
     }
     if (passwordStats.score < 1) { 
-       dispatch(showErrorToast({ title: "Mot de passe faible", message: "Respectez les critères." }));
+       dispatch(showErrorToast({ title: "Mot de passe faible", message: "Respectez les criteres exiges." }));
        return false;
     }
     return true;
@@ -83,19 +85,26 @@ const RegisterPage = ({ navigation, route }) => {
     if (!validateForm()) return;
 
     try {
-      const fullPhone = `+${callingCode}${formData.phone.replace(/^0+/, '')}`;
+      // Nettoyage strict du numero
+      const cleanPhone = formData.phone.replace(/\s/g, '').replace(/^0+/, '');
+      const fullPhone = `+${callingCode}${cleanPhone}`;
       
       const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
+      
+      // Extraction securisee (deja presente mais renforcee)
       const { user, accessToken, refreshToken } = res.data;
 
+      if (!accessToken || !refreshToken) {
+        throw new Error("Jetons d'authentification manquants fournis par le serveur.");
+      }
+
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      
-      dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte créé avec succès." }));
+      dispatch(showSuccessToast({ title: "Bienvenue !", message: "Compte cree avec succes." }));
 
     } catch (err) {
-      console.error('[REGISTER_ERROR]', err);
-      const errorMessage = err?.data?.message || "Erreur lors de l'inscription.";
-      dispatch(showErrorToast({ title: "Échec inscription", message: errorMessage }));
+      console.warn('[AUTH_REGISTER_ERROR]', err?.data || err.message);
+      const errorMessage = err?.data?.message || err.message || "Erreur lors de l'inscription.";
+      dispatch(showErrorToast({ title: "Echec inscription", message: errorMessage }));
     }
   };
 
@@ -173,7 +182,7 @@ const RegisterPage = ({ navigation, route }) => {
               <View style={{ flex: 1 }}>
                 <GlassInput
                   icon="call-outline"
-                  placeholder="Téléphone"
+                  placeholder="Telephone"
                   keyboardType="phone-pad"
                   value={formData.phone}
                   onChangeText={(text) => setFormData({ ...formData, phone: text.replace(/[^0-9]/g, '') })}
@@ -217,7 +226,7 @@ const RegisterPage = ({ navigation, route }) => {
             </View>
 
             <GoldButton
-              title="CRÉER MON COMPTE"
+              title="CREER MON COMPTE"
               onPress={handleRegister}
               loading={isLoading}
               style={styles.registerButton}
@@ -230,7 +239,7 @@ const RegisterPage = ({ navigation, route }) => {
             style={styles.loginFooter}
           >
             <Text style={styles.loginRedirect}>
-              Déjà membre ? <Text style={styles.linkText}>Se connecter</Text>
+              Deja membre ? <Text style={styles.linkText}>Se connecter</Text>
             </Text>
           </TouchableOpacity>
 
@@ -245,14 +254,12 @@ const styles = StyleSheet.create({
     flex: 1, 
     backgroundColor: THEME.COLORS.deepAsphalt 
   },
-
   scrollContent: { 
     flexGrow: 1, 
     paddingHorizontal: THEME.SPACING.xl, 
     paddingTop: THEME.SPACING.sm, 
     paddingBottom: THEME.SPACING.lg 
   },
-
   backButton: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -260,14 +267,12 @@ const styles = StyleSheet.create({
     marginTop: THEME.SPACING.xs, 
     alignSelf: 'flex-start' 
   },
-
   backText: { 
     color: THEME.COLORS.champagneGold, 
     marginLeft: 8, 
     fontSize: 16, 
     fontWeight: '600' 
   },
-
   mainTitle: { 
     color: THEME.COLORS.champagneGold, 
     textAlign: 'center', 
@@ -276,17 +281,14 @@ const styles = StyleSheet.create({
     marginBottom: THEME.SPACING.md, 
     letterSpacing: 2 
   },
-
   card: { 
     padding: THEME.SPACING.lg 
   },
-
   roleContainer: { 
     flexDirection: 'row', 
     gap: 15, 
     marginBottom: THEME.SPACING.lg 
   },
-
   roleBtn: { 
     flex: 1, 
     flexDirection: 'row', 
@@ -298,28 +300,23 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.glassBorder, 
     backgroundColor: THEME.COLORS.glassLight 
   },
-
   roleBtnActive: { 
     backgroundColor: "#10B981", 
     borderColor: "#10B981" 
   },
-
   roleText: { 
     marginLeft: 8, 
     fontWeight: '600', 
     color: THEME.COLORS.textSecondary 
   },
-
   roleTextActive: { 
     color: '#FFF' 
   },
-
   phoneRow: { 
     flexDirection: 'row', 
     gap: 8, 
     alignItems: 'flex-start' 
   },
-
   countryPickerContainer: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -330,55 +327,45 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: THEME.COLORS.glassBorder 
   },
-
   callingCodeText: { 
     color: THEME.COLORS.champagneGold, 
     marginLeft: 5, 
     fontWeight: 'bold' 
   },
-
   gaugeContainer: { 
     marginTop: -10, 
     marginBottom: 5 
   },
-
   progressBar: { 
     borderRadius: 5, 
     height: 6, 
     backgroundColor: 'rgba(255,255,255,0.1)' 
   },
-
   requirementsBox: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
     marginTop: 8, 
     gap: 10 
   },
-
   reqRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     marginRight: 5 
   },
-
   reqText: { 
     fontSize: 11, 
     marginLeft: 4 
   },
-
   registerButton: { 
     marginTop: THEME.SPACING.sm 
   },
-
   loginFooter: { 
     marginTop: THEME.SPACING.lg, 
     alignItems: 'center' 
   },
-
   loginRedirect: { 
     color: THEME.COLORS.textTertiary 
   },
-
   linkText: { 
     color: THEME.COLORS.champagneGold, 
     fontWeight: 'bold' 

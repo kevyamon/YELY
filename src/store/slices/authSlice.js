@@ -19,16 +19,16 @@ const initialState = {
   }
 };
 
-// Helpers securises pour eviter les promesses non resolues dans les reducers synchrones
+// Helpers securises asynchrones pour purger les effets de bord des reducers
 const safeStorageSet = (key, value) => {
   Promise.resolve(SecureStorageAdapter.setItem(key, value)).catch(err => {
-    console.error(`[Redux Storage] Echec de sauvegarde pour ${key}:`, err);
+    console.error(`[Redux] Echec de sauvegarde pour ${key}:`, err);
   });
 };
 
 const safeStorageRemove = (key) => {
   Promise.resolve(SecureStorageAdapter.removeItem(key)).catch(err => {
-    console.error(`[Redux Storage] Echec de suppression pour ${key}:`, err);
+    console.error(`[Redux] Echec de suppression pour ${key}:`, err);
   });
 };
 
@@ -59,7 +59,7 @@ const authSlice = createSlice({
       if (finalToken) state.token = finalToken;
       if (refreshToken) state.refreshToken = refreshToken;
       
-      state.isAuthenticated = !!(state.user && state.token);
+      state.isAuthenticated = !!state.token;
 
       if (state.user) safeStorageSet('userInfo', JSON.stringify(state.user));
       if (state.token) safeStorageSet('token', state.token);
@@ -94,10 +94,11 @@ const authSlice = createSlice({
 
     restoreAuth: (state, action) => {
       const { user, token, refreshToken } = action.payload || {};
-      state.user = user;
+      state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
-      state.isAuthenticated = !!(user && token);
+      // MODIFICATION MAJEURE : On est authentifie meme si user est null (tant qu'on a le token)
+      state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
         state.subscriptionStatus = {
@@ -132,7 +133,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   }
 
   if (!currentRefreshToken || auth.isRefreshing) {
-    console.info('[AUTH] forceSilentRefresh annule: Aucun token ou rafraichissement deja en cours.');
+    console.info('[AUTH] forceSilentRefresh annule: Aucun token ou dejà en cours.');
     return;
   }
 
@@ -170,7 +171,8 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
       dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
     }
   } catch (error) {
-    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee.", error);
+    // MODIFICATION MAJEURE : On ne deconnecte PAS sur une erreur reseau au demarrage
+    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
   } finally {
     dispatch(setRefreshing(false));
   }

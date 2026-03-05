@@ -73,9 +73,12 @@ const LoginPage = ({ navigation }) => {
       }
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
-      const { user, accessToken } = res.data;
+      
+      // CORRECTION CRITIQUE : Extraction et sauvegarde du refreshToken
+      const { user, accessToken, refreshToken } = res.data;
 
-      dispatch(setCredentials({ user, accessToken }));
+      dispatch(setCredentials({ user, accessToken, refreshToken }));
+      
       dispatch(showSuccessToast({
         title: "Connexion réussie",
         message: `Bienvenue, ${user.name.split(' ')[0]}.`
@@ -152,7 +155,6 @@ const LoginPage = ({ navigation }) => {
               onChangeText={handlePasswordChange}
             />
 
-            {/* ✅ AJOUT SENIOR : Redirection Mot de passe oublié */}
             <TouchableOpacity 
               onPress={() => navigation.navigate('ForgotPassword')}
               style={styles.forgotPasswordLink}
