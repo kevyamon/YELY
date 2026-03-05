@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
-  Image, // AJOUT : Import du composant Image
+  Image,
   Linking,
   StyleSheet,
   Text,
@@ -116,11 +116,16 @@ const RiderRideOverlay = () => {
   };
 
   const handleCallDriver = () => {
-    const phoneUrl = `tel:${currentRide.driverPhone || '0000000000'}`;
+    const phone = currentRide.driverPhone || currentRide.driver?.phone || '0000000000';
+    const phoneUrl = `tel:${phone}`;
     Linking.openURL(phoneUrl).catch(() => {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Appel impossible.' }));
     });
   };
+
+  // CORRECTION SENIOR : Extraction securisee de l'avatar et du nom peu importe le format backend
+  const driverAvatar = currentRide.driverProfilePicture || currentRide.driverAvatar || currentRide.driver?.profilePicture || currentRide.driver?.avatar;
+  const driverName = currentRide.driverName || currentRide.driver?.name || 'Chauffeur Assigne';
 
   return (
     <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
@@ -134,10 +139,9 @@ const RiderRideOverlay = () => {
 
       <View style={styles.driverInfoCard}>
         <View style={styles.avatarPlaceholder}>
-          {/* MODIFICATION : Affichage conditionnel de la photo du chauffeur */}
-          {currentRide.driverProfilePicture ? (
+          {driverAvatar ? (
             <Image 
-              source={{ uri: currentRide.driverProfilePicture }} 
+              source={{ uri: driverAvatar }} 
               style={styles.avatarImage} 
             />
           ) : (
@@ -147,7 +151,7 @@ const RiderRideOverlay = () => {
 
         <View style={styles.driverDetails}>
           <Text style={styles.driverName}>
-            {currentRide.driverName || 'Chauffeur Assigne'}
+            {driverName}
           </Text>
           <View style={styles.carBadge}>
             <Text style={styles.carText}>Vehicule Confirme</Text>
@@ -205,8 +209,8 @@ const styles = StyleSheet.create({
   dotArrived: { backgroundColor: THEME.COLORS.info },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   driverInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
-  avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, // Ajout de overflow: 'hidden'
-  avatarImage: { width: '100%', height: '100%', borderRadius: 30 }, // Nouveau style pour l'image
+  avatarPlaceholder: { width: 60, height: 60, borderRadius: 30, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 30 },
   driverDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   driverName: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   carBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginBottom: 4, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },

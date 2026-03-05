@@ -1,5 +1,5 @@
 // src/hooks/useRiderLifecycle.js
-// HOOK METIER - Gestion de la commande, tarification et cycle passager
+// HOOK METIER - Gestion de la commande, Persistance & Destruction Robuste Anti-Zombie
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -8,7 +8,7 @@ import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
 import { useGetCurrentRideQuery, useLazyEstimateRideQuery, useRequestRideMutation } from '../store/api/ridesApiSlice';
-import { setCurrentRide } from '../store/slices/rideSlice';
+import { clearCurrentRide, setCurrentRide } from '../store/slices/rideSlice';
 import { showErrorToast } from '../store/slices/uiSlice';
 import { isLocationInMafereZone } from '../utils/mafereZone';
 
@@ -21,6 +21,7 @@ const MOCK_VEHICLES = [
 const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
   const appState = useRef(AppState.currentState);
+  const previousFetchDataRef = useRef(undefined); // FIX : Bloque la resurrection d'etat
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   const [destination, setDestination] = useState(null);
@@ -29,24 +30,43 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
-  const { refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, { skip: !currentRide });
+  
+  const { data: fetchedRideData, isSuccess: isFetchSuccess, refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, {
+    refetchOnMountOrArgChange: true
+  });
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
 
-  // 🚀 Resynchronisation au retour en premier plan
+  // RESTAURATION ET DESTRUCTION ROBUSTE (Anti-Zombie State)
+  useEffect(() => {
+    if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
+      previousFetchDataRef.current = fetchedRideData;
+      
+      const ride = fetchedRideData?.data !== undefined ? fetchedRideData.data : fetchedRideData;
+      const fetchedId = ride ? (ride._id || ride.id || ride.rideId) : null;
+      const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
+
+      if (fetchedId) {
+        if (currentId !== fetchedId) {
+          dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
+        }
+      } else if (currentId) {
+        dispatch(clearCurrentRide());
+      }
+    }
+  }, [fetchedRideData, isFetchSuccess, currentRide, dispatch]);
+
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        if (currentRide) {
-          refetchCurrentRide();
-        }
+        refetchCurrentRide();
       }
       appState.current = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [currentRide, refetchCurrentRide]);
+  }, [refetchCurrentRide]);
 
   useEffect(() => {
     if (location) {
@@ -72,14 +92,14 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   }, [destination, displayVehicles, selectedVehicle]);
 
   useEffect(() => {
-    if (rideToRate || !currentRide || currentRide?.status === 'cancelled') {
+    if (rideToRate || (!currentRide && !fetchedRideData) || currentRide?.status === 'cancelled') {
       setDestination(null);
       setSelectedVehicle(null);
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
       }, 300);
     }
-  }, [rideToRate, currentRide, mapRef]);
+  }, [rideToRate, currentRide, fetchedRideData, mapRef]);
 
   const handleDestinationSelect = async (selectedPlace) => {
     if (!isLocationInMafereZone(selectedPlace)) {

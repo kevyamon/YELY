@@ -1,5 +1,5 @@
 // src/hooks/useDriverLifecycle.js
-// HOOK METIER - Cycle de vie du chauffeur, Geofencing et Modale d'Arrivee
+// HOOK METIER - Cycle de vie du chauffeur, Persistance & Destruction Robuste Anti-Zombie
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -11,7 +11,7 @@ import socketService from '../services/socketService';
 import { useCompleteRideMutation, useGetCurrentRideQuery, useMarkAsArrivedMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../store/api/usersApiSlice';
 import { updateUserInfo } from '../store/slices/authSlice';
-import { setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlice';
+import { clearCurrentRide, setCurrentRide, setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
@@ -27,7 +27,8 @@ const useDriverLifecycle = ({
   isDriverInZone,
   mapRef,
   errorMsg,
-  isRideActive
+  isRideActive,
+  isDisabled
 }) => {
   const dispatch = useDispatch();
   const hasAutoConnected = useRef(false);
@@ -35,10 +36,10 @@ const useDriverLifecycle = ({
   const snoozeTimerRef = useRef(null);
   const isSubmittingRef = useRef(false); 
   const appState = useRef(AppState.currentState);
+  const previousFetchDataRef = useRef(undefined); // FIX : Bloque la resurrection d'etat
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
-  
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
@@ -46,22 +47,46 @@ const useDriverLifecycle = ({
   const [startRide] = useStartRideMutation();
   const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
   
-  const { refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, { skip: !currentRide });
+  const { data: fetchedRideData, isSuccess: isFetchSuccess, refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, {
+    refetchOnMountOrArgChange: true
+  });
 
-  // 🚀 Resynchronisation au retour en premier plan
+  // RESTAURATION ET DESTRUCTION ROBUSTE (Anti-Zombie State)
+  useEffect(() => {
+    // Ne s'execute QUE si RTK Query retourne un nouveau resultat physique
+    if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
+      previousFetchDataRef.current = fetchedRideData;
+      
+      const ride = fetchedRideData?.data !== undefined ? fetchedRideData.data : fetchedRideData;
+      const fetchedId = ride ? (ride._id || ride.id || ride.rideId) : null;
+      const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
+
+      if (fetchedId) {
+        if (currentId !== fetchedId) {
+          dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
+        }
+      } else if (currentId) {
+        // Le serveur confirme la destruction, on purge tout.
+        dispatch(clearCurrentRide());
+        setIsArrivalModalVisible(false);
+        if (simulatedLocation && setSimulatedLocation) {
+          setSimulatedLocation(null);
+        }
+      }
+    }
+  }, [fetchedRideData, isFetchSuccess, currentRide, dispatch, simulatedLocation, setSimulatedLocation]);
+
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        if (currentRide) {
-          refetchCurrentRide();
-        }
+        refetchCurrentRide();
       }
       appState.current = nextAppState;
     };
 
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
-  }, [currentRide, refetchCurrentRide]);
+  }, [refetchCurrentRide]);
 
   useEffect(() => {
     if (user?.isAvailable !== undefined) {
@@ -82,7 +107,7 @@ const useDriverLifecycle = ({
 
   useEffect(() => {
     const processAutoConnect = async () => {
-      if (!hasAutoConnected.current && location && !isAvailable) {
+      if (!hasAutoConnected.current && location && !isAvailable && !isDisabled) {
         hasAutoConnected.current = true;
 
         if (isDriverInZone) {
@@ -106,7 +131,7 @@ const useDriverLifecycle = ({
     };
 
     processAutoConnect();
-  }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch]);
+  }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch, isDisabled]);
 
   useEffect(() => {
     if (location && (isAvailable || isRideActive)) {
@@ -118,15 +143,10 @@ const useDriverLifecycle = ({
     if (location) {
       const getAddress = async () => {
         try {
-          const addr = await MapService.getAddressFromCoordinates(
-            location.latitude,
-            location.longitude
-          );
+          const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
           setCurrentAddress(addr);
         } catch (error) {
-          setCurrentAddress(
-            `${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`
-          );
+          setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
         }
       };
       getAddress();
@@ -136,7 +156,7 @@ const useDriverLifecycle = ({
   }, [location, errorMsg]);
 
   useEffect(() => {
-    if (!currentRide) {
+    if (!currentRide && !fetchedRideData) {
       isProcessingPickupRef.current = false;
       isSubmittingRef.current = false; 
       setIsArrivalModalVisible(false);
@@ -144,12 +164,12 @@ const useDriverLifecycle = ({
         clearTimeout(snoozeTimerRef.current);
         snoozeTimerRef.current = null;
       }
-    } else if (currentRide.status === 'in_progress') {
+    } else if (currentRide?.status === 'in_progress') {
       isProcessingPickupRef.current = true;
-    } else if (currentRide.status === 'accepted') {
+    } else if (currentRide?.status === 'accepted') {
       isProcessingPickupRef.current = false;
     }
-  }, [currentRide?.status]);
+  }, [currentRide?.status, fetchedRideData]);
 
   useEffect(() => {
     const handlePromptArrival = ({ rideId }) => {
@@ -167,15 +187,15 @@ const useDriverLifecycle = ({
   }, [currentRide]);
 
   useEffect(() => {
-    if (!currentRide) {
-      if (simulatedLocation) {
+    if (!currentRide && !fetchedRideData) {
+      if (simulatedLocation && setSimulatedLocation) {
         setSimulatedLocation(null);
       }
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
       }, 300);
     }
-  }, [currentRide, simulatedLocation, setSimulatedLocation, mapRef]);
+  }, [currentRide, fetchedRideData, simulatedLocation, setSimulatedLocation, mapRef]);
 
   useEffect(() => {
     if (!location || !currentRide) return;

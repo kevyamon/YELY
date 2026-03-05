@@ -18,7 +18,7 @@ import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import ActionPill from './ActionPill';
 import LocationSyncGauge from './LocationSyncGauge';
-import NotificationBell from './NotificationBell'; // Ajout de notre nouveau sous-composant
+import NotificationBell from './NotificationBell';
 import SessionRefreshSkeleton from './SessionRefreshSkeleton';
 
 const SmartHeader = ({ 
@@ -75,7 +75,6 @@ const SmartHeader = ({
         
         <View style={styles.topRow}>
           
-          {/* UTILISATION DU COMPOSANT ISOLÉ */}
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
@@ -94,7 +93,7 @@ const SmartHeader = ({
           <View style={styles.greetingHeader}>
              
              <SessionRefreshSkeleton 
-               isRefreshing={isRefreshing}
+               isRefreshing={isRefreshing && !user} 
                fallbackText={`Bonjour, ${userName}`}
                textStyle={styles.greetingText}
              />

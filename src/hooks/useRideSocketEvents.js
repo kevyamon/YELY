@@ -1,4 +1,7 @@
 // src/hooks/useRideSocketEvents.js
+// ECOUTEURS SOCKET - Gestion Robuste des Profils et Annulations d'Urgence
+// STANDARD: Industriel / Bank Grade
+
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
@@ -29,12 +32,15 @@ const useRideSocketEvents = () => {
     };
 
     const handleRideCancelled = (data) => {
-      if (isDuplicateEvent(`cancelled_${data?.rideId}`)) return;
+      // FIX : Si pas d'ID (comme lors d'un reset d'urgence), on genère un token temp pour ne pas bloquer l'event
+      const uniqueId = data?.rideId || Date.now().toString();
+      if (isDuplicateEvent(`cancelled_${uniqueId}`)) return;
+      
       dispatch(clearCurrentRide());
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
         title: 'Course annulée',
-        message: data?.reason || 'Annulation confirmée par le serveur.',
+        message: data?.message || data?.reason || 'Annulation confirmée par le serveur.',
       }));
     };
 
@@ -72,6 +78,7 @@ const useRideSocketEvents = () => {
       dispatch(updateRideStatus({
         status: 'negotiating',
         driverName: data?.driverName || 'Identification en cours',
+        driverProfilePicture: data?.driverProfilePicture 
       }));
     };
 
@@ -79,6 +86,7 @@ const useRideSocketEvents = () => {
       dispatch(setCurrentRide({
         proposedPrice: data.amount,
         driverName: data.driverName,
+        driverProfilePicture: data.driverProfilePicture, 
         status: 'negotiating',
       }));
     };

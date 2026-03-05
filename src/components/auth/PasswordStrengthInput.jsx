@@ -76,8 +76,8 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
       </View>
 
       <TouchableOpacity style={styles.suggestBtn} onPress={suggestPassword}>
-        <Ionicons name="sparkles-outline" size={16} color={THEME.COLORS.champagneGold} />
-        <Text style={styles.suggestText}>Suggérer un mot de passe facile à retenir</Text>
+        <Ionicons name="sparkles" size={18} color={THEME.COLORS.champagneGold} />
+        <Text style={styles.suggestText}>Générer un mot de passe sécurisé</Text>
       </TouchableOpacity>
 
       {password.length > 0 && (
@@ -106,16 +106,21 @@ const styles = StyleSheet.create({
   suggestBtn: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginTop: 5, 
-    marginBottom: 10,
-    paddingHorizontal: 5
+    justifyContent: 'center',
+    marginTop: 10, 
+    marginBottom: 15,
+    paddingVertical: 12,
+    paddingHorizontal: 15,
+    backgroundColor: THEME.COLORS.glassLight,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.champagneGold,
   },
   suggestText: { 
     color: THEME.COLORS.champagneGold, 
-    fontSize: 12, 
+    fontSize: 13, 
     fontWeight: 'bold', 
-    marginLeft: 8,
-    textDecorationLine: 'underline'
+    marginLeft: 10,
   },
   gaugeContainer: { marginTop: 5 },
   progressBar: { borderRadius: 5, height: 6, backgroundColor: 'rgba(255,255,255,0.1)' },
