@@ -1,19 +1,25 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GEOLOCALISATION WEB - API Navigateur Native
-// STANDARD: Industriel / Bank Grade
+// GESTION GEOLOCALISATION WEB - Suivi en Temps Reel & API Navigateur
+// CSCSM Level: Bank Grade
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const EXACT_MOCK_LOCATION = {
   latitude: 5.414702,
   longitude: -3.028109,
+  heading: 0,
+  speed: 0
 };
 
-const useGeolocation = () => {
+const useGeolocation = (options = {}) => {
+  const { watchPosition = true } = options;
+
   const [location, setLocation] = useState(null);
   const [address, setAddress] = useState(null); 
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  const watchIdRef = useRef(null);
 
   const reverseGeocodeWeb = async (coords) => {
     try {
@@ -41,42 +47,79 @@ const useGeolocation = () => {
   };
 
   useEffect(() => {
-    const fetchRealLocation = async () => {
-      // Fallback de test si la variable d'environnement l'exige
+    let mounted = true;
+
+    const startTracking = async () => {
       if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
-        setLocation(EXACT_MOCK_LOCATION);
-        await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
-        setIsLoading(false);
+        if (mounted) {
+          setLocation(EXACT_MOCK_LOCATION);
+          await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
+          setIsLoading(false);
+        }
         return;
       }
 
       if (!navigator.geolocation) {
-        setError("La geolocalisation n'est pas supportee par ce navigateur.");
-        setIsLoading(false);
+        if (mounted) {
+          setError("La geolocalisation n'est pas supportee par ce navigateur.");
+          setIsLoading(false);
+        }
         return;
       }
 
+      // Tir initial pour avoir une position tres rapide
       navigator.geolocation.getCurrentPosition(
         async (position) => {
+          if (!mounted) return;
           const coords = {
             latitude: position.coords.latitude,
             longitude: position.coords.longitude,
+            heading: position.coords.heading || 0,
+            speed: position.coords.speed || 0,
           };
           setLocation(coords);
           await reverseGeocodeWeb(coords);
           setIsLoading(false);
         },
         (err) => {
-          console.warn("Erreur API Geolocation:", err);
-          setError("Impossible de recuperer votre position exacte.");
-          setIsLoading(false);
+          if (mounted) {
+            setError("Impossible de recuperer votre position initiale.");
+            setIsLoading(false);
+          }
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+
+      // Si le mode radar est actif, on lance l'ecoute en continu
+      if (watchPosition) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            if (mounted) {
+              setLocation({
+                latitude: position.coords.latitude,
+                longitude: position.coords.longitude,
+                heading: position.coords.heading || 0,
+                speed: position.coords.speed || 0,
+              });
+            }
+          },
+          (err) => {
+            console.warn("Perte de signal GPS Web:", err);
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 2000 }
+        );
+      }
     };
 
-    fetchRealLocation();
-  }, []);
+    startTracking();
+
+    return () => {
+      mounted = false;
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, [watchPosition]);
 
   return { location, address, error, isLoading };
 };

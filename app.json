@@ -38,7 +38,13 @@
       ]
     },
     "web": {
-      "favicon": "./assets/images/favicon.png"
+      "favicon": "./assets/images/favicon.png",
+      "name": "YÉLY VTC",
+      "shortName": "YÉLY",
+      "display": "standalone",
+      "backgroundColor": "#121418",
+      "themeColor": "#D4AF37",
+      "orientation": "portrait"
     },
     "plugins": [
       [
