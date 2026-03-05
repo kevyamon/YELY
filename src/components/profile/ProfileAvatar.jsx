@@ -4,12 +4,13 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
 const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => {
-  // NOUVEAU : État pour le chargement initial de l'image depuis le réseau
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  // NOUVEAU : Le chargement initial est activé par défaut UNIQUEMENT sur mobile (iOS/Android)
+  // Sur le Web, on initialise à 'false' pour éviter de bloquer l'interface
+  const [isImageLoading, setIsImageLoading] = useState(Platform.OS !== 'web');
   
   // Dictionnaire de traduction des rôles pour un affichage propre
   const getRoleDisplayName = (userRole) => {
@@ -22,17 +23,25 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
     return roles[userRole] || 'Passager';
   };
 
+  // ISOLATION DES ÉVÉNEMENTS : 
+  // On crée un petit sac de commandes qui sera vide sur le Web, 
+  // mais qui contiendra les instructions de chargement sur iOS et Android.
+  const imageLoadEvents = Platform.OS === 'web' ? {} : {
+    onLoadStart: () => setIsImageLoading(true),
+    onLoadEnd: () => setIsImageLoading(false)
+  };
+
   return (
     <View style={styles.avatarSection}>
       <TouchableOpacity onPress={onPickImage} disabled={isUploading} activeOpacity={0.8}>
         <View style={styles.avatarContainer}>
           {userPhoto ? (
             <>
+              {/* On vide le sac d'événements dans le composant Image */}
               <Image 
                 source={{ uri: userPhoto }} 
                 style={styles.avatarImage} 
-                onLoadStart={() => setIsImageLoading(true)}
-                onLoadEnd={() => setIsImageLoading(false)}
+                {...imageLoadEvents}
               />
               {/* Affichage du loader si l'image charge du réseau (et qu'on n'est pas déjà en train d'en uploader une nouvelle) */}
               {isImageLoading && !isUploading && (
