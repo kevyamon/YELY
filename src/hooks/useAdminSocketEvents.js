@@ -2,7 +2,7 @@
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { logout, selectIsAuthenticated, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
+import { forceSilentRefresh, logout, selectIsAuthenticated, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const useAdminSocketEvents = () => {
@@ -15,6 +15,7 @@ const useAdminSocketEvents = () => {
     const handleUserRoleUpdated = (data) => {
       if (data?.newRole) {
         dispatch(updateUserInfo({ role: data.newRole }));
+        dispatch(forceSilentRefresh()); // Récupération transparente d'un nouveau token
         dispatch(showSuccessToast({
           title: 'Droits d\'accès modifiés',
           message: `L'administration a mis à jour votre profil en tant que : ${data.newRole.toUpperCase()}.`
