@@ -15,6 +15,7 @@ import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
+import GpsPermissionModal from '../../components/ui/GpsPermissionModal.web';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -39,10 +40,9 @@ const DriverHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
 
-  // Protection Abonnement Web
   const { 
     data: subscriptionData, 
-    isLoading, 
+    isLoading: isSubLoading, 
     isFetching, 
     isError: isSubscriptionError,
     refetch: refetchSubscription 
@@ -50,7 +50,7 @@ const DriverHome = ({ navigation }) => {
     skip: !isFocused 
   });
 
-  const isSubscriptionLoading = isLoading || isFetching;
+  const isSubscriptionLoading = isSubLoading || isFetching;
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
 
@@ -71,7 +71,8 @@ const DriverHome = ({ navigation }) => {
     }
   }, [isFocused, refetchSubscription]);
 
-  const { location: realLocation, errorMsg } = useGeolocation();
+  // NOUVEAU : Extraction GPS avec refus
+  const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   const location = simulatedLocation || realLocation;
 
@@ -97,7 +98,7 @@ const DriverHome = ({ navigation }) => {
     mapRef,
     errorMsg,
     isRideActive,
-    isDisabled: isBlocked // Transmission du blocage
+    isDisabled: isBlocked 
   });
 
   const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
@@ -151,15 +152,17 @@ const DriverHome = ({ navigation }) => {
     );
   };
 
+  const shouldShowMap = location || !isLoading;
+
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.mapContainer}>
-        {location ? (
+        {shouldShowMap ? (
           <MapCard
             ref={mapRef}
             location={location}
             driverLocation={location}
-            showUserMarker={false}
+            showUserMarker={!!location}
             showRecenterButton={true}
             floating={false}
             markers={mapMarkers}
@@ -176,7 +179,7 @@ const DriverHome = ({ navigation }) => {
 
       <SmartHeader
         scrollY={scrollY}
-        address={currentAddress}
+        address={currentAddress || (isPermissionDenied ? "GPS Désactivé" : "Recherche...")}
         userName={user?.name?.split(' ')[0] || 'Chauffeur'}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
@@ -214,7 +217,9 @@ const DriverHome = ({ navigation }) => {
         </>
       )}
 
+      {/* INJECTION DES MODALES */}
       <PwaIOSWarningModal isDriver={true} />
+      <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
     </View>
   );
 };

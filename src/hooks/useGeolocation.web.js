@@ -1,8 +1,8 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GEOLOCALISATION WEB - API Navigateur Native & Fallback Intelligent
+// GESTION GEOLOCALISATION WEB - API Navigateur Native & Intelligence Appareil
 // CSCSM Level: Bank Grade
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const EXACT_MOCK_LOCATION = {
   latitude: 5.414702,
@@ -18,6 +18,7 @@ const useGeolocation = (options = {}) => {
   const [address, setAddress] = useState(null); 
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPermissionDenied, setIsPermissionDenied] = useState(false);
 
   const watchIdRef = useRef(null);
 
@@ -40,31 +41,35 @@ const useGeolocation = (options = {}) => {
     }
   };
 
-  useEffect(() => {
-    let mounted = true;
+  const startTracking = useCallback(async () => {
+    if (watchIdRef.current !== null && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
 
-    const startTracking = async () => {
-      // 1. MOCK PROTEGE : S'active UNIQUEMENT si la variable est strictement 'true'
-      if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
-        console.warn('[GPS WEB] Mode MOCK activé via variable d\'environnement.');
-        if (mounted) {
-          setLocation(EXACT_MOCK_LOCATION);
-          await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
-          setIsLoading(false);
-        }
-        return;
-      }
+    setIsLoading(true);
 
-      if (!navigator.geolocation) {
-        if (mounted) {
-          setError("La géolocalisation n'est pas supportée par ce navigateur.");
-          setIsLoading(false);
-        }
-        return;
-      }
+    if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
+      setLocation(EXACT_MOCK_LOCATION);
+      await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
+      setIsLoading(false);
+      setIsPermissionDenied(false);
+      return;
+    }
 
-      const updatePosition = (position) => {
-        if (!mounted) return;
+    if (!navigator.geolocation) {
+      setError("La géolocalisation n'est pas supportée par ce navigateur.");
+      setIsLoading(false);
+      return;
+    }
+
+    // 🧠 DÉTECTION INTELLIGENTE DU TYPE D'APPAREIL
+    // Un PC n'a pas de puce GPS. Inutile de le faire ramer avec 'enableHighAccuracy'.
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (position) => {
+        setIsPermissionDenied(false);
+        setError(null);
         const coords = {
           latitude: position.coords.latitude,
           longitude: position.coords.longitude,
@@ -73,42 +78,38 @@ const useGeolocation = (options = {}) => {
         };
         setLocation(coords);
         setIsLoading(false);
-      };
-
-      // 2. FALLBACK INTELLIGENT : On lance directement le "watchPosition". 
-      // Sur le web, c'est plus stable que "getCurrentPosition" qui timeout souvent si la haute précision n'est pas dispo tout de suite.
-      watchIdRef.current = navigator.geolocation.watchPosition(
-        (position) => {
-          updatePosition(position);
-          // On ne fait le reverse geocoding qu'une fois au début pour ne pas saturer l'API gratuite OSM
-          if (!address && mounted) reverseGeocodeWeb(position.coords);
-        },
-        (err) => {
+        if (!address) reverseGeocodeWeb(coords);
+      },
+      (err) => {
+        setIsLoading(false);
+        if (err.code === 1) {
+          setIsPermissionDenied(true);
+          setError("Accès au GPS refusé.");
+        } else {
           console.warn("[GPS WEB] Erreur/Timeout:", err.message);
-          // Si timeout, l'appareil galère. On le laisse réessayer en tâche de fond.
-          if (mounted && !location) {
-             setError("Recherche de votre position GPS...");
-          }
-        },
-        { 
-          enableHighAccuracy: true, // On demande le maximum
-          timeout: 15000,           // Laisse 15 secondes pour trouver
-          maximumAge: 5000          // Accepte une position datant de 5 secondes max
+          setError("Recherche de votre position GPS...");
         }
-      );
-    };
+      },
+      { 
+        // Sur Mobile, on exige le vrai GPS. Sur PC, on prend l'IP rapide.
+        enableHighAccuracy: isMobile, 
+        // Sur PC, on ne lui laisse que 5 secondes pour chercher au lieu de 15.
+        timeout: isMobile ? 15000 : 5000, 
+        maximumAge: 5000
+      }
+    );
+  }, [address]);
 
+  useEffect(() => {
     startTracking();
-
     return () => {
-      mounted = false;
       if (watchIdRef.current !== null && navigator.geolocation) {
         navigator.geolocation.clearWatch(watchIdRef.current);
       }
     };
-  }, []);
+  }, [startTracking]);
 
-  return { location, address, error, isLoading };
+  return { location, address, error, isLoading, isPermissionDenied, retryGeolocation: startTracking };
 };
 
 export default useGeolocation;

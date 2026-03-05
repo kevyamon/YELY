@@ -7,12 +7,14 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
+import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard.web';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
+import GpsPermissionModal from '../../components/ui/GpsPermissionModal.web';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -36,7 +38,12 @@ const RiderHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
   
-  const { location, errorMsg } = useGeolocation(); 
+  // Extraction complète des statuts GPS
+  const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation(); 
+  const [simulatedLocation, setSimulatedLocation] = useState(null);
+  
+  const location = simulatedLocation || realLocation;
+
   const isUserInZone = isLocationInMafereZone(location);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
@@ -86,16 +93,20 @@ const RiderHome = ({ navigation }) => {
     });
   };
 
+  // LOGIQUE DE RENDU : Si on a une position OU si le chargement est fini (ex: GPS refusé), on affiche la carte.
+  // La MapCard Web est déjà configurée pour afficher Maféré par défaut si location est null.
+  const shouldShowMap = location || !isLoading;
+
   return (
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-         {location ? (
+         {shouldShowMap ? (
            <MapCard 
              ref={mapRef}
              location={mapTraceOrigin}
              driverLocation={isRideActive ? driverLatLng : null}
-             showUserMarker={!isRideActive}
+             showUserMarker={!isRideActive && !!location}
              showRecenterButton={true}
              floating={false}
              markers={mapMarkers}
@@ -110,14 +121,14 @@ const RiderHome = ({ navigation }) => {
          ) : (
            <View style={styles.loadingContainer}>
              <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-             <Text style={styles.loadingText}>Localisation Web en cours...</Text>
+             <Text style={styles.loadingText}>Recherche satellite en cours...</Text>
            </View>
          )}
       </View>
 
       <SmartHeader 
         scrollY={scrollY}
-        address={currentAddress}
+        address={currentAddress || (isPermissionDenied ? "GPS Désactivé" : "Recherche...")}
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
@@ -125,6 +136,15 @@ const RiderHome = ({ navigation }) => {
         hasDestination={!!destination && !isRideActive} 
         onCancelDestination={handleCancelDestination}
       />
+
+      {!isRideActive && (
+        <GpsTeleporter
+          currentRide={currentRide}
+          realLocation={realLocation}
+          simulatedLocation={simulatedLocation}
+          setSimulatedLocation={setSimulatedLocation}
+        />
+      )}
 
       {isRideActive ? (
         <RiderRideOverlay />
@@ -158,7 +178,9 @@ const RiderHome = ({ navigation }) => {
       <RiderWaitModal />
       <RatingModal />
 
+      {/* INJECTION DES MODALES PWA ET GPS */}
       <PwaIOSWarningModal isDriver={false} />
+      <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
     </View>
   );
 };
