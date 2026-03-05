@@ -28,11 +28,11 @@ const SmartHeader = ({
   onMenuPress, 
   onNotificationPress,
   onSearchPress,
-  onOriginPress, // Ajout de la prop pour la sélection d'origine
+  onOriginPress,
+  isManualOrigin = false,
+  onCancelOrigin,
   hasDestination = false,
-  onCancelDestination,
-  isManualOrigin = false, // Savoir si l'origine est manuelle
-  onCancelOrigin // Annuler l'origine manuelle
+  onCancelDestination 
 }) => {
   const insets = useSafeAreaInsets();
   
@@ -81,9 +81,8 @@ const SmartHeader = ({
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            {/* L'adresse réduite (quand on scrolle vers le bas) devient cliquable */}
             <TouchableOpacity 
-              style={styles.locationTitleWrapper} 
+              style={styles.locationTitleWrapper}
               onPress={onOriginPress}
               disabled={hasActiveRide || !isRider}
               activeOpacity={0.7}
@@ -114,32 +113,28 @@ const SmartHeader = ({
              
              {isRider && (
                <View style={styles.riderAddressRow}>
-                  {/* L'adresse principale devient un bouton pour changer de lieu */}
-                  <TouchableOpacity 
-                    style={styles.originTouchable} 
-                    onPress={onOriginPress}
-                    disabled={hasActiveRide}
-                    activeOpacity={0.7}
-                  >
-                    <Ionicons 
-                      name={isManualOrigin ? "pin" : "location-sharp"} 
-                      size={14} 
-                      color={isManualOrigin ? THEME.COLORS.textPrimary : THEME.COLORS.champagneGold} 
-                    />
-                    <Text style={styles.riderAddressText} numberOfLines={1}>
-                      {address}
-                    </Text>
-                    {!hasActiveRide && (
-                      <Ionicons name="chevron-down" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />
-                    )}
-                  </TouchableOpacity>
+                 <TouchableOpacity 
+                   style={styles.originTouchable}
+                   onPress={onOriginPress}
+                   disabled={hasActiveRide}
+                   activeOpacity={0.7}
+                 >
+                   <Ionicons 
+                     name={isManualOrigin ? "pin" : "location-sharp"} 
+                     size={14} 
+                     color={isManualOrigin ? THEME.COLORS.textPrimary : THEME.COLORS.champagneGold} 
+                   />
+                   <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
+                   {!hasActiveRide && (
+                     <Ionicons name="chevron-down" size={14} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />
+                   )}
+                 </TouchableOpacity>
 
-                  {/* Bouton d'annulation si un lieu manuel a été choisi */}
-                  {isManualOrigin && !hasActiveRide && (
-                    <TouchableOpacity onPress={onCancelOrigin} style={styles.cancelOriginBtn}>
-                      <Ionicons name="close-circle" size={18} color={THEME.COLORS.danger} />
-                    </TouchableOpacity>
-                  )}
+                 {isManualOrigin && !hasActiveRide && (
+                   <TouchableOpacity onPress={onCancelOrigin} style={styles.cancelOriginBtn}>
+                     <Ionicons name="close-circle" size={18} color={THEME.COLORS.danger} />
+                   </TouchableOpacity>
+                 )}
                </View>
              )}
           </View>
@@ -190,8 +185,7 @@ const styles = StyleSheet.create({
   contentContainer: {
     flex: 1,
     paddingHorizontal: THEME.LAYOUT.spacing.md,
-    // 🛡️ AJOUT D'ESPACE ICI (40 au lieu de 28)
-    paddingBottom: 40, 
+    paddingBottom: 28, 
   },
   topRow: {
     height: THEME.LAYOUT.HEADER_HEIGHT,
@@ -205,13 +199,10 @@ const styles = StyleSheet.create({
     right: 50,
     alignItems: 'center',
   },
-  // Modification pour rendre le titre cliquable proprement
   locationTitleWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
-    paddingHorizontal: 8,
   },
   locationIcon: {
     marginRight: 4,
@@ -251,16 +242,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginLeft: 4,
     marginBottom: 4,
-    justifyContent: 'space-between', // Ajout pour bien placer la croix
   },
-  // Nouveaux styles pour les zones cliquables d'adresse
   originTouchable: {
     flexDirection: 'row',
     alignItems: 'center',
-    flex: 1,
-    paddingVertical: 4,
-    paddingHorizontal: 4,
-    borderRadius: 8,
+    flexShrink: 1,
   },
   riderAddressText: {
     color: THEME.COLORS.textPrimary,
@@ -271,7 +257,7 @@ const styles = StyleSheet.create({
     flexShrink: 1,
   },
   cancelOriginBtn: {
-    padding: 6,
+    padding: 4,
     marginLeft: 8,
   },
   driverGpsBadge: {
@@ -295,9 +281,7 @@ const styles = StyleSheet.create({
     flex: 1, 
   },
   actionPillWrapper: {
-    // 🛡️ AJOUT D'ESPACE ICI POUR DECOLLER LE BOUTON (24 au lieu de 4)
-    paddingBottom: 24, 
-    paddingTop: 8,
+    paddingBottom: 4, 
   }
 });
 

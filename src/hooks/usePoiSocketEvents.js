@@ -3,22 +3,24 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import socketService from '../services/socketService';
 import { poiApiSlice } from '../store/api/poiApiSlice';
-import useSocket from './useSocket';
+import { selectIsAuthenticated } from '../store/slices/authSlice';
 
 const usePoiSocketEvents = () => {
-  const { socket, isConnected } = useSocket();
   const dispatch = useDispatch();
+  const isAuthenticated = useSelector(selectIsAuthenticated);
 
   useEffect(() => {
-    if (!socket || !isConnected) return;
+    // Sécurité : On s'assure que l'utilisateur est bien connecté avant de tendre l'oreille
+    if (!isAuthenticated) return;
 
     // Écouteur pour la création, modification et import de masse
     const handlePoiUpdated = (payload) => {
       const { action, poi } = payload;
 
-      // Pour un import de masse, on conserve l'invalidation car le delta de données est trop vaste
+      // Pour un import de masse, on efface l'ardoise et on recharge tout proprement
       if (action === 'bulk' || action === 'bulk_partial') {
         dispatch(poiApiSlice.util.invalidateTags(['POI']));
         return;
@@ -27,30 +29,29 @@ const usePoiSocketEvents = () => {
       // MODIFICATION CHIRURGICALE EN RAM
       dispatch(
         poiApiSlice.util.updateQueryData('getAllPOIs', undefined, (draft) => {
-          // 'draft' est la copie exacte du cache actuel. On la mute directement.
+          // 'draft' est le contenu actuel de notre mémoire locale
           if (!draft || !draft.data) return;
 
           if (action === 'create' && poi) {
-            // Sécurité : on s'assure qu'il n'existe pas déjà et qu'il est actif
+            // On vérifie qu'on ne l'a pas déjà et qu'il est actif avant de l'ajouter
             const exists = draft.data.find((p) => p._id === poi._id);
             if (!exists && poi.isActive) {
               draft.data.push(poi);
             }
           } 
-          
           else if (action === 'update' && poi) {
             const index = draft.data.findIndex((p) => p._id === poi._id);
             
             if (index !== -1) {
-              // Si le lieu a été désactivé par l'admin, on le retire de l'affichage
+              // S'il est devenu inactif, on le retire de l'écran
               if (poi.isActive === false) {
                 draft.data.splice(index, 1);
               } else {
-                // Sinon on met à jour ses données (nom, coordonnées, icône)
+                // Sinon on met à jour ses nouvelles coordonnées/infos
                 draft.data[index] = poi;
               }
             } else if (poi.isActive) {
-              // S'il était inactif (donc absent du cache) et qu'il est réactivé
+              // S'il n'était pas là (inactif) et qu'il a été réactivé
               draft.data.push(poi);
             }
           }
@@ -67,22 +68,22 @@ const usePoiSocketEvents = () => {
       dispatch(
         poiApiSlice.util.updateQueryData('getAllPOIs', undefined, (draft) => {
           if (!draft || !draft.data) return;
-          // On filtre le tableau pour éjecter le lieu supprimé
+          // On garde tous les lieux SAUF celui qui vient d'être supprimé
           draft.data = draft.data.filter((p) => p._id !== id);
         })
       );
     };
 
-    // Inscription aux événements Socket.io
-    socket.on('poi_updated', handlePoiUpdated);
-    socket.on('poi_deleted', handlePoiDeleted);
+    // On branche officiellement nos câbles sur la multiprise centrale
+    socketService.on('poi_updated', handlePoiUpdated);
+    socketService.on('poi_deleted', handlePoiDeleted);
 
-    // Nettoyage rigoureux à la destruction du composant
+    // On débranche proprement quand on quitte l'application ou l'écran
     return () => {
-      socket.off('poi_updated', handlePoiUpdated);
-      socket.off('poi_deleted', handlePoiDeleted);
+      socketService.off('poi_updated', handlePoiUpdated);
+      socketService.off('poi_deleted', handlePoiDeleted);
     };
-  }, [socket, isConnected, dispatch]);
+  }, [isAuthenticated, dispatch]);
 };
 
 export default usePoiSocketEvents;
