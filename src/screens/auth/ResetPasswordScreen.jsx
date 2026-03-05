@@ -21,29 +21,29 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
   const handleReset = async () => {
     if (otp.length !== 6) {
-      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code doit faire 6 chiffres." }));
+      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code de sécurité doit contenir exactement 6 chiffres." }));
       return;
     }
     if (newPassword.length < 8) {
-      dispatch(showErrorToast({ title: "Mot de passe faible", message: "8 caractères minimum requis." }));
+      dispatch(showErrorToast({ title: "Mot de passe faible", message: "Votre mot de passe doit faire au moins 8 caractères." }));
       return;
     }
     if (newPassword !== confirmPassword) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Les mots de passe ne correspondent pas." }));
+      dispatch(showErrorToast({ title: "Saisie incorrecte", message: "Les mots de passe saisis ne sont pas identiques." }));
       return;
     }
 
     try {
       await resetPassword({ email, otp, newPassword }).unwrap();
       dispatch(showSuccessToast({ 
-        title: "Félicitations", 
-        message: "Mot de passe réinitialisé. Connectez-vous !" 
+        title: "Succès", 
+        message: "Votre mot de passe a été mis à jour. Vous pouvez vous connecter." 
       }));
       navigation.navigate('Login');
     } catch (err) {
       dispatch(showErrorToast({ 
         title: "Échec", 
-        message: err?.data?.message || "Le code est erroné ou a expiré." 
+        message: err?.data?.message || "Ce code de sécurité est incorrect ou a expiré." 
       }));
     }
   };

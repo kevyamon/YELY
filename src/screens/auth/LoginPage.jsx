@@ -61,7 +61,7 @@ const LoginPage = ({ navigation }) => {
 
   const handleLogin = async () => {
     if (!formData.identifier.trim() || !formData.password.trim()) {
-      dispatch(showErrorToast({ title: "Champs requis", message: "Entrez vos identifiants." }));
+      dispatch(showErrorToast({ title: "Informations manquantes", message: "Veuillez saisir votre identifiant et votre mot de passe." }));
       return;
     }
 
@@ -74,19 +74,18 @@ const LoginPage = ({ navigation }) => {
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
       
-      // CORRECTION CRITIQUE : Extraction et sauvegarde du refreshToken
       const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       
       dispatch(showSuccessToast({
         title: "Connexion réussie",
-        message: `Bienvenue, ${user.name.split(' ')[0]}.`
+        message: `Ravis de vous revoir, ${user.name.split(' ')[0]} !`
       }));
 
     } catch (err) {
-      const errorMessage = err?.data?.message || "Identifiants incorrects.";
-      dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));
+      const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez réessayer.";
+      dispatch(showErrorToast({ title: "Connexion impossible", message: errorMessage }));
     }
   };
 

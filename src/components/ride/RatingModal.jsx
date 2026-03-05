@@ -46,16 +46,16 @@ const RatingModal = () => {
     }
 
     if (rating === 0) {
-      dispatch(showErrorToast({ title: "Validation requise", message: "Veuillez attribuer une note avant de valider." }));
+      dispatch(showErrorToast({ title: "Note requise", message: "Veuillez sélectionner au moins une étoile pour valider." }));
       return;
     }
 
     try {
       await rateRide({ rideId, rating, comment: comment.trim() }).unwrap();
-      dispatch(showSuccessToast({ title: "Merci", message: "Votre avis a ete enregistre avec succes." }));
+      dispatch(showSuccessToast({ title: "Merci !", message: "Votre avis a bien été pris en compte." }));
       handleClose();
     } catch (error) {
-      dispatch(showErrorToast({ title: "Erreur systeme", message: error?.data?.message || "Impossible d'enregistrer la note." }));
+      dispatch(showErrorToast({ title: "Erreur", message: error?.data?.message || "Une erreur est survenue lors de l'enregistrement." }));
       if (error?.status === 404) {
         handleClose();
       }
@@ -80,9 +80,9 @@ const RatingModal = () => {
             <View style={styles.successIconContainer}>
               <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
             </View>
-            <Text style={styles.titleText}>Course Terminee</Text>
+            <Text style={styles.titleText}>Course Terminée</Text>
             <Text style={styles.subtitleText}>
-              Comment s'est passe votre trajet avec {driverName} ?
+              Comment s'est passé votre trajet avec {driverName} ?
             </Text>
           </View>
 

@@ -46,7 +46,6 @@ const ProfileScreen = ({ navigation }) => {
     vehiclePlate: '',
   });
 
-  // HYDRATATION DU FORMULAIRE : On nettoie l'indicatif pour ne garder que le numéro local
   useEffect(() => {
     if (profileData?.data) {
       const p = profileData.data;
@@ -68,7 +67,10 @@ const ProfileScreen = ({ navigation }) => {
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
-      dispatch(showErrorToast({ title: 'Permission refusée', message: 'Accès à la galerie requis.' }));
+      dispatch(showErrorToast({ 
+        title: 'Permission refusée', 
+        message: 'L\'accès à vos photos est nécessaire pour modifier votre avatar.' 
+      }));
       return;
     }
 
@@ -100,15 +102,20 @@ const ProfileScreen = ({ navigation }) => {
       const res = await uploadPhoto(formData).unwrap();
       dispatch(updateUserInfo({ profilePicture: res.data.profilePicture }));
       refetch();
-      dispatch(showSuccessToast({ title: 'Succès', message: 'Photo mise à jour.' }));
+      dispatch(showSuccessToast({ 
+        title: 'Félicitations', 
+        message: 'Votre photo de profil a été mise à jour avec succès.' 
+      }));
     } catch (error) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Échec de l\'envoi de la photo.' }));
+      dispatch(showErrorToast({ 
+        title: 'Erreur', 
+        message: 'Nous n\'avons pas pu enregistrer votre photo. Veuillez réessayer.' 
+      }));
     }
   };
 
   const handleSave = async () => {
     try {
-      // RECOMPOSITION INVISIBLE : On recolle l'indicatif et on enlève les espaces
       const cleanLocalPhone = form.phone.replace(/\s/g, '');
       const fullPhone = `${COUNTRY_CODE}${cleanLocalPhone}`;
       
@@ -119,9 +126,15 @@ const ProfileScreen = ({ navigation }) => {
       
       const res = await updateProfile(payload).unwrap();
       dispatch(updateUserInfo(res.data));
-      dispatch(showSuccessToast({ title: 'Profil à jour', message: 'Vos informations sont sauvegardées.' }));
+      dispatch(showSuccessToast({ 
+        title: 'Profil à jour', 
+        message: 'Vos informations personnelles ont bien été enregistrées.' 
+      }));
     } catch (error) {
-      dispatch(showErrorToast({ title: 'Erreur', message: error?.data?.message || 'Échec de la sauvegarde.' }));
+      dispatch(showErrorToast({ 
+        title: 'Sauvegarde impossible', 
+        message: error?.data?.message || 'Impossible de sauvegarder vos modifications pour le moment.' 
+      }));
     }
   };
 
@@ -129,11 +142,17 @@ const ProfileScreen = ({ navigation }) => {
     try {
       await deleteAccount().unwrap();
       setIsDeleteModalVisible(false);
-      dispatch(showSuccessToast({ title: 'Adieu', message: 'Votre compte a été supprimé avec succès.' }));
+      dispatch(showSuccessToast({ 
+        title: 'Au revoir', 
+        message: 'Votre compte a été définitivement supprimé. À bientôt !' 
+      }));
       dispatch(logout());
     } catch (error) {
       setIsDeleteModalVisible(false);
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer le compte.' }));
+      dispatch(showErrorToast({ 
+        title: 'Erreur', 
+        message: 'Une erreur est survenue lors de la suppression de votre compte.' 
+      }));
     }
   };
 
@@ -191,7 +210,6 @@ const ProfileScreen = ({ navigation }) => {
 
       </ScrollView>
 
-      {/* MODALE DE SUPPRESSION */}
       <GlassModal visible={isDeleteModalVisible} onClose={() => setIsDeleteModalVisible(false)} position="center">
         <View style={styles.modalIconContainer}>
           <Ionicons name="warning" size={48} color={THEME.COLORS.danger} />

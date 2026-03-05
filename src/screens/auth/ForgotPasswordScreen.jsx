@@ -3,16 +3,16 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import { useForgotPasswordMutation } from '../../store/api/usersApiSlice';
-import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice'; // ✅ AJOUT DES TOASTS
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const ForgotPasswordScreen = ({ navigation }) => {
-  const dispatch = useDispatch(); // ✅ AJOUT DU DISPATCH
+  const dispatch = useDispatch(); 
   const [email, setEmail] = useState('');
   const [forgotPassword, { isLoading }] = useForgotPasswordMutation();
 
@@ -22,7 +22,7 @@ const ForgotPasswordScreen = ({ navigation }) => {
     if (!cleanEmail || !cleanEmail.includes('@')) {
       dispatch(showErrorToast({ 
         title: "Email invalide", 
-        message: "Veuillez entrer une adresse email correcte." 
+        message: "Veuillez fournir une adresse e-mail valide." 
       }));
       return;
     }
@@ -32,13 +32,12 @@ const ForgotPasswordScreen = ({ navigation }) => {
       
       dispatch(showSuccessToast({ 
         title: "Code envoyé", 
-        message: "Vérifiez votre boîte de réception (et vos spams)." 
+        message: "Consultez votre boîte de réception (et vos spams)." 
       }));
       
       navigation.navigate('ResetPassword', { email: cleanEmail });
     } catch (err) {
-      // ✅ UTILISATION DE TON COMPOSANT TOAST POUR L'ERREUR
-      const errorMessage = err?.data?.message || "Erreur lors de l'envoi de l'email.";
+      const errorMessage = err?.data?.message || "Nous n'avons pas pu envoyer l'e-mail. Veuillez réessayer.";
       dispatch(showErrorToast({ 
         title: "Échec de l'envoi", 
         message: errorMessage 
@@ -85,7 +84,6 @@ const ForgotPasswordScreen = ({ navigation }) => {
   );
 };
 
-// ... gardons tes styles actuels
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   scrollContent: { padding: 25, alignItems: 'center' },
@@ -99,5 +97,4 @@ const styles = StyleSheet.create({
   backButtonText: { color: THEME.COLORS.textTertiary, fontSize: 14, textDecorationLine: 'underline' }
 });
 
-import { TouchableOpacity } from 'react-native'; // N'oublie pas l'import
 export default ForgotPasswordScreen;
