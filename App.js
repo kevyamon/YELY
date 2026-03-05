@@ -1,37 +1,24 @@
 // App.js
-// POINT D'ENTREE - Cablage Redux, Providers & Observabilite
+// POINT D'ENTREE - Cablage Redux, Providers & Observabilite Sentry
 // STANDARD: Industriel / Bank Grade
 
-// 1. MISE EN PLACE DE L'OBSERVABILITE GLOBALE
-const errorHandler = (error, isFatal) => {
-  const errorDetails = {
-    message: error.message,
-    name: error.name,
-    stack: error.stack,
-    isFatal,
-    timestamp: new Date().toISOString()
-  };
-  
-  // On sauve la trace via une ref a la console originale avant qu'elle ne soit muette en production
-  const originalConsoleError = console.error || console.log;
-  originalConsoleError('[FATAL CRASH DETECTED]', JSON.stringify(errorDetails));
+import * as Sentry from '@sentry/react-native';
 
-  // Note: Un outil comme Sentry interceptera ces donnees ici
-};
+// 1. INITIALISATION DE LA SUPERVISION SILENCIEUSE
+Sentry.init({
+  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  debug: false, 
+  tracesSampleRate: 1.0, 
+  environment: __DEV__ ? 'development' : 'production'
+});
 
-if (global.ErrorUtils) {
-  global.ErrorUtils.setGlobalHandler(errorHandler);
-} else {
-  // Fallback pour environnement Web
-  window.addEventListener('error', (event) => errorHandler(event.error, true));
-  window.addEventListener('unhandledrejection', (event) => errorHandler(event.reason, true));
-}
-
-// 2. SILENCE DE PRODUCTION
+// 2. SILENCE STRICT DE PRODUCTION
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
-  console.error = () => {};
+  console.error = (error, isFatal) => {
+    Sentry.captureException(new Error(error));
+  };
   console.info = () => {};
   console.debug = () => {};
 }
@@ -115,7 +102,7 @@ const AppContent = () => {
   );
 };
 
-export default function App() {
+const App = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
@@ -127,7 +114,9 @@ export default function App() {
       </ReduxProvider>
     </GestureHandlerRootView>
   );
-}
+};
+
+export default Sentry.wrap(App);
 
 const styles = StyleSheet.create({
   container: {
