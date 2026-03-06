@@ -1,6 +1,6 @@
 // src/hooks/useSearchExpansion.js
 // HOOK UI - Gestion isolee de l'etat visuel du radar de recherche
-// CSCSM Level: UI Polish
+// CSCSM Level: Bank Grade / Bulletproof
 
 import { useEffect, useState } from 'react';
 import socketService from '../services/socketService';
@@ -8,18 +8,20 @@ import socketService from '../services/socketService';
 const useSearchExpansion = (initialRadius = 1000, isActive = false) => {
   const [radius, setRadius] = useState(initialRadius);
 
+  // SECURITE 1 : Synchronisation absolue avec Redux.
+  // Si le socket echoue, mais que RTK Query rafraichit la data depuis la BDD, l'UI se mettra a jour.
   useEffect(() => {
-    if (initialRadius > radius) {
-      setRadius(initialRadius);
-    }
+    setRadius((prev) => (initialRadius > prev ? initialRadius : prev));
   }, [initialRadius]);
 
+  // SECURITE 2 : Ecouteur Socket temps reel
   useEffect(() => {
     if (!isActive) return;
 
     const handleSearchExpanded = (data) => {
       if (data && data.radius) {
-        setRadius(Number(data.radius));
+        const newRadius = Number(data.radius);
+        setRadius(newRadius);
       }
     };
 
