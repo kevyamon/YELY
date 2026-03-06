@@ -8,13 +8,13 @@ import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, Marker, Polygon, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
-import { MAFERE_CENTER, MAFERE_KML_ZONE } from '../../utils/mafereZone';
+import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   MapAutoFitter,
   defaultIcon,
@@ -148,8 +148,6 @@ const MapCard = forwardRef(({
     location?.longitude || MAFERE_CENTER.longitude,
   ];
 
-  const leafletKmlPositions = MAFERE_KML_ZONE.map((coord) => [coord.latitude, coord.longitude]);
-
   const displayMarkers = markers.filter(marker => {
     if (!showUserMarker && (marker.type === 'pickup' || marker.type === 'pickup_origin')) {
       return false;
@@ -186,19 +184,6 @@ const MapCard = forwardRef(({
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
         />
-
-        {leafletKmlPositions.length > 0 && (
-          <Polygon
-            positions={leafletKmlPositions}
-            pathOptions={{
-              color: THEME.COLORS.champagneGold,
-              fillColor: THEME.COLORS.champagneGold,
-              fillOpacity: 0.15,
-              weight: 2,
-              dashArray: '5, 5',
-            }}
-          />
-        )}
 
         {mapPOIs.map((poi) => (
           <Marker
