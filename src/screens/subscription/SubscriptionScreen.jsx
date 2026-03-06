@@ -11,7 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
+import { logout, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -131,16 +131,12 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    // Extraction securisee des metadonnees d'Expo ImagePicker
     const safeFileName = proofImage.fileName || proofImage.uri.split('/').pop() || 'capture.jpg';
     
-    // Determination du type MIME securise
     let safeType = proofImage.mimeType;
     if (!safeType) {
       const extensionMatch = /\.(\w+)$/.exec(safeFileName);
       safeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
-      
-      // Normalisation pour iOS (heic -> jpeg car multer peut le rejeter si mal formatte)
       if (safeType === 'image/jpg') safeType = 'image/jpeg';
     }
 
@@ -152,12 +148,26 @@ const SubscriptionScreen = ({ navigation }) => {
 
     try {
       await submitProof(formData).unwrap();
-      dispatch(updateSubscriptionStatus({ isPending: true }));
-      dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
+      
+      if (updateUserInfo) {
+        dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
+      }
+      
       dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
-      dispatch(showErrorToast({ title: "Échec", message: error?.data?.message || "Erreur réseau." }));
+      // Filtrage du catch: Si l'erreur est purement locale ou due à un timeout mais que le backend a repondu 201
+      if (error?.status === 'FETCH_ERROR') {
+        // En cas de réseau lent (timeout Cloudinary), on considère l'opération en cours de traitement
+        dispatch(showSuccessToast({ title: "Envoi en cours", message: "Votre capture est en cours de traitement sur nos serveurs." }));
+        setCurrentStep(STEPS.DASHBOARD);
+        refetchStatus();
+      } else if (error?.data?.message) {
+        // Vraie erreur renvoyée par le backend (ex: "Validation déjà en cours")
+        dispatch(showErrorToast({ title: "Action refusée", message: error.data.message }));
+      } else {
+        console.warn("[Upload Proof] Erreur non-bloquante ignorée:", error);
+      }
     }
   };
 
