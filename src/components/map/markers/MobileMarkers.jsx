@@ -38,6 +38,7 @@ export const TrackedMarker = ({
   );
 };
 
+// LE COMPOSANT MANQUANT QUI FAIT GLISSER LE POINT FLUIDEMENT
 export const AnimatedTrackedMarker = ({
   coordinate,
   anchor,

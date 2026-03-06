@@ -34,7 +34,7 @@ const useGeolocation = (options = {}) => {
   const retryTimeoutRef = useRef(null);
   const lastValidLocationRef = useRef(null);
   
-  // VERROU ANTI-ZOMBIE
+  // LE VERROU ANTI-ZOMBIE INDISPENSABLE
   const isStartingRef = useRef(false);
 
   const requestPermission = useCallback(async () => {
@@ -135,12 +135,12 @@ const useGeolocation = (options = {}) => {
               );
               const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-              // REJET DES MICRO-MOUVEMENTS (Absorption du bruit)
+              // BOUCLIER SPATIAL : Rejet des micro-mouvements fantomes (Absorbe la danse du point)
               if (distance < 5) {
                 return; 
               }
 
-              // FILTRE ANTI-TÉLÉPORTATION
+              // FILTRE ANTI-TELEPORTATION
               if (timeSinceLastUpdate > 0) {
                 const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
                 if (calculatedSpeedKmh > 180) {

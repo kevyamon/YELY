@@ -15,7 +15,7 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
-  AnimatedTrackedMarker,
+  AnimatedTrackedMarker, // IMPORT REINJECTE
   PoiMarker,
   SmoothDriverMarker,
   TrackedMarker,
@@ -42,8 +42,8 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
-  
-  // 🛡️ ÉTAT DE LIBERTÉ : Détecte quand l'utilisateur manipule la carte
+
+  // ETAT DE LIBERTE DE LA CAMERA MANQUANT REINJECTE
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
@@ -64,12 +64,11 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // Déclencheur du mode "Libre" (Désactive l'Auto-Fitter temporairement)
   const handleMapInteraction = () => {
     setIsUserInteracting(true);
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
-      setIsUserInteracting(false); // Rend le contrôle à l'Auto-Fitter après 8s d'inactivité
+      setIsUserInteracting(false);
     }, 8000);
   };
 
@@ -81,11 +80,11 @@ const MapCard = forwardRef(({
     markers,
     mapTopPadding,
     mapBottomPadding,
-    isUserInteracting // On transmet le verrou au cerveau
+    isUserInteracting // Passe au cerveau de la camera
   });
 
   const handleRecenter = () => {
-    setIsUserInteracting(false); // Force la reprise du tracking
+    setIsUserInteracting(false);
     if (isMapReady && location && location.latitude) {
       mapRef.current?.animateToRegion(
         { latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
@@ -127,13 +126,12 @@ const MapCard = forwardRef(({
           showsTraffic={false}
           showsIndoors={false}
           
-          // 🔥 LIBERTÉ TOTALE 🔥
           rotateEnabled={true}
           pitchEnabled={true}
           zoomEnabled={true}
           scrollEnabled={true}
-          
-          // 🛡️ DÉTECTEURS DE GESTES
+
+          // EVENEMENTS MANQUANTS REINJECTES
           onTouchStart={handleMapInteraction}
           onPanDrag={handleMapInteraction}
           onRegionChangeComplete={(region, details) => {
@@ -176,6 +174,7 @@ const MapCard = forwardRef(({
             />
           ))}
 
+          {/* COMPOSANT MANQUANT REINJECTE : AnimatedTrackedMarker au lieu de TrackedMarker */}
           {showUserMarker && location && location.latitude && (
             <AnimatedTrackedMarker
               identifier="user_loc"
