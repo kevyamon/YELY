@@ -7,7 +7,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
-import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard.web';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
@@ -41,10 +40,7 @@ const RiderHome = ({ navigation }) => {
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
   
-  const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation(); 
-  const [simulatedLocation, setSimulatedLocation] = useState(null);
-  
-  const location = simulatedLocation || realLocation;
+  const { location, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation(); 
 
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
@@ -152,15 +148,6 @@ const RiderHome = ({ navigation }) => {
         isManualOrigin={!!manualOrigin}
         onCancelOrigin={handleCancelManualOrigin}
       />
-
-      {!isRideActive && (
-        <GpsTeleporter
-          currentRide={currentRide}
-          realLocation={realLocation}
-          simulatedLocation={simulatedLocation}
-          setSimulatedLocation={setSimulatedLocation}
-        />
-      )}
 
       {isRideActive ? (
         <RiderRideOverlay />

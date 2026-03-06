@@ -1,14 +1,16 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GEOLOCALISATION WEB - Bouclier Spatial Absolu
+// GESTION GEOLOCALISATION WEB - Bouclier Spatial & Teleportation Dev
 // CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-const EXACT_MOCK_LOCATION = {
+// POINT ZERO DE MAFERE
+const MAFERE_MOCK_LOCATION = {
   latitude: 5.414702,
   longitude: -3.028109,
   heading: 0,
-  speed: 0
+  speed: 0,
+  accuracy: 5
 };
 
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
@@ -62,16 +64,23 @@ const useGeolocation = (options = {}) => {
 
     setIsLoading(true);
 
-    if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
-      const mockWithTime = { ...EXACT_MOCK_LOCATION, timestamp: Date.now() };
+    // LA MAGIE WEB : Si on code en local, on force la position a Mafere.
+    // Ce bloc entier est detruit a la compilation de production.
+    if (__DEV__) {
+      const mockWithTime = { ...MAFERE_MOCK_LOCATION, timestamp: Date.now() };
       setLocation(mockWithTime);
       lastValidLocationRef.current = mockWithTime;
-      await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
+      
+      if (!address) {
+        await reverseGeocodeWeb(MAFERE_MOCK_LOCATION);
+      }
+      
       setIsLoading(false);
       setIsPermissionDenied(false);
-      return;
+      return; 
     }
 
+    // --- LE RESTE DU CODE EST POUR LA PRODUCTION (Vrai GPS) ---
     if (!navigator.geolocation) {
       setError("La geolocalisation n'est pas supportee par ce navigateur.");
       setIsLoading(false);
@@ -102,7 +111,6 @@ const useGeolocation = (options = {}) => {
           );
           const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-          // LE BOUCLIER SPATIAL ABSOLU
           if (distance < 12) {
             return; 
           }

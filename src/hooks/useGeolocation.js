@@ -34,7 +34,6 @@ const useGeolocation = (options = {}) => {
   const retryTimeoutRef = useRef(null);
   const lastValidLocationRef = useRef(null);
   
-  // LE VERROU ANTI-ZOMBIE INDISPENSABLE
   const isStartingRef = useRef(false);
 
   const requestPermission = useCallback(async () => {
@@ -60,7 +59,8 @@ const useGeolocation = (options = {}) => {
         accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
 
-      if (loc.mocked) {
+      // SECURITE : On bloque le Fake GPS UNIQUEMENT en production
+      if (loc.mocked && !__DEV__) {
         setError('Position falsifiée détectée.');
         setIsLoading(false);
         return null;
@@ -114,7 +114,9 @@ const useGeolocation = (options = {}) => {
           },
           (loc) => {
             if (!mounted) return;
-            if (loc.mocked) {
+
+            // SECURITE : On bloque le Fake GPS UNIQUEMENT en production
+            if (loc.mocked && !__DEV__) {
               setError('Position falsifiée détectée.');
               return;
             }
@@ -135,15 +137,15 @@ const useGeolocation = (options = {}) => {
               );
               const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-              // BOUCLIER SPATIAL : Rejet des micro-mouvements fantomes (Absorbe la danse du point)
               if (distance < 5) {
                 return; 
               }
 
-              // FILTRE ANTI-TELEPORTATION
               if (timeSinceLastUpdate > 0) {
                 const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
-                if (calculatedSpeedKmh > 180) {
+                // En mode developpement avec Fake GPS, on peut se teleporter vite. 
+                // On desactive le bouclier anti-teleportation si on est en __DEV__ pour fluidifier tes tests.
+                if (calculatedSpeedKmh > 180 && !__DEV__) {
                   return;
                 }
               }

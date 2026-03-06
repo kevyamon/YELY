@@ -1,9 +1,12 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente (Logique des Extrémités & Respect UX)
+// HOOK CARTE NATIF - Caméra Intelligente (Logique Extrémités + Anti-Eclipse UI)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
+import { Dimensions } from 'react-native';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
+
+const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const useMapAutoFitter = ({
   isMapReady,
@@ -11,9 +14,9 @@ const useMapAutoFitter = ({
   location,
   driverLocation,
   markers,
-  mapTopPadding,
-  mapBottomPadding,
-  isUserInteracting, // NOUVEAU : Le verrou qui te rend le pouvoir
+  mapTopPadding = 140,
+  mapBottomPadding = 240,
+  isUserInteracting,
 }) => {
   const lastUpdateRef = useRef(0);
   const isInitialFitDone = useRef(false);
@@ -21,25 +24,28 @@ const useMapAutoFitter = ({
   useEffect(() => {
     if (!isMapReady || !mapRef.current) return;
     
-    // 🛡️ RESPECT DE L'UX : Si tu touches la carte, la machine se tait.
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    // 🎯 LA LOGIQUE DES EXTRÉMITÉS (Secret Uber/Yango)
-    // On ignore les 150 points de la courbe de la route. On isole 2 bornes strictes.
     const targetMarker = markers.find(m => m.type === 'destination' || m.type === 'pickup');
     const originMarker = driverLocation?.latitude ? driverLocation : location;
 
     if (targetMarker && originMarker) {
-      // Cas 1 : Course en cours. 
-      // La BoundingBox ne contient que le mobile et la cible. Plus ils se rapprochent, plus ça zoome.
       coordsToFit = [
         { latitude: originMarker.latitude, longitude: originMarker.longitude },
         { latitude: targetMarker.latitude, longitude: targetMarker.longitude }
       ];
+
+      // 🛡️ ANTI-ALIGNEMENT MORTEL : Si les 2 points sont sur la même ligne exacte, le SDK panique.
+      // On ajoute un faux 3e point invisible, décalé de quelques mètres, pour forcer une vraie BoundingBox.
+      if (Math.abs(originMarker.latitude - targetMarker.latitude) < 0.00005) {
+        coordsToFit.push({ latitude: originMarker.latitude + 0.0001, longitude: originMarker.longitude });
+      }
+      if (Math.abs(originMarker.longitude - targetMarker.longitude) < 0.00005) {
+        coordsToFit.push({ latitude: originMarker.latitude, longitude: originMarker.longitude + 0.0001 });
+      }
     } else if (originMarker) {
-      // Cas 2 : Mode Attente/Recherche. On cadre sur toi et les POIs.
       coordsToFit.push({ latitude: originMarker.latitude, longitude: originMarker.longitude });
       markers.forEach(m => {
         if (m.latitude && m.longitude) coordsToFit.push({ latitude: m.latitude, longitude: m.longitude });
@@ -48,11 +54,11 @@ const useMapAutoFitter = ({
 
     if (coordsToFit.length === 0) {
       if (!isInitialFitDone.current) {
-        mapRef.current?.animateToRegion({ 
-          latitude: MAFERE_CENTER.latitude, 
-          longitude: MAFERE_CENTER.longitude, 
-          latitudeDelta: 0.02, 
-          longitudeDelta: 0.02 
+        mapRef.current?.animateToRegion({
+          latitude: MAFERE_CENTER.latitude,
+          longitude: MAFERE_CENTER.longitude,
+          latitudeDelta: 0.02,
+          longitudeDelta: 0.02
         }, 800);
         isInitialFitDone.current = true;
       }
@@ -60,21 +66,33 @@ const useMapAutoFitter = ({
     }
 
     const now = Date.now();
-    const isTrackingActive = coordsToFit.length === 2;
-    // Cadence : Rafraîchissement souple en cours de route, sinon 1 seul cadrage.
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300; 
+    const isTrackingActive = coordsToFit.length >= 2;
+    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
+      // 🛡️ ANTI-ECLIPSE UI : 
+      // On prend exactement la taille de tes menus (+20px de respiration pour que le point ne touche pas le bord)
+      let safeTop = mapTopPadding + 20;
+      let safeBottom = mapBottomPadding + 20;
+      
+      // Sécurité ultime anti-crash : Les menus ne doivent pas dépasser 80% de l'écran
+      const maxAllowed = SCREEN_HEIGHT * 0.8;
+      if (safeTop + safeBottom > maxAllowed) {
+          const ratio = maxAllowed / (safeTop + safeBottom);
+          safeTop *= ratio;
+          safeBottom *= ratio;
+      }
+
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(coordsToFit, {
           edgePadding: {
-            top: mapTopPadding + 50,    // La marge prend en compte le Header intelligent
-            bottom: mapBottomPadding + 50, // La marge prend en compte le Footer intelligent
-            left: 50,
-            right: 50,
+            top: safeTop,
+            bottom: safeBottom,
+            left: 40,
+            right: 40,
           },
           animated: true,
         });

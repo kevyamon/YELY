@@ -69,7 +69,7 @@ const MapCard = forwardRef(({
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
       setIsUserInteracting(false);
-    }, 8000);
+    }, 1000);
   };
 
   useMapAutoFitter({
