@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER NATIF - Orchestrateur Principal (Synchronisé avec le fallback manuel & Instant UI)
+// HOME RIDER NATIF - Orchestrateur Principal (Aide liee au compte)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,21 +46,26 @@ const RiderHome = ({ navigation }) => {
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // Verification de la premiere visite pour afficher l'aide automatiquement
+  // Verification de la premiere visite liee au compte utilisateur
   useEffect(() => {
     const checkFirstVisit = async () => {
+      if (!user) return; 
+      
+      const userId = user._id || user.id || 'unknown';
+      const storageKey = `@yely_has_seen_help_rider_${userId}`;
+      
       try {
-        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_rider');
+        const hasSeen = await AsyncStorage.getItem(storageKey);
         if (!hasSeen) {
           setIsHelpVisible(true);
-          await AsyncStorage.setItem('@yely_has_seen_help_rider', 'true');
+          await AsyncStorage.setItem(storageKey, 'true');
         }
       } catch (error) {
         if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
       }
     };
     checkFirstVisit();
-  }, []);
+  }, [user]);
 
   const {
     effectiveOrigin,

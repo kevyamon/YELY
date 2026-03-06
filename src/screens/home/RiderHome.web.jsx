@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Orchestrateur (Bouclier Temporel & Smart Panning & Instant UI)
+// HOME RIDER WEB - Orchestrateur (Aide liee au compte)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -48,21 +48,26 @@ const RiderHome = ({ navigation }) => {
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // Verification de la premiere visite pour afficher l'aide automatiquement (Version Web)
+  // Verification de la premiere visite liee au compte utilisateur (Web)
   useEffect(() => {
     const checkFirstVisit = async () => {
+      if (!user) return;
+      
+      const userId = user._id || user.id || 'unknown';
+      const storageKey = `@yely_has_seen_help_rider_${userId}`;
+      
       try {
-        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_rider');
+        const hasSeen = await AsyncStorage.getItem(storageKey);
         if (!hasSeen) {
           setIsHelpVisible(true);
-          await AsyncStorage.setItem('@yely_has_seen_help_rider', 'true');
+          await AsyncStorage.setItem(storageKey, 'true');
         }
       } catch (error) {
         if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide Web)", error);
       }
     };
     checkFirstVisit();
-  }, []);
+  }, [user]);
 
   const {
     effectiveOrigin,
@@ -156,7 +161,7 @@ const RiderHome = ({ navigation }) => {
 
       <SmartHeader 
         scrollY={scrollY}
-        address={currentAddress || (isPermissionDenied ? "GPS Désactivé" : "Recherche...")}
+        address={currentAddress || (isPermissionDenied ? "GPS Desactive" : "Recherche...")}
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}

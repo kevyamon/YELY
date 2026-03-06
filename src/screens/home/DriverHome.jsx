@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER NATIF - Orchestrateur Principal (Temps réel + POI ReadOnly + Instant UI)
+// HOME DRIVER NATIF - Orchestrateur Principal (Aide liee au compte)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -64,21 +64,26 @@ const DriverHome = ({ navigation }) => {
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   const isBlocked = !isActive;
 
-  // Verification de la premiere visite pour afficher l'aide automatiquement
+  // Verification de la premiere visite liee au compte utilisateur
   useEffect(() => {
     const checkFirstVisit = async () => {
+      if (!user) return;
+      
+      const userId = user._id || user.id || 'unknown';
+      const storageKey = `@yely_has_seen_help_driver_${userId}`;
+      
       try {
-        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_driver');
+        const hasSeen = await AsyncStorage.getItem(storageKey);
         if (!hasSeen) {
           setIsHelpVisible(true);
-          await AsyncStorage.setItem('@yely_has_seen_help_driver', 'true');
+          await AsyncStorage.setItem(storageKey, 'true');
         }
       } catch (error) {
         if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
       }
     };
     checkFirstVisit();
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     if (isFocused) {
@@ -114,7 +119,7 @@ const DriverHome = ({ navigation }) => {
       return (
         <View style={styles.blockerOverlay}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-          <Text style={styles.blockerText}>Vérification des accès...</Text>
+          <Text style={styles.blockerText}>Verification des acces...</Text>
         </View>
       );
     }
@@ -124,15 +129,15 @@ const DriverHome = ({ navigation }) => {
         <GlassCard style={styles.blockerCard}>
           {isPending ? (
             <>
-              <Text style={styles.blockerTitle}>Vérification en cours</Text>
-              <Text style={styles.blockerDesc}>Votre paiement a été reçu. Un administrateur valide votre accès.</Text>
+              <Text style={styles.blockerTitle}>Verification en cours</Text>
+              <Text style={styles.blockerDesc}>Votre paiement a ete recu. Un administrateur valide votre acces.</Text>
               <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={styles.loaderSpacing} />
-              <GoldButton title="SE DÉCONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
+              <GoldButton title="SE DECONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
             </>
           ) : (
             <>
-              <Text style={styles.blockerTitle}>Accès Expiré</Text>
-              <Text style={styles.blockerDesc}>Votre abonnement est arrivé à terme. Vous ne pouvez plus recevoir de requêtes.</Text>
+              <Text style={styles.blockerTitle}>Acces Expire</Text>
+              <Text style={styles.blockerDesc}>Votre abonnement est arrive a terme. Vous ne pouvez plus recevoir de requetes.</Text>
               <GoldButton title="Renouveler mon abonnement" onPress={() => navigation.navigate('Subscription')} style={styles.fullWidthButton} />
             </>
           )}
