@@ -1,5 +1,5 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Allégée et Optimisée
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Libérée et Optimisée
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -53,22 +53,20 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // Calculs de trajectoire : on récupère visible (pour le dessin) et full (pour la caméra)
   const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  // Temps Réel
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // UTILISATION DU HOOK DÉDIÉ AVEC LE TRACÉ COMPLET (fullRoutePoints) pour le cadrage global et anticipé
+  // UTILISATION DU HOOK INTELLIGENT
   useMapAutoFitter({
     isMapReady,
     mapRef,
     location,
     driverLocation,
     markers,
-    routePointsToFit: fullRoutePoints, // Injection modifiée ici
+    routePointsToFit: fullRoutePoints, 
     mapTopPadding,
     mapBottomPadding
   });
@@ -114,8 +112,11 @@ const MapCard = forwardRef(({
           showsBuildings={false}
           showsTraffic={false}
           showsIndoors={false}
-          rotateEnabled={false}
-          pitchEnabled={false}
+          
+          // 🔥 LIBÉRATION DE LA CARTE : On autorise la rotation et la 3D 🔥
+          rotateEnabled={true}
+          pitchEnabled={true}
+          
           maxZoomLevel={17}
           onMapReady={handleMapReady}
           onPress={onPress}
@@ -130,7 +131,6 @@ const MapCard = forwardRef(({
             zIndex={1}
           />
 
-          {/* Le tracé utilise toujours visibleRoutePoints pour l'effet de dessin */}
           {visibleRoutePoints.length > 1 && (
             <Polyline
               coordinates={visibleRoutePoints}

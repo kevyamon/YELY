@@ -1,5 +1,5 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Contrôleur de Caméra Silencieux (Cadrage Dynamique Actif)
+// HOOK CARTE NATIF - Caméra Intelligente (Cadrage Absolu et Paddings Dynamiques)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
@@ -16,45 +16,33 @@ const useMapAutoFitter = ({
   mapBottomPadding,
 }) => {
   const lastUpdateRef = useRef(0);
-  const lastSignatureRef = useRef('');
+  const isInitialFitDone = useRef(false);
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current) return;
 
-    const allCoords = [];
-    
-    // 1. Détermination de la Source active
-    const activeSource = (driverLocation?.latitude && driverLocation?.longitude) 
-      ? driverLocation 
-      : (location?.latitude && location?.longitude) ? location : null;
+    let coordsToFit = [];
 
-    // 2. Détermination de la Cible active
-    const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
-    const destinationMarker = markers.find((m) => m.type === 'destination');
-    const pickupMarker = markers.find((m) => m.type === 'pickup');
-    const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
-
-    // 3. Collecte stricte des points vitaux
-    if (activeSource) {
-      allCoords.push({ latitude: activeSource.latitude, longitude: activeSource.longitude });
-    }
-    if (activeTarget) {
-      allCoords.push({ latitude: activeTarget.latitude, longitude: activeTarget.longitude });
-    }
-
-    // 4. Ajout de L'INTÉGRALITÉ du tracé anticipé pour cibler la fin du zoom directement
+    // 1. RÈGLE D'OR : Si un tracé existe, la caméra DOIT englober toutes ses extrémités
     if (routePointsToFit && routePointsToFit.length > 0) {
-      allCoords.push(...routePointsToFit);
+      coordsToFit = routePointsToFit;
     } else {
+      // 2. S'il n'y a pas de tracé (ex: mode attente), on cadre sur le chauffeur/client et les POI
+      if (driverLocation?.latitude) {
+        coordsToFit.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
+      } else if (location?.latitude) {
+        coordsToFit.push({ latitude: location.latitude, longitude: location.longitude });
+      }
+
       markers.forEach(m => {
         if (m.latitude && m.longitude) {
-          allCoords.push({ latitude: m.latitude, longitude: m.longitude });
+          coordsToFit.push({ latitude: m.latitude, longitude: m.longitude });
         }
       });
     }
 
-    // Gestion des cas extrêmes
-    if (allCoords.length === 0) {
+    // Sécurité de base si aucune coordonnée
+    if (coordsToFit.length === 0) {
       mapRef.current?.animateToRegion({ 
         latitude: MAFERE_CENTER.latitude, 
         longitude: MAFERE_CENTER.longitude, 
@@ -64,67 +52,31 @@ const useMapAutoFitter = ({
       return;
     }
 
-    if (allCoords.length === 1) {
-      mapRef.current?.animateToRegion({ 
-        latitude: allCoords[0].latitude, 
-        longitude: allCoords[0].longitude, 
-        latitudeDelta: 0.005, 
-        longitudeDelta: 0.005 
-      }, 800);
-      return;
-    }
-
-    // 5. Calcul mathématique de la Bounding Box totale
-    let minLat = allCoords[0].latitude;
-    let maxLat = allCoords[0].latitude;
-    let minLng = allCoords[0].longitude;
-    let maxLng = allCoords[0].longitude;
-
-    for (let i = 1; i < allCoords.length; i++) {
-      if (allCoords[i].latitude < minLat) minLat = allCoords[i].latitude;
-      if (allCoords[i].latitude > maxLat) maxLat = allCoords[i].latitude;
-      if (allCoords[i].longitude < minLng) minLng = allCoords[i].longitude;
-      if (allCoords[i].longitude > maxLng) maxLng = allCoords[i].longitude;
-    }
-
-    // 6. Cadrage Dynamique Actif (Auto-Zoom fluide)
-    const boxWidth = maxLng - minLng;
-    const boxHeight = maxLat - minLat;
-    
-    // Marges de respiration pour ne pas coller la route aux bords de l'écran
-    const PAD_FACTOR = 1.5; 
-    const MIN_DELTA = 0.004;
-
-    const baseLatDelta = Math.max(boxHeight * PAD_FACTOR, MIN_DELTA);
-    const baseLngDelta = Math.max(boxWidth * PAD_FACTOR, MIN_DELTA);
-    
-    const centerLat = (minLat + maxLat) / 2;
-    const centerLng = (minLng + maxLng) / 2;
-
-    // 7. Compensation visuelle des panneaux UI
-    const paddingOffsetRatio = (mapBottomPadding - mapTopPadding) / 1000;
-    const adjustedCenterLat = centerLat - (baseLatDelta * paddingOffsetRatio * 0.4);
-
-    // 8. Signature continue et anti-spam
+    // 3. Cadence de la Caméra (Anti-Spam)
+    // Au premier chargement, on cadre très vite. Ensuite, on ajuste toutes les 3 secondes si le chauffeur avance.
     const now = Date.now();
-    const currentSignature = `${adjustedCenterLat.toFixed(3)}_${centerLng.toFixed(3)}_${baseLatDelta.toFixed(3)}`;
+    const debounceTime = isInitialFitDone.current ? 3000 : 300; 
 
-    // Mise à jour si la Bounding Box a changé significativement OU toutes les 3.5 secondes
-    if (lastSignatureRef.current !== currentSignature || (now - lastUpdateRef.current > 3500)) {
-      lastSignatureRef.current = currentSignature;
+    if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
+      isInitialFitDone.current = true;
 
-      const timer = setTimeout(() => {
-        mapRef.current?.animateToRegion({
-          latitude: adjustedCenterLat,
-          longitude: centerLng,
-          latitudeDelta: baseLatDelta,
-          longitudeDelta: baseLngDelta
-        }, 1500); // Modifié : 1500ms, aligné exactement avec le temps de dessin de la ligne
+      setTimeout(() => {
+        // 🔥 LE MOTEUR D'AUTO-ZOOM NATIF 🔥
+        // Demande au SDK natif de calculer le zoom parfait pour inclure TOUS les points
+        // tout en évitant de cacher la route sous le SmartHeader (top) et le SmartFooter (bottom).
+        mapRef.current?.fitToCoordinates(coordsToFit, {
+          edgePadding: {
+            top: mapTopPadding + 50,    // +50 pour une respiration visuelle premium
+            bottom: mapBottomPadding + 50,
+            left: 40,
+            right: 40,
+          },
+          animated: true,
+        });
       }, 100);
-
-      return () => clearTimeout(timer);
     }
+
   }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, routePointsToFit, mapRef]);
 };
 
