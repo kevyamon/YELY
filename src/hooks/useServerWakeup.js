@@ -5,6 +5,7 @@
 import { useEffect, useState } from 'react';
 
 const useServerWakeup = () => {
+  const [isServerReady, setIsServerReady] = useState(false);
   const [isWakingUp, setIsWakingUp] = useState(false);
 
   useEffect(() => {
@@ -22,6 +23,7 @@ const useServerWakeup = () => {
         const response = await Promise.race([fetchPromise, timeoutPromise]);
 
         if (response.ok && isMounted) {
+          setIsServerReady(true);
           setIsWakingUp(false);
         } else {
           throw new Error('Server not ready');
@@ -30,7 +32,7 @@ const useServerWakeup = () => {
         if (isMounted) {
           // Le serveur dort ou le réseau est lent : On déclenche le Bouclier UX
           setIsWakingUp(true);
-          // On retente toutes les 4 secondes jusqu'au réveil
+          // On retente toutes les 4 secondes jusqu'au réveil complet
           setTimeout(pingServer, 4000);
         }
       }
@@ -43,7 +45,7 @@ const useServerWakeup = () => {
     };
   }, []);
 
-  return { isWakingUp };
+  return { isServerReady, isWakingUp };
 };
 
 export default useServerWakeup;

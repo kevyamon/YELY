@@ -1,8 +1,9 @@
 // src/screens/SplashScreen.jsx
 
 import { useEffect } from 'react';
-import { Image, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  FadeIn,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -12,7 +13,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
-const SplashScreen = () => {
+const SplashScreen = ({ isWakingUp }) => {
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
@@ -49,6 +50,14 @@ const SplashScreen = () => {
         <Text style={styles.appName}>YÉLY</Text>
         <Text style={styles.tagline}>Votre course, votre confort</Text>
       </Animated.View>
+
+      {/* Bouclier UX : Affiché uniquement si le serveur Render met du temps à se réveiller */}
+      {isWakingUp && (
+        <Animated.View entering={FadeIn.delay(300)} style={styles.wakeupContainer}>
+          <ActivityIndicator size="large" color={COLORS.champagneGold} />
+          <Text style={styles.wakeupText}>Connexion au réseau sécurisé Yély...</Text>
+        </Animated.View>
+      )}
     </View>
   );
 };
@@ -89,6 +98,18 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     letterSpacing: 1,
   },
+  wakeupContainer: {
+    position: 'absolute',
+    bottom: 60,
+    alignItems: 'center',
+  },
+  wakeupText: {
+    color: COLORS.champagneGold,
+    marginTop: SPACING.md,
+    fontSize: FONTS.sizes.bodySmall,
+    opacity: 0.9,
+    letterSpacing: 0.5,
+  }
 });
 
 export default SplashScreen;

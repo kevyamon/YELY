@@ -9,6 +9,7 @@ import { useEffect, useState } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
+import useServerWakeup from '../hooks/useServerWakeup';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
 import {
   forceSilentRefresh,
@@ -44,6 +45,7 @@ import MenuScreen from '../screens/MenuScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import ReportScreen from '../screens/report/ReportScreen';
+import SplashScreenComponent from '../screens/SplashScreen'; // Import renommé pour éviter conflit avec expo-splash-screen
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
@@ -80,7 +82,9 @@ const AppNavigator = () => {
   const user = useSelector(selectCurrentUser);
   const subStatus = useSelector(selectSubscriptionStatus);
   
-  const [isReady, setIsReady] = useState(false);
+  // Utilisation de notre hook intelligent
+  const { isServerReady, isWakingUp } = useServerWakeup();
+  const [isAuthReady, setIsAuthReady] = useState(false);
 
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
@@ -116,7 +120,8 @@ const AppNavigator = () => {
         console.error('[AUTH FATAL] Erreur critique au demarrage:', e);
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
-        setIsReady(true);
+        setIsAuthReady(true);
+        // On cache le splash natif très vite pour laisser notre beau SplashScreenComponent s'animer
         setTimeout(async () => {
           await SplashScreen.hideAsync();
         }, 100);
@@ -126,8 +131,9 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  if (!isReady) {
-    return null; 
+  // Le fameux Bouclier UX : On attend l'authentification ET le backend.
+  if (!isAuthReady || !isServerReady) {
+    return <SplashScreenComponent isWakingUp={isWakingUp} />; 
   }
 
   const isDriver = user?.role === 'driver';
@@ -160,9 +166,7 @@ const AppNavigator = () => {
       ) : isAdmin ? (
         <Stack.Group>
           <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
-          {/* AJOUT SENIOR: L'admin a desormais le droit d'acceder a son propre profil */}
           <Stack.Screen name="Profile" component={ProfileScreen} />
-          
           <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
           <Stack.Screen name="UsersManagement" component={UsersManagement} />
           <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
