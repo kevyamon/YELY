@@ -8,13 +8,10 @@ import socketService from '../services/socketService';
 const useSearchExpansion = (initialRadius = 1000, isActive = false) => {
   const [radius, setRadius] = useState(initialRadius);
 
-  // SECURITE 1 : Synchronisation absolue avec Redux.
-  // Si le socket echoue, mais que RTK Query rafraichit la data depuis la BDD, l'UI se mettra a jour.
   useEffect(() => {
     setRadius((prev) => (initialRadius > prev ? initialRadius : prev));
   }, [initialRadius]);
 
-  // SECURITE 2 : Ecouteur Socket temps reel
   useEffect(() => {
     if (!isActive) return;
 
@@ -35,8 +32,11 @@ const useSearchExpansion = (initialRadius = 1000, isActive = false) => {
   let title = "Recherche de chauffeurs...";
   let subtitle = "Nous interrogeons les vehicules a proximite.";
 
-  if (radius >= 1900) {
+  if (radius >= 2500) {
     title = "Recherche maximale...";
+    subtitle = "Derniere tentative dans la zone globale...";
+  } else if (radius >= 1900) {
+    title = "Recherche tres eloignee...";
     subtitle = "Encore un instant, nous cherchons au plus loin...";
   } else if (radius >= 1600) {
     title = "Recherche elargie...";
