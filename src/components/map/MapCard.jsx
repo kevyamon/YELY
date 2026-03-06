@@ -15,6 +15,7 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
+  AnimatedTrackedMarker,
   PoiMarker,
   SmoothDriverMarker,
   TrackedMarker,
@@ -59,7 +60,6 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // UTILISATION DU HOOK INTELLIGENT
   useMapAutoFitter({
     isMapReady,
     mapRef,
@@ -112,11 +112,8 @@ const MapCard = forwardRef(({
           showsBuildings={false}
           showsTraffic={false}
           showsIndoors={false}
-          
-          // 🔥 LIBÉRATION DE LA CARTE : On autorise la rotation et la 3D 🔥
           rotateEnabled={true}
           pitchEnabled={true}
-          
           maxZoomLevel={17}
           onMapReady={handleMapReady}
           onPress={onPress}
@@ -152,7 +149,7 @@ const MapCard = forwardRef(({
           ))}
 
           {showUserMarker && location && location.latitude && (
-            <TrackedMarker
+            <AnimatedTrackedMarker
               identifier="user_loc"
               coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
               anchor={{ x: 0.5, y: 0.5 }}
@@ -162,7 +159,7 @@ const MapCard = forwardRef(({
                 <View style={styles.userMarkerPulse} />
                 <View style={styles.userMarkerInner} />
               </View>
-            </TrackedMarker>
+            </AnimatedTrackedMarker>
           )}
 
           {driverLocation && driverLocation.latitude && driverLocation.longitude && (

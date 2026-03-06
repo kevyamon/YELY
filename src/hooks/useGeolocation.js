@@ -1,11 +1,10 @@
 // src/hooks/useGeolocation.js
-// HOOK GÉOLOCALISATION - Filtre Haversine & Heartbeat (Anti-Ghosting)
+// HOOK GÉOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial
 // STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
-// FILTRE MATHÉMATIQUE (Formule de Haversine)
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
   const p1 = lat1 * (Math.PI / 180);
@@ -33,8 +32,10 @@ const useGeolocation = (options = {}) => {
   
   const watchRef = useRef(null);
   const retryTimeoutRef = useRef(null);
-
   const lastValidLocationRef = useRef(null);
+  
+  // VERROU ANTI-ZOMBIE
+  const isStartingRef = useRef(false);
 
   const requestPermission = useCallback(async () => {
     try {
@@ -43,10 +44,6 @@ const useGeolocation = (options = {}) => {
         setError('Permission au premier plan refusée');
         setIsLoading(false);
         return false;
-      }
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (backgroundStatus !== 'granted') {
-        console.warn('[GEOLOCATION] Permission en arrière-plan refusée.');
       }
       return true;
     } catch (err) {
@@ -64,7 +61,7 @@ const useGeolocation = (options = {}) => {
       });
 
       if (loc.mocked) {
-        setError('Position falsifiée détectée. Veuillez désactiver votre Fake GPS.');
+        setError('Position falsifiée détectée.');
         setIsLoading(false);
         return null;
       }
@@ -73,14 +70,13 @@ const useGeolocation = (options = {}) => {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
         heading: loc.coords.heading || 0,
-        speed: loc.coords.speed || 0,
+        speed: 0, 
         accuracy: loc.coords.accuracy,
         timestamp: Date.now(),
       };
       
       lastValidLocationRef.current = coords;
       setLocation(coords);
-      setError(null); 
       setIsLoading(false);
       return coords;
     } catch (err) {
@@ -104,9 +100,10 @@ const useGeolocation = (options = {}) => {
       return; 
     }
 
-    if (watchPosition && !watchRef.current) {
+    if (watchPosition && !watchRef.current && !isStartingRef.current) {
+      isStartingRef.current = true;
       try {
-        watchRef.current = await Location.watchPositionAsync(
+        const watcher = await Location.watchPositionAsync(
           {
             accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
             timeInterval,
@@ -116,56 +113,68 @@ const useGeolocation = (options = {}) => {
             deferredUpdatesInterval: timeInterval
           },
           (loc) => {
-            if (mounted) {
-              if (loc.mocked) {
-                setError('Position falsifiée détectée. Veuillez désactiver votre Fake GPS.');
-                return;
+            if (!mounted) return;
+            if (loc.mocked) {
+              setError('Position falsifiée détectée.');
+              return;
+            }
+
+            const accuracy = loc.coords.accuracy || 100;
+            if (accuracy > 50) return;
+
+            const newLat = loc.coords.latitude;
+            const newLng = loc.coords.longitude;
+            const now = Date.now();
+
+            if (lastValidLocationRef.current) {
+              const distance = getDistanceInMeters(
+                lastValidLocationRef.current.latitude,
+                lastValidLocationRef.current.longitude,
+                newLat,
+                newLng
+              );
+              const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
+
+              // REJET DES MICRO-MOUVEMENTS (Absorption du bruit)
+              if (distance < 5) {
+                return; 
               }
 
-              // FILTRE ANTI-DÉRIVE : Rejet des signaux GPS de mauvaise qualité
-              if (loc.coords.accuracy > 30) {
-                return;
-              }
-
-              const newLat = loc.coords.latitude;
-              const newLng = loc.coords.longitude;
-              const now = Date.now();
-
-              if (lastValidLocationRef.current) {
-                const distance = getDistanceInMeters(
-                  lastValidLocationRef.current.latitude,
-                  lastValidLocationRef.current.longitude,
-                  newLat,
-                  newLng
-                );
-                const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
-
-                // FILTRE ANTI-DÉRIVE : On augmente le seuil à 15m pour le bruit statique
-                if (distance < 15 && timeSinceLastUpdate < 60000) {
-                  return; 
+              // FILTRE ANTI-TÉLÉPORTATION
+              if (timeSinceLastUpdate > 0) {
+                const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
+                if (calculatedSpeedKmh > 180) {
+                  return;
                 }
               }
-              
-              const newCoords = {
-                latitude: newLat,
-                longitude: newLng,
-                heading: loc.coords.heading || 0,
-                speed: loc.coords.speed || 0,
-                accuracy: loc.coords.accuracy,
-                timestamp: now,
-              };
-
-              lastValidLocationRef.current = newCoords;
-              setLocation(newCoords);
-              setError(null); 
             }
+            
+            const newCoords = {
+              latitude: newLat,
+              longitude: newLng,
+              heading: loc.coords.heading || 0,
+              speed: loc.coords.speed || 0,
+              accuracy: accuracy,
+              timestamp: now,
+            };
+
+            lastValidLocationRef.current = newCoords;
+            setLocation(newCoords);
+            setError(null); 
           }
         );
+
+        if (!mounted) {
+          watcher.remove();
+        } else {
+          watchRef.current = watcher;
+        }
       } catch (err) {
-        console.error('[GEOLOCATION] Erreur Watcher', err);
         retryTimeoutRef.current = setTimeout(() => {
           if (mounted) initTracking();
         }, 3000);
+      } finally {
+        isStartingRef.current = false;
       }
     }
     return () => { mounted = false; };
@@ -179,9 +188,7 @@ const useGeolocation = (options = {}) => {
         watchRef.current.remove();
         watchRef.current = null;
       }
-      if (retryTimeoutRef.current) {
-        clearTimeout(retryTimeoutRef.current);
-      }
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
     };
   }, [initTracking]);
 

@@ -1,5 +1,5 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GEOLOCALISATION WEB - API Navigateur, Filtre Haversine & Heartbeat
+// GESTION GEOLOCALISATION WEB - Bouclier Spatial Absolu
 // CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -11,7 +11,6 @@ const EXACT_MOCK_LOCATION = {
   speed: 0
 };
 
-// FILTRE MATHÉMATIQUE (Formule de Haversine)
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
   const p1 = lat1 * (Math.PI / 180);
@@ -52,7 +51,7 @@ const useGeolocation = (options = {}) => {
         setAddress(components.join(', ') || data.display_name);
       }
     } catch (e) {
-      console.warn("Erreur Geocoding Web silencieuse");
+      console.warn("[GEOLOCATION WEB] Erreur Geocoding silencieuse");
     }
   };
 
@@ -74,7 +73,7 @@ const useGeolocation = (options = {}) => {
     }
 
     if (!navigator.geolocation) {
-      setError("La géolocalisation n'est pas supportée par ce navigateur.");
+      setError("La geolocalisation n'est pas supportee par ce navigateur.");
       setIsLoading(false);
       return;
     }
@@ -86,16 +85,14 @@ const useGeolocation = (options = {}) => {
         setIsPermissionDenied(false);
         setError(null);
         
-        // FILTRE ANTI-DÉRIVE : Rejet des signaux de mauvaise qualité (si supporté par le navigateur)
-        if (position.coords.accuracy && position.coords.accuracy > 30) {
-          return;
-        }
+        const accuracy = position.coords.accuracy || 100;
+
+        if (accuracy > 50) return;
 
         const newLat = position.coords.latitude;
         const newLng = position.coords.longitude;
         const now = Date.now();
 
-        // 🛡️ L'INTERCEPTEUR : Filtre spatial + Heartbeat temporel pour le Web
         if (lastValidLocationRef.current) {
           const distance = getDistanceInMeters(
             lastValidLocationRef.current.latitude,
@@ -105,9 +102,16 @@ const useGeolocation = (options = {}) => {
           );
           const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-          // Seuil augmenté à 15m
-          if (distance < 15 && timeSinceLastUpdate < 60000) {
+          // LE BOUCLIER SPATIAL ABSOLU
+          if (distance < 12) {
             return; 
+          }
+
+          if (timeSinceLastUpdate > 0) {
+            const calculatedSpeed = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
+            if (calculatedSpeed > 180) {
+              return;
+            }
           }
         }
 
@@ -116,7 +120,7 @@ const useGeolocation = (options = {}) => {
           longitude: newLng,
           heading: position.coords.heading || 0,
           speed: position.coords.speed || 0,
-          accuracy: position.coords.accuracy,
+          accuracy: accuracy,
           timestamp: now
         };
 
@@ -130,7 +134,7 @@ const useGeolocation = (options = {}) => {
         setIsLoading(false);
         if (err.code === 1) {
           setIsPermissionDenied(true);
-          setError("Accès au GPS refusé.");
+          setError("Acces au GPS refuse.");
         } else {
           setError("Recherche de votre position GPS...");
         }

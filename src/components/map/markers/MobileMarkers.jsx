@@ -38,6 +38,56 @@ export const TrackedMarker = ({
   );
 };
 
+export const AnimatedTrackedMarker = ({
+  coordinate,
+  anchor,
+  children,
+  zIndex,
+  identifier,
+  visible = true,
+}) => {
+  const [tracks, setTracks] = useState(true);
+
+  useEffect(() => {
+    const timer = setTimeout(() => setTracks(false), 1200);
+    return () => clearTimeout(timer);
+  }, []);
+
+  const [markerCoordinate] = useState(
+    new AnimatedRegion({
+      latitude: coordinate?.latitude || 0,
+      longitude: coordinate?.longitude || 0,
+      latitudeDelta: 0,
+      longitudeDelta: 0,
+    })
+  );
+
+  useEffect(() => {
+    if (coordinate?.latitude && coordinate?.longitude) {
+      markerCoordinate.timing({
+        latitude: coordinate.latitude,
+        longitude: coordinate.longitude,
+        duration: 1000,
+        useNativeDriver: false,
+      }).start();
+    }
+  }, [coordinate?.latitude, coordinate?.longitude, markerCoordinate]);
+
+  if (!visible) return null;
+
+  return (
+    <Marker.Animated
+      identifier={identifier}
+      coordinate={markerCoordinate}
+      anchor={anchor}
+      tracksViewChanges={tracks}
+      zIndex={zIndex}
+    >
+      {children}
+    </Marker.Animated>
+  );
+};
+
 export const AnimatedPickupMarker = ({ color }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
 
@@ -175,7 +225,6 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   );
 };
 
-// ── Helper : premier mot uniquement ──
 const getShortName = (text) => {
   if (!text) return '';
   const words = text.trim().split(/\s+/);
@@ -183,7 +232,6 @@ const getShortName = (text) => {
   return `${words[0]}…`;
 };
 
-// COMPOSANT ALLEGÉ : Plus d'animation ni de state de tooltip, que du visuel pur
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const [tracks, setTracks] = useState(true);
 

@@ -82,7 +82,6 @@ export const MapAutoFitter = ({ location, driverLocation, markers, routePoints, 
         const bounds = L.latLngBounds(points);
         
         setTimeout(() => {
-          // Leaflet padding = [horizontal, vertical] (Point in pixels)
           map.flyToBounds(bounds, {
             paddingTopLeft: [50, mapTopPadding + 20],
             paddingBottomRight: [50, mapBottomPadding + 60],
@@ -99,7 +98,7 @@ export const MapAutoFitter = ({ location, driverLocation, markers, routePoints, 
         map.flyTo([location.latitude, location.longitude], 15, { duration: 1.2 });
       }, 300);
     }
-  }, [markers, map, mapTopPadding, mapBottomPadding]); 
+  }, [markers, map, mapTopPadding, mapBottomPadding, location, driverLocation]); 
 
   return null;
 };
