@@ -53,22 +53,22 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  // Calculs de trajectoire
-  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
+  // Calculs de trajectoire : on récupère visible (pour le dessin) et full (pour la caméra)
+  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   // Temps Réel
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // UTILISATION DU HOOK DÉDIÉ AVEC LE TRACÉ RESTANT (visibleRoutePoints)
+  // UTILISATION DU HOOK DÉDIÉ AVEC LE TRACÉ COMPLET (fullRoutePoints) pour le cadrage global et anticipé
   useMapAutoFitter({
     isMapReady,
     mapRef,
     location,
     driverLocation,
     markers,
-    routePointsToFit: visibleRoutePoints, // L'injection clé pour le zoom progressif
+    routePointsToFit: fullRoutePoints, // Injection modifiée ici
     mapTopPadding,
     mapBottomPadding
   });
@@ -130,6 +130,7 @@ const MapCard = forwardRef(({
             zIndex={1}
           />
 
+          {/* Le tracé utilise toujours visibleRoutePoints pour l'effet de dessin */}
           {visibleRoutePoints.length > 1 && (
             <Polyline
               coordinates={visibleRoutePoints}
