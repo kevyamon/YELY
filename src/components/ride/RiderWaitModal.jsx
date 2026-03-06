@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
+import useSearchExpansion from '../../hooks/useSearchExpansion';
 import { useCancelRideMutation, useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
 import { clearCurrentRide, selectCurrentRide, setCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
@@ -23,10 +24,17 @@ const RiderWaitModal = () => {
   const [isCancelling, setIsCancelling] = useState(false);
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
-  // VACCIN GHOST STATE : On ne fait PLUS de "return null" brutal.
   const isVisible = Boolean(
     currentRide && 
     (currentRide.status === 'searching' || currentRide.status === 'negotiating')
+  );
+
+  const isSearching = currentRide?.status === 'searching';
+  
+  // Utilisation du hook dedie pour alleger le composant visuel
+  const { title: searchTitle, subtitle: searchSubtitle } = useSearchExpansion(
+    currentRide?.searchRadius || 1000, 
+    isSearching
   );
 
   const handleDecision = async (decision) => {
@@ -121,27 +129,9 @@ const RiderWaitModal = () => {
     if (!currentRide) return null;
 
     if (currentRide.status === 'searching') {
-      let searchTitle = "Recherche de chauffeurs...";
-      let searchSubtitle = "Nous interrogeons les vehicules a proximite.";
-      
-      // SECURITE SENIOR : On force la conversion en Nombre et on utilise '>=' au lieu de '==='
-      const radius = Number(currentRide.searchRadius || 1000);
-
-      if (radius >= 1900) {
-        searchTitle = "Recherche maximale...";
-        searchSubtitle = "Encore un instant, nous cherchons au plus loin...";
-      } else if (radius >= 1600) {
-        searchTitle = "Recherche elargie...";
-        searchSubtitle = "Recherche de chauffeurs plus eloignes...";
-      } else if (radius >= 1300) {
-        searchTitle = "Agrandissement du radar...";
-        searchSubtitle = "Extension de la zone de recherche...";
-      }
-
       return (
         <View style={styles.centerContent}>
           <SearchingRadar />
-          {/* L'interface affichera désormais un changement FLAGRANT */}
           <Text style={styles.title}>{searchTitle}</Text>
           <Text style={styles.subtitle}>{searchSubtitle}</Text>
           {renderCancelSection()}

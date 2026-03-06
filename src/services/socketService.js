@@ -12,7 +12,7 @@ class SocketService {
     this.socket = null;
     this.isConnected = false;
     this.reconnectAttempts = 0;
-    this._listeners = [];
+    this._listeners = []; // Memoire persistante des ecouteurs
   }
 
   connect(token) {
@@ -20,7 +20,6 @@ class SocketService {
       return; 
     }
 
-    // Si deja connecte, on verifie si le token a change pour le mettre a jour a chaud
     if (this.socket?.connected) {
       if (this.socket.auth.token !== token) {
         if (__DEV__) console.log('[SOCKET_SERVICE] Mise a jour du token sur un socket actif.');
@@ -30,7 +29,6 @@ class SocketService {
       return;
     }
 
-    // Si l'instance existe mais est deconnectee, on relance juste la connexion
     if (this.socket) {
       this.socket.auth.token = token;
       this.socket.connect();
@@ -47,6 +45,11 @@ class SocketService {
       reconnectionDelayMax: 10000,
       timeout: 20000,
       randomizationFactor: 0.5
+    });
+
+    // REBRANCHEMENT AUTOMATIQUE : On reconnecte tous les ecouteurs en attente
+    this._listeners.forEach(({ event, callback }) => {
+      this.socket.on(event, callback);
     });
 
     this._setupCoreListeners();
@@ -87,7 +90,6 @@ class SocketService {
 
     this.socket.on('force_disconnect', (data) => {
       if (__DEV__) console.warn(`[SOCKET_SERVICE] Deconnexion forcee par le serveur. Raison: ${data?.reason}`);
-      // MODIFICATION CRITIQUE : On ne detruit plus les listeners, on attend juste la reconnexion avec un nouveau token.
       if (this.socket) {
         this.socket.disconnect();
       }
@@ -96,8 +98,6 @@ class SocketService {
     this.socket.on('connect_error', (error) => {
       if (['AUTH_FAILED', 'AUTH_REJECTED', 'AUTH_TOKEN_MISSING'].includes(error.message)) {
         if (__DEV__) console.warn('[SOCKET_SERVICE] Acces refuse (Token expire). En attente du Refresh Token...');
-        // MODIFICATION CRITIQUE : On ne purge plus les listeners avec this.disconnect()
-        // On laisse l'instance en pause. apiSlice appellera updateToken() apres rafraichissement HTTP.
         return;
       }
 
@@ -107,18 +107,22 @@ class SocketService {
   }
 
   on(event, callback) {
-    if (this.socket) {
-      this.socket.on(event, callback);
+    // SECURITE ABSOLUE : On memorise l'ecouteur meme si le socket n'est pas pret
+    const exists = this._listeners.some(l => l.event === event && l.callback === callback);
+    if (!exists) {
       this._listeners.push({ event, callback });
+      if (this.socket) {
+        this.socket.on(event, callback);
+      }
     }
   }
 
   off(event, callback) {
+    this._listeners = this._listeners.filter(
+      (l) => !(l.event === event && l.callback === callback)
+    );
     if (this.socket) {
       this.socket.off(event, callback);
-      this._listeners = this._listeners.filter(
-        (l) => !(l.event === event && l.callback === callback)
-      );
     }
   }
 
