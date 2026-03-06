@@ -53,10 +53,10 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
 
       if (fetchedId) {
-        if (currentId !== fetchedId) {
-          dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
-        }
-      } else if (currentId) {
+        // AFE Standard : On synchronise la data du backend même si c'est la même course (pour capter les mises à jour silencieuses)
+        dispatch(setCurrentRide({ ...currentRide, ...ride, rideId: fetchedId }));
+      } else if (currentId && isFetchSuccess) {
+        // Anti-Zombie : Le backend a confirmé qu'il n'y a plus de course active
         dispatch(clearCurrentRide());
       }
     }
@@ -113,7 +113,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   }, [destination, displayVehicles, selectedVehicle]);
 
   useEffect(() => {
-    if (rideToRate || (!currentRide && !fetchedRideData) || currentRide?.status === 'cancelled') {
+    // On se fie uniquement à currentRide pour l'UI, fetchedRideData est juste un backup de synchro
+    if (rideToRate || !currentRide || currentRide?.status === 'cancelled' || currentRide?.status === 'timeout') {
       setDestination(null);
       setManualOrigin(null); 
       setSelectedVehicle(null);
@@ -121,7 +122,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
         if (mapRef.current) mapRef.current.centerOnUser();
       }, 300);
     }
-  }, [rideToRate, currentRide, fetchedRideData, mapRef]);
+  }, [rideToRate, currentRide, mapRef]);
 
   const handlePlaceSelect = async (selectedPlace, mode) => {
     if (!isLocationInMafereZone(selectedPlace)) {
