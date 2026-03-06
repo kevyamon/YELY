@@ -5,10 +5,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
 
-const ROUTE_DRAW_DURATION_MS = 1500; // Modifié : 1500ms pour synchroniser avec l'auto-fitter
+const ROUTE_DRAW_DURATION_MS = 1500;
 const ROUTE_DRAW_INTERVAL_MS = 16;
 const TRIM_THRESHOLD_METERS = 2;
 const DEVIATION_THRESHOLD_METERS = 60;
+const SILENT_RETRY_DELAY_MS = 5000;
 
 const computeStepSize = (totalPoints) => {
   const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
@@ -58,6 +59,7 @@ const useRouteManager = (location, driverLocation, markers) => {
   const lastPassedIndexRef = useRef(0);
   
   const lastRouteFetchTimeRef = useRef(0);
+  const retryTimeoutRef = useRef(null);
 
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
@@ -113,6 +115,17 @@ const useRouteManager = (location, driverLocation, markers) => {
         return;
       }
 
+      if (!routePoints) {
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          if (lastRouteDestKeyRef.current === destKey) {
+            lastRouteFetchTimeRef.current = 0;
+          }
+        }, SILENT_RETRY_DELAY_MS);
+        return;
+      }
+
+      clearTimeout(retryTimeoutRef.current);
       const validPoints = routePoints || [];
       fullRoutePointsRef.current = validPoints;
       setFullRoutePoints(validPoints);
@@ -232,9 +245,6 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     if (destKey !== lastRouteDestKeyRef.current) {
       stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      setFullRoutePoints([]);
-      fullRoutePointsRef.current = [];
       lastPassedIndexRef.current = 0;
 
       fetchAndStoreRoute(
@@ -246,13 +256,22 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     const full = fullRoutePointsRef.current;
-    if (!full || full.length === 0) return;
+    if (!full || full.length === 0) {
+      const now = Date.now();
+      if (now - lastRouteFetchTimeRef.current > SILENT_RETRY_DELAY_MS) {
+         fetchAndStoreRoute(
+          { latitude: routeOriginLat, longitude: routeOriginLng },
+          { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
+          destKey
+        );
+      }
+      return;
+    }
 
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
       if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
-        lastRouteFetchTimeRef.current = now;
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
@@ -289,7 +308,10 @@ const useRouteManager = (location, driverLocation, markers) => {
   ]);
 
   useEffect(() => {
-    return () => stopDrawAnimation();
+    return () => {
+        stopDrawAnimation();
+        clearTimeout(retryTimeoutRef.current);
+    };
   }, [stopDrawAnimation]);
 
   return { visibleRoutePoints, fullRoutePoints };

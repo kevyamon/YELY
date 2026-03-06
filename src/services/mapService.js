@@ -12,12 +12,13 @@ const API_HEADERS = {
 const ADDRESS_CACHE_PRECISION = 4;
 const ADDRESS_CACHE_MAX_SIZE = 50;
 const ADDRESS_DEBOUNCE_MS = 1500;
-const ROUTE_FETCH_TIMEOUT_MS = 5000;
+const ROUTE_FETCH_TIMEOUT_MS = 8000;
+const MAX_RETRIES = 3;
+const RETRY_BACKOFF_MS = 1000;
 
 const addressCache = new Map();
 
 const roundCoord = (value) => Number(value.toFixed(ADDRESS_CACHE_PRECISION));
-
 const getCacheKey = (lat, lng) => `${roundCoord(lat)},${roundCoord(lng)}`;
 
 const writeAddressCache = (key, address) => {
@@ -27,26 +28,50 @@ const writeAddressCache = (key, address) => {
   addressCache.set(key, address);
 };
 
+const fetchWithRetry = async (url, options = {}, retries = MAX_RETRIES) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), options.timeout || ROUTE_FETCH_TIMEOUT_MS);
+      
+      const response = await fetch(url, { ...options, signal: controller.signal });
+      clearTimeout(timeoutId);
+
+      if (!response.ok) {
+        if (response.status === 429) {
+          await new Promise(res => setTimeout(res, RETRY_BACKOFF_MS * 2));
+          continue;
+        }
+        if (response.status >= 500) {
+          throw new Error(`Erreur Serveur: ${response.status}`);
+        }
+        return response;
+      }
+      return response;
+    } catch (error) {
+      const isLastAttempt = i === retries - 1;
+      if (isLastAttempt) throw error;
+      await new Promise(res => setTimeout(res, RETRY_BACKOFF_MS * Math.pow(2, i)));
+    }
+  }
+};
+
 let addressDebounceTimer = null;
-let pendingGeocodeRequests = []; // File d'attente pour resoudre toutes les promesses orphelines
+let pendingGeocodeRequests = [];
 
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
-  // On stocke la promesse au lieu de l'ecraser
   pendingGeocodeRequests.push({ resolve, reject });
   clearTimeout(addressDebounceTimer);
   
   addressDebounceTimer = setTimeout(async () => {
-    // On capture la file actuelle et on la vide pour le prochain batch
     const currentRequests = [...pendingGeocodeRequests];
     pendingGeocodeRequests = []; 
 
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
-      const response = await fetch(url, { headers: API_HEADERS });
+      const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
 
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
 
       const contentType = response.headers.get('content-type');
       if (!contentType || !contentType.includes('application/json')) {
@@ -57,7 +82,6 @@ const debouncedFetchAddress = (lat, lng, resolve, reject) => {
       if (data && data.display_name) {
         const parts = data.display_name.split(',');
         const address = parts.slice(0, 2).join(',').trim();
-        // On resout TOUTES les requetes en attente en une seule fois
         currentRequests.forEach(req => req.resolve(address));
       } else {
         currentRequests.forEach(req => req.resolve('Adresse inconnue'));
@@ -102,17 +126,12 @@ class MapService {
 
     try {
       const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
+      const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
 
-      const response = await fetch(url, { headers: API_HEADERS });
-
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
 
       const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) {
-        throw new Error("La reponse de l'API n'est pas du JSON valide.");
-      }
+      if (!contentType || !contentType.includes('application/json')) throw new Error("JSON invalide.");
 
       const data = await response.json();
 
@@ -152,9 +171,7 @@ class MapService {
       writeAddressCache(cacheKey, address);
       return address;
     } catch (error) {
-      if (error.message.includes('429')) {
-        return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      }
+      if (error.message.includes('429')) return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
       console.warn('[MapService] Erreur getAddressFromCoordinates:', error.message);
       return 'Adresse introuvable';
     }
@@ -168,7 +185,7 @@ class MapService {
 
     if (!sLat || !sLng || !eLat || !eLng) {
       console.warn('[MapService] Coordonnees invalides pour le routage.');
-      return [];
+      return null;
     }
 
     const distance = this.calculateDistance({ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng });
@@ -177,21 +194,10 @@ class MapService {
     }
 
     try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), ROUTE_FETCH_TIMEOUT_MS);
-
       const url = `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
+      const response = await fetchWithRetry(url, { headers: API_HEADERS }, MAX_RETRIES);
 
-      const response = await fetch(url, { 
-        headers: API_HEADERS,
-        signal: controller.signal
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`Erreur HTTP OSRM: ${response.status}`);
-      }
+      if (!response.ok) throw new Error(`Erreur HTTP OSRM: ${response.status}`);
 
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
@@ -205,13 +211,11 @@ class MapService {
         }
       }
     } catch (error) {
-      console.warn('[MapService] Erreur OSRM Route:', error.message);
+      console.warn('[MapService] Echec definitif OSRM Route (Reseau):', error.message);
+      return null;
     }
 
-    return [
-      { latitude: sLat, longitude: sLng },
-      { latitude: eLat, longitude: eLng },
-    ];
+    return null;
   }
 
   static calculateDistance(coord1, coord2) {
