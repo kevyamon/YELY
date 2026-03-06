@@ -1,5 +1,5 @@
 // src/components/map/markers/WebMarkers.jsx
-// COMPOSANTS VISUELS CARTE WEB - Cadrage Intelligent des Extrémités
+// COMPOSANTS VISUELS CARTE WEB - Intelligence Spatiale & Cadrage Sécurisé (AFE Standard)
 // CSCSM Level: Bank Grade
 
 import L from 'leaflet';
@@ -54,6 +54,18 @@ export const driverIcon = L.divIcon({
   iconAnchor: [22, 22],
 });
 
+// 🧠 INTELLIGENCE SPATIALE : Formule de Haversine
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; 
+  const p1 = (lat1 * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dp = ((lat2 - lat1) * Math.PI) / 180;
+  const dl = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
+
 export const MapAutoFitter = ({ 
   location, 
   driverLocation, 
@@ -67,12 +79,12 @@ export const MapAutoFitter = ({
   const lastUpdateRef = useRef(0);
 
   useEffect(() => {
-    // 🛡️ RESPECT DE L'UX : On bloque le centrage automatique si l'utilisateur glisse
+    // 🛡️ RESPECT DE L'UX
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    // 🎯 LA LOGIQUE DES EXTRÉMITÉS
+    // 🎯 1. IDENTIFICATION DES EXTRÉMITÉS
     const targetMarker = markers.find((m) => m.type === 'pickup' || m.type === 'destination');
     const originMarker = driverLocation?.latitude ? driverLocation : location;
 
@@ -104,13 +116,37 @@ export const MapAutoFitter = ({
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
+      // 🧠 2. DÉCISION DU NIVEAU DE ZOOM SÉCURISÉ (Le Superpouvoir Web)
+      let dynamicMaxZoom = 16; 
+
+      if (isTrackingActive && targetMarker && originMarker) {
+        const distance = getDistance(
+          originMarker.latitude, originMarker.longitude,
+          targetMarker.latitude, targetMarker.longitude
+        );
+
+        // Si la distance est courte (< 800m), on autorise un zoom plus profond pour voir les détails
+        // Sinon, on limite le zoom pour forcer Leaflet à prendre de la hauteur et dégager la vue
+        if (distance < 800) {
+          dynamicMaxZoom = 17;
+        } else {
+          dynamicMaxZoom = 15;
+        }
+      }
+
+      // 🛡️ 3. LE BOUCLIER D'ÉVASION WEB (Anti-Implosion)
+      // Sur le web, la hauteur dépend du navigateur. On estime une hauteur moyenne sécurisée.
+      const safeTopPadding = Math.min(mapTopPadding + 40, 300); // Plafond arbitraire sécurisé pour éviter l'étouffement
+      const safeBottomPadding = Math.min(mapBottomPadding + 60, 400);
+
       setTimeout(() => {
         const bounds = L.latLngBounds(coordsToFit);
+        // Effet Cinematic Drone avec Leaflet
         map.flyToBounds(bounds, {
-          paddingTopLeft: [50, mapTopPadding + 20],
-          paddingBottomRight: [50, mapBottomPadding + 60],
+          paddingTopLeft: [50, safeTopPadding],
+          paddingBottomRight: [50, safeBottomPadding],
           duration: 1.5,
-          maxZoom: 16,
+          maxZoom: dynamicMaxZoom, // Utilisation de l'intelligence de zoom
         });
       }, 100);
     }

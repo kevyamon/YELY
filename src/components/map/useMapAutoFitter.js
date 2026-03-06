@@ -1,12 +1,24 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente (Logique des Extrémités & Padding Sécurisé)
+// HOOK CARTE NATIF - Caméra Intelligente Conditionnelle (3D Fixe & Anti-Renversement)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
-import { Dimensions } from 'react-native';
+import { Dimensions, Platform } from 'react-native';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// 🧠 INTELLIGENCE SPATIALE : Formule de Haversine
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; 
+  const p1 = (lat1 * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dp = ((lat2 - lat1) * Math.PI) / 180;
+  const dl = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
 
 const useMapAutoFitter = ({
   isMapReady,
@@ -16,21 +28,20 @@ const useMapAutoFitter = ({
   markers,
   mapTopPadding = 140,
   mapBottomPadding = 240,
-  isUserInteracting, // Hérité de MapCard pour la liberté gestuelle
+  isUserInteracting, 
 }) => {
   const lastUpdateRef = useRef(0);
   const isInitialFitDone = useRef(false);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current) return;
     
-    // 🛡️ RESPECT DE L'UX : Si l'utilisateur manipule la carte, on stoppe la caméra
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    // 🎯 1. LA LOGIQUE DES EXTRÉMITÉS
-    // On ignore le tracé complet, on ne cible que l'Origine (Point A) et la Cible (Point B)
+    // 🎯 1. IDENTIFICATION DES EXTRÉMITÉS
     const targetMarker = markers.find(m => m.type === 'destination' || m.type === 'pickup');
     const originMarker = driverLocation?.latitude ? driverLocation : location;
 
@@ -61,31 +72,73 @@ const useMapAutoFitter = ({
 
     const now = Date.now();
     const isTrackingActive = coordsToFit.length === 2;
-    // Cadence : Rafraîchissement souple pendant une course, sinon un seul cadrage initial.
     const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
-      // 🛡️ 2. LE BOUCLIER ANTI-PANIC (Correctif du "Zoom In")
-      // On s'assure que le padding ne sature jamais l'écran du téléphone pour éviter le crash natif
-      const maxSafePadding = SCREEN_HEIGHT * 0.25; // Le padding ne doit pas dépasser 25% de la hauteur de l'écran
-      const safeTop = Math.min(mapTopPadding + 10, maxSafePadding);
-      const safeBottom = Math.min(mapBottomPadding + 20, maxSafePadding);
+      // 🛡️ 2. LE BOUCLIER D'ÉVASION (Anti-Implosion)
+      const maxAllowedPadding = SCREEN_HEIGHT * 0.35; 
+      const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
+      const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
+
+      // 🧠 3. DÉCISION DU SUPERPOUVOIR
+      let shouldActivateSuperpower = false;
+
+      if (isTrackingActive && targetMarker && originMarker) {
+        const distance = getDistance(
+          originMarker.latitude, originMarker.longitude,
+          targetMarker.latitude, targetMarker.longitude
+        );
+
+        if (distance > 800) {
+          shouldActivateSuperpower = true;
+        }
+        // Suppression du calcul de l'angle (heading) pour éviter le renversement
+      }
+
+      const delay = Platform.OS === 'ios' ? 100 : 250;
+
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       setTimeout(() => {
-        mapRef.current?.fitToCoordinates(coordsToFit, {
+        if (!mapRef.current) return;
+
+        // ÉTAPE 1 : Glissement de la carte
+        mapRef.current.fitToCoordinates(coordsToFit, {
           edgePadding: {
-            top: safeTop,
-            bottom: safeBottom,
-            left: 50,
-            right: 50,
+            top: dynamicTop,
+            bottom: dynamicBottom,
+            left: SCREEN_WIDTH * 0.12,
+            right: SCREEN_WIDTH * 0.12,
           },
           animated: true,
         });
-      }, 100);
+
+        // ÉTAPE 2 : LE SUPERPOUVOIR CONDITIONNÉ (Sans rotation vertigineuse)
+        if (isTrackingActive) {
+          timeoutRef.current = setTimeout(() => {
+            if (mapRef.current && !isUserInteracting) {
+              if (shouldActivateSuperpower) {
+                // Inclinaison 3D pure, on ne touche plus au "heading" !
+                mapRef.current.animateCamera({
+                  pitch: 45,     
+                }, { duration: 1000 });
+              } else {
+                mapRef.current.animateCamera({
+                  pitch: 0, 
+                }, { duration: 800 });
+              }
+            }
+          }, 1500); 
+        }
+      }, delay);
     }
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
 
   }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, mapRef]);
 };
