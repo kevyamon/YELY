@@ -1,10 +1,10 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Libérée et Optimisée
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Liberee et Optimisee (Mode Veille Actif)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -43,9 +43,37 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // 🛡️ ÉTAT DE LIBERTÉ : Détecte quand l'utilisateur manipule la carte
+  // ETAT DE LIBERTE : Detecte quand l'utilisateur manipule la carte
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
+
+  // GESTION DU MODE VEILLE DU BOUTON
+  const buttonOpacity = useRef(new Animated.Value(1)).current;
+  const [isButtonActive, setIsButtonActive] = useState(true);
+  const buttonSleepTimeout = useRef(null);
+
+  const wakeUpButton = () => {
+    setIsButtonActive(true);
+    Animated.timing(buttonOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: true,
+    }).start();
+
+    clearTimeout(buttonSleepTimeout.current);
+    buttonSleepTimeout.current = setTimeout(() => {
+      Animated.timing(buttonOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: true,
+      }).start(() => setIsButtonActive(false));
+    }, 10000); 
+  };
+
+  useEffect(() => {
+    wakeUpButton();
+    return () => clearTimeout(buttonSleepTimeout.current);
+  }, []);
 
   const isMapDark = false; 
   const mapBackgroundColor = '#FAFAFA';
@@ -64,8 +92,9 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // Déclencheur du mode "Libre" : 1 SECONDE (1000ms)
+  // Declencheur du mode Libre et Reveil du Bouton
   const handleMapInteraction = () => {
+    wakeUpButton();
     setIsUserInteracting(true);
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
@@ -85,6 +114,7 @@ const MapCard = forwardRef(({
   });
 
   const handleRecenter = () => {
+    wakeUpButton();
     setIsUserInteracting(false);
     if (isMapReady && location && location.latitude) {
       mapRef.current?.animateToRegion(
@@ -132,7 +162,7 @@ const MapCard = forwardRef(({
           zoomEnabled={true}
           scrollEnabled={true}
           
-          // 🛡️ DÉTECTEURS DE GESTES
+          // DETECTEURS DE GESTES
           onTouchStart={handleMapInteraction}
           onPanDrag={handleMapInteraction}
           onRegionChangeComplete={(region, details) => {
@@ -261,13 +291,18 @@ const MapCard = forwardRef(({
       </View>
 
       {showRecenterButton && (
-        <TouchableOpacity
-          style={[styles.recenterButton, { bottom: mapBottomPadding + 16 }]}
-          activeOpacity={0.8}
-          onPress={handleRecenter}
+        <Animated.View 
+          style={[styles.recenterButtonWrapper, { bottom: mapBottomPadding + 16, opacity: buttonOpacity }]}
+          pointerEvents={isButtonActive ? 'auto' : 'none'}
         >
-          <Ionicons name="locate-outline" size={24} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.recenterButton}
+            activeOpacity={0.8}
+            onPress={handleRecenter}
+          >
+            <Ionicons name="locate-outline" size={24} color={THEME.COLORS.champagneGold} />
+          </TouchableOpacity>
+        </Animated.View>
       )}
     </View>
   );
@@ -287,7 +322,8 @@ const styles = StyleSheet.create({
   customMarkerWrapper: { alignItems: 'center', justifyContent: 'center' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
   markerLabel: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11, backgroundColor: 'rgba(18, 20, 24, 0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden', marginTop: 4, textAlign: 'center' },
-  recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
+  recenterButtonWrapper: { position: 'absolute', right: THEME.SPACING.lg, zIndex: 999, elevation: 999 },
+  recenterButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
 });
 
 const arePropsEqual = (prevProps, nextProps) => {

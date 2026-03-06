@@ -1,10 +1,10 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Interface, POIs avec Noms Complets
+// COMPOSANT ORCHESTRATEUR CARTE WEB - Interface, POIs avec Noms Complets (Mode Veille Actif)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -31,7 +31,6 @@ const ATTRIBUTION = '&copy; OSM';
 
 const POI_SVG = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 
-// Générateur d'icônes dynamiques pour les POIs sur le Web (Nom complet sans coupure)
 const createPoiIcon = (poi) => {
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
@@ -48,7 +47,7 @@ const createPoiIcon = (poi) => {
   `;
 
   return L.divIcon({
-    className: '', // Empêche Leaflet de mettre son carré blanc par défaut
+    className: '', 
     html: htmlContent,
     iconSize: [26, 26],
     iconAnchor: [13, 26], 
@@ -83,6 +82,34 @@ const MapCard = forwardRef(({
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
+  // GESTION DU MODE VEILLE DU BOUTON (WEB)
+  const buttonOpacity = useRef(new Animated.Value(1)).current;
+  const [isButtonActive, setIsButtonActive] = useState(true);
+  const buttonSleepTimeout = useRef(null);
+
+  const wakeUpButton = () => {
+    setIsButtonActive(true);
+    Animated.timing(buttonOpacity, {
+      toValue: 1,
+      duration: 200,
+      useNativeDriver: false, 
+    }).start();
+
+    clearTimeout(buttonSleepTimeout.current);
+    buttonSleepTimeout.current = setTimeout(() => {
+      Animated.timing(buttonOpacity, {
+        toValue: 0,
+        duration: 500,
+        useNativeDriver: false, 
+      }).start(() => setIsButtonActive(false));
+    }, 10000); 
+  };
+
+  useEffect(() => {
+    wakeUpButton();
+    return () => clearTimeout(buttonSleepTimeout.current);
+  }, []);
+
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
@@ -90,14 +117,16 @@ const MapCard = forwardRef(({
   const mapPOIs = poiResponse?.data || [];
 
   const handleMapInteraction = () => {
+    wakeUpButton();
     setIsUserInteracting(true);
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
       setIsUserInteracting(false);
-    }, 1000); // 1 SECONDE DE LIBERTÉ AVANT REPRISE DE LA CAMÉRA
+    }, 1000); 
   };
 
   const handleRecenter = () => {
+    wakeUpButton();
     setIsUserInteracting(false); 
     if (location && mapInstanceRef.current) {
       mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
@@ -218,12 +247,18 @@ const MapCard = forwardRef(({
       </MapContainer>
 
       {showRecenterButton && (
-        <TouchableOpacity
-          style={[styles.recenterButton, { bottom: mapBottomPadding + 16 }]}
-          onPress={handleRecenter}
+        <Animated.View 
+          style={[styles.recenterButtonWrapper, { bottom: mapBottomPadding + 16, opacity: buttonOpacity }]}
+          pointerEvents={isButtonActive ? 'auto' : 'none'}
         >
-          <Ionicons name="locate-outline" size={22} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.recenterButton}
+            onPress={handleRecenter}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="locate-outline" size={22} color={THEME.COLORS.champagneGold} />
+          </TouchableOpacity>
+        </Animated.View>
       )}
     </View>
   );
@@ -239,9 +274,12 @@ const styles = StyleSheet.create({
     borderBottomWidth: THEME.BORDERS.width.thin,
     borderBottomColor: THEME.COLORS.glassBorder,
   },
+  recenterButtonWrapper: { 
+    position: 'absolute', 
+    right: THEME.SPACING.lg, 
+    zIndex: 1000 
+  },
   recenterButton: {
-    position: 'absolute',
-    right: THEME.SPACING.lg,
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -250,7 +288,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: THEME.BORDERS.width.thin,
     borderColor: THEME.COLORS.glassBorder,
-    zIndex: 1000,
   },
 });
 
