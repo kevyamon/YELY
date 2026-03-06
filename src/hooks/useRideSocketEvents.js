@@ -7,13 +7,13 @@ import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
-    clearCurrentRide,
-    clearIncomingRide,
-    setCurrentRide,
-    setIncomingRide,
-    setRideToRate,
-    updateDriverLocation,
-    updateRideStatus
+  clearCurrentRide,
+  clearIncomingRide,
+  setCurrentRide,
+  setIncomingRide,
+  setRideToRate,
+  updateDriverLocation,
+  updateRideStatus
 } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
@@ -162,6 +162,12 @@ const useRideSocketEvents = () => {
       }
     };
 
+    const handleSearchExpanded = (data) => {
+      if (data && data.radius) {
+        dispatch(updateRideStatus({ searchRadius: data.radius }));
+      }
+    };
+
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('ride_cancelled', handleRideCancelled);
@@ -175,6 +181,7 @@ const useRideSocketEvents = () => {
     socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
+    socketService.on('search_expanded', handleSearchExpanded);
 
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
@@ -190,6 +197,7 @@ const useRideSocketEvents = () => {
       socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
+      socketService.off('search_expanded', handleSearchExpanded);
     };
   }, [isAuthenticated, dispatch]);
 };

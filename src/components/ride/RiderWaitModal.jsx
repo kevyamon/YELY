@@ -122,11 +122,18 @@ const RiderWaitModal = () => {
     if (!currentRide) return null;
 
     if (currentRide.status === 'searching') {
+      let searchSubtitle = "Nous interrogeons les vehicules a proximite.";
+      if (currentRide.searchRadius) {
+        if (currentRide.searchRadius === 1300) searchSubtitle = "Elargissement de la zone de recherche...";
+        else if (currentRide.searchRadius === 1600) searchSubtitle = "Recherche de chauffeurs plus eloignes...";
+        else if (currentRide.searchRadius >= 1900) searchSubtitle = "Encore un instant, nous cherchons au maximum...";
+      }
+
       return (
         <View style={styles.centerContent}>
           <SearchingRadar />
           <Text style={styles.title}>Recherche de chauffeurs...</Text>
-          <Text style={styles.subtitle}>Nous interrogeons les vehicules a proximite.</Text>
+          <Text style={styles.subtitle}>{searchSubtitle}</Text>
           {renderCancelSection()}
         </View>
       );

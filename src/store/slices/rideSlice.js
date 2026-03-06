@@ -26,13 +26,14 @@ const rideSlice = createSlice({
     },
     updateRideStatus: (state, action) => {
       if (state.currentRide) {
-        const { status, driverName, driverProfilePicture, startedAt, finalPrice, arrivedAt } = action.payload;
+        const { status, driverName, driverProfilePicture, startedAt, finalPrice, arrivedAt, searchRadius } = action.payload;
         if (status) state.currentRide.status = status;
         if (driverName) state.currentRide.driverName = driverName;
         if (driverProfilePicture) state.currentRide.driverProfilePicture = driverProfilePicture;
         if (startedAt) state.currentRide.startedAt = startedAt;
         if (finalPrice) state.currentRide.finalPrice = finalPrice;
         if (arrivedAt !== undefined) state.currentRide.arrivedAt = arrivedAt;
+        if (searchRadius) state.currentRide.searchRadius = searchRadius;
       }
     },
     updateDriverLocation: (state, action) => {
