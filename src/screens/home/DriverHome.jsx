@@ -2,6 +2,7 @@
 // HOME DRIVER NATIF - Orchestrateur Principal (Temps réel + POI ReadOnly + Instant UI)
 // CSCSM Level: Bank Grade
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
+import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
@@ -40,6 +42,7 @@ const DriverHome = ({ navigation }) => {
 
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [simulatedLocation, setSimulatedLocation] = useState(null);
+  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -61,6 +64,22 @@ const DriverHome = ({ navigation }) => {
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   const isBlocked = !isActive;
 
+  // Verification de la premiere visite pour afficher l'aide automatiquement
+  useEffect(() => {
+    const checkFirstVisit = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_driver');
+        if (!hasSeen) {
+          setIsHelpVisible(true);
+          await AsyncStorage.setItem('@yely_has_seen_help_driver', 'true');
+        }
+      } catch (error) {
+        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
+      }
+    };
+    checkFirstVisit();
+  }, []);
+
   useEffect(() => {
     if (isFocused) {
       refetchSubscription();
@@ -69,7 +88,6 @@ const DriverHome = ({ navigation }) => {
 
   const { location, errorMsg } = useGeolocation();
 
-  // SUBSTITUTION DE POSITION : Le simulateur ecrase le GPS reel s'il est actif
   const effectiveLocation = simulatedLocation || location;
 
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
@@ -126,7 +144,6 @@ const DriverHome = ({ navigation }) => {
   return (
     <View style={styles.screenWrapper}>
       
-      {/* MODULE DE TEST GPS */}
       <GpsTeleporter 
         currentRide={currentRide} 
         realLocation={location} 
@@ -199,6 +216,13 @@ const DriverHome = ({ navigation }) => {
         onClose={() => setSelectedPoi(null)}
         readOnly={true} 
       />
+      
+      <HelpVideoModal 
+        visible={isHelpVisible} 
+        onClose={() => setIsHelpVisible(false)} 
+        role="driver" 
+      />
+
     </View>
   );
 };

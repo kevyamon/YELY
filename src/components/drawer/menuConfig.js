@@ -1,11 +1,13 @@
-// src/components/drawer/menuConfig.js [MODIFIÉ]
+// src/components/drawer/menuConfig.js
 // CONFIGURATION DU MENU (Données & Utilitaires)
+// CSCSM Level: Bank Grade
 
 const MENU_ITEMS = {
   rider: [
     { route: 'RiderHome', label: 'Accueil', icon: 'home' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   driver: [
@@ -13,6 +15,7 @@ const MENU_ITEMS = {
     { route: 'Subscription', label: 'Abonnement', icon: 'card' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   admin: [
@@ -20,6 +23,7 @@ const MENU_ITEMS = {
     { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
     { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   superadmin: [
@@ -27,8 +31,9 @@ const MENU_ITEMS = {
     { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
     { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
     { route: 'Finance', label: 'Finance', icon: 'wallet' },
-    { route: 'MapManagement', label: 'Gestion Carte', icon: 'map' }, // ✅ AJOUT DE LA PAGE CARTE
+    { route: 'MapManagement', label: 'Gestion Carte', icon: 'map' }, 
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
 };

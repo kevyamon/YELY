@@ -2,11 +2,13 @@
 // HOME RIDER NATIF - Orchestrateur Principal (Synchronisé avec le fallback manuel & Instant UI)
 // CSCSM Level: Bank Grade
 
-import React, { useRef, useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
+import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
@@ -33,6 +35,7 @@ const RiderHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
+  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -42,6 +45,22 @@ const RiderHome = ({ navigation }) => {
   
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
+
+  // Verification de la premiere visite pour afficher l'aide automatiquement
+  useEffect(() => {
+    const checkFirstVisit = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_rider');
+        if (!hasSeen) {
+          setIsHelpVisible(true);
+          await AsyncStorage.setItem('@yely_has_seen_help_rider', 'true');
+        }
+      } catch (error) {
+        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
+      }
+    };
+    checkFirstVisit();
+  }, []);
 
   const {
     effectiveOrigin,
@@ -179,6 +198,12 @@ const RiderHome = ({ navigation }) => {
 
       <RiderWaitModal />
       <RatingModal />
+      
+      <HelpVideoModal 
+        visible={isHelpVisible} 
+        onClose={() => setIsHelpVisible(false)} 
+        role="rider" 
+      />
 
     </View>
   );

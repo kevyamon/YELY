@@ -1,20 +1,28 @@
 // src/components/drawer/DrawerMenu.jsx
+// MENU LATERAL - Gestion des navigations et modales
+// CSCSM Level: Bank Grade
+
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
-import { getMenuItems } from './menuConfig';
+import HelpVideoModal from '../help/HelpVideoModal';
 import SettingsModal from './SettingsModal';
+import { getMenuItems } from './menuConfig';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const [isHelpVisible, setIsHelpVisible] = useState(false);
+  
   const menuItems = getMenuItems(role);
 
   const handlePress = (route) => {
     if (route === 'SettingsModal') {
       setIsSettingsVisible(true);
+    } else if (route === 'HelpModal') {
+      setIsHelpVisible(true);
     } else {
       onNavigate(route);
     }
@@ -55,7 +63,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
             </Text>
 
             <Ionicons 
-              name={item.route === 'SettingsModal' ? "settings-outline" : "chevron-forward"} 
+              name={(item.route === 'SettingsModal' || item.route === 'HelpModal') ? "open-outline" : "chevron-forward"} 
               size={16} 
               color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.border} 
               style={{ opacity: 0.5 }}
@@ -68,6 +76,12 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
         visible={isSettingsVisible} 
         onClose={() => setIsSettingsVisible(false)} 
         onNavigate={onNavigate} 
+      />
+      
+      <HelpVideoModal
+        visible={isHelpVisible}
+        onClose={() => setIsHelpVisible(false)}
+        role={role}
       />
     </View>
   );
