@@ -1,29 +1,42 @@
 // src/components/drawer/DrawerHeader.jsx
 // HEADER DU MENU (Profil, Photo & Infos)
-// Gère l'affichage intelligent du nom et de l'avatar avec état de chargement
+// CSCSM Level: Bank Grade / Cross-Platform Safe
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { ActivityIndicator, Image, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
 import { getInitials, getRoleLabel } from './menuConfig';
 
 const DrawerHeader = ({ user, role, onClose }) => {
-  const [isImageLoading, setIsImageLoading] = useState(true);
+  // CORRECTION : Le chargement est desactive par defaut
+  const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // 1. Reconstruction du Nom (Priorité : Full Name > Name > Utilisateur)
+  // 1. Reconstruction du Nom (Priorite : Full Name > Name > Utilisateur)
   const displayName = user?.firstName 
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.name || 'Utilisateur';
 
-  // 2. Récupération de l'image (Vérification stricte pour éviter l'erreur de rendu)
+  // 2. Recuperation de l'image (Verification stricte)
   const profileImage = user?.profilePicture || user?.avatar || user?.photo;
   const hasValidImage = profileImage && typeof profileImage === 'string' && profileImage.trim() !== '';
 
-  // 3. Label du Rôle
+  // 3. Label du Role
   const roleLabel = getRoleLabel(role);
+
+  // SECURITE MULTIPLATEFORME : Meme logique blindee que pour ProfileAvatar
+  const imageProps = Platform.OS === 'web' 
+    ? {
+        onLoad: () => setIsImageLoading(false),
+        onError: () => setIsImageLoading(false),
+      } 
+    : {
+        onLoadStart: () => setIsImageLoading(true),
+        onLoadEnd: () => setIsImageLoading(false),
+        onError: () => setIsImageLoading(false),
+      };
 
   return (
     <View style={styles.container}>
@@ -55,9 +68,9 @@ const DrawerHeader = ({ user, role, onClose }) => {
                 source={{ uri: profileImage }} 
                 style={styles.avatarImage} 
                 resizeMode="cover"
-                onLoadStart={() => setIsImageLoading(true)}
-                onLoadEnd={() => setIsImageLoading(false)}
+                {...imageProps}
               />
+              {/* Affichage securise du loader */}
               {isImageLoading && (
                 <View style={styles.imageLoadingOverlay}>
                   <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -83,7 +96,7 @@ const DrawerHeader = ({ user, role, onClose }) => {
             {user?.phone || user?.email || 'Non renseigné'}
           </Text>
 
-          {/* Badge Rôle */}
+          {/* Badge Role */}
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>{roleLabel}</Text>
           </View>

@@ -63,6 +63,12 @@ class SocketService {
       return;
     }
 
+    // NOUVELLE SECURITE : On verifie si le token est strictement identique a l'ancien
+    // Si oui, on arrete tout ici, on ne coupe pas la connexion pour rien.
+    if (this.socket.auth.token === newToken) {
+      return; 
+    }
+
     this.socket.auth.token = newToken;
     
     if (!this.socket.connected) {

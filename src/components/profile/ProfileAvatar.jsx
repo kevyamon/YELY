@@ -8,8 +8,7 @@ import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity,
 import THEME from '../../theme/theme';
 
 const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => {
-  // Le chargement initial est active par defaut UNIQUEMENT sur mobile (iOS/Android)
-  const [isImageLoading, setIsImageLoading] = useState(Platform.OS !== 'web');
+  const [isImageLoading, setIsImageLoading] = useState(false);
   
   const getRoleDisplayName = (userRole) => {
     const roles = {
@@ -22,17 +21,20 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
   };
 
   // SECURITE MULTIPLATEFORME : 
-  // On adapte strictement les ecouteurs d'evenements a la plateforme pour eviter les "Silent Crashes"
+  // Sur le Web, on ne declenche PAS le loader manuellement car react-native-web 
+  // gere mal les evenements de chargement pour les images en cache (evite la boucle).
   const imageProps = Platform.OS === 'web' 
     ? {
         onLoad: () => setIsImageLoading(false),
+        onError: () => setIsImageLoading(false),
       } 
     : {
         onLoadStart: () => setIsImageLoading(true),
         onLoadEnd: () => setIsImageLoading(false),
+        onError: () => setIsImageLoading(false),
       };
 
-  // BLINDAGE WEB : On s'assure que l'image est bien traitee selon son type (String vs Local Object)
+  // BLINDAGE WEB : On s'assure que l'image est bien traitee selon son type
   const imageSource = typeof userPhoto === 'string' ? { uri: userPhoto } : userPhoto;
 
   return (
@@ -46,8 +48,8 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
                 style={styles.avatarImage} 
                 {...imageProps}
               />
-              {/* Affichage du loader si l'image charge du reseau (Natifs) sans bloquer l'interface Web */}
-              {isImageLoading && !isUploading && Platform.OS !== 'web' && (
+              {/* Affichage dynamique du loader */}
+              {isImageLoading && !isUploading && (
                 <View style={styles.avatarLoader}>
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} />
                 </View>
