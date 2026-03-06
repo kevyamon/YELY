@@ -50,7 +50,7 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
     }
 
     // Phase 1 : le chauffeur se dirige vers le point de rencontre (statuts accepted/arrived).
-    // Marqueur type 'pickup' = cible du tracé. useRouteManager utilisera
+    // Marqueur type 'pickup' = cible du trace. useRouteManager utilisera
     // la position GPS du chauffeur (passee via location/driverLocation) comme origine.
     if (originLat && originLng) {
       return [{
@@ -66,7 +66,9 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
     return [];
   }, [isRideActive, currentRide]);
 
-  const mapBottomPadding = isRideActive ? 300 : 320;
+  // CORRECTION : Augmentation de la marge de sécurité en bas de la carte.
+  // 380px en course (gros panneau) et 280px au repos, pour pousser le bouton de position vers le haut.
+  const mapBottomPadding = isRideActive ? 380 : 280;
 
   return {
     mapMarkers,

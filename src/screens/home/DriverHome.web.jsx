@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Orchestrateur (Aide liee au compte)
+// HOME DRIVER WEB - Orchestrateur (Aide liee au compte + Synchro Marges)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -116,13 +116,11 @@ const DriverHome = ({ navigation }) => {
     user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  const { mapMarkers } = useDriverMapFeatures(currentRide, isRideActive);
+  // CORRECTION : On recupere desormais le mapBottomPadding depuis le hook central
+  const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   let dynamicTopPadding = 140; 
-  let dynamicBottomPadding = 180; 
-
   if (isRideActive) {
-    dynamicBottomPadding = 360; 
     dynamicTopPadding = 160;
   }
 
@@ -171,7 +169,7 @@ const DriverHome = ({ navigation }) => {
           floating={false}
           markers={mapMarkers}
           mapTopPadding={dynamicTopPadding}       
-          mapBottomPadding={dynamicBottomPadding || 240} 
+          mapBottomPadding={mapBottomPadding} 
           onMarkerPress={(poi) => {
             if (!isRideActive) {
               setSelectedPoi(poi);
