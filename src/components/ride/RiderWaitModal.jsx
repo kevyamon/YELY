@@ -24,7 +24,6 @@ const RiderWaitModal = () => {
   const [showCancelConfirmation, setShowCancelConfirmation] = useState(false);
 
   // VACCIN GHOST STATE : On ne fait PLUS de "return null" brutal.
-  // On calcule simplement si la modale doit etre affichee.
   const isVisible = Boolean(
     currentRide && 
     (currentRide.status === 'searching' || currentRide.status === 'negotiating')
@@ -122,17 +121,28 @@ const RiderWaitModal = () => {
     if (!currentRide) return null;
 
     if (currentRide.status === 'searching') {
+      let searchTitle = "Recherche de chauffeurs...";
       let searchSubtitle = "Nous interrogeons les vehicules a proximite.";
-      if (currentRide.searchRadius) {
-        if (currentRide.searchRadius === 1300) searchSubtitle = "Elargissement de la zone de recherche...";
-        else if (currentRide.searchRadius === 1600) searchSubtitle = "Recherche de chauffeurs plus eloignes...";
-        else if (currentRide.searchRadius >= 1900) searchSubtitle = "Encore un instant, nous cherchons au maximum...";
+      
+      // SECURITE SENIOR : On force la conversion en Nombre et on utilise '>=' au lieu de '==='
+      const radius = Number(currentRide.searchRadius || 1000);
+
+      if (radius >= 1900) {
+        searchTitle = "Recherche maximale...";
+        searchSubtitle = "Encore un instant, nous cherchons au plus loin...";
+      } else if (radius >= 1600) {
+        searchTitle = "Recherche elargie...";
+        searchSubtitle = "Recherche de chauffeurs plus eloignes...";
+      } else if (radius >= 1300) {
+        searchTitle = "Agrandissement du radar...";
+        searchSubtitle = "Extension de la zone de recherche...";
       }
 
       return (
         <View style={styles.centerContent}>
           <SearchingRadar />
-          <Text style={styles.title}>Recherche de chauffeurs...</Text>
+          {/* L'interface affichera désormais un changement FLAGRANT */}
+          <Text style={styles.title}>{searchTitle}</Text>
           <Text style={styles.subtitle}>{searchSubtitle}</Text>
           {renderCancelSection()}
         </View>
