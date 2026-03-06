@@ -29,7 +29,7 @@ const useMapAutoFitter = ({
 
     let coordsToFit = [];
 
-    // 🎯 1. LA LOGIQUE DES EXTRÉMITÉS (Le Secret de l'UX Yango/Uber)
+    // 🎯 1. LA LOGIQUE DES EXTRÉMITÉS
     // On ignore le tracé complet, on ne cible que l'Origine (Point A) et la Cible (Point B)
     const targetMarker = markers.find(m => m.type === 'destination' || m.type === 'pickup');
     const originMarker = driverLocation?.latitude ? driverLocation : location;

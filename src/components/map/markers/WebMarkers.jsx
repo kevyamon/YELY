@@ -67,7 +67,7 @@ export const MapAutoFitter = ({
   const lastUpdateRef = useRef(0);
 
   useEffect(() => {
-    // 🛡️ RESPECT DE L'UX : On bloque le centrage automatique si l'utilisateur glisse ou zoom manuellement
+    // 🛡️ RESPECT DE L'UX : On bloque le centrage automatique si l'utilisateur glisse
     if (isUserInteracting) return;
 
     let coordsToFit = [];

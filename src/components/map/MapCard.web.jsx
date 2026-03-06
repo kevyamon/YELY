@@ -48,9 +48,9 @@ const createPoiIcon = (poi) => {
   `;
 
   return L.divIcon({
-    className: '', 
+    className: '', // Empêche Leaflet de mettre son carré blanc par défaut
     html: htmlContent,
-    iconSize: [26, 26], // La pastille fait 26px. Le flexbox centrera parfaitement le texte qui déborde en dessous.
+    iconSize: [26, 26],
     iconAnchor: [13, 26], 
   });
 };
@@ -94,7 +94,7 @@ const MapCard = forwardRef(({
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
       setIsUserInteracting(false);
-    }, 8000);
+    }, 1000); // 1 SECONDE DE LIBERTÉ AVANT REPRISE DE LA CAMÉRA
   };
 
   const handleRecenter = () => {

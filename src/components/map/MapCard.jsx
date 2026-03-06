@@ -15,7 +15,7 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
-  AnimatedTrackedMarker, // IMPORT REINJECTE
+  AnimatedTrackedMarker,
   PoiMarker,
   SmoothDriverMarker,
   TrackedMarker,
@@ -43,7 +43,7 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // ETAT DE LIBERTE DE LA CAMERA MANQUANT REINJECTE
+  // 🛡️ ÉTAT DE LIBERTÉ : Détecte quand l'utilisateur manipule la carte
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
@@ -64,6 +64,7 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
+  // Déclencheur du mode "Libre" : 1 SECONDE (1000ms)
   const handleMapInteraction = () => {
     setIsUserInteracting(true);
     clearTimeout(interactionTimeout.current);
@@ -80,7 +81,7 @@ const MapCard = forwardRef(({
     markers,
     mapTopPadding,
     mapBottomPadding,
-    isUserInteracting // Passe au cerveau de la camera
+    isUserInteracting
   });
 
   const handleRecenter = () => {
@@ -130,8 +131,8 @@ const MapCard = forwardRef(({
           pitchEnabled={true}
           zoomEnabled={true}
           scrollEnabled={true}
-
-          // EVENEMENTS MANQUANTS REINJECTES
+          
+          // 🛡️ DÉTECTEURS DE GESTES
           onTouchStart={handleMapInteraction}
           onPanDrag={handleMapInteraction}
           onRegionChangeComplete={(region, details) => {
@@ -174,7 +175,6 @@ const MapCard = forwardRef(({
             />
           ))}
 
-          {/* COMPOSANT MANQUANT REINJECTE : AnimatedTrackedMarker au lieu de TrackedMarker */}
           {showUserMarker && location && location.latitude && (
             <AnimatedTrackedMarker
               identifier="user_loc"
