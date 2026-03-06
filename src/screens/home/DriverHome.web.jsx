@@ -2,6 +2,7 @@
 // HOME DRIVER WEB - Orchestrateur (Bouclier Temporel & Smart Panning & Instant UI)
 // CSCSM Level: Bank Grade
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
@@ -9,6 +10,7 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
+import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard.web';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
@@ -41,6 +43,7 @@ const DriverHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
+  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -63,6 +66,22 @@ const DriverHome = ({ navigation }) => {
   const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   const isBlocked = !isActive;
+
+  // Verification de la premiere visite pour afficher l'aide automatiquement (Version Web)
+  useEffect(() => {
+    const checkFirstVisit = async () => {
+      try {
+        const hasSeen = await AsyncStorage.getItem('@yely_has_seen_help_driver');
+        if (!hasSeen) {
+          setIsHelpVisible(true);
+          await AsyncStorage.setItem('@yely_has_seen_help_driver', 'true');
+        }
+      } catch (error) {
+        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide Web)", error);
+      }
+    };
+    checkFirstVisit();
+  }, []);
 
   useEffect(() => {
     if (isFocused) {
@@ -212,6 +231,13 @@ const DriverHome = ({ navigation }) => {
 
       <PwaIOSWarningModal isDriver={true} />
       <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
+      
+      <HelpVideoModal 
+        visible={isHelpVisible} 
+        onClose={() => setIsHelpVisible(false)} 
+        role="driver" 
+      />
+      
     </View>
   );
 };
