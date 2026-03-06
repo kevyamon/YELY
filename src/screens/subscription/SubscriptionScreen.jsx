@@ -14,7 +14,6 @@ import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutatio
 import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
-// IMPORT DES SOUS-COMPOSANTS
 import PlanSelection from '../../components/subscription/PlanSelection';
 import ProofUploadForm from '../../components/subscription/ProofUploadForm';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
@@ -76,7 +75,6 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [statusData, isStatusLoading]);
 
-  // Fonction stabilisée avec useCallback
   const handleProlong = useCallback(() => {
     setCurrentStep(STEPS.CHOOSE_PLAN);
   }, []);
@@ -133,12 +131,23 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    const filename = proofImage.uri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename);
+    // Extraction securisee des metadonnees d'Expo ImagePicker
+    const safeFileName = proofImage.fileName || proofImage.uri.split('/').pop() || 'capture.jpg';
+    
+    // Determination du type MIME securise
+    let safeType = proofImage.mimeType;
+    if (!safeType) {
+      const extensionMatch = /\.(\w+)$/.exec(safeFileName);
+      safeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
+      
+      // Normalisation pour iOS (heic -> jpeg car multer peut le rejeter si mal formatte)
+      if (safeType === 'image/jpg') safeType = 'image/jpeg';
+    }
+
     formData.append('proofImage', {
-      uri: proofImage.uri,
-      name: filename || 'proof_image.jpg',
-      type: match ? `image/${match[1]}` : `image/jpeg`
+      uri: Platform.OS === 'ios' ? proofImage.uri.replace('file://', '') : proofImage.uri,
+      name: safeFileName,
+      type: safeType
     });
 
     try {
