@@ -1,6 +1,6 @@
 // src/components/profile/ProfileAvatar.jsx
 // COMPOSANT MODULAIRE - Gestion de l'Avatar et de l'Identite Visuelle
-// CSCSM Level: Bank Grade
+// CSCSM Level: Bank Grade / Cross-Platform Safe
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
@@ -8,11 +8,9 @@ import { ActivityIndicator, Image, Platform, StyleSheet, Text, TouchableOpacity,
 import THEME from '../../theme/theme';
 
 const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => {
-  // NOUVEAU : Le chargement initial est activé par défaut UNIQUEMENT sur mobile (iOS/Android)
-  // Sur le Web, on initialise à 'false' pour éviter de bloquer l'interface
+  // Le chargement initial est active par defaut UNIQUEMENT sur mobile (iOS/Android)
   const [isImageLoading, setIsImageLoading] = useState(Platform.OS !== 'web');
   
-  // Dictionnaire de traduction des rôles pour un affichage propre
   const getRoleDisplayName = (userRole) => {
     const roles = {
       driver: 'Chauffeur Partenaire',
@@ -23,13 +21,19 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
     return roles[userRole] || 'Passager';
   };
 
-  // ISOLATION DES ÉVÉNEMENTS : 
-  // On crée un petit sac de commandes qui sera vide sur le Web, 
-  // mais qui contiendra les instructions de chargement sur iOS et Android.
-  const imageLoadEvents = Platform.OS === 'web' ? {} : {
-    onLoadStart: () => setIsImageLoading(true),
-    onLoadEnd: () => setIsImageLoading(false)
-  };
+  // SECURITE MULTIPLATEFORME : 
+  // On adapte strictement les ecouteurs d'evenements a la plateforme pour eviter les "Silent Crashes"
+  const imageProps = Platform.OS === 'web' 
+    ? {
+        onLoad: () => setIsImageLoading(false),
+      } 
+    : {
+        onLoadStart: () => setIsImageLoading(true),
+        onLoadEnd: () => setIsImageLoading(false),
+      };
+
+  // BLINDAGE WEB : On s'assure que l'image est bien traitee selon son type (String vs Local Object)
+  const imageSource = typeof userPhoto === 'string' ? { uri: userPhoto } : userPhoto;
 
   return (
     <View style={styles.avatarSection}>
@@ -37,14 +41,13 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
         <View style={styles.avatarContainer}>
           {userPhoto ? (
             <>
-              {/* On vide le sac d'événements dans le composant Image */}
               <Image 
-                source={{ uri: userPhoto }} 
+                source={imageSource} 
                 style={styles.avatarImage} 
-                {...imageLoadEvents}
+                {...imageProps}
               />
-              {/* Affichage du loader si l'image charge du réseau (et qu'on n'est pas déjà en train d'en uploader une nouvelle) */}
-              {isImageLoading && !isUploading && (
+              {/* Affichage du loader si l'image charge du reseau (Natifs) sans bloquer l'interface Web */}
+              {isImageLoading && !isUploading && Platform.OS !== 'web' && (
                 <View style={styles.avatarLoader}>
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} />
                 </View>
@@ -86,7 +89,7 @@ const styles = StyleSheet.create({
     borderWidth: 2, 
     borderColor: THEME.COLORS.primary 
   },
-  avatarImage: { width: '100%', height: '100%' },
+  avatarImage: { width: '100%', height: '100%', resizeMode: 'cover' },
   avatarLoader: { 
     ...StyleSheet.absoluteFillObject, 
     backgroundColor: THEME.COLORS.overlayMedium, 
