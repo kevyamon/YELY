@@ -72,9 +72,10 @@ const DriverHome = ({ navigation }) => {
 
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
+  
+  // SUBSTITUTION DE POSITION WEB
   const location = simulatedLocation || realLocation;
 
-  // 🛡️ LE BOUCLIER TEMPOREL
   const isDriverInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
@@ -137,12 +138,11 @@ const DriverHome = ({ navigation }) => {
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.mapContainer}>
-        {/* 🌟 CARTE INSTANTANÉE */}
         <MapCard
           ref={mapRef}
           location={location}
           driverLocation={location}
-          showUserMarker={!!location}
+          showUserMarker={false} 
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
@@ -155,7 +155,6 @@ const DriverHome = ({ navigation }) => {
           }}
         />
         
-        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
         {(!location && isLoading) && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -220,7 +219,6 @@ const DriverHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
-  // UX: Pilule flottante pour le Web
   floatingLoader: {
     position: 'absolute',
     top: 140,

@@ -8,6 +8,7 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
+import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
@@ -38,6 +39,7 @@ const DriverHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
+  const [simulatedLocation, setSimulatedLocation] = useState(null);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
@@ -67,8 +69,10 @@ const DriverHome = ({ navigation }) => {
 
   const { location, errorMsg } = useGeolocation();
 
-  // 🛡️ BOUCLIER TEMPOREL: Si le GPS cherche, on assume que le chauffeur est dans la zone
-  const isDriverInZone = location ? isLocationInMafereZone(location) : true;
+  // SUBSTITUTION DE POSITION : Le simulateur ecrase le GPS reel s'il est actif
+  const effectiveLocation = simulatedLocation || location;
+
+  const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
@@ -81,7 +85,7 @@ const DriverHome = ({ navigation }) => {
     handleConfirmArrival,
     handleSnoozeArrival
   } = useDriverLifecycle({
-    user, currentRide, location, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
+    user, currentRide, location: effectiveLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
@@ -121,13 +125,21 @@ const DriverHome = ({ navigation }) => {
 
   return (
     <View style={styles.screenWrapper}>
+      
+      {/* MODULE DE TEST GPS */}
+      <GpsTeleporter 
+        currentRide={currentRide} 
+        realLocation={location} 
+        simulatedLocation={simulatedLocation} 
+        setSimulatedLocation={setSimulatedLocation} 
+      />
+
       <View style={styles.mapContainer}>
-        {/* 🌟 CARTE INSTANTANÉE */}
         <MapCard
           ref={mapRef}
-          location={location}
-          driverLocation={location}
-          showUserMarker={!!location}
+          location={effectiveLocation}
+          driverLocation={effectiveLocation}
+          showUserMarker={false} 
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
@@ -140,8 +152,7 @@ const DriverHome = ({ navigation }) => {
           }}
         />
         
-        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
-        {!location && (
+        {!effectiveLocation && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
             <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>
@@ -195,7 +206,6 @@ const DriverHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
-  // UX: Pilule flottante élégante
   floatingLoader: {
     position: 'absolute',
     top: 140,

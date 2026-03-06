@@ -35,7 +35,6 @@ const useGeolocation = (options = {}) => {
   const [isPermissionDenied, setIsPermissionDenied] = useState(false);
 
   const watchIdRef = useRef(null);
-  // 🛡️ BOUCLIER ANTI-DANSE ET HEARTBEAT
   const lastValidLocationRef = useRef(null);
 
   const reverseGeocodeWeb = async (coords) => {
@@ -87,6 +86,11 @@ const useGeolocation = (options = {}) => {
         setIsPermissionDenied(false);
         setError(null);
         
+        // FILTRE ANTI-DÉRIVE : Rejet des signaux de mauvaise qualité (si supporté par le navigateur)
+        if (position.coords.accuracy && position.coords.accuracy > 30) {
+          return;
+        }
+
         const newLat = position.coords.latitude;
         const newLng = position.coords.longitude;
         const now = Date.now();
@@ -101,8 +105,9 @@ const useGeolocation = (options = {}) => {
           );
           const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-          if (distance < 10 && timeSinceLastUpdate < 60000) {
-            return; // Bloque la danse de la carte
+          // Seuil augmenté à 15m
+          if (distance < 15 && timeSinceLastUpdate < 60000) {
+            return; 
           }
         }
 
@@ -111,6 +116,7 @@ const useGeolocation = (options = {}) => {
           longitude: newLng,
           heading: position.coords.heading || 0,
           speed: position.coords.speed || 0,
+          accuracy: position.coords.accuracy,
           timestamp: now
         };
 

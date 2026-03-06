@@ -40,7 +40,6 @@ const RiderHome = ({ navigation }) => {
   
   const { location, errorMsg } = useGeolocation(); 
   
-  // 🛡️ BOUCLIER TEMPOREL: Si le GPS cherche, on assume que le passager est dans la zone
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
@@ -109,12 +108,11 @@ const RiderHome = ({ navigation }) => {
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-        {/* 🌟 CARTE INSTANTANÉE (Même sans position, elle affiche Maféré) */}
         <MapCard 
           ref={mapRef}
           location={mapTraceOrigin}
           driverLocation={activeDriverLocation}
-          showUserMarker={!isRideActive && !!effectiveOrigin}
+          showUserMarker={currentRide?.status !== 'in_progress' && !!effectiveOrigin}
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
@@ -127,7 +125,6 @@ const RiderHome = ({ navigation }) => {
           }}
         />
         
-        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
         {!effectiveOrigin && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -190,7 +187,6 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  // UX: Remplacement du gros bloc opaque par une pilule flottante élégante
   floatingLoader: {
     position: 'absolute',
     top: 140,

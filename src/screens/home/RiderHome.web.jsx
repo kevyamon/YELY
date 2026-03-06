@@ -46,9 +46,7 @@ const RiderHome = ({ navigation }) => {
   
   const location = simulatedLocation || realLocation;
 
-  // 🛡️ LE BOUCLIER TEMPOREL : Si GPS en recherche, on assume que l'utilisateur est légitime
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
-  
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
@@ -116,12 +114,11 @@ const RiderHome = ({ navigation }) => {
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-        {/* 🌟 CARTE INSTANTANÉE */}
         <MapCard 
           ref={mapRef}
           location={mapTraceOrigin}
           driverLocation={isRideActive ? driverLatLng : null}
-          showUserMarker={!isRideActive && !!effectiveOrigin}
+          showUserMarker={currentRide?.status !== 'in_progress' && !!effectiveOrigin}
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
@@ -134,7 +131,6 @@ const RiderHome = ({ navigation }) => {
           }}
         />
         
-        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
         {(!effectiveOrigin && isLoading) && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -208,7 +204,6 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  // UX: Pilule flottante pour le Web
   floatingLoader: {
     position: 'absolute',
     top: 140,

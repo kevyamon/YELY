@@ -7,7 +7,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 // FILTRE MATHÉMATIQUE (Formule de Haversine)
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
-  const R = 6371e3; // Rayon de la Terre en mètres
+  const R = 6371e3; 
   const p1 = lat1 * (Math.PI / 180);
   const p2 = lat2 * (Math.PI / 180);
   const dp = (lat2 - lat1) * (Math.PI / 180);
@@ -34,7 +34,6 @@ const useGeolocation = (options = {}) => {
   const watchRef = useRef(null);
   const retryTimeoutRef = useRef(null);
 
-  // 🛡️ BOUCLIER ANTI-DANSE ET HEARTBEAT
   const lastValidLocationRef = useRef(null);
 
   const requestPermission = useCallback(async () => {
@@ -75,7 +74,8 @@ const useGeolocation = (options = {}) => {
         longitude: loc.coords.longitude,
         heading: loc.coords.heading || 0,
         speed: loc.coords.speed || 0,
-        timestamp: Date.now(), // NOUVEAU : Chrono pour le Heartbeat
+        accuracy: loc.coords.accuracy,
+        timestamp: Date.now(),
       };
       
       lastValidLocationRef.current = coords;
@@ -122,11 +122,15 @@ const useGeolocation = (options = {}) => {
                 return;
               }
 
+              // FILTRE ANTI-DÉRIVE : Rejet des signaux GPS de mauvaise qualité
+              if (loc.coords.accuracy > 30) {
+                return;
+              }
+
               const newLat = loc.coords.latitude;
               const newLng = loc.coords.longitude;
               const now = Date.now();
 
-              // 🛡️ L'INTERCEPTEUR : Filtre spatial + Heartbeat temporel
               if (lastValidLocationRef.current) {
                 const distance = getDistanceInMeters(
                   lastValidLocationRef.current.latitude,
@@ -136,9 +140,8 @@ const useGeolocation = (options = {}) => {
                 );
                 const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-                // Si mouvement < 10m ET dernier point envoyé il y a moins de 60s -> On ignore (Bruit)
-                // Si ça fait plus de 60s -> On laisse passer pour maintenir le chauffeur en ligne dans Redis !
-                if (distance < 10 && timeSinceLastUpdate < 60000) {
+                // FILTRE ANTI-DÉRIVE : On augmente le seuil à 15m pour le bruit statique
+                if (distance < 15 && timeSinceLastUpdate < 60000) {
                   return; 
                 }
               }
@@ -148,6 +151,7 @@ const useGeolocation = (options = {}) => {
                 longitude: newLng,
                 heading: loc.coords.heading || 0,
                 speed: loc.coords.speed || 0,
+                accuracy: loc.coords.accuracy,
                 timestamp: now,
               };
 
