@@ -1,10 +1,11 @@
 // src/components/map/markers/WebMarkers.jsx
-// COMPOSANTS VISUELS CARTE WEB - Isolation des SVG Leaflet et AutoFitter
+// COMPOSANTS VISUELS CARTE WEB - Cadrage Intelligent des Extrémités
 // CSCSM Level: Bank Grade
 
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { useMap } from 'react-leaflet';
+import { MAFERE_CENTER } from '../../../utils/mafereZone';
 
 const SVG_PIN = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="20" height="20"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 const SVG_USER = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
@@ -53,52 +54,67 @@ export const driverIcon = L.divIcon({
   iconAnchor: [22, 22],
 });
 
-export const MapAutoFitter = ({ location, driverLocation, markers, routePoints, mapTopPadding = 140, mapBottomPadding = 240 }) => {
+export const MapAutoFitter = ({ 
+  location, 
+  driverLocation, 
+  markers, 
+  isUserInteracting, 
+  mapTopPadding = 140, 
+  mapBottomPadding = 240 
+}) => {
   const map = useMap();
-  const routePointsRef = useRef([]);
+  const isInitialFitDone = useRef(false);
+  const lastUpdateRef = useRef(0);
 
   useEffect(() => {
-    if (routePoints && routePoints.length > 0) {
-      routePointsRef.current = routePoints;
+    // 🛡️ RESPECT DE L'UX : On bloque le centrage automatique si l'utilisateur glisse ou zoom manuellement
+    if (isUserInteracting) return;
+
+    let coordsToFit = [];
+
+    // 🎯 LA LOGIQUE DES EXTRÉMITÉS
+    const targetMarker = markers.find((m) => m.type === 'pickup' || m.type === 'destination');
+    const originMarker = driverLocation?.latitude ? driverLocation : location;
+
+    if (targetMarker && originMarker) {
+      coordsToFit = [
+        [originMarker.latitude, originMarker.longitude],
+        [targetMarker.latitude, targetMarker.longitude],
+      ];
+    } else if (originMarker) {
+      coordsToFit = [[originMarker.latitude, originMarker.longitude]];
+      markers.forEach(m => {
+        if (m.latitude && m.longitude) coordsToFit.push([m.latitude, m.longitude]);
+      });
     }
-  }, [routePoints]);
 
-  useEffect(() => {
-    const activeTarget = markers.find((m) => m.type === 'pickup' || m.type === 'destination');
-
-    if (activeTarget) {
-      const boundsOrigin = driverLocation?.latitude ? driverLocation : location;
-      
-      if (boundsOrigin) {
-        const points = [
-          [boundsOrigin.latitude, boundsOrigin.longitude],
-          [activeTarget.latitude, activeTarget.longitude],
-        ];
-        
-        if (routePointsRef.current && routePointsRef.current.length > 0) {
-          routePointsRef.current.forEach(p => points.push([p.latitude, p.longitude]));
-        }
-
-        const bounds = L.latLngBounds(points);
-        
-        setTimeout(() => {
-          map.flyToBounds(bounds, {
-            paddingTopLeft: [50, mapTopPadding + 20],
-            paddingBottomRight: [50, mapBottomPadding + 60],
-            duration: 1.5,
-            maxZoom: 15,
-          });
-        }, 300);
+    if (coordsToFit.length === 0) {
+      if (!isInitialFitDone.current) {
+        map.setView([MAFERE_CENTER.latitude, MAFERE_CENTER.longitude], 15);
+        isInitialFitDone.current = true;
       }
       return;
     }
 
-    if (location && markers.length === 0) {
+    const now = Date.now();
+    const isTrackingActive = coordsToFit.length === 2;
+    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300; 
+
+    if (now - lastUpdateRef.current > debounceTime) {
+      lastUpdateRef.current = now;
+      isInitialFitDone.current = true;
+
       setTimeout(() => {
-        map.flyTo([location.latitude, location.longitude], 15, { duration: 1.2 });
-      }, 300);
+        const bounds = L.latLngBounds(coordsToFit);
+        map.flyToBounds(bounds, {
+          paddingTopLeft: [50, mapTopPadding + 20],
+          paddingBottomRight: [50, mapBottomPadding + 60],
+          duration: 1.5,
+          maxZoom: 16,
+        });
+      }, 100);
     }
-  }, [markers, map, mapTopPadding, mapBottomPadding, location, driverLocation]); 
+  }, [markers, map, mapTopPadding, mapBottomPadding, location, driverLocation, isUserInteracting]); 
 
   return null;
 };

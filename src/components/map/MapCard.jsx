@@ -42,6 +42,10 @@ const MapCard = forwardRef(({
 }, ref) => {
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
+  
+  // 🛡️ ÉTAT DE LIBERTÉ : Détecte quand l'utilisateur manipule la carte
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const interactionTimeout = useRef(null);
 
   const isMapDark = false; 
   const mapBackgroundColor = '#FAFAFA';
@@ -54,11 +58,20 @@ const MapCard = forwardRef(({
 
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
-  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
+  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
+
+  // Déclencheur du mode "Libre" (Désactive l'Auto-Fitter temporairement)
+  const handleMapInteraction = () => {
+    setIsUserInteracting(true);
+    clearTimeout(interactionTimeout.current);
+    interactionTimeout.current = setTimeout(() => {
+      setIsUserInteracting(false); // Rend le contrôle à l'Auto-Fitter après 8s d'inactivité
+    }, 8000);
+  };
 
   useMapAutoFitter({
     isMapReady,
@@ -66,12 +79,13 @@ const MapCard = forwardRef(({
     location,
     driverLocation,
     markers,
-    routePointsToFit: fullRoutePoints, 
     mapTopPadding,
-    mapBottomPadding
+    mapBottomPadding,
+    isUserInteracting // On transmet le verrou au cerveau
   });
 
   const handleRecenter = () => {
+    setIsUserInteracting(false); // Force la reprise du tracking
     if (isMapReady && location && location.latitude) {
       mapRef.current?.animateToRegion(
         { latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
@@ -112,8 +126,22 @@ const MapCard = forwardRef(({
           showsBuildings={false}
           showsTraffic={false}
           showsIndoors={false}
+          
+          // 🔥 LIBERTÉ TOTALE 🔥
           rotateEnabled={true}
           pitchEnabled={true}
+          zoomEnabled={true}
+          scrollEnabled={true}
+          
+          // 🛡️ DÉTECTEURS DE GESTES
+          onTouchStart={handleMapInteraction}
+          onPanDrag={handleMapInteraction}
+          onRegionChangeComplete={(region, details) => {
+            if (details?.isGesture) {
+              handleMapInteraction();
+            }
+          }}
+          
           maxZoomLevel={17}
           onMapReady={handleMapReady}
           onPress={onPress}

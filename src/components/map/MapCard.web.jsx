@@ -1,14 +1,14 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Interface, POIs et Rendu Optimisé
+// COMPOSANT ORCHESTRATEUR CARTE WEB - Interface, POIs avec Noms Complets
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { forwardRef, useImperativeHandle, useRef } from 'react';
+import React, { forwardRef, useImperativeHandle, useRef, useState } from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
-import { MapContainer, Marker, Polygon, Polyline, TileLayer } from 'react-leaflet';
+import { MapContainer, Marker, Polygon, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRouteManager from '../../hooks/useRouteManager';
@@ -29,13 +29,41 @@ const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png
 const LIGHT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; OSM';
 
-// Générateur d'icônes dynamiques pour les POIs sur le Web
-const createPoiIcon = (color) => L.divIcon({
-  className: 'yely-poi-marker',
-  html: `<div style="width: 26px; height: 26px; border-radius: 13px; background: ${color || THEME.COLORS.champagneGold}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3);"></div>`,
-  iconSize: [26, 26],
-  iconAnchor: [13, 26],
-});
+const POI_SVG = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
+
+// Générateur d'icônes dynamiques pour les POIs sur le Web (Nom complet sans coupure)
+const createPoiIcon = (poi) => {
+  const color = poi.iconColor || THEME.COLORS.champagneGold;
+  const fullName = poi.name || '';
+  
+  const htmlContent = `
+    <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
+      <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
+        ${POI_SVG}
+      </div>
+      <div style="margin-top: 2px; font-size: 13px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
+        ${fullName}
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    className: '', 
+    html: htmlContent,
+    iconSize: [26, 26], // La pastille fait 26px. Le flexbox centrera parfaitement le texte qui déborde en dessous.
+    iconAnchor: [13, 26], 
+  });
+};
+
+const MapInteractionTracker = ({ onInteract }) => {
+  useMapEvents({
+    dragstart: onInteract,
+    zoomstart: onInteract,
+    mousedown: onInteract,
+    touchstart: onInteract,
+  });
+  return null;
+};
 
 const MapCard = forwardRef(({
   location,
@@ -51,13 +79,30 @@ const MapCard = forwardRef(({
   style,
 }, ref) => {
   const mapInstanceRef = useRef(null);
+  
+  const [isUserInteracting, setIsUserInteracting] = useState(false);
+  const interactionTimeout = useRef(null);
 
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  // ALIGNEMENT FONCTIONNEL : On récupère les POIs comme sur mobile
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
+
+  const handleMapInteraction = () => {
+    setIsUserInteracting(true);
+    clearTimeout(interactionTimeout.current);
+    interactionTimeout.current = setTimeout(() => {
+      setIsUserInteracting(false);
+    }, 8000);
+  };
+
+  const handleRecenter = () => {
+    setIsUserInteracting(false); 
+    if (location && mapInstanceRef.current) {
+      mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
+    }
+  };
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
@@ -65,12 +110,8 @@ const MapCard = forwardRef(({
         mapInstanceRef.current.flyTo([region.latitude, region.longitude], 15, { duration: 0.8 });
       }
     },
-    fitToCoordinates: () => {}, // Géré de manière autonome par MapAutoFitter
-    centerOnUser: () => {
-      if (location && mapInstanceRef.current) {
-        mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
-      }
-    },
+    fitToCoordinates: () => {}, 
+    centerOnUser: handleRecenter,
   }));
 
   const center = [
@@ -100,6 +141,8 @@ const MapCard = forwardRef(({
         ref={(mapInstance) => { if (mapInstance) mapInstanceRef.current = mapInstance; }}
         whenReady={() => onMapReady?.()}
       >
+        <MapInteractionTracker onInteract={handleMapInteraction} />
+
         <TileLayer
           url={darkMode ? DARK_TILE_URL : LIGHT_TILE_URL}
           attribution={ATTRIBUTION}
@@ -110,7 +153,7 @@ const MapCard = forwardRef(({
           location={location} 
           driverLocation={driverLocation} 
           markers={displayMarkers} 
-          routePoints={visibleRoutePoints}
+          isUserInteracting={isUserInteracting}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
         />
@@ -132,7 +175,7 @@ const MapCard = forwardRef(({
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
             position={[poi.latitude, poi.longitude]}
-            icon={createPoiIcon(poi.iconColor)}
+            icon={createPoiIcon(poi)}
             eventHandlers={{ click: () => onMarkerPress?.(poi) }}
           />
         ))}
@@ -177,11 +220,7 @@ const MapCard = forwardRef(({
       {showRecenterButton && (
         <TouchableOpacity
           style={[styles.recenterButton, { bottom: mapBottomPadding + 16 }]}
-          onPress={() => {
-            if (location && mapInstanceRef.current) {
-              mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
-            }
-          }}
+          onPress={handleRecenter}
         >
           <Ionicons name="locate-outline" size={22} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
@@ -215,7 +254,6 @@ const styles = StyleSheet.create({
   },
 });
 
-// MEMOIZATION STRICTE : Évite le re-rendu et le clignotement de la carte web
 const arePropsEqual = (prevProps, nextProps) => {
   const isSameLocation = (loc1, loc2) => {
     if (!loc1 && !loc2) return true;

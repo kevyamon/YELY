@@ -1,5 +1,5 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente et Respectueuse
+// HOOK CARTE NATIF - Caméra Intelligente (Logique des Extrémités & Respect UX)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
@@ -11,39 +11,38 @@ const useMapAutoFitter = ({
   location,
   driverLocation,
   markers,
-  routePointsToFit,
   mapTopPadding,
   mapBottomPadding,
+  isUserInteracting, // NOUVEAU : Le verrou qui te rend le pouvoir
 }) => {
   const lastUpdateRef = useRef(0);
   const isInitialFitDone = useRef(false);
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current) return;
+    
+    // 🛡️ RESPECT DE L'UX : Si tu touches la carte, la machine se tait.
+    if (isUserInteracting) return;
 
     let coordsToFit = [];
-    const hasRoute = routePointsToFit && routePointsToFit.length > 0;
 
-    if (hasRoute) {
-      // S'il y a un tracé, on doit suivre la course
-      coordsToFit = routePointsToFit;
-    } else {
-      // LIBÉRATION DE LA CAMÉRA : S'il n'y a pas de course en cours, on cadre 
-      // UNE SEULE FOIS à l'ouverture, puis on laisse l'utilisateur scroller librement.
-      if (isInitialFitDone.current) {
-        return; 
-      }
+    // 🎯 LA LOGIQUE DES EXTRÉMITÉS (Secret Uber/Yango)
+    // On ignore les 150 points de la courbe de la route. On isole 2 bornes strictes.
+    const targetMarker = markers.find(m => m.type === 'destination' || m.type === 'pickup');
+    const originMarker = driverLocation?.latitude ? driverLocation : location;
 
-      if (driverLocation?.latitude) {
-        coordsToFit.push({ latitude: driverLocation.latitude, longitude: driverLocation.longitude });
-      } else if (location?.latitude) {
-        coordsToFit.push({ latitude: location.latitude, longitude: location.longitude });
-      }
-
+    if (targetMarker && originMarker) {
+      // Cas 1 : Course en cours. 
+      // La BoundingBox ne contient que le mobile et la cible. Plus ils se rapprochent, plus ça zoome.
+      coordsToFit = [
+        { latitude: originMarker.latitude, longitude: originMarker.longitude },
+        { latitude: targetMarker.latitude, longitude: targetMarker.longitude }
+      ];
+    } else if (originMarker) {
+      // Cas 2 : Mode Attente/Recherche. On cadre sur toi et les POIs.
+      coordsToFit.push({ latitude: originMarker.latitude, longitude: originMarker.longitude });
       markers.forEach(m => {
-        if (m.latitude && m.longitude) {
-          coordsToFit.push({ latitude: m.latitude, longitude: m.longitude });
-        }
+        if (m.latitude && m.longitude) coordsToFit.push({ latitude: m.latitude, longitude: m.longitude });
       });
     }
 
@@ -61,8 +60,9 @@ const useMapAutoFitter = ({
     }
 
     const now = Date.now();
-    // On met à jour la caméra toutes les 4 secondes UNIQUEMENT si une course est active (hasRoute).
-    const debounceTime = isInitialFitDone.current ? 4000 : 300; 
+    const isTrackingActive = coordsToFit.length === 2;
+    // Cadence : Rafraîchissement souple en cours de route, sinon 1 seul cadrage.
+    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300; 
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
@@ -71,17 +71,17 @@ const useMapAutoFitter = ({
       setTimeout(() => {
         mapRef.current?.fitToCoordinates(coordsToFit, {
           edgePadding: {
-            top: mapTopPadding + 50,
-            bottom: mapBottomPadding + 50,
-            left: 40,
-            right: 40,
+            top: mapTopPadding + 50,    // La marge prend en compte le Header intelligent
+            bottom: mapBottomPadding + 50, // La marge prend en compte le Footer intelligent
+            left: 50,
+            right: 50,
           },
           animated: true,
         });
       }, 100);
     }
 
-  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, routePointsToFit, mapRef]);
+  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, mapRef]);
 };
 
 export default useMapAutoFitter;
