@@ -11,11 +11,12 @@ const useMapAutoFitter = ({
   location,
   driverLocation,
   markers,
-  routePointsToFit, // Remplacement de fullRoutePoints par le tracé dynamique
+  routePointsToFit,
   mapTopPadding,
   mapBottomPadding,
 }) => {
-  const lastCameraSignatureRef = useRef('');
+  const lastUpdateRef = useRef(0);
+  const lastSignatureRef = useRef('');
 
   useEffect(() => {
     if (!isMapReady || !mapRef.current) return;
@@ -23,7 +24,6 @@ const useMapAutoFitter = ({
     const allCoords = [];
     
     // 1. Détermination de la Source active (Le point mobile actuel)
-    // Priorité absolue au chauffeur s'il est affecté, sinon on utilise le client
     const activeSource = (driverLocation?.latitude && driverLocation?.longitude) 
       ? driverLocation 
       : (location?.latitude && location?.longitude) ? location : null;
@@ -34,7 +34,7 @@ const useMapAutoFitter = ({
     const pickupMarker = markers.find((m) => m.type === 'pickup');
     const activeTarget = pickupOriginMarker ? destinationMarker : (pickupMarker || destinationMarker);
 
-    // 3. Imposition stricte des bornes (Source + Cible)
+    // 3. Collecte stricte des points vitaux
     if (activeSource) {
       allCoords.push({ latitude: activeSource.latitude, longitude: activeSource.longitude });
     }
@@ -42,11 +42,10 @@ const useMapAutoFitter = ({
       allCoords.push({ latitude: activeTarget.latitude, longitude: activeTarget.longitude });
     }
 
-    // 4. Ajout du tracé RESTANT (pour gérer les courbes qui sortiraient de l'écran)
+    // 4. Ajout du tracé RESTANT
     if (routePointsToFit && routePointsToFit.length > 0) {
       allCoords.push(...routePointsToFit);
     } else {
-      // Fallback : S'il n'y a pas de tracé, on s'assure d'avoir au moins tous les marqueurs
       markers.forEach(m => {
         if (m.latitude && m.longitude) {
           allCoords.push({ latitude: m.latitude, longitude: m.longitude });
@@ -54,58 +53,79 @@ const useMapAutoFitter = ({
       });
     }
 
-    // 5. Signature intelligente par paliers (Le secret du zoom progressif sans clignotement)
-    // On divise le tracé restant par 15 pour créer des paliers. Quand un palier est franchi, la caméra se resserre.
-    const routeStep = routePointsToFit ? Math.floor(routePointsToFit.length / 15) : 0;
-    const sourceKey = activeSource ? `${activeSource.latitude.toFixed(3)}_${activeSource.longitude.toFixed(3)}` : 'NO_SRC';
-    const targetKey = activeTarget ? `${activeTarget.latitude.toFixed(4)}_${activeTarget.longitude.toFixed(4)}` : 'NO_TGT';
+    // Gestion des cas extrêmes (0 ou 1 point)
+    if (allCoords.length === 0) {
+      mapRef.current?.animateToRegion({ 
+        latitude: MAFERE_CENTER.latitude, 
+        longitude: MAFERE_CENTER.longitude, 
+        latitudeDelta: 0.02, 
+        longitudeDelta: 0.02 
+      }, 800);
+      return;
+    }
+
+    if (allCoords.length === 1) {
+      mapRef.current?.animateToRegion({ 
+        latitude: allCoords[0].latitude, 
+        longitude: allCoords[0].longitude, 
+        latitudeDelta: 0.005, 
+        longitudeDelta: 0.005 
+      }, 800);
+      return;
+    }
+
+    // 5. Calcul mathématique de la Bounding Box
+    let minLat = allCoords[0].latitude;
+    let maxLat = allCoords[0].latitude;
+    let minLng = allCoords[0].longitude;
+    let maxLng = allCoords[0].longitude;
+
+    for (let i = 1; i < allCoords.length; i++) {
+      if (allCoords[i].latitude < minLat) minLat = allCoords[i].latitude;
+      if (allCoords[i].latitude > maxLat) maxLat = allCoords[i].latitude;
+      if (allCoords[i].longitude < minLng) minLng = allCoords[i].longitude;
+      if (allCoords[i].longitude > maxLng) maxLng = allCoords[i].longitude;
+    }
+
+    // 6. Cadrage Dynamique Actif (Auto-Zoom fluide)
+    const boxWidth = maxLng - minLng;
+    const boxHeight = maxLat - minLat;
     
-    const currentSignature = `SIG_${targetKey}_${sourceKey}_STEP_${routeStep}`;
+    // Marges de respiration pour ne pas coller la route aux bords de l'écran (1.5 = +50%)
+    const PAD_FACTOR = 1.5; 
+    const MIN_DELTA = 0.004; // Limite de zoom maximal (pour ne pas écraser les marqueurs s'ils sont proches)
 
-    if (lastCameraSignatureRef.current !== currentSignature) {
-      lastCameraSignatureRef.current = currentSignature;
+    const baseLatDelta = Math.max(boxHeight * PAD_FACTOR, MIN_DELTA);
+    const baseLngDelta = Math.max(boxWidth * PAD_FACTOR, MIN_DELTA);
+    
+    const centerLat = (minLat + maxLat) / 2;
+    const centerLng = (minLng + maxLng) / 2;
 
-      if (allCoords.length > 1) {
-        const timer = setTimeout(() => {
-          mapRef.current?.fitToCoordinates(allCoords, {
-            edgePadding: { 
-              top: mapTopPadding + 40, // Marge augmentée pour aérer la vue lors du zoom
-              right: 60, 
-              bottom: mapBottomPadding + 40, 
-              left: 60 
-            },
-            animated: true
-          });
-        }, 600);
-        return () => clearTimeout(timer);
-      } else if (allCoords.length === 1) {
-        const timer = setTimeout(() => {
-          mapRef.current?.animateToRegion(
-            { 
-              latitude: allCoords[0].latitude, 
-              longitude: allCoords[0].longitude, 
-              latitudeDelta: 0.005, // Zoom plus fort car l'entité est seule/très proche
-              longitudeDelta: 0.005 
-            },
-            800
-          );
-        }, 600);
-        return () => clearTimeout(timer);
-      } else if (allCoords.length === 0) {
-        // Fallback sécurisé en cas de perte de données
-        const timer = setTimeout(() => {
-            mapRef.current?.animateToRegion(
-              { 
-                latitude: MAFERE_CENTER.latitude, 
-                longitude: MAFERE_CENTER.longitude, 
-                latitudeDelta: 0.02, 
-                longitudeDelta: 0.02 
-              },
-              800
-            );
-          }, 600);
-          return () => clearTimeout(timer);
-      }
+    // 7. Compensation visuelle des panneaux UI (Top/Bottom Padding)
+    // Décale le centre géographique vers le haut ou le bas pour que la carte soit centrée dans l'espace visible
+    const paddingOffsetRatio = (mapBottomPadding - mapTopPadding) / 1000;
+    const adjustedCenterLat = centerLat - (baseLatDelta * paddingOffsetRatio * 0.4);
+
+    // 8. Signature continue et anti-spam
+    const now = Date.now();
+    // On arrondit à 3 décimales pour ne réagir qu'aux changements significatifs de distance
+    const currentSignature = `${adjustedCenterLat.toFixed(3)}_${centerLng.toFixed(3)}_${baseLatDelta.toFixed(3)}`;
+
+    // Mise à jour si la Bounding Box a changé significativement OU toutes les 3.5 secondes pour suivre le mouvement
+    if (lastSignatureRef.current !== currentSignature || (now - lastUpdateRef.current > 3500)) {
+      lastSignatureRef.current = currentSignature;
+      lastUpdateRef.current = now;
+
+      const timer = setTimeout(() => {
+        mapRef.current?.animateToRegion({
+          latitude: adjustedCenterLat,
+          longitude: centerLng,
+          latitudeDelta: baseLatDelta,
+          longitudeDelta: baseLngDelta
+        }, 1200); // Animation longue et douce
+      }, 100);
+
+      return () => clearTimeout(timer);
     }
   }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, routePointsToFit, mapRef]);
 };
