@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER NATIF - Orchestrateur Principal (Synchronisé avec le fallback manuel)
+// HOME RIDER NATIF - Orchestrateur Principal (Synchronisé avec le fallback manuel & Instant UI)
 // CSCSM Level: Bank Grade
 
 import React, { useRef, useState } from 'react';
@@ -17,7 +17,7 @@ import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation';
-import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION DU HOOK TEMPS REEL
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRiderLifecycle from '../../hooks/useRiderLifecycle';
 import useRiderMapFeatures from '../../hooks/useRiderMapFeatures';
 
@@ -30,7 +30,6 @@ const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   
-  // ACTIVATION DE L'ECOUTE TEMPS REEL (RAM)
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
@@ -40,10 +39,11 @@ const RiderHome = ({ navigation }) => {
   const rideToRate = useSelector(selectRideToRate);
   
   const { location, errorMsg } = useGeolocation(); 
-  const isUserInZone = isLocationInMafereZone(location);
+  
+  // 🛡️ BOUCLIER TEMPOREL: Si le GPS cherche, on assume que le passager est dans la zone
+  const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // Extraction complète depuis le nouveau hook partagé
   const {
     effectiveOrigin,
     manualOrigin,
@@ -83,7 +83,7 @@ const RiderHome = ({ navigation }) => {
     destination,
     isRideActive,
     currentRide,
-    location: effectiveOrigin // La carte se base désormais sur la position choisie (manuelle ou GPS)
+    location: effectiveOrigin 
   });
 
   let activeDriverLocation = null;
@@ -98,7 +98,6 @@ const RiderHome = ({ navigation }) => {
 
   const handlePoiSelection = (poi) => {
     setSelectedPoi(null);
-    // Un POI sur la carte native est toujours traité comme une destination par défaut
     handlePlaceSelect({
       latitude: poi.latitude,
       longitude: poi.longitude,
@@ -110,34 +109,36 @@ const RiderHome = ({ navigation }) => {
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-         {effectiveOrigin ? (
-           <MapCard 
-             ref={mapRef}
-             location={mapTraceOrigin}
-             driverLocation={activeDriverLocation}
-             showUserMarker={!isRideActive}
-             showRecenterButton={true}
-             floating={false}
-             markers={mapMarkers}
-             mapTopPadding={mapTopPadding}
-             mapBottomPadding={mapBottomPadding}
-             onMarkerPress={(poi) => {
-               if (!isRideActive) {
-                 setSelectedPoi(poi);
-               }
-             }}
-           />
-         ) : (
-           <View style={styles.loadingContainer}>
-             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-             <Text style={styles.loadingText}>Synchronisation GPS en cours...</Text>
-           </View>
-         )}
+        {/* 🌟 CARTE INSTANTANÉE (Même sans position, elle affiche Maféré) */}
+        <MapCard 
+          ref={mapRef}
+          location={mapTraceOrigin}
+          driverLocation={activeDriverLocation}
+          showUserMarker={!isRideActive && !!effectiveOrigin}
+          showRecenterButton={true}
+          floating={false}
+          markers={mapMarkers}
+          mapTopPadding={mapTopPadding}
+          mapBottomPadding={mapBottomPadding}
+          onMarkerPress={(poi) => {
+            if (!isRideActive) {
+              setSelectedPoi(poi);
+            }
+          }}
+        />
+        
+        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
+        {!effectiveOrigin && (
+          <View style={styles.floatingLoader}>
+            <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+            <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>
+          </View>
+        )}
       </View>
 
       <SmartHeader 
         scrollY={scrollY}
-        address={currentAddress}
+        address={currentAddress || "Recherche..."}
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
@@ -165,7 +166,6 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
-      {/* MODALES */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         mode={searchModalMode}
@@ -190,8 +190,32 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12, fontWeight: '600' },
+  // UX: Remplacement du gros bloc opaque par une pilule flottante élégante
+  floatingLoader: {
+    position: 'absolute',
+    top: 140,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 10,
+  },
+  floatingLoaderText: { 
+    color: THEME.COLORS.champagneGold, 
+    marginLeft: 8, 
+    fontSize: 12, 
+    fontWeight: '600' 
+  },
 });
 
 export default RiderHome;

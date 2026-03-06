@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.web.jsx
-// HOME RIDER WEB - Vue Modulaire (Parite totale avec l'App Mobile)
+// HOME RIDER WEB - Orchestrateur (Bouclier Temporel & Smart Panning & Instant UI)
 // CSCSM Level: Bank Grade
 
 import React, { useRef, useState } from 'react';
@@ -20,7 +20,7 @@ import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
 import useGeolocation from '../../hooks/useGeolocation.web';
-import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION DU HOOK TEMPS REEL
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRiderLifecycle from '../../hooks/useRiderLifecycle';
 import useRiderMapFeatures from '../../hooks/useRiderMapFeatures';
 
@@ -33,7 +33,6 @@ const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   
-  // ACTIVATION DE L'ECOUTE TEMPS REEL (RAM)
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
@@ -47,10 +46,11 @@ const RiderHome = ({ navigation }) => {
   
   const location = simulatedLocation || realLocation;
 
-  const isUserInZone = isLocationInMafereZone(location);
+  // 🛡️ LE BOUCLIER TEMPOREL : Si GPS en recherche, on assume que l'utilisateur est légitime
+  const isUserInZone = location ? isLocationInMafereZone(location) : true;
+  
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // EXTRACTION DES NOUVELLES FONCTIONS DE LA VAGUE 1
   const {
     effectiveOrigin,
     manualOrigin,
@@ -82,15 +82,13 @@ const RiderHome = ({ navigation }) => {
 
   const {
     mapMarkers,
-    mapTopPadding,
-    mapBottomPadding,
     driverLatLng,
     mapTraceOrigin
   } = useRiderMapFeatures({
     destination,
     isRideActive,
     currentRide,
-    location: effectiveOrigin // 🧠 On trace l'itinéraire à partir de la position manuelle !
+    location: effectiveOrigin 
   });
 
   const handlePoiSelection = (poi) => {
@@ -102,35 +100,47 @@ const RiderHome = ({ navigation }) => {
     }, 'destination');
   };
 
-  const shouldShowMap = effectiveOrigin || !isLoading;
+  let dynamicTopPadding = 140; 
+  let dynamicBottomPadding = 220; 
+
+  if (isRideActive) {
+    dynamicBottomPadding = 360; 
+    dynamicTopPadding = 160; 
+  } else if (displayVehicles && displayVehicles.length > 0) {
+    dynamicBottomPadding = 420; 
+  } else if (destination) {
+    dynamicBottomPadding = 300; 
+  }
 
   return (
     <View style={styles.screenWrapper}>
       
       <View style={styles.mapContainer}>
-         {shouldShowMap ? (
-           <MapCard 
-             ref={mapRef}
-             location={mapTraceOrigin}
-             driverLocation={isRideActive ? driverLatLng : null}
-             showUserMarker={!isRideActive && !!effectiveOrigin}
-             showRecenterButton={true}
-             floating={false}
-             markers={mapMarkers}
-             mapTopPadding={mapTopPadding}
-             mapBottomPadding={mapBottomPadding}
-             onMarkerPress={(poi) => {
-               if (!isRideActive) {
-                 setSelectedPoi(poi);
-               }
-             }}
-           />
-         ) : (
-           <View style={styles.loadingContainer}>
-             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-             <Text style={styles.loadingText}>Recherche satellite en cours...</Text>
-           </View>
-         )}
+        {/* 🌟 CARTE INSTANTANÉE */}
+        <MapCard 
+          ref={mapRef}
+          location={mapTraceOrigin}
+          driverLocation={isRideActive ? driverLatLng : null}
+          showUserMarker={!isRideActive && !!effectiveOrigin}
+          showRecenterButton={true}
+          floating={false}
+          markers={mapMarkers}
+          mapTopPadding={dynamicTopPadding}       
+          mapBottomPadding={dynamicBottomPadding} 
+          onMarkerPress={(poi) => {
+            if (!isRideActive) {
+              setSelectedPoi(poi);
+            }
+          }}
+        />
+        
+        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
+        {(!effectiveOrigin && isLoading) && (
+          <View style={styles.floatingLoader}>
+            <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+            <Text style={styles.floatingLoaderText}>Signal GPS Web...</Text>
+          </View>
+        )}
       </View>
 
       <SmartHeader 
@@ -139,8 +149,6 @@ const RiderHome = ({ navigation }) => {
         userName={user?.name?.split(' ')[0] || "Passager"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        
-        // 🧠 LIAISONS POUR LES RECHERCHES MANUELLES
         onSearchPress={() => openSearchModal('destination')}
         onOriginPress={() => openSearchModal('origin')}
         hasDestination={!!destination && !isRideActive} 
@@ -174,7 +182,6 @@ const RiderHome = ({ navigation }) => {
         />
       )}
 
-      {/* 🧠 MODALE BIDIRECTIONNELLE INJECTÉE ICI */}
       <DestinationSearchModal 
         visible={isSearchModalVisible}
         mode={searchModalMode}
@@ -201,8 +208,27 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
-  loadingContainer: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10, fontSize: 12 },
+  // UX: Pilule flottante pour le Web
+  floatingLoader: {
+    position: 'absolute',
+    top: 140,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 10,
+  },
+  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
 });
 
 export default RiderHome;

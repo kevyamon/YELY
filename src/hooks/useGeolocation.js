@@ -1,42 +1,54 @@
 // src/hooks/useGeolocation.js
-// HOOK GEOLOCALISATION - Conformite OS & Background Location
+// HOOK GÉOLOCALISATION - Filtre Haversine & Heartbeat (Anti-Ghosting)
 // STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
+// FILTRE MATHÉMATIQUE (Formule de Haversine)
+const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; // Rayon de la Terre en mètres
+  const p1 = lat1 * (Math.PI / 180);
+  const p2 = lat2 * (Math.PI / 180);
+  const dp = (lat2 - lat1) * (Math.PI / 180);
+  const dl = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 const useGeolocation = (options = {}) => {
   const {
     enableHighAccuracy = true,
     watchPosition = true,
-    distanceInterval = 2, 
-    timeInterval = 2000, 
+    distanceInterval = 5, 
+    timeInterval = 3000, 
   } = options;
 
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  
   const watchRef = useRef(null);
+  const retryTimeoutRef = useRef(null);
+
+  // 🛡️ BOUCLIER ANTI-DANSE ET HEARTBEAT
+  const lastValidLocationRef = useRef(null);
 
   const requestPermission = useCallback(async () => {
     try {
-      // 1. Demande de la permission au premier plan (Pre-requis OS obligatoire)
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
-      
       if (foregroundStatus !== 'granted') {
-        setError('Permission au premier plan refusee');
+        setError('Permission au premier plan refusée');
         setIsLoading(false);
         return false;
       }
-
-      // 2. Demande de la permission en arriere-plan (Critique pour le maintien VTC)
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      
       if (backgroundStatus !== 'granted') {
-        console.warn('[GEOLOCATION] Permission en arriere-plan refusee. Le suivi GPS s arretera si l application est reduite.');
-        // Nous ne bloquons pas l'execution, le client/chauffeur peut toujours utiliser l'app au premier plan.
+        console.warn('[GEOLOCATION] Permission en arrière-plan refusée.');
       }
-
       return true;
     } catch (err) {
       setError('Erreur lors de la demande de permission');
@@ -47,69 +59,139 @@ const useGeolocation = (options = {}) => {
 
   const getCurrentPosition = useCallback(async () => {
     try {
+      setError(null); 
       const loc = await Location.getCurrentPositionAsync({
         accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
+
+      if (loc.mocked) {
+        setError('Position falsifiée détectée. Veuillez désactiver votre Fake GPS.');
+        setIsLoading(false);
+        return null;
+      }
+
       const coords = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
         heading: loc.coords.heading || 0,
         speed: loc.coords.speed || 0,
+        timestamp: Date.now(), // NOUVEAU : Chrono pour le Heartbeat
       };
+      
+      lastValidLocationRef.current = coords;
       setLocation(coords);
+      setError(null); 
       setIsLoading(false);
       return coords;
     } catch (err) {
-      setError('Position introuvable');
-      setIsLoading(false);
+      setError('Recherche du signal GPS...');
       return null;
     }
   }, [enableHighAccuracy]);
 
-  useEffect(() => {
+  const initTracking = useCallback(async () => {
     let mounted = true;
+    const granted = await requestPermission();
+    
+    if (!granted) return;
 
-    const init = async () => {
-      const granted = await requestPermission();
-      if (granted && mounted) {
-        await getCurrentPosition();
+    const initialCoords = await getCurrentPosition();
 
-        if (watchPosition) {
-          watchRef.current = await Location.watchPositionAsync(
-            {
-              accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
-              timeInterval,
-              distanceInterval,
-              showsBackgroundLocationIndicator: true, // Requis par iOS pour l'arriere-plan
-              deferredUpdatesDistance: distanceInterval,
-              deferredUpdatesInterval: timeInterval
-            },
-            (loc) => {
-              if (mounted) {
-                setLocation({
-                  latitude: loc.coords.latitude,
-                  longitude: loc.coords.longitude,
-                  heading: loc.coords.heading || 0,
-                  speed: loc.coords.speed || 0,
-                });
+    if (!initialCoords) {
+      retryTimeoutRef.current = setTimeout(() => {
+        if (mounted) initTracking();
+      }, 3000); 
+      return; 
+    }
+
+    if (watchPosition && !watchRef.current) {
+      try {
+        watchRef.current = await Location.watchPositionAsync(
+          {
+            accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+            timeInterval,
+            distanceInterval,
+            showsBackgroundLocationIndicator: true, 
+            deferredUpdatesDistance: distanceInterval,
+            deferredUpdatesInterval: timeInterval
+          },
+          (loc) => {
+            if (mounted) {
+              if (loc.mocked) {
+                setError('Position falsifiée détectée. Veuillez désactiver votre Fake GPS.');
+                return;
               }
+
+              const newLat = loc.coords.latitude;
+              const newLng = loc.coords.longitude;
+              const now = Date.now();
+
+              // 🛡️ L'INTERCEPTEUR : Filtre spatial + Heartbeat temporel
+              if (lastValidLocationRef.current) {
+                const distance = getDistanceInMeters(
+                  lastValidLocationRef.current.latitude,
+                  lastValidLocationRef.current.longitude,
+                  newLat,
+                  newLng
+                );
+                const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
+
+                // Si mouvement < 10m ET dernier point envoyé il y a moins de 60s -> On ignore (Bruit)
+                // Si ça fait plus de 60s -> On laisse passer pour maintenir le chauffeur en ligne dans Redis !
+                if (distance < 10 && timeSinceLastUpdate < 60000) {
+                  return; 
+                }
+              }
+              
+              const newCoords = {
+                latitude: newLat,
+                longitude: newLng,
+                heading: loc.coords.heading || 0,
+                speed: loc.coords.speed || 0,
+                timestamp: now,
+              };
+
+              lastValidLocationRef.current = newCoords;
+              setLocation(newCoords);
+              setError(null); 
             }
-          );
-        }
+          }
+        );
+      } catch (err) {
+        console.error('[GEOLOCATION] Erreur Watcher', err);
+        retryTimeoutRef.current = setTimeout(() => {
+          if (mounted) initTracking();
+        }, 3000);
       }
-    };
+    }
+    return () => { mounted = false; };
+  }, [requestPermission, getCurrentPosition, watchPosition, enableHighAccuracy, timeInterval, distanceInterval]);
 
-    init();
-
+  useEffect(() => {
+    const cleanup = initTracking();
     return () => {
-      mounted = false;
+      if (cleanup && typeof cleanup === 'function') cleanup();
       if (watchRef.current) {
         watchRef.current.remove();
+        watchRef.current = null;
+      }
+      if (retryTimeoutRef.current) {
+        clearTimeout(retryTimeoutRef.current);
       }
     };
-  }, [watchPosition, timeInterval, distanceInterval, enableHighAccuracy, requestPermission, getCurrentPosition]);
+  }, [initTracking]);
 
-  return { location, error, isLoading };
+  const forceRefresh = useCallback(() => {
+    setIsLoading(true);
+    setError(null);
+    if (watchRef.current) {
+      watchRef.current.remove();
+      watchRef.current = null;
+    }
+    initTracking();
+  }, [initTracking]);
+
+  return { location, error, isLoading, forceRefresh };
 };
 
 export default useGeolocation;

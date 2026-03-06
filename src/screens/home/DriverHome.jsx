@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER NATIF - Orchestrateur Principal (Temps réel + POI ReadOnly)
+// HOME DRIVER NATIF - Orchestrateur Principal (Temps réel + POI ReadOnly + Instant UI)
 // CSCSM Level: Bank Grade
 
 import { useIsFocused } from '@react-navigation/native';
@@ -21,7 +21,7 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
-import usePoiSocketEvents from '../../hooks/usePoiSocketEvents'; // INJECTION TEMPS RÉEL
+import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
 import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
@@ -35,10 +35,8 @@ const DriverHome = ({ navigation }) => {
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
 
-  // BRANCHEMENT DU TYMPAN TEMPS RÉEL
   usePoiSocketEvents();
 
-  // CORRECTION DE L'ERREUR DE SYNTAXE ICI :
   const [selectedPoi, setSelectedPoi] = useState(null);
 
   const user = useSelector(selectCurrentUser);
@@ -51,23 +49,14 @@ const DriverHome = ({ navigation }) => {
     isFetching, 
     isError: isSubscriptionError,
     refetch: refetchSubscription 
-  } = useGetSubscriptionStatusQuery(undefined, {
-    skip: !isFocused 
-  });
+  } = useGetSubscriptionStatusQuery(undefined, { skip: !isFocused });
 
   const isSubscriptionLoading = isSubLoading || isFetching;
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
 
-  const isActive = 
-    apiSubStatus.isActive === true || 
-    isLocallyActive === true || 
-    subStatusRedux?.isActive === true;
-
-  const isPending = 
-    apiSubStatus.isPending === true || 
-    subStatusRedux?.isPending === true;
-
+  const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
+  const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   const isBlocked = !isActive;
 
   useEffect(() => {
@@ -78,7 +67,8 @@ const DriverHome = ({ navigation }) => {
 
   const { location, errorMsg } = useGeolocation();
 
-  const isDriverInZone = isLocationInMafereZone(location);
+  // 🛡️ BOUCLIER TEMPOREL: Si le GPS cherche, on assume que le chauffeur est dans la zone
+  const isDriverInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
@@ -91,21 +81,13 @@ const DriverHome = ({ navigation }) => {
     handleConfirmArrival,
     handleSnoozeArrival
   } = useDriverLifecycle({
-    user,
-    currentRide,
-    location,
-    isDriverInZone,
-    mapRef,
-    errorMsg,
-    isRideActive,
-    isDisabled: isBlocked 
+    user, currentRide, location, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   const renderSubscriptionBlocker = () => {
     if (isActive) return null;
-
     if (isSubscriptionLoading && !isSubscriptionError) {
       return (
         <View style={styles.blockerOverlay}>
@@ -114,36 +96,22 @@ const DriverHome = ({ navigation }) => {
         </View>
       );
     }
-
     if (!isBlocked) return null;
-
     return (
       <View style={styles.blockerOverlay}>
         <GlassCard style={styles.blockerCard}>
           {isPending ? (
             <>
               <Text style={styles.blockerTitle}>Vérification en cours</Text>
-              <Text style={styles.blockerDesc}>
-                Votre paiement a été reçu. Un administrateur valide votre accès.
-              </Text>
+              <Text style={styles.blockerDesc}>Votre paiement a été reçu. Un administrateur valide votre accès.</Text>
               <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={styles.loaderSpacing} />
-              <GoldButton 
-                title="SE DÉCONNECTER" 
-                onPress={() => dispatch(logout())} 
-                style={styles.fullWidthButton}
-              />
+              <GoldButton title="SE DÉCONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
             </>
           ) : (
             <>
               <Text style={styles.blockerTitle}>Accès Expiré</Text>
-              <Text style={styles.blockerDesc}>
-                Votre abonnement est arrivé à terme. Vous ne pouvez plus recevoir de requêtes de passagers.
-              </Text>
-              <GoldButton 
-                title="Renouveler mon abonnement" 
-                onPress={() => navigation.navigate('Subscription')} 
-                style={styles.fullWidthButton}
-              />
+              <Text style={styles.blockerDesc}>Votre abonnement est arrivé à terme. Vous ne pouvez plus recevoir de requêtes.</Text>
+              <GoldButton title="Renouveler mon abonnement" onPress={() => navigation.navigate('Subscription')} style={styles.fullWidthButton} />
             </>
           )}
         </GlassCard>
@@ -154,28 +122,29 @@ const DriverHome = ({ navigation }) => {
   return (
     <View style={styles.screenWrapper}>
       <View style={styles.mapContainer}>
-        {location ? (
-          <MapCard
-            ref={mapRef}
-            location={location}
-            driverLocation={location}
-            showUserMarker={!!location}
-            showRecenterButton={true}
-            floating={false}
-            markers={mapMarkers}
-            mapTopPadding={mapTopPadding}
-            mapBottomPadding={mapBottomPadding || 240}
-            // 🧠 AJOUT : Rendre les lieux cliquables
-            onMarkerPress={(poi) => {
-              if (!isRideActive) {
-                setSelectedPoi(poi);
-              }
-            }}
-          />
-        ) : (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-            <Text style={styles.loadingText}>Synchronisation GPS en cours...</Text>
+        {/* 🌟 CARTE INSTANTANÉE */}
+        <MapCard
+          ref={mapRef}
+          location={location}
+          driverLocation={location}
+          showUserMarker={!!location}
+          showRecenterButton={true}
+          floating={false}
+          markers={mapMarkers}
+          mapTopPadding={mapTopPadding}
+          mapBottomPadding={mapBottomPadding || 240}
+          onMarkerPress={(poi) => {
+            if (!isRideActive) {
+              setSelectedPoi(poi);
+            }
+          }}
+        />
+        
+        {/* 🌟 PILULE DE CHARGEMENT DISCRÈTE */}
+        {!location && (
+          <View style={styles.floatingLoader}>
+            <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+            <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>
           </View>
         )}
       </View>
@@ -213,7 +182,6 @@ const DriverHome = ({ navigation }) => {
         </>
       )}
 
-      {/* 🧠 MODALE POI EN MODE LECTURE SEULE */}
       <PoiDetailsModal
         visible={!!selectedPoi}
         poi={selectedPoi}
@@ -227,52 +195,35 @@ const DriverHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
-  loadingContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'center',
+  // UX: Pilule flottante élégante
+  floatingLoader: {
+    position: 'absolute',
+    top: 140,
+    alignSelf: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassDark,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 3,
+    zIndex: 10,
   },
-  loadingText: { marginTop: 10, fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
+  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
   
-  blockerOverlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: THEME.COLORS.glassDark,
-    zIndex: 100, 
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: 20,
-  },
-  blockerCard: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  blockerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary || '#FFFFFF',
-    marginBottom: 15,
-    textAlign: 'center',
-  },
-  blockerDesc: {
-    fontSize: 16,
-    color: THEME.COLORS.textSecondary,
-    textAlign: 'center',
-    lineHeight: 24,
-    marginBottom: 25,
-  },
-  blockerText: {
-    color: THEME.COLORS.textPrimary || '#FFFFFF',
-    marginTop: 15,
-    fontSize: 16,
-  },
-  loaderSpacing: {
-    marginTop: 10,
-    marginBottom: 25
-  },
-  fullWidthButton: {
-    width: '100%'
-  }
+  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: THEME.COLORS.glassDark, zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  blockerCard: { width: '100%', alignItems: 'center' },
+  blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
+  blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
+  blockerText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
+  loaderSpacing: { marginTop: 10, marginBottom: 25 },
+  fullWidthButton: { width: '100%' }
 });
 
 export default DriverHome;

@@ -1,5 +1,5 @@
 // src/hooks/useGeolocation.web.js
-// GESTION GEOLOCALISATION WEB - API Navigateur Native & Intelligence Appareil
+// GESTION GEOLOCALISATION WEB - API Navigateur, Filtre Haversine & Heartbeat
 // CSCSM Level: Bank Grade
 
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,6 +9,20 @@ const EXACT_MOCK_LOCATION = {
   longitude: -3.028109,
   heading: 0,
   speed: 0
+};
+
+// FILTRE MATHÉMATIQUE (Formule de Haversine)
+const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const p1 = lat1 * (Math.PI / 180);
+  const p2 = lat2 * (Math.PI / 180);
+  const dp = (lat2 - lat1) * (Math.PI / 180);
+  const dl = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) +
+            Math.cos(p1) * Math.cos(p2) *
+            Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
 };
 
 const useGeolocation = (options = {}) => {
@@ -21,6 +35,8 @@ const useGeolocation = (options = {}) => {
   const [isPermissionDenied, setIsPermissionDenied] = useState(false);
 
   const watchIdRef = useRef(null);
+  // 🛡️ BOUCLIER ANTI-DANSE ET HEARTBEAT
+  const lastValidLocationRef = useRef(null);
 
   const reverseGeocodeWeb = async (coords) => {
     try {
@@ -49,7 +65,9 @@ const useGeolocation = (options = {}) => {
     setIsLoading(true);
 
     if (process.env.EXPO_PUBLIC_USE_MOCK_LOCATION === 'true') {
-      setLocation(EXACT_MOCK_LOCATION);
+      const mockWithTime = { ...EXACT_MOCK_LOCATION, timestamp: Date.now() };
+      setLocation(mockWithTime);
+      lastValidLocationRef.current = mockWithTime;
       await reverseGeocodeWeb(EXACT_MOCK_LOCATION);
       setIsLoading(false);
       setIsPermissionDenied(false);
@@ -62,22 +80,44 @@ const useGeolocation = (options = {}) => {
       return;
     }
 
-    // 🧠 DÉTECTION INTELLIGENTE DU TYPE D'APPAREIL
-    // Un PC n'a pas de puce GPS. Inutile de le faire ramer avec 'enableHighAccuracy'.
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
 
     watchIdRef.current = navigator.geolocation.watchPosition(
       (position) => {
         setIsPermissionDenied(false);
         setError(null);
+        
+        const newLat = position.coords.latitude;
+        const newLng = position.coords.longitude;
+        const now = Date.now();
+
+        // 🛡️ L'INTERCEPTEUR : Filtre spatial + Heartbeat temporel pour le Web
+        if (lastValidLocationRef.current) {
+          const distance = getDistanceInMeters(
+            lastValidLocationRef.current.latitude,
+            lastValidLocationRef.current.longitude,
+            newLat,
+            newLng
+          );
+          const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
+
+          if (distance < 10 && timeSinceLastUpdate < 60000) {
+            return; // Bloque la danse de la carte
+          }
+        }
+
         const coords = {
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: newLat,
+          longitude: newLng,
           heading: position.coords.heading || 0,
           speed: position.coords.speed || 0,
+          timestamp: now
         };
+
+        lastValidLocationRef.current = coords;
         setLocation(coords);
         setIsLoading(false);
+        
         if (!address) reverseGeocodeWeb(coords);
       },
       (err) => {
@@ -86,14 +126,11 @@ const useGeolocation = (options = {}) => {
           setIsPermissionDenied(true);
           setError("Accès au GPS refusé.");
         } else {
-          console.warn("[GPS WEB] Erreur/Timeout:", err.message);
           setError("Recherche de votre position GPS...");
         }
       },
       { 
-        // Sur Mobile, on exige le vrai GPS. Sur PC, on prend l'IP rapide.
         enableHighAccuracy: isMobile, 
-        // Sur PC, on ne lui laisse que 5 secondes pour chercher au lieu de 15.
         timeout: isMobile ? 15000 : 5000, 
         maximumAge: 5000
       }
