@@ -19,7 +19,7 @@ import {
   SmoothDriverMarker,
   TrackedMarker,
 } from './markers/MobileMarkers';
-import useMapAutoFitter from './useMapAutoFitter'; // L'import du nouveau Hook
+import useMapAutoFitter from './useMapAutoFitter';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -54,21 +54,21 @@ const MapCard = forwardRef(({
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
 
   // Calculs de trajectoire
-  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
+  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   // Temps Réel
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // UTILISATION DU NOUVEAU HOOK DÉDIÉ (Le cerveau de la caméra est déporté)
+  // UTILISATION DU HOOK DÉDIÉ AVEC LE TRACÉ RESTANT (visibleRoutePoints)
   useMapAutoFitter({
     isMapReady,
     mapRef,
     location,
     driverLocation,
     markers,
-    fullRoutePoints,
+    routePointsToFit: visibleRoutePoints, // L'injection clé pour le zoom progressif
     mapTopPadding,
     mapBottomPadding
   });
@@ -223,7 +223,6 @@ const MapCard = forwardRef(({
                       />
                     </View>
                   )}
-                  {/* CORRECTION DU TEXTE BLANC (Ajout d'une pilule de fond) */}
                   {marker.name && (
                     <Text style={styles.markerLabel}>{marker.name}</Text>
                   )}
@@ -266,8 +265,6 @@ const styles = StyleSheet.create({
   recenterButton: { position: 'absolute', right: THEME.SPACING.lg, width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, zIndex: 999, elevation: 999 },
 });
 
-// L'ARME FATALE ANTI-CLIGNOTEMENT
-// On demande à React de ne reconstruire la carte QUE si les données changent de plus de 10 mètres.
 const arePropsEqual = (prevProps, nextProps) => {
   const isSameLocation = (loc1, loc2) => {
     if (!loc1 && !loc2) return true;
