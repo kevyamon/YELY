@@ -2,42 +2,43 @@
 // HOOK DE SURVIE RÉSEAU - Détection du Cold Start (Render Sleep)
 // CSCSM Level: Bank Grade
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 const useServerWakeup = () => {
   const [isServerReady, setIsServerReady] = useState(false);
   const [isWakingUp, setIsWakingUp] = useState(false);
+  const attemptRef = useRef(0);
 
   useEffect(() => {
     let isMounted = true;
+    let retryTimer = null;
     
-    // 1. Récupération de l'URL de base
-    // Note : Remplace 192.168.X.X par ton IP locale si tu testes en développement sur mobile physique
     let baseUrl = process.env.EXPO_PUBLIC_API_URL || 'http://192.168.1.XX:5000';
-    
-    // 2. Nettoyage intelligent de l'URL : on évite les doublons /api/v1/api/v1/health
     const cleanBaseUrl = baseUrl.endsWith('/') ? baseUrl.slice(0, -1) : baseUrl;
     const healthUrl = cleanBaseUrl.endsWith('/api/v1') 
       ? `${cleanBaseUrl}/health` 
       : `${cleanBaseUrl}/api/v1/health`;
 
     const pingServer = async () => {
+      if (!isMounted) return;
+      attemptRef.current += 1;
+
+      // Timeout dynamique : Rapide au premier essai (3s) au cas où le serveur est déjà prêt.
+      // Plus long (8s) pour les essais suivants pour laisser Render s'allumer.
+      const timeoutDuration = attemptRef.current === 1 ? 3000 : 8000;
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutDuration);
+
       try {
-        console.log(`[WAKEUP] Tentative de connexion au serveur sur : ${healthUrl}`);
+        console.log(`[WAKEUP] Essai ${attemptRef.current} sur : ${healthUrl}`);
         
-        // 3. Timeout élargi à 8 secondes pour ne pas pénaliser les réseaux lents
-        const timeoutPromise = new Promise((_, reject) =>
-          setTimeout(() => reject(new Error('TIMEOUT - Délai dépassé')), 8000)
-        );
-        
-        // 4. Cache-buster (?t=...) pour empêcher le navigateur/téléphone de mettre la réponse en cache
-        const fetchPromise = fetch(`${healthUrl}?t=${Date.now()}`, {
-          headers: {
-            'Accept': 'application/json'
-          }
+        const response = await fetch(`${healthUrl}?t=${Date.now()}`, {
+          headers: { 'Accept': 'application/json' },
+          signal: controller.signal // Tue proprement la requête si le timeout expire
         });
-        
-        const response = await Promise.race([fetchPromise, timeoutPromise]);
+
+        clearTimeout(timeoutId);
 
         if (response.ok) {
           console.log('[WAKEUP] ✅ Serveur Prêt et Réactif !');
@@ -46,14 +47,19 @@ const useServerWakeup = () => {
             setIsWakingUp(false);
           }
         } else {
-          // Si le serveur répond 404, 500, etc., on lève une erreur explicite
           throw new Error(`Erreur HTTP ${response.status}`);
         }
       } catch (error) {
-        console.warn(`[WAKEUP] ❌ Échec du ping : ${error.message}. Nouvelle tentative dans 4 secondes...`);
+        if (error.name === 'AbortError') {
+           console.warn(`[WAKEUP] ❌ Timeout (${timeoutDuration}ms). Cold start détecté.`);
+        } else {
+           console.warn(`[WAKEUP] ❌ Échec du ping : ${error.message}`);
+        }
+        
         if (isMounted) {
           setIsWakingUp(true);
-          setTimeout(pingServer, 4000);
+          // On attend 2 secondes avant de retenter pour aérer le thread réseau
+          retryTimer = setTimeout(pingServer, 2000);
         }
       }
     };
@@ -62,6 +68,7 @@ const useServerWakeup = () => {
 
     return () => {
       isMounted = false;
+      if (retryTimer) clearTimeout(retryTimer);
     };
   }, []);
 

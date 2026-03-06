@@ -28,9 +28,18 @@ const writeAddressCache = (key, address) => {
 };
 
 let addressDebounceTimer = null;
+let pendingGeocodeRequests = []; // File d'attente pour resoudre toutes les promesses orphelines
+
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
+  // On stocke la promesse au lieu de l'ecraser
+  pendingGeocodeRequests.push({ resolve, reject });
   clearTimeout(addressDebounceTimer);
+  
   addressDebounceTimer = setTimeout(async () => {
+    // On capture la file actuelle et on la vide pour le prochain batch
+    const currentRequests = [...pendingGeocodeRequests];
+    pendingGeocodeRequests = []; 
+
     try {
       const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
       const response = await fetch(url, { headers: API_HEADERS });
@@ -47,12 +56,14 @@ const debouncedFetchAddress = (lat, lng, resolve, reject) => {
       const data = await response.json();
       if (data && data.display_name) {
         const parts = data.display_name.split(',');
-        resolve(parts.slice(0, 2).join(',').trim());
+        const address = parts.slice(0, 2).join(',').trim();
+        // On resout TOUTES les requetes en attente en une seule fois
+        currentRequests.forEach(req => req.resolve(address));
       } else {
-        resolve('Adresse inconnue');
+        currentRequests.forEach(req => req.resolve('Adresse inconnue'));
       }
     } catch (err) {
-      reject(err);
+      currentRequests.forEach(req => req.reject(err));
     }
   }, ADDRESS_DEBOUNCE_MS);
 };

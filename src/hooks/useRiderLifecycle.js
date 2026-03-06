@@ -25,12 +25,11 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
-  // NOUVEAU : État pour l'origine manuelle et le mode de la modale
   const [manualOrigin, setManualOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
-  const [searchModalMode, setSearchModalMode] = useState('destination'); // 'origin' ou 'destination'
+  const [searchModalMode, setSearchModalMode] = useState('destination'); 
   
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
@@ -43,7 +42,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
 
-  // L'origine effective est soit celle tapée à la main, soit le GPS
   const effectiveOrigin = manualOrigin || location;
 
   useEffect(() => {
@@ -76,23 +74,35 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     return () => subscription.remove();
   }, [refetchCurrentRide]);
 
-  // LOGIQUE ADRESSE : Si origine manuelle, on l'affiche. Sinon, Reverse Geocoding du GPS
+  // LOGIQUE ADRESSE : Avec securite Anti-Race Condition
   useEffect(() => {
+    let isMounted = true;
+
     if (manualOrigin) {
       setCurrentAddress(manualOrigin.address);
     } else if (location) {
       const getAddress = async () => {
         try {
           const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
-          setCurrentAddress(addr);
+          if (isMounted) {
+            setCurrentAddress(addr);
+          }
         } catch (error) {
-          setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          if (isMounted) {
+            setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+          }
         }
       };
       getAddress();
     } else if (errorMsg) {
-      setCurrentAddress("Signal GPS perdu");
+      if (isMounted) {
+        setCurrentAddress("Signal GPS perdu");
+      }
     }
+
+    return () => {
+      isMounted = false;
+    };
   }, [location, errorMsg, manualOrigin]);
 
   useEffect(() => {
@@ -105,7 +115,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   useEffect(() => {
     if (rideToRate || (!currentRide && !fetchedRideData) || currentRide?.status === 'cancelled') {
       setDestination(null);
-      setManualOrigin(null); // On reset aussi l'origine manuelle à la fin d'une course
+      setManualOrigin(null); 
       setSelectedVehicle(null);
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
@@ -113,7 +123,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
   }, [rideToRate, currentRide, fetchedRideData, mapRef]);
 
-  // FONCTION UNIFIÉE : Gère à la fois le choix du départ et de l'arrivée
   const handlePlaceSelect = async (selectedPlace, mode) => {
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
@@ -126,7 +135,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
     if (mode === 'origin') {
       setManualOrigin(selectedPlace);
-      // Si on a déjà une destination, on relance l'estimation avec la nouvelle origine
       if (destination) {
         estimateRide({
           pickupLat: selectedPlace.latitude, pickupLng: selectedPlace.longitude,
@@ -154,7 +162,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
   };
 
-  // NOUVEAU : Possibilité d'annuler l'origine manuelle pour repasser sur le GPS
   const handleCancelManualOrigin = () => {
     setManualOrigin(null);
     if (destination && location) {
@@ -178,7 +185,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       return;
     }
     
-    // On vérifie que le point de départ EST dans la zone (indispensable si manuel)
     if (!isLocationInMafereZone(effectiveOrigin)) {
       dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre point de départ est hors de la zone de service.' }));
       return;

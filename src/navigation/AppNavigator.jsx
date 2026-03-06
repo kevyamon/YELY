@@ -45,7 +45,7 @@ import MenuScreen from '../screens/MenuScreen';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import ReportScreen from '../screens/report/ReportScreen';
-import SplashScreenComponent from '../screens/SplashScreen'; // Import renommé pour éviter conflit avec expo-splash-screen
+import SplashScreenComponent from '../screens/SplashScreen';
 
 // Ecrans Admin
 import AdminDashboard from '../screens/admin/AdminDashboard';
@@ -82,9 +82,11 @@ const AppNavigator = () => {
   const user = useSelector(selectCurrentUser);
   const subStatus = useSelector(selectSubscriptionStatus);
   
-  // Utilisation de notre hook intelligent
   const { isServerReady, isWakingUp } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
+  
+  // NOUVEAU : Etat pour controler le demontage fluide du SplashScreen
+  const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
@@ -121,7 +123,7 @@ const AppNavigator = () => {
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
-        // On cache le splash natif très vite pour laisser notre beau SplashScreenComponent s'animer
+        // On cache le splash natif très vite pour laisser notre composant s'animer
         setTimeout(async () => {
           await SplashScreen.hideAsync();
         }, 100);
@@ -131,9 +133,20 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  // Le fameux Bouclier UX : On attend l'authentification ET le backend.
-  if (!isAuthReady || !isServerReady) {
-    return <SplashScreenComponent isWakingUp={isWakingUp} />; 
+  // NOUVEAU : Timer pour laisser l'animation de jauge finir à 100% avant de couper l'écran
+  useEffect(() => {
+    if (isAuthReady && isServerReady) {
+      const timer = setTimeout(() => {
+        setShowSplash(false);
+      }, 600); // 600ms = 400ms d'animation + 200ms de marge pour l'oeil humain
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthReady, isServerReady]);
+
+  // Le fameux Bouclier UX
+  if (showSplash) {
+    // La jauge n'atteindra 100% que quand le backend ET la restauration de session seront terminés
+    return <SplashScreenComponent isServerReady={isServerReady && isAuthReady} />; 
   }
 
   const isDriver = user?.role === 'driver';

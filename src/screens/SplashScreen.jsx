@@ -1,9 +1,12 @@
 // src/screens/SplashScreen.jsx
 
-import { useEffect } from 'react';
-import { ActivityIndicator, Image, StyleSheet, Text, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
+  Easing,
   FadeIn,
+  runOnJS,
+  useAnimatedReaction,
   useAnimatedStyle,
   useSharedValue,
   withDelay,
@@ -13,10 +16,22 @@ import Animated, {
 } from 'react-native-reanimated';
 import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
 
-const SplashScreen = ({ isWakingUp }) => {
+// ATTENTION : Le composant reçoit maintenant 'isServerReady' en prop !
+const SplashScreen = ({ isServerReady }) => {
   const logoScale = useSharedValue(0);
   const logoOpacity = useSharedValue(0);
   const textOpacity = useSharedValue(0);
+  const progress = useSharedValue(0); // Valeur de la jauge (0 à 100)
+
+  const [progressText, setProgressText] = useState(0);
+
+  // Met à jour le texte du pourcentage pendant que l'animation tourne
+  useAnimatedReaction(
+    () => progress.value,
+    (currentValue) => {
+      runOnJS(setProgressText)(Math.round(currentValue));
+    }
+  );
 
   useEffect(() => {
     logoOpacity.value = withTiming(1, { duration: 600 });
@@ -25,7 +40,23 @@ const SplashScreen = ({ isWakingUp }) => {
       withSpring(1, { damping: 15, stiffness: 150 })
     );
     textOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
+
+    // Lancement de la jauge : Monte de 0 à 85% en 1.8 secondes (simulation fluide)
+    progress.value = withTiming(85, { 
+      duration: 1800, 
+      easing: Easing.out(Easing.cubic) 
+    });
   }, []);
+
+  useEffect(() => {
+    // Quand le serveur répond OK, on pousse la jauge à 100% instantanément
+    if (isServerReady) {
+      progress.value = withTiming(100, { 
+        duration: 400, 
+        easing: Easing.inOut(Easing.ease) 
+      });
+    }
+  }, [isServerReady]);
 
   const logoStyle = useAnimatedStyle(() => ({
     transform: [{ scale: logoScale.value }],
@@ -34,6 +65,10 @@ const SplashScreen = ({ isWakingUp }) => {
 
   const textStyle = useAnimatedStyle(() => ({
     opacity: textOpacity.value,
+  }));
+
+  const progressBarStyle = useAnimatedStyle(() => ({
+    width: `${progress.value}%`,
   }));
 
   return (
@@ -51,13 +86,17 @@ const SplashScreen = ({ isWakingUp }) => {
         <Text style={styles.tagline}>Votre course, votre confort</Text>
       </Animated.View>
 
-      {/* Bouclier UX : Affiché uniquement si le serveur Render met du temps à se réveiller */}
-      {isWakingUp && (
-        <Animated.View entering={FadeIn.delay(300)} style={styles.wakeupContainer}>
-          <ActivityIndicator size="large" color={COLORS.champagneGold} />
-          <Text style={styles.wakeupText}>Connexion au réseau sécurisé Yély...</Text>
-        </Animated.View>
-      )}
+      {/* Jauge de connexion affichée en permanence */}
+      <Animated.View entering={FadeIn.delay(300)} style={styles.loaderWrapper}>
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, progressBarStyle]} />
+        </View>
+        <Text style={styles.progressText}>
+          {progressText === 100 
+            ? "Système opérationnel" 
+            : `Connexion sécurisée... ${progressText}%`}
+        </Text>
+      </Animated.View>
     </View>
   );
 };
@@ -98,16 +137,29 @@ const styles = StyleSheet.create({
     marginTop: SPACING.sm,
     letterSpacing: 1,
   },
-  wakeupContainer: {
+  loaderWrapper: {
     position: 'absolute',
-    bottom: 60,
+    bottom: 80,
+    width: '65%',
     alignItems: 'center',
   },
-  wakeupText: {
+  progressTrack: {
+    width: '100%',
+    height: 6,
+    backgroundColor: COLORS.glassSurface,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: COLORS.champagneGold,
+    borderRadius: 10,
+  },
+  progressText: {
     color: COLORS.champagneGold,
-    marginTop: SPACING.md,
     fontSize: FONTS.sizes.bodySmall,
-    opacity: 0.9,
+    fontWeight: '600',
     letterSpacing: 0.5,
   }
 });
