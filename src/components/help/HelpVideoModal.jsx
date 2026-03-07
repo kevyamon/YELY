@@ -1,10 +1,10 @@
 // src/components/help/HelpVideoModal.jsx
-// COMPOSANT MODULAIRE - Modale d'aide interactive avec lecteur vidéo
+// COMPOSANT MODULAIRE - Modale d'aide interactive avec lecteur vidéo (expo-video)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { ResizeMode, Video } from 'expo-av';
-import React, { useEffect, useRef, useState } from 'react';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import React, { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { HELP_CATALOG } from '../../config/helpConfig';
@@ -14,36 +14,57 @@ import GoldButton from '../ui/GoldButton';
 const HelpVideoModal = ({ visible, onClose, role }) => {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [isVideoFinished, setIsVideoFinished] = useState(false);
-  const videoRef = useRef(null);
 
-  // On recupere le catalogue en fonction du role (rider par defaut pour securiser)
   const catalog = HELP_CATALOG[role === 'driver' ? 'driver' : 'rider'] || [];
 
-  // Quand on ferme la modale, on reinitialise tout a zero pour la prochaine ouverture
+  // Configuration du nouveau lecteur Video
+  const player = useVideoPlayer(selectedVideo ? selectedVideo.videoSource : null, (player) => {
+    player.loop = false;
+    player.play();
+  });
+
+  // Écouteur d'état pour savoir quand la vidéo se termine
+  useEffect(() => {
+    if (!player) return;
+
+    const subscription = player.addListener('statusChange', (status) => {
+      // Dans la nouvelle API, le statut passe souvent à 'idle' ou la position atteint la durée totale
+      if (status === 'readyToPlay' && player.currentTime > 0 && player.currentTime >= player.duration) {
+         setIsVideoFinished(true);
+      }
+    });
+
+    // Option alternative : écouter la fin de lecture spécifiquement
+    const playToEndSubscription = player.addListener('playToEnd', () => {
+      setIsVideoFinished(true);
+    });
+
+    return () => {
+      subscription.remove();
+      playToEndSubscription.remove();
+    };
+  }, [player]);
+
   useEffect(() => {
     if (!visible) {
       setSelectedVideo(null);
       setIsVideoFinished(false);
+      if (player) player.pause();
     }
   }, [visible]);
 
-  // Ecouteur d'evenement du lecteur video
-  const handlePlaybackStatusUpdate = (status) => {
-    if (status.didJustFinish) {
-      setIsVideoFinished(true);
-    }
-  };
-
-  const handleReplay = async () => {
-    if (videoRef.current) {
+  const handleReplay = () => {
+    if (player) {
       setIsVideoFinished(false);
-      await videoRef.current.replayAsync();
+      player.seekBy(-player.currentTime); // Retour à 0
+      player.play();
     }
   };
 
   const handleCloseVideo = () => {
     setSelectedVideo(null);
     setIsVideoFinished(false);
+    if (player) player.pause();
   };
 
   return (
@@ -69,14 +90,12 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
           {/* Zone de contenu : Lecteur Video OU Liste des cartes */}
           {selectedVideo ? (
             <View style={styles.videoContainer}>
-              <Video
-                ref={videoRef}
+              <VideoView
+                player={player}
                 style={styles.videoPlayer}
-                source={selectedVideo.videoSource}
-                useNativeControls={!isVideoFinished}
-                resizeMode={ResizeMode.CONTAIN}
-                onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-                shouldPlay={true}
+                allowsFullscreen={true}
+                allowsPictureInPicture={true}
+                contentFit="contain"
               />
               
               {/* Surcouche d'ecran de fin avec le bouton de repetition */}
@@ -211,6 +230,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
+    zIndex: 10, // Assure que l'overlay est au dessus de la vidéo
   },
   finishedText: {
     color: THEME.COLORS.pureWhite,

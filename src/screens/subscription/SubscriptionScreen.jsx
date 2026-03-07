@@ -7,18 +7,18 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+// 🛡️ IMPORT STRICT DE LA SAFE AREA
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, updateUserInfo } from '../../store/slices/authSlice';
+import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
 import ProofUploadForm from '../../components/subscription/ProofUploadForm';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
 
-import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 
@@ -35,7 +35,6 @@ const PLAN_TYPES = {
 
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const insets = useSafeAreaInsets();
   
   const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
@@ -47,15 +46,9 @@ const SubscriptionScreen = ({ navigation }) => {
   const [proofImage, setProofImage] = useState(null);
 
   useEffect(() => {
-    const handlePromoUpdate = () => {
-      refetchConfig();
-    };
-
+    const handlePromoUpdate = () => refetchConfig();
     socketService.on('promo_updated', handlePromoUpdate);
-    
-    return () => {
-      socketService.off('promo_updated', handlePromoUpdate);
-    };
+    return () => socketService.off('promo_updated', handlePromoUpdate);
   }, [refetchConfig]);
 
   useFocusEffect(
@@ -107,7 +100,7 @@ const SubscriptionScreen = ({ navigation }) => {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.8, 
     });
@@ -131,42 +124,30 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    const safeFileName = proofImage.fileName || proofImage.uri.split('/').pop() || 'capture.jpg';
-    
-    let safeType = proofImage.mimeType;
-    if (!safeType) {
-      const extensionMatch = /\.(\w+)$/.exec(safeFileName);
-      safeType = extensionMatch ? `image/${extensionMatch[1].toLowerCase()}` : 'image/jpeg';
-      if (safeType === 'image/jpg') safeType = 'image/jpeg';
-    }
-
+    const filename = proofImage.uri.split('/').pop();
+    const match = /\.(\w+)$/.exec(filename);
     formData.append('proofImage', {
-      uri: Platform.OS === 'ios' ? proofImage.uri.replace('file://', '') : proofImage.uri,
-      name: safeFileName,
-      type: safeType
+      uri: proofImage.uri,
+      name: filename || 'proof_image.jpg',
+      type: match ? `image/${match[1]}` : `image/jpeg`
     });
 
     try {
       await submitProof(formData).unwrap();
-      
-      if (updateUserInfo) {
-        dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
-      }
-      
+      dispatch(updateSubscriptionStatus({ isPending: true }));
+      dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
       dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
-      // Filtrage du catch: Si l'erreur est purement locale ou due à un timeout mais que le backend a repondu 201
-      if (error?.status === 'FETCH_ERROR') {
-        // En cas de réseau lent (timeout Cloudinary), on considère l'opération en cours de traitement
-        dispatch(showSuccessToast({ title: "Envoi en cours", message: "Votre capture est en cours de traitement sur nos serveurs." }));
+      if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
+        dispatch(showSuccessToast({ 
+          title: "Envoi en cours", 
+          message: "Le fichier est lourd, traitement en arrière-plan..." 
+        }));
         setCurrentStep(STEPS.DASHBOARD);
         refetchStatus();
-      } else if (error?.data?.message) {
-        // Vraie erreur renvoyée par le backend (ex: "Validation déjà en cours")
-        dispatch(showErrorToast({ title: "Action refusée", message: error.data.message }));
       } else {
-        console.warn("[Upload Proof] Erreur non-bloquante ignorée:", error);
+        dispatch(showErrorToast({ title: "Échec", message: error?.data?.message || "Erreur réseau inattendue." }));
       }
     }
   };
@@ -201,16 +182,19 @@ const SubscriptionScreen = ({ navigation }) => {
 
   if (isConfigLoading || isStatusLoading || !currentStep) {
     return (
-      <ScreenWrapper style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-        <Text style={styles.loadingText}>Synchronisation du profil...</Text>
-      </ScreenWrapper>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.centerContainer}>
+          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <Text style={styles.loadingText}>Synchronisation du profil...</Text>
+        </View>
+      </SafeAreaView>
     );
   }
 
+  // 🛡️ UTILISATION DE SAFEAREAVIEW POUR EVITER LE CHEVAUCHEMENT DE L'ENCOCHE
   return (
-    <ScreenWrapper>
-      <View style={[styles.container, { paddingTop: Math.max(insets.top, 10) }]}>
+    <SafeAreaView style={styles.safeArea}>
+      <View style={styles.container}>
         
         {renderHeader()}
 
@@ -246,11 +230,15 @@ const SubscriptionScreen = ({ navigation }) => {
         </View>
 
       </View>
-    </ScreenWrapper>
+    </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.background 
+  },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
   container: { flex: 1 },
@@ -259,7 +247,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingBottom: 15,
+    paddingVertical: 15, // Marge interieure au lieu du insets.top instable
   },
   headerButton: {
     padding: 8,

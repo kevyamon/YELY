@@ -77,7 +77,8 @@
           "project": "react-native",
           "organization": "yelyllc"
         }
-      ]
+      ],
+      "expo-video"
     ]
   }
 }
