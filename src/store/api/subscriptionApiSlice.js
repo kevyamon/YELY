@@ -24,8 +24,27 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
         body: formData,
       }),
-      extraOptions: { silent: true }, // AJOUT: On rend l'upload silencieux pour le gestionnaire global
-      invalidatesTags: ['Subscription'],
+      extraOptions: { silent: true }, 
+      // SUPPRESSION DE L'INVALIDATION BRUTALE pour éviter la tempête réseau après upload
+      // invalidatesTags: ['Subscription'], 
+      
+      // AJOUT : Mise à jour optimiste du cache (Optimistic Update)
+      async onQueryStarted(formData, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          subscriptionApiSlice.util.updateQueryData('getSubscriptionStatus', undefined, (draft) => {
+            if (draft && draft.data) {
+              draft.data.isPending = true;
+            } else {
+              draft.data = { isPending: true, isActive: false };
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo(); // Annule la mise à jour si la requête échoue vraiment
+        }
+      }
     }),
     
   }),

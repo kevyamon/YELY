@@ -7,7 +7,6 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// IMPORT STRICT DE LA SAFE AREA
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -75,7 +74,7 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const handleSelectPlan = async (planType, paymentLink, price) => {
     if (!paymentLink) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configure." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configuré." }));
       return;
     }
     try {
@@ -97,7 +96,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      dispatch(showErrorToast({ title: "Permission requise", message: "Acces a la galerie requis." }));
+      dispatch(showErrorToast({ title: "Permission requise", message: "Accès à la galerie requis." }));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -113,11 +112,11 @@ const SubscriptionScreen = ({ navigation }) => {
   const handleSubmitProof = async () => {
     const phoneRegex = /^\+?[0-9\s]{8,20}$/;
     if (!senderPhone || !phoneRegex.test(senderPhone)) {
-      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numero valide." }));
+      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numéro valide." }));
       return;
     }
     if (!proofImage) {
-      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'ecran." }));
+      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'écran." }));
       return;
     }
 
@@ -136,19 +135,18 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
-      // MODIFICATION MAJEURE : On retire l'alteration forcee du User qui creait le blocage infini.
-      dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
+      dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
       if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
         dispatch(showSuccessToast({ 
           title: "Envoi en cours", 
-          message: "Le fichier est lourd, traitement en arriere-plan..." 
+          message: "Le fichier est lourd, traitement en arrière-plan..." 
         }));
         setCurrentStep(STEPS.DASHBOARD);
-        refetchStatus();
+        // MODIFICATION : Suppression du refetchStatus() ici pour éviter le toast d'erreur réseau
       } else {
-        dispatch(showErrorToast({ title: "Echec", message: error?.data?.message || "Erreur reseau inattendue." }));
+        dispatch(showErrorToast({ title: "Échec", message: error?.data?.message || "Erreur réseau inattendue." }));
       }
     }
   };
@@ -168,7 +166,7 @@ const SubscriptionScreen = ({ navigation }) => {
           <View style={styles.headerSpacer} />
         )}
         
-        <Text style={styles.headerTitle}>Pass Yely</Text>
+        <Text style={styles.headerTitle}>Pass Yély</Text>
 
         {(!isActive || isPending) ? (
           <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
@@ -192,7 +190,6 @@ const SubscriptionScreen = ({ navigation }) => {
     );
   }
 
-  // UTILISATION DE SAFEAREAVIEW POUR EVITER LE CHEVAUCHEMENT DE L'ENCOCHE
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -236,25 +233,12 @@ const SubscriptionScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { 
-    flex: 1, 
-    backgroundColor: THEME.COLORS.background 
-  },
+  safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   loadingText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingVertical: 15,
-  },
-  headerButton: {
-    padding: 8,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.05)',
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
+  headerButton: { padding: 8, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)' },
   headerSpacer: { width: 42 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
   content: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, justifyContent: 'center' }
