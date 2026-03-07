@@ -41,7 +41,8 @@ import store from './src/store/store';
 import { YelyTheme } from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
-import { hideToast, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
+import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
+import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
 import useSocket from './src/hooks/useSocket';
@@ -50,6 +51,7 @@ import useSocketEvents from './src/hooks/useSocketEvents';
 const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
+  const loading = useSelector(selectLoading);
 
   useSocket();
   useSocketEvents();
@@ -94,6 +96,8 @@ const AppContent = () => {
           duration={toast.duration}
           onHide={() => dispatch(hideToast())}
         />
+        
+        <GlobalSkeleton visible={loading.visible} message={loading.message} />
       </Portal>
     </>
   );

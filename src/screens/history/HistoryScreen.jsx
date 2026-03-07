@@ -4,12 +4,13 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useGetRideHistoryQuery, useHideFromHistoryMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
@@ -134,7 +135,7 @@ const HistoryScreen = ({ navigation }) => {
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+          <GlobalSkeleton visible={true} fullScreen={false} />
         </View>
       ) : rides.length === 0 ? (
         <View style={styles.centerContainer}>
