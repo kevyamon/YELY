@@ -1,12 +1,12 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ECRAN D'ABONNEMENT - Orchestrateur (Modulaire & Temps Réel)
+// ECRAN D'ABONNEMENT - Orchestrateur (Modulaire & Temps Reel)
 // STANDARD: Clean Architecture / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 // IMPORT STRICT DE LA SAFE AREA
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -18,6 +18,7 @@ import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import PlanSelection from '../../components/subscription/PlanSelection';
 import ProofUploadForm from '../../components/subscription/ProofUploadForm';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
@@ -74,7 +75,7 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const handleSelectPlan = async (planType, paymentLink, price) => {
     if (!paymentLink) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configuré." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configure." }));
       return;
     }
     try {
@@ -96,7 +97,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      dispatch(showErrorToast({ title: "Permission requise", message: "Accès à la galerie requis." }));
+      dispatch(showErrorToast({ title: "Permission requise", message: "Acces a la galerie requis." }));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -112,11 +113,11 @@ const SubscriptionScreen = ({ navigation }) => {
   const handleSubmitProof = async () => {
     const phoneRegex = /^\+?[0-9\s]{8,20}$/;
     if (!senderPhone || !phoneRegex.test(senderPhone)) {
-      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numéro valide." }));
+      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numero valide." }));
       return;
     }
     if (!proofImage) {
-      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'écran." }));
+      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'ecran." }));
       return;
     }
 
@@ -135,19 +136,19 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
-      // MODIFICATION MAJEURE : On retire l'altération forcée du User qui créait le blocage infini.
-      dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
+      // MODIFICATION MAJEURE : On retire l'alteration forcee du User qui creait le blocage infini.
+      dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
       if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
         dispatch(showSuccessToast({ 
           title: "Envoi en cours", 
-          message: "Le fichier est lourd, traitement en arrière-plan..." 
+          message: "Le fichier est lourd, traitement en arriere-plan..." 
         }));
         setCurrentStep(STEPS.DASHBOARD);
         refetchStatus();
       } else {
-        dispatch(showErrorToast({ title: "Échec", message: error?.data?.message || "Erreur réseau inattendue." }));
+        dispatch(showErrorToast({ title: "Echec", message: error?.data?.message || "Erreur reseau inattendue." }));
       }
     }
   };
@@ -184,7 +185,7 @@ const SubscriptionScreen = ({ navigation }) => {
     return (
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <GlobalSkeleton visible={true} fullScreen={false} />
           <Text style={styles.loadingText}>Synchronisation du profil...</Text>
         </View>
       </SafeAreaView>

@@ -9,6 +9,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassModal from '../../components/ui/GlassModal';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 
@@ -16,10 +17,10 @@ import ProfileAvatar from '../../components/profile/ProfileAvatar';
 import ProfileForm from '../../components/profile/ProfileForm';
 
 import {
-    useDeleteAccountMutation,
-    useGetUserProfileQuery,
-    useUpdateUserProfileMutation,
-    useUploadProfilePictureMutation
+  useDeleteAccountMutation,
+  useGetUserProfileQuery,
+  useUpdateUserProfileMutation,
+  useUploadProfilePictureMutation
 } from '../../store/api/usersApiSlice';
 import { logout, selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -32,7 +33,7 @@ const ProfileScreen = ({ navigation }) => {
   const currentUser = useSelector(selectCurrentUser);
   const isDriver = currentUser?.role === 'driver';
   
-  // NOUVEAU : On extrait le rôle exact pour l'affichage dynamique
+  // NOUVEAU : On extrait le role exact pour l'affichage dynamique
   const userRole = currentUser?.role || 'rider';
 
   const { data: profileData, isLoading: isFetching, refetch } = useGetUserProfileQuery();
@@ -71,8 +72,8 @@ const ProfileScreen = ({ navigation }) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       dispatch(showErrorToast({ 
-        title: 'Permission refusée', 
-        message: 'L\'accès à vos photos est nécessaire pour modifier votre avatar.' 
+        title: 'Permission refusee', 
+        message: 'L\'acces a vos photos est necessaire pour modifier votre avatar.' 
       }));
       return;
     }
@@ -106,13 +107,13 @@ const ProfileScreen = ({ navigation }) => {
       dispatch(updateUserInfo({ profilePicture: res.data.profilePicture }));
       refetch();
       dispatch(showSuccessToast({ 
-        title: 'Félicitations', 
-        message: 'Votre photo de profil a été mise à jour avec succès.' 
+        title: 'Felicitations', 
+        message: 'Votre photo de profil a ete mise a jour avec succes.' 
       }));
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Erreur', 
-        message: 'Nous n\'avons pas pu enregistrer votre photo. Veuillez réessayer.' 
+        message: 'Nous n\'avons pas pu enregistrer votre photo. Veuillez reessayer.' 
       }));
     }
   };
@@ -130,8 +131,8 @@ const ProfileScreen = ({ navigation }) => {
       const res = await updateProfile(payload).unwrap();
       dispatch(updateUserInfo(res.data));
       dispatch(showSuccessToast({ 
-        title: 'Profil à jour', 
-        message: 'Vos informations personnelles ont bien été enregistrées.' 
+        title: 'Profil a jour', 
+        message: 'Vos informations personnelles ont bien ete enregistrees.' 
       }));
     } catch (error) {
       dispatch(showErrorToast({ 
@@ -147,7 +148,7 @@ const ProfileScreen = ({ navigation }) => {
       setIsDeleteModalVisible(false);
       dispatch(showSuccessToast({ 
         title: 'Au revoir', 
-        message: 'Votre compte a été définitivement supprimé. À bientôt !' 
+        message: 'Votre compte a ete definitivement supprime. A bientot !' 
       }));
       dispatch(logout());
     } catch (error) {
@@ -162,7 +163,7 @@ const ProfileScreen = ({ navigation }) => {
   if (isFetching) {
     return (
       <ScreenWrapper style={styles.centerContainer}>
-        <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+        <GlobalSkeleton visible={true} fullScreen={false} />
       </ScreenWrapper>
     );
   }
@@ -185,7 +186,7 @@ const ProfileScreen = ({ navigation }) => {
         <ProfileAvatar 
           userPhoto={userPhoto}
           email={userEmail}
-          role={serverRole} // Transmission dynamique du rôle
+          role={serverRole}
           isUploading={isUploading}
           onPickImage={handlePickImage}
         />
@@ -220,7 +221,7 @@ const ProfileScreen = ({ navigation }) => {
         </View>
         <Text style={styles.modalTitle}>Zone de danger</Text>
         <Text style={styles.modalText}>
-          Êtes-vous sûr de vouloir supprimer définitivement votre compte Yély ? Cette action est irréversible et effacera vos données.
+          Etes-vous sur de vouloir supprimer definitivement votre compte Yely ? Cette action est irreversible et effacera vos donnees.
         </Text>
         
         <View style={styles.modalActions}>

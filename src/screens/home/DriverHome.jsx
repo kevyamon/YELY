@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -17,6 +17,7 @@ import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -118,7 +119,7 @@ const DriverHome = ({ navigation }) => {
     if (isSubscriptionLoading && !isSubscriptionError) {
       return (
         <View style={styles.blockerOverlay}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <GlobalSkeleton visible={true} fullScreen={false} />
           <Text style={styles.blockerText}>Verification des acces...</Text>
         </View>
       );
@@ -131,7 +132,9 @@ const DriverHome = ({ navigation }) => {
             <>
               <Text style={styles.blockerTitle}>Verification en cours</Text>
               <Text style={styles.blockerDesc}>Votre paiement a ete recu. Un administrateur valide votre acces.</Text>
-              <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={styles.loaderSpacing} />
+              <View style={styles.loaderSpacing}>
+                <GlobalSkeleton visible={true} fullScreen={false} />
+              </View>
               <GoldButton title="SE DECONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
             </>
           ) : (
@@ -176,7 +179,7 @@ const DriverHome = ({ navigation }) => {
         
         {!effectiveLocation && (
           <View style={styles.floatingLoader}>
-            <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+            <GlobalSkeleton visible={true} fullScreen={false} />
             <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>
           </View>
         )}
@@ -261,7 +264,7 @@ const styles = StyleSheet.create({
   blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
   blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
   blockerText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
-  loaderSpacing: { marginTop: 10, marginBottom: 25 },
+  loaderSpacing: { marginTop: 10, marginBottom: 25, width: '100%', alignItems: 'center' },
   fullWidthButton: { width: '100%' }
 });
 
