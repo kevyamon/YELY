@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import React, { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -14,6 +14,7 @@ import { ConfirmModal } from '../../components/admin/AdminModals';
 import PoiFormModal from '../../components/admin/PoiFormModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassInput from '../../components/ui/GlassInput';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
@@ -150,7 +151,9 @@ const MapManagement = () => {
         </View>
 
         {isFetching || isImporting ? (
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
+          <View style={styles.loader}>
+            <GlobalSkeleton visible={true} fullScreen={false} />
+          </View>
         ) : (
           <FlatList
             ref={flatListRef}
