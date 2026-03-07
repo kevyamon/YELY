@@ -85,7 +85,6 @@ const AppNavigator = () => {
   const { isServerReady, isWakingUp } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
   
-  // NOUVEAU : Etat pour controler le demontage fluide du SplashScreen
   const [showSplash, setShowSplash] = useState(true);
 
   useEffect(() => {
@@ -123,7 +122,6 @@ const AppNavigator = () => {
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
-        // On cache le splash natif très vite pour laisser notre composant s'animer
         setTimeout(async () => {
           await SplashScreen.hideAsync();
         }, 100);
@@ -133,30 +131,25 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  // NOUVEAU : Timer pour laisser l'animation de jauge finir à 100% avant de couper l'écran
   useEffect(() => {
     if (isAuthReady && isServerReady) {
       const timer = setTimeout(() => {
         setShowSplash(false);
-      }, 600); // 600ms = 400ms d'animation + 200ms de marge pour l'oeil humain
+      }, 600); 
       return () => clearTimeout(timer);
     }
   }, [isAuthReady, isServerReady]);
 
-  // Le fameux Bouclier UX
   if (showSplash) {
-    // La jauge n'atteindra 100% que quand le backend ET la restauration de session seront terminés
     return <SplashScreenComponent isServerReady={isServerReady && isAuthReady} />; 
   }
 
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  const isSubscriptionPending = isDriver && (
-    user?.subscriptionStatus === 'pending' || 
-    user?.subscription?.status === 'pending' || 
-    subStatus?.isPending
-  );
+  // MODIFICATION MAJEURE : On nettoie la logique de blocage. 
+  // On ne se base plus sur l'objet user qui peut être corrompu par de vieux états Redux.
+  const isSubscriptionPending = isDriver && subStatus?.isPending;
 
   return (
     <Stack.Navigator

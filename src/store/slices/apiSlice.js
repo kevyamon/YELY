@@ -17,6 +17,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_URL,
+  timeout: 60000, // MODIFICATION : Timeout augmenté à 60 secondes pour sécuriser les uploads lourds
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -40,20 +41,25 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   // --- GESTION GLOBALE DES ERREURS API (SENTRY & TOASTS) ---
   if (result.error) {
     const errorStatus = result.error.status;
-    const requestUrl = typeof args === 'string' ? args : args.url;
     
-    // Le bouclier anti-condition de course : 
-    // Si une rotation de token est en cours, les requetes concurrentes peuvent echouer brutalement.
+    // Extraction blindée de l'URL pour identifier la requête
+    let requestUrl = '';
+    if (typeof args === 'string') {
+      requestUrl = args;
+    } else if (args && args.url) {
+      requestUrl = args.url;
+    }
+    
+    // MODIFICATION MAJEURE : Bouclier inconditionnel. Si l'URL cible l'upload de preuve, 
+    // on force le silence, même si RTK Query a perdu les extraOptions lors du crash.
+    const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit-proof');
     const isSystemRefreshing = mutex.isLocked() || api.getState().auth.isRefreshing;
 
-    // Ignorer les erreurs 401 (elles sont gerees juste en bas par le mutex)
-    // Ignorer les erreurs 400, 404, 409 (erreurs de validation gerees par les composants)
     if (errorStatus !== 401 && errorStatus !== 400 && errorStatus !== 404 && errorStatus !== 409) {
       
-      // L'etouffoir : On masque les erreurs reseau transitoires si on est en plein rafraichissement
       if (isSystemRefreshing && (errorStatus === 'FETCH_ERROR' || errorStatus === 'TIMEOUT_ERROR')) {
         console.info(`[API] Toast etouffe: Erreur transitoire (${errorStatus}) masquee pendant le refresh token.`);
-      } else {
+      } else if (!isSilent) {
         let toastMessage = "Une erreur inattendue est survenue.";
         
         if (errorStatus === 'FETCH_ERROR') {
@@ -64,13 +70,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           toastMessage = "La requete a pris trop de temps.";
         }
 
-        // Affichage du Toast a l'utilisateur
         api.dispatch(showErrorToast({
           title: "Probleme reseau",
           message: toastMessage
         }));
 
-        // Envoi silencieux a Sentry (uniquement en prod, pour eviter le spam en dev)
         if (!__DEV__) {
           Sentry.captureException(new Error(`API Error [${errorStatus}] on ${requestUrl}`), {
             extra: {
@@ -80,10 +84,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             }
           });
         }
+      } else {
+        console.info(`[API] Toast d'erreur etouffe volontairement pour l'URL: ${requestUrl}`);
       }
     }
   }
-  // --------------------------------------------------------
 
   if (result.error && result.error.status === 401) {
     if (!mutex.isLocked() && !api.getState().auth.isRefreshing) {
@@ -136,7 +141,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           const newRefreshToken = payload?.refreshToken || currentRefreshToken; 
 
           if (newAccessToken) {
-            console.info('[🟢 AUTH SUCCESS] Rafraichissement reussi.');
+            console.info('[AUTH SUCCESS] Rafraichissement reussi.');
             socketService.updateToken(newAccessToken);
             
             api.dispatch(setCredentials({ 
@@ -147,12 +152,12 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             
             result = await baseQuery(args, api, extraOptions);
           } else {
-            console.warn('[🔴 AUTH FATAL] Access Token manquant dans la reponse.');
+            console.warn('[AUTH FATAL] Access Token manquant dans la reponse.');
             socketService.disconnect();
             api.dispatch(logout({ reason: 'MALFORMED_REFRESH_PAYLOAD' }));
           }
         } else if (refreshResponse.status === 401) {
-          console.warn('[🔴 AUTH FATAL] Refresh Token rejete par le backend (401).');
+          console.warn('[AUTH FATAL] Refresh Token rejete par le backend (401).');
           socketService.disconnect();
           api.dispatch(logout({ reason: 'REFRESH_REJECTED_401' }));
         } else {

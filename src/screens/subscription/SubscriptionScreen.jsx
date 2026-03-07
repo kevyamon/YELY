@@ -7,12 +7,12 @@ import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { ActivityIndicator, Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-// 🛡️ IMPORT STRICT DE LA SAFE AREA
+// IMPORT STRICT DE LA SAFE AREA
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, updateSubscriptionStatus, updateUserInfo } from '../../store/slices/authSlice';
+import { logout, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -135,7 +135,7 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
-      dispatch(updateUserInfo({ subscriptionStatus: 'pending' }));
+      // MODIFICATION MAJEURE : On retire l'altération forcée du User qui créait le blocage infini.
       dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
@@ -191,7 +191,7 @@ const SubscriptionScreen = ({ navigation }) => {
     );
   }
 
-  // 🛡️ UTILISATION DE SAFEAREAVIEW POUR EVITER LE CHEVAUCHEMENT DE L'ENCOCHE
+  // UTILISATION DE SAFEAREAVIEW POUR EVITER LE CHEVAUCHEMENT DE L'ENCOCHE
   return (
     <SafeAreaView style={styles.safeArea}>
       <View style={styles.container}>
@@ -247,7 +247,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
-    paddingVertical: 15, // Marge interieure au lieu du insets.top instable
+    paddingVertical: 15,
   },
   headerButton: {
     padding: 8,
