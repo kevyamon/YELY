@@ -1,5 +1,5 @@
 // src/components/drawer/DrawerFooter.jsx
-// FOOTER MENU - Version dynamique & UX Affirmée (Bouton plein)
+// FOOTER MENU - Version dynamique, UX Affirmée & Zéro Bordure
 
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
@@ -45,6 +45,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.md,
     paddingBottom: THEME.SPACING.xl, 
+    borderTopWidth: 0, // Suppression forcée de la ligne supérieure
+    backgroundColor: 'transparent',
+    elevation: 0,
+    shadowOpacity: 0,
   },
   logoutButton: {
     flexDirection: 'row',
@@ -52,7 +56,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     paddingVertical: 14,
     borderRadius: 14, 
-    backgroundColor: THEME.COLORS.danger || '#E74C3C', // Fond totalement rouge
+    backgroundColor: THEME.COLORS.danger || '#E74C3C', 
+    borderWidth: 0, // Sécurité anti-bordure
     marginBottom: 20,
     shadowColor: THEME.COLORS.danger || '#E74C3C',
     shadowOffset: { width: 0, height: 4 },
@@ -64,7 +69,7 @@ const styles = StyleSheet.create({
     marginLeft: 10,
     fontSize: 16,
     fontWeight: 'bold',
-    color: THEME.COLORS.champagneGold, // Texte jaune (Or Yély)
+    color: THEME.COLORS.champagneGold, 
     letterSpacing: 0.5,
   },
   versionContainer: {

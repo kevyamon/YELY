@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
     paddingVertical: THEME.SPACING.md,
   },
   footerSection: {
-    borderTopWidth: 1,
+    borderTopWidth: 0, // Suppression de la ligne de séparation
     borderTopColor: THEME.COLORS.border,
   },
 });
