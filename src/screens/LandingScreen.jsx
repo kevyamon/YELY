@@ -4,6 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import Constants from 'expo-constants'; // 🛡️ IMPORT AJOUTÉ POUR LIRE LA VERSION
 import { LinearGradient } from 'expo-linear-gradient';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
@@ -40,6 +41,10 @@ const LANDING_CONFIG = {
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
   const [showTerms, setShowTerms] = useState(false);
+
+  // 🛡️ LECTURE DYNAMIQUE DE LA VERSION DEPUIS APP.JSON
+  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const currentYear = new Date().getFullYear();
 
   // --- ANIMATIONS ---
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -88,7 +93,6 @@ export default function LandingScreen({ navigation }) {
       }),
     ]).start();
 
-    // Animation de pulsation pour la ligne de séparation
     Animated.loop(
       Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1, duration: 1500, useNativeDriver: true }),
@@ -129,7 +133,6 @@ export default function LandingScreen({ navigation }) {
       {renderBackground(
         <View style={styles.contentContainer}>
           
-          {/* HEADER SECTION */}
           <Animated.View style={[styles.headerSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             <View style={styles.logoContainer}>
                <Image 
@@ -140,17 +143,15 @@ export default function LandingScreen({ navigation }) {
             </View>
 
             <Text style={styles.brandTitle}>YÉLY</Text>
-            <Text style={styles.tagline}>L'EXCELLENCE À MAFÉRÉ</Text>
+            <Text style={styles.tagline}>L'EXCELLENCE POUR VOUS!</Text>
           </Animated.View>
 
-          {/* LIGNE ANIMÉE SÉPARATRICE */}
           <Animated.View style={[styles.animationBox, { opacity: pulseAnim }]}>
             <View style={styles.animLine} />
             <Ionicons name="car-sport-outline" size={24} color={THEME.COLORS.champagneGold} style={{ marginHorizontal: 15 }} />
             <View style={styles.animLine} />
           </Animated.View>
 
-          {/* BOTTOM SECTION */}
           <Animated.View style={[styles.bottomSection, { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }]}>
             
             <Text style={styles.description}>
@@ -172,18 +173,17 @@ export default function LandingScreen({ navigation }) {
               <Text style={styles.termsText}>Conditions d'utilisation</Text>
             </TouchableOpacity>
 
-            <Text style={styles.copyright}>© 2026 Yély • v1.0.0</Text>
+            {/* 🛡️ VERSION ET ANNÉE DYNAMIQUES ICI */}
+            <Text style={styles.copyright}>© {currentYear} Yély • v{appVersion}</Text>
           </Animated.View>
         </View>
       )}
 
-      {/* MODAL CONDITIONS D'UTILISATION */}
       <GlassModal
         visible={showTerms}
         onClose={() => setShowTerms(false)}
         title="CONDITIONS GÉNÉRALES"
       >
-        {/* 🌟 CORRECTION ENCOCHE : Conteneur avec ScrollView et hauteur maximale */}
         <View style={{ maxHeight: height * 0.65, width: '100%' }}>
           <ScrollView 
             showsVerticalScrollIndicator={false} 
@@ -233,8 +233,6 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.15,
     paddingBottom: THEME.SPACING.xl,
   },
-  
-  // HEADER
   headerSection: { alignItems: 'center' },
   logoContainer: {
     width: 110, 
@@ -266,12 +264,8 @@ const styles = StyleSheet.create({
     opacity: 0.8,
     fontWeight: '300'
   },
-
-  // ANIMATION BOX
   animationBox: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 40 },
   animLine: { flex: 1, height: 1, backgroundColor: THEME.COLORS.champagneGold },
-
-  // BOTTOM SECTION
   bottomSection: { width: '100%', alignItems: 'center' },
   description: {
     color: '#DDD',
@@ -299,8 +293,6 @@ const styles = StyleSheet.create({
     fontWeight: '500'
   },
   copyright: { color: '#555', fontSize: 10, marginTop: 20, fontWeight: '500' },
-
-  // MODAL STYLES
   modalTextBg: { 
     backgroundColor: '#0A0A0A', 
     padding: 15, 

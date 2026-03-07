@@ -18,6 +18,7 @@ import { useDispatch } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
+import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
 
 import PasswordStrengthInput from '../../components/auth/PasswordStrengthInput';
@@ -37,7 +38,10 @@ const RegisterPage = ({ navigation, route }) => {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
   const [passwordScore, setPasswordScore] = useState(0);
-  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false); // Ajout du state legal
+  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
+  
+  // 🛡️ State pour la modale de blocage iOS/PWA pour les chauffeurs
+  const [showDriverRestrictionModal, setShowDriverRestrictionModal] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -45,6 +49,18 @@ const RegisterPage = ({ navigation, route }) => {
     password: '',
     phone: ''
   });
+
+  // 🛡️ Logique de sélection du rôle avec bouclier
+  const handleRoleSelection = (selectedRole) => {
+    if (selectedRole === 'driver') {
+      // Si ce n'est pas l'application native Android (donc iOS ou Web/PWA)
+      if (Platform.OS !== 'android') {
+        setShowDriverRestrictionModal(true);
+        return; // On bloque le changement de rôle
+      }
+    }
+    setRole(selectedRole);
+  };
 
   const validateForm = () => {
     const { name, email, password, phone } = formData;
@@ -113,7 +129,7 @@ const RegisterPage = ({ navigation, route }) => {
             <View style={styles.roleContainer}>
               <TouchableOpacity 
                 style={[styles.roleBtn, role === 'rider' && styles.roleBtnActive]} 
-                onPress={() => setRole('rider')}
+                onPress={() => handleRoleSelection('rider')}
               >
                 <Ionicons name="person" size={20} color={role === 'rider' ? '#FFF' : THEME.COLORS.textSecondary} />
                 <Text style={[styles.roleText, role === 'rider' && styles.roleTextActive]}>Passager</Text>
@@ -121,7 +137,7 @@ const RegisterPage = ({ navigation, route }) => {
 
               <TouchableOpacity 
                 style={[styles.roleBtn, role === 'driver' && styles.roleBtnActive]} 
-                onPress={() => setRole('driver')}
+                onPress={() => handleRoleSelection('driver')}
               >
                 <Ionicons name="car" size={20} color={role === 'driver' ? '#FFF' : THEME.COLORS.textSecondary} />
                 <Text style={[styles.roleText, role === 'driver' && styles.roleTextActive]}>Chauffeur</Text>
@@ -189,6 +205,27 @@ const RegisterPage = ({ navigation, route }) => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* MODALE DE RESTRICTION CHAUFFEUR */}
+      <GlassModal
+        visible={showDriverRestrictionModal}
+        onClose={() => setShowDriverRestrictionModal(false)}
+        title="Appareil Non Compatible"
+        icon="phone-portrait-outline"
+      >
+        <Text style={styles.modalText}>
+          Pour des raisons techniques liees a la cartographie et au suivi GPS en arriere-plan, l'application Chauffeur Yely n'est disponible que sur les appareils <Text style={{fontWeight: 'bold', color: THEME.COLORS.champagneGold}}>Android</Text>.
+        </Text>
+        <Text style={styles.modalSubText}>
+          Si vous possedez un telephone Android, veuillez telecharger l'application depuis notre site officiel pour vous inscrire en tant que chauffeur.
+        </Text>
+        <GoldButton 
+          title="J'ai compris" 
+          onPress={() => setShowDriverRestrictionModal(false)} 
+          style={{marginTop: 15}}
+        />
+      </GlassModal>
+
     </SafeAreaView>
   );
 };
@@ -211,7 +248,9 @@ const styles = StyleSheet.create({
   registerButton: { marginTop: THEME.SPACING.sm },
   footer: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },
-  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' }
+  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' },
+  modalText: { color: THEME.COLORS.textPrimary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
+  modalSubText: { color: THEME.COLORS.textSecondary, fontSize: 13, textAlign: 'center', lineHeight: 20, fontStyle: 'italic', marginBottom: 10 }
 });
 
 export default RegisterPage;

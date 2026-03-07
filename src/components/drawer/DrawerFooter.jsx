@@ -2,15 +2,15 @@
 // FOOTER MENU - Version dynamique (Package.json)
 
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-import packageJson from '../../../package.json'; // Import de la version source
 import THEME from '../../theme/theme';
 
 const DrawerFooter = ({ onLogout, isLoggingOut }) => {
   // Récupération automatique de la version
-  const appVersion = packageJson.version;
+  const appVersion = Constants.expoConfig?.version || packageJson.version;
 
   return (
     <View style={styles.container}>
