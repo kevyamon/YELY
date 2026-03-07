@@ -4,13 +4,14 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import ReportResolutionModal from '../../components/notifications/ReportResolutionModal';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useDeleteNotificationMutation, useGetNotificationsQuery, useMarkAsReadMutation } from '../../store/api/notificationsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -127,7 +128,9 @@ const NotificationsScreen = ({ navigation }) => {
       </View>
 
       {isLoading ? (
-        <View style={styles.center}><ActivityIndicator color={THEME.COLORS.primary} size="large" /></View>
+        <View style={styles.center}>
+          <GlobalSkeleton visible={true} fullScreen={false} />
+        </View>
       ) : notifications.length === 0 ? (
         <View style={styles.center}>
           <Ionicons name="notifications-off-outline" size={64} color={THEME.COLORS.textTertiary} />

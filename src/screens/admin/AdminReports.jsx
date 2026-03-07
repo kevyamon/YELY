@@ -4,13 +4,14 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ResolveReportModal from '../../components/admin/ResolveReportModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal';
 
 import { useDeleteAdminReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
@@ -37,7 +38,6 @@ const AdminReports = ({ navigation }) => {
   const reports = reportsResponse?.data || reportsResponse || [];
 
   const handleScroll = (event) => {
-    // Calcul dynamique de la moitié de l'écran visible pour déclencher le bouton
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
     
@@ -45,7 +45,6 @@ const AdminReports = ({ navigation }) => {
   };
 
   const scrollToTop = () => {
-    // Vérification de sécurité avant de scroller (évite les crashs si la liste est vide)
     if (reports && reports.length > 0) {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
@@ -160,7 +159,7 @@ const AdminReports = ({ navigation }) => {
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+          <GlobalSkeleton visible={true} fullScreen={false} />
           <Text style={styles.loadingText}>Chargement des plaintes...</Text>
         </View>
       ) : (
@@ -184,7 +183,6 @@ const AdminReports = ({ navigation }) => {
               </View>
             }
           />
-          {/* CRITIQUE : Ajout de la prop visible dynamique et suppression de la condition externe */}
           <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
         </>
       )}

@@ -5,8 +5,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import { useGetAuditLogsQuery } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -74,11 +75,7 @@ const AdminJournal = ({ navigation }) => {
   }, [journalHistory]);
 
   const handleScroll = (event) => {
-    // Calcul dynamique de la moitié de l'écran visible pour déclencher le bouton
-    // layoutMeasurement correspond à la hauteur de l'écran du téléphone
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
-    
-    // Le bouton s'affiche dès qu'on a défilé la moitié de la hauteur de l'écran
     const halfScreenHeight = layoutMeasurement.height / 2;
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
@@ -121,7 +118,7 @@ const AdminJournal = ({ navigation }) => {
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-            <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+            <GlobalSkeleton visible={true} fullScreen={false} />
             <Text style={styles.loadingText}>Chargement des archives...</Text>
         </View>
       ) : (
@@ -153,7 +150,6 @@ const AdminJournal = ({ navigation }) => {
                 </View>
               }
           />
-          {/* CRITIQUE : Ajout de la prop visible pour que le composant accepte de s'afficher */}
           <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
         </>
       )}

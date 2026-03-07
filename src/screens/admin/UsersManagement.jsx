@@ -5,12 +5,13 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
+import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSelector } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import UserInfoModal from '../../components/admin/UserInfoModal';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
@@ -156,7 +157,9 @@ const UsersManagement = ({ navigation }) => {
       )}
 
       {isLoading ? (
-        <ActivityIndicator size="large" color={THEME.COLORS.primary} style={{ marginTop: 50 }} />
+        <View style={{ marginTop: 50 }}>
+          <GlobalSkeleton visible={true} fullScreen={false} />
+        </View>
       ) : (
         <FlatList
           ref={flatListRef}

@@ -5,10 +5,11 @@
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useRef, useState } from 'react';
-import { ActivityIndicator, FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import ValidationModal from '../../components/admin/ValidationModal';
+import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import { useApproveTransactionMutation, useGetValidationQueueQuery, useRejectTransactionMutation } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -72,14 +73,12 @@ const ValidationCenter = ({ navigation }) => {
   };
 
   const handleScroll = (event) => {
-    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    // Securite: on ne scroll que si on a des donnees
     if (transactions && transactions.length > 0) {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
@@ -157,7 +156,9 @@ const ValidationCenter = ({ navigation }) => {
         )}
 
         {isLoading && !isFetching ? (
-          <ActivityIndicator size="large" color={THEME.COLORS.primary} style={styles.loader} />
+          <View style={styles.loader}>
+            <GlobalSkeleton visible={true} fullScreen={false} />
+          </View>
         ) : (
           <FlatList
             ref={flatListRef}
