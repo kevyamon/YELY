@@ -1,5 +1,5 @@
 // src/components/drawer/DrawerMenu.jsx
-// MENU LATERAL - Gestion des navigations et modales
+// MENU LATERAL - UX Franche & Adaptative (Mode Jour/Nuit)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -32,6 +32,10 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     <View style={styles.container}>
       {menuItems.map((item, index) => {
         const isActive = activeRoute === item.route;
+        
+        // Contraste dynamique : texte sombre sur fond jaune, texte theme sur fond transparent
+        const activeColor = THEME.COLORS.deepAsphalt || '#121418'; 
+        const inactiveColor = THEME.COLORS.textPrimary;
 
         return (
           <TouchableOpacity
@@ -51,12 +55,13 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
               <Ionicons
                 name={isActive ? item.icon : `${item.icon}-outline`}
                 size={22}
-                color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary}
+                color={isActive ? activeColor : THEME.COLORS.champagneGold}
               />
             </View>
 
             <Text style={[
               styles.menuLabel,
+              { color: isActive ? activeColor : inactiveColor },
               isActive && styles.menuLabelActive
             ]}>
               {item.label}
@@ -64,9 +69,9 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
 
             <Ionicons 
               name={(item.route === 'SettingsModal' || item.route === 'HelpModal') ? "open-outline" : "chevron-forward"} 
-              size={16} 
-              color={isActive ? THEME.COLORS.champagneGold : THEME.COLORS.border} 
-              style={{ opacity: 0.5 }}
+              size={18} 
+              color={isActive ? activeColor : THEME.COLORS.champagneGold} 
+              style={{ opacity: isActive ? 1 : 0.6 }}
             />
           </TouchableOpacity>
         );
@@ -90,44 +95,48 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: THEME.SPACING.md,
+    paddingVertical: THEME.SPACING.sm,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 16, 
+    paddingVertical: 14, 
     paddingHorizontal: 16,
-    marginBottom: 8,
-    borderRadius: 12,
-    backgroundColor: 'transparent', 
+    marginBottom: 12,
+    borderRadius: 14,
+    backgroundColor: 'transparent', // Transparent pour s'adapter au mode jour/nuit
+    borderWidth: 2, // BORDURE JAUNE TRÈS EXPRIMÉE
+    borderColor: THEME.COLORS.champagneGold, 
   },
   menuItemActive: {
-    backgroundColor: THEME.COLORS.glassSurface, 
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)', 
+    backgroundColor: THEME.COLORS.champagneGold, // FOND JAUNE SI ACTIF
+    // La bordure est déjà jaune grâce à menuItem
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 4,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'rgba(128, 128, 128, 0.1)', 
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'transparent', 
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 16,
   },
   iconContainerActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.15)', 
+    backgroundColor: 'transparent', // L'icône repose directement sur le fond jaune du bouton
   },
   menuLabel: {
     flex: 1,
     fontSize: 16,
-    fontWeight: '500', 
-    color: THEME.COLORS.textSecondary,
-    fontStyle: 'normal', 
+    fontWeight: '600', 
     letterSpacing: 0.3,  
   },
   menuLabelActive: {
-    color: THEME.COLORS.textPrimary, 
-    fontWeight: '700', 
+    fontWeight: 'bold', 
   }
 });
 

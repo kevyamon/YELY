@@ -1,6 +1,6 @@
 // src/components/drawer/DrawerHeader.jsx
 // HEADER DU MENU (Profil, Photo & Infos)
-// CSCSM Level: Bank Grade / Cross-Platform Safe
+// CSCSM Level: Bank Grade / Seamless Flow UX
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -11,22 +11,17 @@ import THEME from '../../theme/theme';
 import { getInitials, getRoleLabel } from './menuConfig';
 
 const DrawerHeader = ({ user, role, onClose }) => {
-  // CORRECTION : Le chargement est desactive par defaut
   const [isImageLoading, setIsImageLoading] = useState(false);
   
-  // 1. Reconstruction du Nom (Priorite : Full Name > Name > Utilisateur)
   const displayName = user?.firstName 
     ? `${user.firstName} ${user.lastName || ''}`.trim()
     : user?.name || 'Utilisateur';
 
-  // 2. Recuperation de l'image (Verification stricte)
   const profileImage = user?.profilePicture || user?.avatar || user?.photo;
   const hasValidImage = profileImage && typeof profileImage === 'string' && profileImage.trim() !== '';
 
-  // 3. Label du Role
   const roleLabel = getRoleLabel(role);
 
-  // SECURITE MULTIPLATEFORME : Meme logique blindee que pour ProfileAvatar
   const imageProps = Platform.OS === 'web' 
     ? {
         onLoad: () => setIsImageLoading(false),
@@ -70,7 +65,6 @@ const DrawerHeader = ({ user, role, onClose }) => {
                 resizeMode="cover"
                 {...imageProps}
               />
-              {/* Affichage securise du loader */}
               {isImageLoading && (
                 <View style={styles.imageLoadingOverlay}>
                   <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -82,7 +76,6 @@ const DrawerHeader = ({ user, role, onClose }) => {
               <Text style={styles.avatarText}>{getInitials(displayName)}</Text>
             </View>
           )}
-          {/* Indicateur En Ligne */}
           <View style={styles.onlineIndicator} />
         </View>
 
@@ -110,10 +103,9 @@ const DrawerHeader = ({ user, role, onClose }) => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: THEME.SPACING.lg,
-    paddingVertical: THEME.SPACING.lg,
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.border,
+    paddingTop: THEME.SPACING.lg,
+    paddingBottom: THEME.SPACING.md, // Réduit pour coller naturellement au menu
+    // SUPPRESSION DE LA BORDURE BLANCHE (borderBottomWidth)
   },
   
   // --- TOP ROW ---
@@ -144,11 +136,10 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: THEME.COLORS.glassMedium,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)', // Plus subtil
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    // Suppression de la bordure dure du bouton close
   },
 
   // --- PROFIL ROW ---
