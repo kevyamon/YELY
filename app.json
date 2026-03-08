@@ -7,6 +7,9 @@
     "icon": "./assets/images/icon.png",
     "scheme": "yely",
     "userInterfaceStyle": "automatic",
+    "updates": {
+      "url": "https://u.expo.dev/YOUR_PROJECT_ID_ICI"
+    },
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.yely.app",
@@ -14,7 +17,8 @@
       "infoPlist": {
         "UIBackgroundModes": [
           "location",
-          "fetch"
+          "fetch",
+          "remote-notification"
         ]
       }
     },
@@ -34,7 +38,9 @@
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
-        "FOREGROUND_SERVICE_LOCATION"
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE"
       ]
     },
     "web": {
@@ -79,6 +85,11 @@
         }
       ],
       "expo-video"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "YOUR_PROJECT_ID_ICI"
+      }
+    }
   }
 }

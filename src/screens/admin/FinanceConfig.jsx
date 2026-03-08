@@ -8,9 +8,10 @@ import React, { useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import {
-    useGetFinanceDataQuery,
-    useToggleLoadReduceMutation,
-    useTogglePromoMutation
+  useGetFinanceDataQuery,
+  useToggleGlobalFreeAccessMutation,
+  useToggleLoadReduceMutation,
+  useTogglePromoMutation
 } from '../../store/api/adminApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -30,9 +31,11 @@ const FinanceConfig = ({ navigation }) => {
   
   const [togglePromo, { isLoading: isTogglingPromo }] = useTogglePromoMutation();
   const [toggleLoadReduce, { isLoading: isTogglingLoad }] = useToggleLoadReduceMutation();
+  const [toggleGlobalFreeAccess, { isLoading: isTogglingFreeAccess }] = useToggleGlobalFreeAccessMutation();
 
   const [isPromoActive, setIsPromoActive] = useState(false);
   const [isLoadReduced, setIsLoadReduced] = useState(false);
+  const [isGlobalFreeAccess, setIsGlobalFreeAccess] = useState(false);
 
   const financeData = financeResponse?.data || financeResponse || [];
   
@@ -57,18 +60,31 @@ const FinanceConfig = ({ navigation }) => {
   };
 
   const handleToggleLoadReduce = async (value) => {
-    // Optimistic Update : on met à jour l'UI tout de suite
     setIsLoadReduced(value);
     try {
-      // Le backend va juste inverser la valeur actuelle dans la base
       await toggleLoadReduce().unwrap();
-      // Le toast de succès sera aussi déclenché par le WebSocket (useAdminSocketEvents) pour plus de sûreté
     } catch (e) {
-      // En cas d'erreur on annule l'effet visuel
       setIsLoadReduced(!value);
       dispatch(showErrorToast({
         title: 'Échec',
         message: "Impossible de modifier la répartition des validations.",
+      }));
+    }
+  };
+
+  const handleToggleGlobalFreeAccess = async (value) => {
+    setIsGlobalFreeAccess(value);
+    try {
+      await toggleGlobalFreeAccess({ isActive: value }).unwrap();
+      dispatch(showSuccessToast({
+        title: 'Gratuité Chauffeurs',
+        message: `Accès gratuit ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'} pour tous.`,
+      }));
+    } catch (e) {
+      setIsGlobalFreeAccess(!value);
+      dispatch(showErrorToast({
+        title: 'Échec',
+        message: "Impossible de modifier le statut de gratuité.",
       }));
     }
   };
@@ -92,6 +108,24 @@ const FinanceConfig = ({ navigation }) => {
           ) : (
             <Text style={styles.revenueAmount}>{totalRevenue.toLocaleString('fr-FR')} FCFA</Text>
           )}
+        </GlassCard>
+
+        {/* SECTION : ADMINISTRATION EXCEPTIONNELLE */}
+        <Text style={styles.sectionTitle}>Opérations Spéciales</Text>
+        <GlassCard style={styles.actionCard}>
+          <View style={styles.rowBetween}>
+            <View style={styles.textContainer}>
+              <Text style={styles.cardTitle}>Accès Gratuit Global</Text>
+              <Text style={styles.cardDescription}>Permet à tous les chauffeurs de rouler sans abonnement payant.</Text>
+            </View>
+            <Switch
+              trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
+              thumbColor={THEME.COLORS.background}
+              onValueChange={handleToggleGlobalFreeAccess}
+              value={isGlobalFreeAccess}
+              disabled={isTogglingFreeAccess}
+            />
+          </View>
         </GlassCard>
 
         {/* SECTION : OPTIMISATION ET CHARGE DE TRAVAIL */}

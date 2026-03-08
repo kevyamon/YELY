@@ -4,12 +4,15 @@
 
 import * as Sentry from '@sentry/react-native';
 
+// Importation declenchant la validation immediate de l'environnement (Fail-Fast)
+import ENV from './src/config/env';
+
 // 1. INITIALISATION DE LA SUPERVISION SILENCIEUSE
 Sentry.init({
-  dsn: process.env.EXPO_PUBLIC_SENTRY_DSN || '',
+  dsn: ENV.SENTRY_DSN || '',
   debug: false, 
   tracesSampleRate: __DEV__ ? 1.0 : 0.2, 
-  environment: __DEV__ ? 'development' : 'production'
+  environment: ENV.APP_ENV
 });
 
 // 2. SILENCE STRICT DE PRODUCTION
@@ -27,18 +30,18 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
 
 import AppNavigator from './src/navigation/AppNavigator';
 import store from './src/store/store';
-import { YelyTheme } from './src/theme/theme';
+import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
@@ -47,6 +50,19 @@ import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast
 import usePushNotifications from './src/hooks/usePushNotifications';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
+
+// 3. COMPOSANT DE REPLI EN CAS DE CRASH FATAL (Evite l'ecran blanc)
+const GlobalErrorFallback = ({ error, resetError }) => (
+  <SafeAreaView style={styles.fallbackContainer}>
+    <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
+    <Text style={styles.fallbackText}>
+      L'application a rencontre un probleme. Nos equipes techniques ont ete automatiquement alertes.
+    </Text>
+    <TouchableOpacity onPress={resetError} style={styles.fallbackButton}>
+      <Text style={styles.fallbackButtonText}>Redemarrer Yely</Text>
+    </TouchableOpacity>
+  </SafeAreaView>
+);
 
 const AppContent = () => {
   const dispatch = useDispatch();
@@ -107,9 +123,11 @@ const App = () => {
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
-        <PaperProvider theme={YelyTheme}>
+        <PaperProvider>
           <SafeAreaProvider>
-            <AppContent />
+            <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
+              <AppContent />
+            </Sentry.ErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>
       </ReduxProvider>
@@ -122,6 +140,36 @@ export default Sentry.wrap(App);
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: YelyTheme.colors.background,
+    backgroundColor: THEME.COLORS.background,
   },
+  fallbackContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.background,
+    padding: 20,
+  },
+  fallbackTitle: {
+    color: THEME.COLORS.primary,
+    fontSize: 22,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  fallbackText: {
+    color: THEME.COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 30,
+    fontSize: 14,
+  },
+  fallbackButton: {
+    backgroundColor: THEME.COLORS.primary,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: THEME.BORDERS.radius.md,
+  },
+  fallbackButtonText: {
+    color: THEME.COLORS.background,
+    fontWeight: 'bold',
+    fontSize: 16,
+  }
 });

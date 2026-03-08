@@ -88,13 +88,22 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog', 'Subscription'], 
     }),
 
-    // NOUVELLE MUTATION : Réduction de charge (Round-Robin)
     toggleLoadReduce: builder.mutation({
       query: () => ({
         url: '/admin/load-reduce/toggle',
         method: 'PUT',
       }),
       invalidatesTags: ['Stats', 'AuditLog'],
+    }),
+
+    // NOUVELLE MUTATION : Gratuité Globale des Chauffeurs
+    toggleGlobalFreeAccess: builder.mutation({
+      query: ({ isActive }) => ({
+        url: '/admin/free-access/toggle',
+        method: 'PUT',
+        body: { isActive },
+      }),
+      invalidatesTags: ['Stats', 'AuditLog', 'Subscription'],
     }),
     
     updateMapSettings: builder.mutation({
@@ -138,7 +147,8 @@ export const {
   useGetFinanceDataQuery,
   useUpdateWaveLinksMutation,
   useTogglePromoMutation,
-  useToggleLoadReduceMutation, // Export du nouveau hook
+  useToggleLoadReduceMutation,
+  useToggleGlobalFreeAccessMutation, // Export du nouveau hook
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,
