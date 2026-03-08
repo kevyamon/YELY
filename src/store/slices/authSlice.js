@@ -66,9 +66,28 @@ const authSlice = createSlice({
       if (state.refreshToken) safeStorageSet('refreshToken', state.refreshToken);
     },
     
+    // 🛡️ MODIFICATION MAJEURE : BOUCLIER DE FUSION INTÉGRÉ ICI
     updateUserInfo: (state, action) => {
       if (!state.user) return;
-      state.user = { ...state.user, ...action.payload };
+      
+      state.user = { 
+        ...state.user, 
+        ...action.payload,
+        // Bouclier : On protège l'abonnement contre l'effacement si le backend l'omet
+        subscription: action.payload.subscription !== undefined 
+          ? action.payload.subscription 
+          : state.user.subscription
+      };
+
+      // Si le payload contient un abonnement, on met à jour le statut global
+      if (action.payload.subscription) {
+        state.subscriptionStatus = {
+          isActive: action.payload.subscription.isActive || false,
+          isPending: action.payload.subscription.isPending || false,
+          expiresAt: action.payload.subscription.expiresAt || null
+        };
+      }
+
       safeStorageSet('userInfo', JSON.stringify(state.user));
     },
 
