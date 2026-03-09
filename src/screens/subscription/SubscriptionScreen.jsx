@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, selectPromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -28,11 +28,6 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
-const PLAN_TYPES = {
-  WEEKLY: 'WEEKLY',
-  MONTHLY: 'MONTHLY'
-};
-
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const promoMode = useSelector(selectPromoMode);
@@ -46,10 +41,20 @@ const SubscriptionScreen = ({ navigation }) => {
   const [senderPhone, setSenderPhone] = useState('');
   const [proofImage, setProofImage] = useState(null);
 
+  // REFLEXE LOCAL : Des que cette page s'ouvre, elle force l'alignement du Redux VIP
+  useEffect(() => {
+    if (configData?.data) {
+      dispatch(updatePromoMode({
+        isGlobalFreeAccess: configData.data.isGlobalFreeAccess,
+        promoMessage: configData.data.promoMessage
+      }));
+    }
+  }, [configData, dispatch]);
+
   useEffect(() => {
     const handlePromoUpdate = () => {
       refetchConfig();
-      refetchStatus(); // On force le re-telechargement de l'abonnement pour voir le gel ou la prolongation
+      refetchStatus();
     };
     
     socketService.on('promo_updated', handlePromoUpdate);
@@ -162,7 +167,6 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const renderHeader = () => {
     const isActive = statusData?.data?.isActive;
-    
     const isNavigationAllowed = isActive || promoMode?.isActive;
 
     return (

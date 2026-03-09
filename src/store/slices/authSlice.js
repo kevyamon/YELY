@@ -150,10 +150,10 @@ export const {
   setRefreshing 
 } = authSlice.actions;
 
-// NOUVELLE FONCTION : Va chercher le statut VIP aupres du serveur
+// NOUVELLE FONCTION (Modifiee pour retourner la reponse a l'AppNavigator)
 export const fetchPromoConfig = () => async (dispatch, getState) => {
   const { auth } = getState();
-  if (!auth.token) return;
+  if (!auth.token) return null;
 
   try {
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
@@ -170,10 +170,12 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
         isGlobalFreeAccess: result.data.isGlobalFreeAccess,
         promoMessage: result.data.promoMessage
       }));
+      return result.data; // On retourne la data pour que l'AppNavigator l'intercepte
     }
   } catch (error) {
     console.warn("[AUTH] Impossible de synchroniser la config VIP au demarrage/login");
   }
+  return null;
 };
 
 export const forceSilentRefresh = () => async (dispatch, getState) => {

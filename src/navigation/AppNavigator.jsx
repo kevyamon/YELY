@@ -89,11 +89,22 @@ const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [promoAlert, setPromoAlert] = useState({ visible: false, isActive: false, message: '' });
 
+  // REFLEXE DE CONNEXION : Verification du VIP a l'ouverture ou au Login
   useEffect(() => {
-    if (isAuthenticated) {
-      dispatch(fetchPromoConfig());
-    }
-  }, [isAuthenticated, dispatch]);
+    const checkPromoAtStartup = async () => {
+      if (isAuthenticated && user?.role === 'driver') {
+        const data = await dispatch(fetchPromoConfig());
+        if (data && data.isGlobalFreeAccess) {
+          setPromoAlert({
+            visible: true,
+            isActive: true,
+            message: data.promoMessage || "L'acces VIP est actuellement actif !"
+          });
+        }
+      }
+    };
+    checkPromoAtStartup();
+  }, [isAuthenticated, dispatch]); // user?.role omis volontairement pour eviter des boucles
 
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
@@ -137,7 +148,7 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  // ECOUTEUR GLOBAL DU MODE VIP POUR L'AFFICHAGE DE LA MODALE
+  // REFLEXE TEMPS REEL : Ecouteur Socket pour quand le bouton Admin est clique
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -150,7 +161,7 @@ const AppNavigator = () => {
           isActive: data.isGlobalFreeAccess,
           message: data.isGlobalFreeAccess 
             ? data.promoMessage 
-            : "Le mode gratuit est terminé. Votre statut d'abonnement a été mis à jour."
+            : "Le mode gratuit est termine. Votre statut d'abonnement a ete mis a jour."
         });
       }
     };
