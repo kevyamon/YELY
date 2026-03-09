@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Vibration } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
@@ -15,7 +15,10 @@ import { clearCurrentRide, setCurrentRide, setEffectiveLocation, updateRideStatu
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
-const DROPOFF_FALLBACK_RADIUS_METERS = 15;
+const AUTO_START_RADIUS_METERS = 20; 
+const AUTO_START_SPEED_MS = 4.16; // ~15 km/h
+const AUTO_COMPLETE_RADIUS_METERS = 30; 
+const AUTO_COMPLETE_SPEED_MS = 1.38; // ~5 km/h
 const SNOOZE_DELAY_MS = 120000;
 
 const useDriverLifecycle = ({
@@ -33,13 +36,16 @@ const useDriverLifecycle = ({
   const dispatch = useDispatch();
   const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
+  const isProcessingStartRef = useRef(false); 
   const snoozeTimerRef = useRef(null);
   const isSubmittingRef = useRef(false); 
   const appState = useRef(AppState.currentState);
-  const previousFetchDataRef = useRef(undefined); // FIX : Bloque la resurrection d'etat
+  const previousFetchDataRef = useRef(undefined);
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  
+  // Conserve pour compatibilite avec d'eventuels autres composants, mais n'est plus declenche automatiquement
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
@@ -51,9 +57,7 @@ const useDriverLifecycle = ({
     refetchOnMountOrArgChange: true
   });
 
-  // RESTAURATION ET DESTRUCTION ROBUSTE (Anti-Zombie State)
   useEffect(() => {
-    // Ne s'execute QUE si RTK Query retourne un nouveau resultat physique
     if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
       previousFetchDataRef.current = fetchedRideData;
       
@@ -66,7 +70,6 @@ const useDriverLifecycle = ({
           dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
         }
       } else if (currentId) {
-        // Le serveur confirme la destruction, on purge tout.
         dispatch(clearCurrentRide());
         setIsArrivalModalVisible(false);
         if (simulatedLocation && setSimulatedLocation) {
@@ -158,6 +161,7 @@ const useDriverLifecycle = ({
   useEffect(() => {
     if (!currentRide && !fetchedRideData) {
       isProcessingPickupRef.current = false;
+      isProcessingStartRef.current = false;
       isSubmittingRef.current = false; 
       setIsArrivalModalVisible(false);
       if (snoozeTimerRef.current) {
@@ -166,8 +170,11 @@ const useDriverLifecycle = ({
       }
     } else if (currentRide?.status === 'in_progress') {
       isProcessingPickupRef.current = true;
+      isProcessingStartRef.current = true;
     } else if (currentRide?.status === 'accepted') {
       isProcessingPickupRef.current = false;
+    } else if (currentRide?.status === 'arrived') {
+      isProcessingStartRef.current = false;
     }
   }, [currentRide?.status, fetchedRideData]);
 
@@ -180,10 +187,7 @@ const useDriverLifecycle = ({
     };
 
     socketService.on('prompt_arrival_confirm', handlePromptArrival);
-
-    return () => {
-      socketService.off('prompt_arrival_confirm', handlePromptArrival);
-    };
+    return () => socketService.off('prompt_arrival_confirm', handlePromptArrival);
   }, [currentRide]);
 
   useEffect(() => {
@@ -197,11 +201,58 @@ const useDriverLifecycle = ({
     }
   }, [currentRide, fetchedRideData, simulatedLocation, setSimulatedLocation, mapRef]);
 
+  const handleConfirmArrival = async () => {
+    if (isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
+
+    if (!currentRide) {
+      isSubmittingRef.current = false;
+      return;
+    }
+    
+    const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+    if (!rideId) {
+      isSubmittingRef.current = false;
+      return;
+    }
+
+    try {
+      dispatch(updateRideStatus({ status: 'completed' }));
+      setIsArrivalModalVisible(false);
+
+      const res = await completeRide({ rideId }).unwrap();
+      
+      if (res.data && res.data.stats) {
+        dispatch(updateUserInfo({ 
+          totalRides: res.data.stats.totalRides,
+          totalEarnings: res.data.stats.totalEarnings,
+          rating: res.data.stats.rating
+        }));
+      }
+
+      dispatch(showSuccessToast({
+        title: 'Course terminee',
+        message: 'Vos gains ont ete credites avec succes.',
+      }));
+      
+    } catch (err) {
+      dispatch(updateRideStatus({ status: 'in_progress' }));
+      isSubmittingRef.current = false; 
+      dispatch(showErrorToast({
+        title: 'Erreur de cloture',
+        message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',
+      }));
+    }
+  };
+
+  // LE COEUR DU SMART DRIVE 2.0 (Analyse continue du GPS & Telemetrie)
   useEffect(() => {
     if (!location || !currentRide) return;
 
     const status = currentRide.status;
+    const speed = location.speed || 0; // Vitesse en m/s
 
+    // 1. ARRIVEE AUTO AU POINT DE DEPART (30m)
     if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -221,7 +272,7 @@ const useDriverLifecycle = ({
           const rideId = currentRide._id || currentRide.id || currentRide.rideId;
           if (rideId) {
             markAsArrived({ rideId }).unwrap().catch(err => {
-              console.warn('[DriverLifecycle] Echec de la notification d\'arrivee distante');
+              console.warn('[DriverLifecycle] Echec notification arrivee distante');
               isProcessingPickupRef.current = false; 
             });
           }
@@ -229,7 +280,43 @@ const useDriverLifecycle = ({
       }
     }
 
-    if (status === 'in_progress' && !isArrivalModalVisible && !snoozeTimerRef.current) {
+    // 2. DEMARRAGE AUTO DE LA COURSE (Mouvement detecte ou distance > 20m)
+    if (status === 'arrived' && !isProcessingStartRef.current) {
+      const target = currentRide.origin;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat !== undefined && lng !== undefined) {
+        const distance = MapService.calculateDistance(
+          location,
+          { latitude: Number(lat), longitude: Number(lng) }
+        );
+
+        if (distance > AUTO_START_RADIUS_METERS || speed > AUTO_START_SPEED_MS) {
+          isProcessingStartRef.current = true;
+          
+          dispatch(updateRideStatus({ status: 'in_progress' }));
+          
+          const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+          if (rideId) {
+            startRide({ rideId }).unwrap()
+              .then(() => {
+                dispatch(showSuccessToast({
+                  title: 'En route',
+                  message: 'Course demarree automatiquement.',
+                }));
+              })
+              .catch(err => {
+                console.warn('[DriverLifecycle] Echec auto-start', err);
+                isProcessingStartRef.current = false;
+              });
+          }
+        }
+      }
+    }
+
+    // 3. CLOTURE AUTO FANTOME (Arret a destination)
+    if (status === 'in_progress' && !isSubmittingRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
       const lng = target?.coordinates?.[0] || target?.longitude;
@@ -240,12 +327,14 @@ const useDriverLifecycle = ({
           { latitude: Number(lat), longitude: Number(lng) }
         );
 
-        if (distance <= DROPOFF_FALLBACK_RADIUS_METERS) {
-          setIsArrivalModalVisible(true);
+        // Si le chauffeur est dans la zone (30m) ET qu'il est quasiment a l'arret (<5km/h)
+        if (distance <= AUTO_COMPLETE_RADIUS_METERS && speed <= AUTO_COMPLETE_SPEED_MS) {
+          Vibration.vibrate(200); 
+          handleConfirmArrival();
         }
       }
     }
-  }, [location, currentRide, dispatch, isArrivalModalVisible, markAsArrived]); 
+  }, [location, currentRide, dispatch, markAsArrived, startRide]); 
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;
@@ -277,58 +366,6 @@ const useDriverLifecycle = ({
       dispatch(showErrorToast({
         title: 'Erreur systeme',
         message: 'Impossible de modifier le statut de service.',
-      }));
-    }
-  };
-
-  const handleConfirmArrival = async () => {
-    if (isSubmittingRef.current) return;
-    isSubmittingRef.current = true;
-
-    if (!currentRide) {
-      isSubmittingRef.current = false;
-      dispatch(showErrorToast({
-        title: 'Erreur Systeme',
-        message: 'Aucune course active detectee.',
-      }));
-      return;
-    }
-    
-    const rideId = currentRide._id || currentRide.id || currentRide.rideId;
-    if (!rideId) {
-      isSubmittingRef.current = false;
-      dispatch(showErrorToast({
-        title: 'Erreur Systeme',
-        message: 'Identifiant de course invalide.',
-      }));
-      return;
-    }
-
-    try {
-      dispatch(updateRideStatus({ status: 'completed' }));
-      setIsArrivalModalVisible(false);
-
-      const res = await completeRide({ rideId }).unwrap();
-      
-      if (res.data && res.data.stats) {
-        dispatch(updateUserInfo({ 
-          totalRides: res.data.stats.totalRides,
-          totalEarnings: res.data.stats.totalEarnings,
-          rating: res.data.stats.rating
-        }));
-      }
-
-      dispatch(showSuccessToast({
-        title: 'Course terminee',
-        message: 'Vos gains ont ete credites avec succes.',
-      }));
-      
-    } catch (err) {
-      dispatch(updateRideStatus({ status: 'in_progress' }));
-      isSubmittingRef.current = false; 
-      dispatch(showErrorToast({
-        title: 'Erreur de cloture',
-        message: err?.data?.message || 'Impossible de terminer la course. Veuillez reessayer.',
       }));
     }
   };

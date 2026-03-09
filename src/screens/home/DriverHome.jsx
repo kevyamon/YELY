@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER NATIF - Orchestrateur Principal (Aide liee au compte)
+// HOME DRIVER NATIF - Orchestrateur Principal (Smart Drive 2.0)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,7 +13,6 @@ import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
-import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
@@ -28,7 +27,6 @@ import useGeolocation from '../../hooks/useGeolocation';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
-// CORRECTION: Ajout de selectPromoMode
 import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
@@ -49,7 +47,7 @@ const DriverHome = ({ navigation }) => {
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
-  const promoMode = useSelector(selectPromoMode); // CORRECTION: Lecture du mode VIP
+  const promoMode = useSelector(selectPromoMode);
 
   const { 
     data: subscriptionData, 
@@ -66,7 +64,6 @@ const DriverHome = ({ navigation }) => {
   const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   
-  // CORRECTION FATALE: Le chauffeur n'est bloqué QUE s'il n'est pas actif ET qu'il n'y a pas de promo gratuite
   const isBlocked = !isActive && !promoMode?.isActive;
 
   useEffect(() => {
@@ -102,15 +99,12 @@ const DriverHome = ({ navigation }) => {
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
+  // Plus besoin d'extraire isArrivalModalVisible, handleConfirmArrival, handleSnoozeArrival
   const {
     isAvailable,
     currentAddress,
     isToggling,
-    handleToggleAvailability,
-    isArrivalModalVisible,
-    isCompletingRide,
-    handleConfirmArrival,
-    handleSnoozeArrival
+    handleToggleAvailability
   } = useDriverLifecycle({
     user, currentRide, location: effectiveLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
@@ -118,7 +112,7 @@ const DriverHome = ({ navigation }) => {
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   const renderSubscriptionBlocker = () => {
-    if (isActive || promoMode?.isActive) return null; // Ne rien afficher si VIP ou Actif
+    if (isActive || promoMode?.isActive) return null; 
     
     if (isSubscriptionLoading && !isSubscriptionError) {
       return (
@@ -214,13 +208,6 @@ const DriverHome = ({ navigation }) => {
           )}
 
           <DriverRequestModal />
-
-          <ArrivalConfirmModal 
-            visible={isArrivalModalVisible}
-            onConfirm={handleConfirmArrival}
-            onSnooze={handleSnoozeArrival}
-            isLoading={isCompletingRide}
-          />
         </>
       )}
 

@@ -1,5 +1,5 @@
 // src/components/ride/DriverRideOverlay.jsx
-// PANNEAU CHAUFFEUR - Guidage et Statuts de Proximite (Interface Allegee)
+// PANNEAU CHAUFFEUR - Guidage et Statuts de Proximite (Interface Allegee Smart Drive)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
-  Image, // AJOUT : Import du composant Image
+  Image,
   Linking,
   Modal,
   Platform,
@@ -20,17 +20,20 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { selectCurrentRide, selectEffectiveLocation } from '../../store/slices/rideSlice';
-import { showErrorToast } from '../../store/slices/uiSlice';
+import { useCompleteRideMutation } from '../../store/api/ridesApiSlice';
+import { updateUserInfo } from '../../store/slices/authSlice';
+import { selectCurrentRide, selectEffectiveLocation, updateRideStatus } from '../../store/slices/rideSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters } from '../../utils/distanceUtils';
 import RideRouteDisplay from './RideRouteDisplay';
-import StartRideButton from './StartRideButton';
 
 const { width } = Dimensions.get('window');
 
@@ -47,10 +50,10 @@ const BANNER_CONFIG = {
     containerStyle: null,
   },
   [DRIVER_STATUS.ARRIVED]: {
-    label: 'Attendez le client',
+    label: 'CLIENT A BORD ? ROULEZ',
     dotStyle: 'dotArrived',
     containerStyle: 'passiveStatusArrived',
-    subLabel: 'Veuillez confirmer l\'embarquement du client.',
+    subLabel: "La course demarrera automatiquement.",
   },
   [DRIVER_STATUS.IN_PROGRESS]: {
     label: 'TRAJET EN COURS',
@@ -71,7 +74,10 @@ const DriverRideOverlay = () => {
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
 
+  const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
+
   const translateY = useSharedValue(300);
+  const pulseScale = useSharedValue(1); 
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -105,7 +111,9 @@ const DriverRideOverlay = () => {
   if (!currentRide) return null;
 
   const isOngoing = localStatus === 'in_progress';
-  const target = isOngoing ? currentRide.destination : currentRide.origin;
+  const isArrived = localStatus === 'arrived';
+  
+  const target = (isOngoing || isArrived) ? currentRide.destination : currentRide.origin;
   const targetLat = target?.coordinates?.[1] || target?.latitude;
   const targetLng = target?.coordinates?.[0] || target?.longitude;
 
@@ -118,6 +126,25 @@ const DriverRideOverlay = () => {
     );
   }, [effectiveLocation, targetLat, targetLng]);
 
+  useEffect(() => {
+    if (isOngoing && distanceToTarget <= 150) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.03, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulseScale.value = withTiming(1);
+    }
+  }, [isOngoing, distanceToTarget, pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
   const bannerConfig = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
 
   const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
@@ -128,14 +155,14 @@ const DriverRideOverlay = () => {
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de lancer l\'appel.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
     });
   };
 
   const handleOpenGPS = (forcedCoords = null) => {
     const lat = forcedCoords ? forcedCoords.lat : targetLat;
     const lng = forcedCoords ? forcedCoords.lng : targetLng;
-    const isDest = forcedCoords ? true : isOngoing;
+    const isDest = forcedCoords ? true : (isOngoing || isArrived);
 
     if (!lat || !lng) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Destination introuvable.' }));
@@ -151,6 +178,27 @@ const DriverRideOverlay = () => {
     Linking.openURL(url).catch(() => {
       Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
     });
+  };
+
+  const handleManualComplete = async () => {
+    if (isCompleting) return;
+    try {
+      dispatch(updateRideStatus({ status: 'completed' }));
+      const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+      const res = await completeRide({ rideId }).unwrap();
+      
+      if (res.data && res.data.stats) {
+        dispatch(updateUserInfo({ 
+          totalRides: res.data.stats.totalRides,
+          totalEarnings: res.data.stats.totalEarnings,
+          rating: res.data.stats.rating
+        }));
+      }
+      dispatch(showSuccessToast({ title: 'Course terminee', message: 'Vos gains ont ete credites.' }));
+    } catch (err) {
+      dispatch(updateRideStatus({ status: 'in_progress' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de cloturer la course.' }));
+    }
   };
 
   return (
@@ -192,13 +240,12 @@ const DriverRideOverlay = () => {
             <View style={[styles.dot, bannerConfig.dotStyle && styles[bannerConfig.dotStyle]]} />
           </View>
           <Text style={styles.statusText}>
-            {isOngoing ? 'Direction Destination' : 'Aller chercher le client'}
+            {isOngoing || isArrived ? 'Direction Destination' : 'Aller chercher le client'}
           </Text>
         </View>
 
         <View style={styles.riderInfoCard}>
           <View style={styles.avatarPlaceholder}>
-            {/* MODIFICATION : Affichage conditionnel de la photo du client */}
             {currentRide.riderProfilePicture ? (
               <Image 
                 source={{ uri: currentRide.riderProfilePicture }} 
@@ -235,20 +282,34 @@ const DriverRideOverlay = () => {
         <RideRouteDisplay
           originAddress={currentRide.origin?.address}
           destinationAddress={currentRide.destination?.address}
-          isOngoing={isOngoing}
+          showDestination={isOngoing || isArrived}
           variant="driver"
         />
 
         <View style={styles.actionsWrapper}>
-          {!isOngoing && (
+          {(!isOngoing && !isArrived) && (
             <TouchableOpacity style={styles.secondaryGpsButton} onPress={() => handleOpenGPS(null)}>
               <Ionicons name="map" size={18} color={THEME.COLORS.textSecondary} />
               <Text style={styles.secondaryGpsText}>Ouvrir GPS Externe</Text>
             </TouchableOpacity>
           )}
 
-          {driverStatus === DRIVER_STATUS.ARRIVED ? (
-            <StartRideButton />
+          {isOngoing && distanceToTarget <= 150 ? (
+            <>
+              <Animated.View style={[styles.passiveStatusContainer, styles.passiveStatusFinishing, pulseStyle]}>
+                <Ionicons name="flag" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
+                <Text style={[styles.passiveStatusTitle, { color: THEME.COLORS.danger }]}>ARRIVEE IMMINENTE</Text>
+                <Text style={styles.passiveStatusDistance}>Cloture automatique a l'arret.</Text>
+              </Animated.View>
+              
+              <TouchableOpacity 
+                style={styles.manualCompleteButton} 
+                onPress={handleManualComplete}
+                disabled={isCompleting}
+              >
+                <Text style={styles.manualCompleteText}>Terminer plus tot</Text>
+              </TouchableOpacity>
+            </>
           ) : (
             <View style={[
               styles.passiveStatusContainer,
@@ -285,8 +346,8 @@ const styles = StyleSheet.create({
   dotArrived: { backgroundColor: THEME.COLORS.info },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
-  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, // Ajout de overflow: 'hidden'
-  avatarImage: { width: '100%', height: '100%', borderRadius: 28 }, // Nouveau style pour l'image
+  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, 
+  avatarImage: { width: '100%', height: '100%', borderRadius: 28 }, 
   riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -300,8 +361,11 @@ const styles = StyleSheet.create({
   passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
   passiveStatusOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
   passiveStatusArrived: { backgroundColor: 'rgba(52, 152, 219, 0.1)', borderColor: 'rgba(52, 152, 219, 0.4)' },
+  passiveStatusFinishing: { backgroundColor: 'rgba(231, 76, 60, 0.1)', borderColor: 'rgba(231, 76, 60, 0.5)', borderWidth: 2 },
   passiveStatusTitle: { color: THEME.COLORS.textPrimary, fontWeight: '900', fontSize: 15, letterSpacing: 1, marginBottom: 4 },
   passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
+  manualCompleteButton: { marginTop: THEME.SPACING.sm, paddingVertical: 12, alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border },
+  manualCompleteText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', fontSize: 13 },
 });
 
 export default DriverRideOverlay;

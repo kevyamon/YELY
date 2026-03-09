@@ -7,7 +7,7 @@ import React from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const RideRouteDisplay = ({ originAddress, destinationAddress, isOngoing = false, variant = 'rider' }) => {
+const RideRouteDisplay = ({ originAddress, destinationAddress, showDestination = false, variant = 'rider' }) => {
   if (variant === 'driver') {
     return (
       <View style={styles.routeContainer}>
@@ -15,10 +15,10 @@ const RideRouteDisplay = ({ originAddress, destinationAddress, isOngoing = false
           <Ionicons
             name="navigate-circle"
             size={20}
-            color={isOngoing ? THEME.COLORS.success : THEME.COLORS.danger}
+            color={showDestination ? THEME.COLORS.success : THEME.COLORS.danger}
           />
           <Text style={styles.routeText} numberOfLines={2}>
-            {isOngoing ? destinationAddress : originAddress}
+            {showDestination ? destinationAddress : originAddress}
           </Text>
         </View>
       </View>
