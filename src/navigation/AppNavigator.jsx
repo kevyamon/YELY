@@ -17,6 +17,8 @@ import {
   restoreAuth,
   selectCurrentUser,
   selectIsAuthenticated,
+  selectPromoMode // 🔥 IMPORT AJOUTÉ
+  ,
   selectSubscriptionStatus
 } from '../store/slices/authSlice';
 import THEME from '../theme/theme';
@@ -74,6 +76,7 @@ const AppNavigator = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   const subStatus = useSelector(selectSubscriptionStatus);
+  const promoMode = useSelector(selectPromoMode); // 🔥 ETAT VIP GLOBAL
   
   const { isServerReady, isWakingUp } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -126,7 +129,10 @@ const AppNavigator = () => {
 
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
+  
   const isSubscriptionPending = isDriver && subStatus?.isPending;
+  // 🔥 LA RÈGLE DE BLOCAGE ABSOLUE : Si c'est un chauffeur ET il n'est pas actif ET pas en attente ET pas de mode VIP gratuit
+  const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !promoMode?.isActive;
 
   return (
     <View style={styles.rootContainer}>
@@ -164,6 +170,11 @@ const AppNavigator = () => {
           <Stack.Group>
             <Stack.Screen name="WaitSubscription" component={WaitScreen} />
           </Stack.Group>
+        ) : isDriverBlocked ? (  
+          // 🔥 LE DONJON : On enferme les chauffeurs non-règle ici pour qu'ils paient
+          <Stack.Group>
+            <Stack.Screen name="SubscriptionBlocker" component={SubscriptionScreen} />
+          </Stack.Group>
         ) : (
           <Stack.Group>
             {isDriver ? (
@@ -195,7 +206,6 @@ const AppNavigator = () => {
         )}
       </Stack.Navigator>
 
-      {/* SUPERPOSITION DU SPLASH SCREEN POUR L'EFFET DE DEVOILEMENT */}
       {showSplash && (
         <SplashScreenComponent 
           isServerReady={isServerReady && isAuthReady} 

@@ -8,10 +8,10 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux'; // 🔥 useSelector ajouté
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice'; // 🔥 selectPromoMode ajouté
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -35,6 +35,7 @@ const PLAN_TYPES = {
 
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const promoMode = useSelector(selectPromoMode); // 🔥 Récupération du mode VIP global
   
   const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
@@ -60,13 +61,14 @@ const SubscriptionScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (statusData?.data && !isStatusLoading) {
-      if (statusData.data.isActive || statusData.data.isPending) {
+      // 🔥 MODIFICATION : On va sur le Dashboard si c'est payé, en attente, OU si le mode gratuit est ON
+      if (statusData.data.isActive || statusData.data.isPending || promoMode?.isActive) {
         setCurrentStep(STEPS.DASHBOARD);
       } else {
         setCurrentStep(STEPS.CHOOSE_PLAN);
       }
     }
-  }, [statusData, isStatusLoading]);
+  }, [statusData, isStatusLoading, promoMode?.isActive]);
 
   const handleProlong = useCallback(() => {
     setCurrentStep(STEPS.CHOOSE_PLAN);
@@ -155,10 +157,13 @@ const SubscriptionScreen = ({ navigation }) => {
     const isPending = statusData?.data?.isPending;
     const isActive = statusData?.data?.isActive;
     const isDashboard = currentStep === STEPS.DASHBOARD;
+    
+    // 🔥 NOUVEAU: Le bouton retour est autorisé si l'abonnement est actif OU si le mode gratuit est ON
+    const isNavigationAllowed = isActive || promoMode?.isActive;
 
     return (
       <View style={styles.header}>
-        {isActive && isDashboard ? (
+        {isNavigationAllowed && isDashboard ? (
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
             <Ionicons name="arrow-back" size={26} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
@@ -168,7 +173,7 @@ const SubscriptionScreen = ({ navigation }) => {
         
         <Text style={styles.headerTitle}>Pass Yély</Text>
 
-        {(!isActive || isPending) ? (
+        {(!isNavigationAllowed || isPending) ? (
           <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
             <Ionicons name="log-out-outline" size={26} color="#e74c3c" />
           </TouchableOpacity>

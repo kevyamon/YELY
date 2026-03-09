@@ -16,10 +16,14 @@ const initialState = {
     isActive: false,
     isPending: false,
     expiresAt: null
+  },
+  // 🔥 NOUVEAU : Etat global du Mode Promo/Gratuit
+  promoMode: {
+    isActive: false,
+    message: ""
   }
 };
 
-// Helpers securises asynchrones pour purger les effets de bord des reducers
 const safeStorageSet = (key, value) => {
   Promise.resolve(SecureStorageAdapter.setItem(key, value)).catch(err => {
     console.error(`[Redux] Echec de sauvegarde pour ${key}:`, err);
@@ -40,13 +44,8 @@ const authSlice = createSlice({
       const { user, accessToken, token, refreshToken } = action.payload || {};
       const finalToken = accessToken || token;
 
-      if (!user && !finalToken && !refreshToken) {
-        console.warn('[Redux] Donnees de connexion incompletes');
-      }
-
       if (user) {
         state.user = user;
-        
         if (user.subscription && typeof user.subscription === 'object') {
           state.subscriptionStatus = {
             isActive: user.subscription.isActive || false,
@@ -58,7 +57,6 @@ const authSlice = createSlice({
 
       if (finalToken) state.token = finalToken;
       if (refreshToken) state.refreshToken = refreshToken;
-      
       state.isAuthenticated = !!state.token;
 
       if (state.user) safeStorageSet('userInfo', JSON.stringify(state.user));
@@ -66,20 +64,14 @@ const authSlice = createSlice({
       if (state.refreshToken) safeStorageSet('refreshToken', state.refreshToken);
     },
     
-    // 🛡️ MODIFICATION MAJEURE : BOUCLIER DE FUSION INTÉGRÉ ICI
     updateUserInfo: (state, action) => {
       if (!state.user) return;
-      
       state.user = { 
         ...state.user, 
         ...action.payload,
-        // Bouclier : On protège l'abonnement contre l'effacement si le backend l'omet
-        subscription: action.payload.subscription !== undefined 
-          ? action.payload.subscription 
-          : state.user.subscription
+        subscription: action.payload.subscription !== undefined ? action.payload.subscription : state.user.subscription
       };
-
-      // Si le payload contient un abonnement, on met à jour le statut global
+      
       if (action.payload.subscription) {
         state.subscriptionStatus = {
           isActive: action.payload.subscription.isActive || false,
@@ -87,7 +79,6 @@ const authSlice = createSlice({
           expiresAt: action.payload.subscription.expiresAt || null
         };
       }
-
       safeStorageSet('userInfo', JSON.stringify(state.user));
     },
 
@@ -95,16 +86,22 @@ const authSlice = createSlice({
       state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
     },
 
-    logout: (state, action) => {
-      const reason = action.payload?.reason || 'USER_INITIATED';
-      console.warn(`[AUTH] Deconnexion declenchee. Raison: ${reason}`);
+    // 🔥 NOUVEAU : Action pour mettre a jour le mode Promo depuis les Sockets
+    updatePromoMode: (state, action) => {
+      state.promoMode = {
+        isActive: action.payload.isGlobalFreeAccess || false,
+        message: action.payload.promoMessage || "🎉 Mode VIP Activé !"
+      };
+    },
 
+    logout: (state, action) => {
       state.user = null;
       state.token = null;
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.isRefreshing = false;
       state.subscriptionStatus = { isActive: false, isPending: false, expiresAt: null };
+      // Note: On ne reinitialise pas le promoMode car il est global a l'app
       
       safeStorageRemove('userInfo');
       safeStorageRemove('token');
@@ -116,7 +113,6 @@ const authSlice = createSlice({
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
-      // MODIFICATION MAJEURE : On est authentifie meme si user est null (tant qu'on a le token)
       state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
@@ -138,6 +134,7 @@ export const {
   setCredentials, 
   updateUserInfo, 
   updateSubscriptionStatus,
+  updatePromoMode, // 🔥 Expose l'action
   logout, 
   restoreAuth, 
   setRefreshing 
@@ -146,26 +143,15 @@ export const {
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
   let currentRefreshToken = auth.refreshToken;
-
-  if (!currentRefreshToken) {
-     currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
-  }
-
-  if (!currentRefreshToken || auth.isRefreshing) {
-    console.info('[AUTH] forceSilentRefresh annule: Aucun token ou dejà en cours.');
-    return;
-  }
+  if (!currentRefreshToken) currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
+  if (!currentRefreshToken || auth.isRefreshing) return;
 
   try {
     dispatch(setRefreshing(true));
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-    
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json' 
-      },
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
       body: JSON.stringify({ refreshToken: currentRefreshToken })
     });
 
@@ -174,34 +160,44 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     if (response.ok && result?.success) {
       const payload = result.data || result;
       const newAccessToken = payload.accessToken || payload.token;
-      const newRefreshToken = payload.refreshToken || currentRefreshToken;
       
+      // 🔥 REQUETE SILENCIEUSE : On recupere l'etat du mode promo au demarrage
+      try {
+        const configResponse = await fetch(`${API_URL}/subscription/config`, {
+          headers: { 'Authorization': `Bearer ${newAccessToken}` }
+        });
+        const configData = await configResponse.json();
+        if (configData?.data) {
+          dispatch(updatePromoMode({
+            isGlobalFreeAccess: configData.data.isGlobalFreeAccess,
+            promoMessage: configData.data.promoMessage
+          }));
+        }
+      } catch (e) { console.warn("Impossible de fetch la config promo au refresh"); }
+
       if (newAccessToken) {
         socketService.updateToken(newAccessToken);
         dispatch(setCredentials({
           user: payload.user || auth.user,
           accessToken: newAccessToken,
-          refreshToken: newRefreshToken
+          refreshToken: payload.refreshToken || currentRefreshToken
         }));
       }
     } else if (response.status === 401) {
-      console.warn("[AUTH FATAL] Refresh Token rejete au reveil (401). Deconnexion forcee.");
       socketService.disconnect();
       dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
     }
   } catch (error) {
-    // MODIFICATION MAJEURE : On ne deconnecte PAS sur une erreur reseau au demarrage
-    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
+    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee.");
   } finally {
     dispatch(setRefreshing(false));
   }
 };
 
 export default authSlice.reducer;
-
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
 export const selectUserRole = (state) => state.auth.user?.role;
 export const selectToken = (state) => state.auth.token;
-export const selectIsRefreshing = (state) => state.auth.isRefreshing;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
+export const selectPromoMode = (state) => state.auth.promoMode; // 🔥 Selecteur pour le UI
