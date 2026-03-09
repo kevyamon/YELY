@@ -96,12 +96,15 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog'],
     }),
 
-    // NOUVELLE MUTATION : Gratuité Globale des Chauffeurs
+    // 🔥 CORRECTION FATALE ICI : Le Backend attend isGlobalFreeAccess et promoMessage
     toggleGlobalFreeAccess: builder.mutation({
-      query: ({ isActive }) => ({
+      query: (payload) => ({
         url: '/admin/free-access/toggle',
         method: 'PUT',
-        body: { isActive },
+        body: { 
+          isGlobalFreeAccess: payload.isActive, 
+          promoMessage: payload.promoMessage 
+        },
       }),
       invalidatesTags: ['Stats', 'AuditLog', 'Subscription'],
     }),
@@ -148,7 +151,7 @@ export const {
   useUpdateWaveLinksMutation,
   useTogglePromoMutation,
   useToggleLoadReduceMutation,
-  useToggleGlobalFreeAccessMutation, // Export du nouveau hook
+  useToggleGlobalFreeAccessMutation,
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,

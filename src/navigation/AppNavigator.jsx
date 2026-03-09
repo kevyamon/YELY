@@ -10,17 +10,21 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import useServerWakeup from '../hooks/useServerWakeup';
+import socketService from '../services/socketService';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
+
 import {
   forceSilentRefresh,
   logout,
   restoreAuth,
   selectCurrentUser,
   selectIsAuthenticated,
-  selectPromoMode // 🔥 IMPORT AJOUTÉ
-  ,
-  selectSubscriptionStatus
+  selectPromoMode,
+  selectSubscriptionStatus,
+  updatePromoMode
 } from '../store/slices/authSlice';
+import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
+
 import THEME from '../theme/theme';
 
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
@@ -76,7 +80,7 @@ const AppNavigator = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   const subStatus = useSelector(selectSubscriptionStatus);
-  const promoMode = useSelector(selectPromoMode); // 🔥 ETAT VIP GLOBAL
+  const promoMode = useSelector(selectPromoMode); 
   
   const { isServerReady, isWakingUp } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
@@ -127,11 +131,32 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
+  // ECOUTEUR GLOBAL DU MODE VIP POUR LES DEBLOCAGES EN TEMPS REEL
+  useEffect(() => {
+    if (!isAuthenticated) return;
+
+    const handlePromoModeChange = (data) => {
+      dispatch(updatePromoMode(data));
+      
+      if (user?.role === 'driver') {
+        if (data.isGlobalFreeAccess) {
+          dispatch(showSuccessToast({ title: "Mode VIP Active !", message: data.promoMessage || "Roulez sans abonnement !" }));
+        } else {
+          dispatch(showErrorToast({ title: "Fin de la Promo", message: "Le mode gratuit est termine." }));
+        }
+      }
+    };
+
+    socketService.on('PROMO_MODE_CHANGED', handlePromoModeChange);
+    return () => socketService.off('PROMO_MODE_CHANGED', handlePromoModeChange);
+  }, [isAuthenticated, user?.role, dispatch]);
+
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  const isSubscriptionPending = isDriver && subStatus?.isPending;
-  // 🔥 LA RÈGLE DE BLOCAGE ABSOLUE : Si c'est un chauffeur ET il n'est pas actif ET pas en attente ET pas de mode VIP gratuit
+  const isSubscriptionPending = isDriver && subStatus?.isPending && !promoMode?.isActive;
+  
+  // LA REGLE DE BLOCAGE ABSOLUE : Si c'est un chauffeur ET il n'est pas actif ET pas en attente ET pas de mode VIP gratuit
   const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !promoMode?.isActive;
 
   return (
@@ -171,7 +196,6 @@ const AppNavigator = () => {
             <Stack.Screen name="WaitSubscription" component={WaitScreen} />
           </Stack.Group>
         ) : isDriverBlocked ? (  
-          // 🔥 LE DONJON : On enferme les chauffeurs non-règle ici pour qu'ils paient
           <Stack.Group>
             <Stack.Screen name="SubscriptionBlocker" component={SubscriptionScreen} />
           </Stack.Group>
