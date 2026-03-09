@@ -7,29 +7,35 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const PwaIOSWarningModal = ({ isDriver = false }) => {
+const PwaIOSWarningModal = ({ isDriver = false, forceShow = false, onClose = null }) => {
   const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
-    // On ne vérifie que sur le Web
+    // Si on force l'affichage depuis un parent (ex: LoginPage), on affiche direct
+    if (forceShow) {
+      setIsVisible(true);
+      return;
+    }
+
+    // Comportement automatique original (Web uniquement)
     if (Platform.OS !== 'web') return;
 
-    // Détection stricte des appareils Apple
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
     
-    // Vérifie si on est déjà en mode "Application installée" (Standalone) ou dans Safari
-    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-
-    // On affiche l'alerte uniquement sur iOS Web, après 3 secondes pour ne pas agresser au démarrage
     if (isIOS) {
       const timer = setTimeout(() => {
         setIsVisible(true);
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [forceShow]);
 
   if (!isVisible) return null;
+
+  const handleClose = () => {
+    setIsVisible(false);
+    if (onClose) onClose();
+  };
 
   return (
     <Modal transparent visible={isVisible} animationType="fade">
@@ -43,11 +49,11 @@ const PwaIOSWarningModal = ({ isDriver = false }) => {
           
           <Text style={styles.description}>
             {isDriver 
-              ? "Pour que le client puisse suivre votre position, vous devez garder cette application ouverte à l'écran. Si vous verrouillez votre téléphone, le GPS se coupera." 
-              : "Pour un fonctionnement optimal de la course, évitez de verrouiller votre téléphone ou de réduire cette application."}
+              ? "L'application chauffeur necessite Android pour le suivi GPS en arriere-plan. Sur iOS, le GPS se coupe des que l'ecran est verrouille, ce qui empeche le client de vous suivre." 
+              : "Pour un fonctionnement optimal de la course, evitez de verrouiller votre telephone ou de reduire cette application."}
           </Text>
 
-          <TouchableOpacity style={styles.button} onPress={() => setIsVisible(false)}>
+          <TouchableOpacity style={styles.button} onPress={handleClose}>
             <Text style={styles.buttonText}>J'ai compris</Text>
           </TouchableOpacity>
         </View>

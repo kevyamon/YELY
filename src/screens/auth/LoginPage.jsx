@@ -21,6 +21,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
+import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 
 import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
@@ -40,6 +41,8 @@ const LoginPage = ({ navigation }) => {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
   const [isEmailMode, setIsEmailMode] = useState(false);
+  
+  const [showPwaModal, setShowPwaModal] = useState(false);
 
   useEffect(() => {
     const isEmail = /[a-zA-Z@]/.test(formData.identifier);
@@ -72,17 +75,13 @@ const LoginPage = ({ navigation }) => {
         finalIdentifier = `+${callingCode}${cleanPhone}`;
       }
 
-      const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
+      const res = await login({ 
+        ...formData, 
+        identifier: finalIdentifier,
+        clientPlatform: Platform.OS 
+      }).unwrap();
+      
       const { user, accessToken, refreshToken } = res.data;
-
-      // VERROU ARCHITECTURAL : Bloque la connexion des chauffeurs hors Android (Web/iOS)
-      if (user.role === 'driver' && Platform.OS !== 'android') {
-        dispatch(showErrorToast({ 
-          title: "Acces refuse", 
-          message: "L'application chauffeur necessite Android pour le tracking GPS en arriere-plan." 
-        }));
-        return; 
-      }
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       
@@ -93,6 +92,13 @@ const LoginPage = ({ navigation }) => {
 
     } catch (err) {
       const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez reessayer.";
+      
+      // Interception specifique du verrou backend
+      if (errorMessage === 'DEVICE_NOT_SUPPORTED') {
+        setShowPwaModal(true);
+        return;
+      }
+
       dispatch(showErrorToast({ title: "Connexion impossible", message: errorMessage }));
     }
   };
@@ -189,6 +195,12 @@ const LoginPage = ({ navigation }) => {
 
         </ScrollView>
       </KeyboardAvoidingView>
+      
+      <PwaIOSWarningModal 
+        forceShow={showPwaModal} 
+        onClose={() => setShowPwaModal(false)} 
+        isDriver={true} 
+      />
     </SafeAreaView>
   );
 }
