@@ -29,7 +29,7 @@ import useGeolocation from '../../hooks/useGeolocation.web';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 
-import { logout, selectCurrentUser, selectSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -48,6 +48,7 @@ const DriverHome = ({ navigation }) => {
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
+  const promoMode = useSelector(selectPromoMode);
 
   const { 
     data: subscriptionData, 
@@ -65,7 +66,8 @@ const DriverHome = ({ navigation }) => {
 
   const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
-  const isBlocked = !isActive;
+  
+  const isBlocked = !isActive && !promoMode?.isActive;
 
   // Verification de la premiere visite liee au compte utilisateur (Web)
   useEffect(() => {
@@ -116,7 +118,6 @@ const DriverHome = ({ navigation }) => {
     user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  // CORRECTION : On recupere desormais le mapBottomPadding depuis le hook central
   const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
   let dynamicTopPadding = 140; 
@@ -125,7 +126,8 @@ const DriverHome = ({ navigation }) => {
   }
 
   const renderSubscriptionBlocker = () => {
-    if (isActive) return null;
+    if (isActive || promoMode?.isActive) return null;
+    
     if (isSubscriptionLoading && !isSubscriptionError) {
       return (
         <View style={styles.blockerOverlay}>
@@ -134,7 +136,9 @@ const DriverHome = ({ navigation }) => {
         </View>
       );
     }
+    
     if (!isBlocked) return null;
+    
     return (
       <View style={styles.blockerOverlay}>
         <GlassCard style={styles.blockerCard}>
