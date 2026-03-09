@@ -14,6 +14,8 @@ import socketService from '../services/socketService';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
 
 import {
+  fetchPromoConfig // NOUVEL IMPORT
+  ,
   forceSilentRefresh,
   logout,
   restoreAuth,
@@ -87,6 +89,13 @@ const AppNavigator = () => {
   
   const [showSplash, setShowSplash] = useState(true);
 
+  // SYNCHRONISATION FORCEE AU DEMARRAGE ET LOGIN
+  useEffect(() => {
+    if (isAuthenticated) {
+      dispatch(fetchPromoConfig());
+    }
+  }, [isAuthenticated, dispatch]);
+
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
       try {
@@ -101,7 +110,7 @@ const AppNavigator = () => {
             try {
               storedUser = JSON.parse(storedUserStr);
             } catch (parseError) {
-              console.warn('[AUTH] Erreur de parsing du profil local. On restaure quand meme les tokens.');
+              console.warn('[AUTH] Erreur de parsing du profil local.');
             }
           }
 
@@ -114,11 +123,9 @@ const AppNavigator = () => {
           dispatch(forceSilentRefresh());
           
         } else {
-          console.info('[AUTH] Tokens absents au demarrage. Deconnexion propre.');
           dispatch(logout({ reason: 'MISSING_TOKENS_AT_STARTUP' })); 
         }
       } catch (e) {
-        console.error('[AUTH FATAL] Erreur critique au demarrage:', e);
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
@@ -155,8 +162,6 @@ const AppNavigator = () => {
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
   const isSubscriptionPending = isDriver && subStatus?.isPending && !promoMode?.isActive;
-  
-  // LA REGLE DE BLOCAGE ABSOLUE : Si c'est un chauffeur ET il n'est pas actif ET pas en attente ET pas de mode VIP gratuit
   const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !promoMode?.isActive;
 
   return (

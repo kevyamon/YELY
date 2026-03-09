@@ -17,7 +17,6 @@ const initialState = {
     isPending: false,
     expiresAt: null
   },
-  // NOUVEAU : Etat global du Mode VIP / Gratuit
   promoMode: {
     isActive: false,
     message: ""
@@ -96,11 +95,10 @@ const authSlice = createSlice({
       state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
     },
 
-    // NOUVEAU : Action pour mettre a jour le mode Promo depuis les Sockets
     updatePromoMode: (state, action) => {
       state.promoMode = {
         isActive: action.payload.isGlobalFreeAccess || false,
-        message: action.payload.promoMessage || "Yély Régal ! Mode VIP Activé."
+        message: action.payload.promoMessage || "Yely Regal ! Mode VIP Active."
       };
     },
 
@@ -146,11 +144,37 @@ export const {
   setCredentials, 
   updateUserInfo, 
   updateSubscriptionStatus,
-  updatePromoMode, // EXPORT DE LA NOUVELLE ACTION
+  updatePromoMode,
   logout, 
   restoreAuth, 
   setRefreshing 
 } = authSlice.actions;
+
+// NOUVELLE FONCTION : Va chercher le statut VIP aupres du serveur
+export const fetchPromoConfig = () => async (dispatch, getState) => {
+  const { auth } = getState();
+  if (!auth.token) return;
+
+  try {
+    const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
+    const response = await fetch(`${API_URL}/subscription/config`, {
+      headers: {
+        'Authorization': `Bearer ${auth.token}`,
+        'Accept': 'application/json'
+      }
+    });
+
+    const result = await response.json();
+    if (response.ok && result?.data) {
+      dispatch(updatePromoMode({
+        isGlobalFreeAccess: result.data.isGlobalFreeAccess,
+        promoMessage: result.data.promoMessage
+      }));
+    }
+  } catch (error) {
+    console.warn("[AUTH] Impossible de synchroniser la config VIP au demarrage/login");
+  }
+};
 
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
@@ -183,22 +207,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
       const payload = result.data || result;
       const newAccessToken = payload.accessToken || payload.token;
       const newRefreshToken = payload.refreshToken || currentRefreshToken;
-      
-      // REQUETE SILENCIEUSE : On recupere l'etat du mode VIP au demarrage
-      try {
-        const configResponse = await fetch(`${API_URL}/subscription/config`, {
-          headers: { 'Authorization': `Bearer ${newAccessToken}` }
-        });
-        const configData = await configResponse.json();
-        if (configData?.data) {
-          dispatch(updatePromoMode({
-            isGlobalFreeAccess: configData.data.isGlobalFreeAccess,
-            promoMessage: configData.data.promoMessage
-          }));
-        }
-      } catch (e) {
-        console.warn("[AUTH] Impossible de fetch la config promo au refresh");
-      }
 
       if (newAccessToken) {
         socketService.updateToken(newAccessToken);
@@ -207,6 +215,9 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
           accessToken: newAccessToken,
           refreshToken: newRefreshToken
         }));
+        
+        // On profite du refresh pour synchroniser le VIP
+        dispatch(fetchPromoConfig());
       }
     } else if (response.status === 401) {
       socketService.disconnect();
@@ -227,6 +238,4 @@ export const selectUserRole = (state) => state.auth.user?.role;
 export const selectToken = (state) => state.auth.token;
 export const selectIsRefreshing = (state) => state.auth.isRefreshing;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
-
-// EXPORT DU NOUVEAU SELECTEUR
 export const selectPromoMode = (state) => state.auth.promoMode;
