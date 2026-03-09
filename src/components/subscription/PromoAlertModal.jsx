@@ -39,7 +39,7 @@ const PromoAlertModal = ({ visible, isActive, message, onClose }) => {
 
           {isActivation && (
             <Text style={styles.subMessage}>
-              Si vous aviez un abonnement actif, son temps est actuellement gele et sera prolonge.
+              Si vous aviez un abonnement actif, son temps est actuellement gele et sera prolongé.
             </Text>
           )}
           
