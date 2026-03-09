@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
-import { AppState } from 'react-native';
+import { AppState, Vibration } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import MapService from '../services/mapService';
@@ -15,7 +15,8 @@ import { clearCurrentRide, setCurrentRide, setEffectiveLocation, updateRideStatu
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
-const DROPOFF_FALLBACK_RADIUS_METERS = 15;
+const AUTO_START_RADIUS_METERS = 100; // SMART DRIVE: Declenchement auto du depart
+const DROPOFF_FALLBACK_RADIUS_METERS = 150; // SMART DRIVE: Rayon elargi pour la fin de course
 const SNOOZE_DELAY_MS = 120000;
 
 const useDriverLifecycle = ({
@@ -33,10 +34,11 @@ const useDriverLifecycle = ({
   const dispatch = useDispatch();
   const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
+  const isProcessingStartRef = useRef(false); // Refroidisseur pour le demarrage auto
   const snoozeTimerRef = useRef(null);
   const isSubmittingRef = useRef(false); 
   const appState = useRef(AppState.currentState);
-  const previousFetchDataRef = useRef(undefined); // FIX : Bloque la resurrection d'etat
+  const previousFetchDataRef = useRef(undefined);
 
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
@@ -51,9 +53,7 @@ const useDriverLifecycle = ({
     refetchOnMountOrArgChange: true
   });
 
-  // RESTAURATION ET DESTRUCTION ROBUSTE (Anti-Zombie State)
   useEffect(() => {
-    // Ne s'execute QUE si RTK Query retourne un nouveau resultat physique
     if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
       previousFetchDataRef.current = fetchedRideData;
       
@@ -66,7 +66,6 @@ const useDriverLifecycle = ({
           dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
         }
       } else if (currentId) {
-        // Le serveur confirme la destruction, on purge tout.
         dispatch(clearCurrentRide());
         setIsArrivalModalVisible(false);
         if (simulatedLocation && setSimulatedLocation) {
@@ -158,6 +157,7 @@ const useDriverLifecycle = ({
   useEffect(() => {
     if (!currentRide && !fetchedRideData) {
       isProcessingPickupRef.current = false;
+      isProcessingStartRef.current = false;
       isSubmittingRef.current = false; 
       setIsArrivalModalVisible(false);
       if (snoozeTimerRef.current) {
@@ -166,8 +166,11 @@ const useDriverLifecycle = ({
       }
     } else if (currentRide?.status === 'in_progress') {
       isProcessingPickupRef.current = true;
+      isProcessingStartRef.current = true;
     } else if (currentRide?.status === 'accepted') {
       isProcessingPickupRef.current = false;
+    } else if (currentRide?.status === 'arrived') {
+      isProcessingStartRef.current = false;
     }
   }, [currentRide?.status, fetchedRideData]);
 
@@ -197,11 +200,13 @@ const useDriverLifecycle = ({
     }
   }, [currentRide, fetchedRideData, simulatedLocation, setSimulatedLocation, mapRef]);
 
+  // LE COEUR DU SMART DRIVE (Analyse continue du GPS)
   useEffect(() => {
     if (!location || !currentRide) return;
 
     const status = currentRide.status;
 
+    // 1. ARRIVEE AUTO AU POINT DE DEPART (30m)
     if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -221,7 +226,7 @@ const useDriverLifecycle = ({
           const rideId = currentRide._id || currentRide.id || currentRide.rideId;
           if (rideId) {
             markAsArrived({ rideId }).unwrap().catch(err => {
-              console.warn('[DriverLifecycle] Echec de la notification d\'arrivee distante');
+              console.warn('[DriverLifecycle] Echec notification arrivee distante');
               isProcessingPickupRef.current = false; 
             });
           }
@@ -229,6 +234,42 @@ const useDriverLifecycle = ({
       }
     }
 
+    // 2. DEMARRAGE AUTO DE LA COURSE (>100m du point de depart)
+    if (status === 'arrived' && !isProcessingStartRef.current) {
+      const target = currentRide.origin;
+      const lat = target?.coordinates?.[1] || target?.latitude;
+      const lng = target?.coordinates?.[0] || target?.longitude;
+
+      if (lat !== undefined && lng !== undefined) {
+        const distance = MapService.calculateDistance(
+          location,
+          { latitude: Number(lat), longitude: Number(lng) }
+        );
+
+        if (distance > AUTO_START_RADIUS_METERS) {
+          isProcessingStartRef.current = true;
+          
+          dispatch(updateRideStatus({ status: 'in_progress' }));
+          
+          const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+          if (rideId) {
+            startRide({ rideId }).unwrap()
+              .then(() => {
+                dispatch(showSuccessToast({
+                  title: 'Course demarree',
+                  message: 'Trajet lance automatiquement.',
+                }));
+              })
+              .catch(err => {
+                console.warn('[DriverLifecycle] Echec auto-start', err);
+                isProcessingStartRef.current = false;
+              });
+          }
+        }
+      }
+    }
+
+    // 3. AUTO-FOCUS ET VIBRATION DE FIN DE COURSE (150m)
     if (status === 'in_progress' && !isArrivalModalVisible && !snoozeTimerRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -241,11 +282,12 @@ const useDriverLifecycle = ({
         );
 
         if (distance <= DROPOFF_FALLBACK_RADIUS_METERS) {
+          Vibration.vibrate([0, 400, 200, 400]); // Sequence de vibration d'alerte
           setIsArrivalModalVisible(true);
         }
       }
     }
-  }, [location, currentRide, dispatch, isArrivalModalVisible, markAsArrived]); 
+  }, [location, currentRide, dispatch, isArrivalModalVisible, markAsArrived, startRide]); 
 
   const handleToggleAvailability = async () => {
     const newStatus = !isAvailable;

@@ -1,5 +1,5 @@
 // src/screens/auth/LoginPage.jsx
-// PAGE CONNEXION - Design Épuré & Auto-Nettoyage des erreurs
+// PAGE CONNEXION - Design Epure & Securite Plateforme Chauffeur
 
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
@@ -73,18 +73,26 @@ const LoginPage = ({ navigation }) => {
       }
 
       const res = await login({ ...formData, identifier: finalIdentifier }).unwrap();
-      
       const { user, accessToken, refreshToken } = res.data;
+
+      // VERROU ARCHITECTURAL : Bloque la connexion des chauffeurs hors Android (Web/iOS)
+      if (user.role === 'driver' && Platform.OS !== 'android') {
+        dispatch(showErrorToast({ 
+          title: "Acces refuse", 
+          message: "L'application chauffeur necessite Android pour le tracking GPS en arriere-plan." 
+        }));
+        return; 
+      }
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       
       dispatch(showSuccessToast({
-        title: "Connexion réussie",
+        title: "Connexion reussie",
         message: `Ravis de vous revoir, ${user.name.split(' ')[0]} !`
       }));
 
     } catch (err) {
-      const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez réessayer.";
+      const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez reessayer.";
       dispatch(showErrorToast({ title: "Connexion impossible", message: errorMessage }));
     }
   };
@@ -111,7 +119,7 @@ const LoginPage = ({ navigation }) => {
 
           <View style={styles.headerContainer}>
             <Text style={styles.welcomeText}>CONNEXION</Text>
-            <Text style={styles.subText}>Accédez à votre espace Yély</Text>
+            <Text style={styles.subText}>Accedez a votre espace Yely</Text>
           </View>
 
           <GlassCard style={styles.card}>
@@ -138,7 +146,7 @@ const LoginPage = ({ navigation }) => {
                <View style={{ flex: 1 }}>
                   <GlassInput
                     icon={isEmailMode ? "mail-outline" : "call-outline"}
-                    placeholder="Tél ou Email"
+                    placeholder="Tel ou Email"
                     autoCapitalize="none"
                     value={formData.identifier}
                     onChangeText={handleIdentifierChange}
@@ -158,7 +166,7 @@ const LoginPage = ({ navigation }) => {
               onPress={() => navigation.navigate('ForgotPassword')}
               style={styles.forgotPasswordLink}
             >
-              <Text style={styles.forgotPasswordText}>Mot de passe oublié ?</Text>
+              <Text style={styles.forgotPasswordText}>Mot de passe oublie ?</Text>
             </TouchableOpacity>
 
             <GoldButton
@@ -175,7 +183,7 @@ const LoginPage = ({ navigation }) => {
             style={styles.footer}
           >
             <Text style={styles.footerText}>
-              Pas encore de compte ? <Text style={styles.linkText}>Créer un compte</Text>
+              Pas encore de compte ? <Text style={styles.linkText}>Creer un compte</Text>
             </Text>
           </TouchableOpacity>
 

@@ -7,7 +7,7 @@ import { useNavigation } from '@react-navigation/native';
 import React, { useEffect, useMemo, useState } from 'react';
 import {
   Dimensions,
-  Image, // AJOUT : Import du composant Image
+  Image,
   Linking,
   Modal,
   Platform,
@@ -20,6 +20,8 @@ import Animated, {
   Easing,
   useAnimatedStyle,
   useSharedValue,
+  withRepeat,
+  withSequence,
   withTiming,
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -50,7 +52,7 @@ const BANNER_CONFIG = {
     label: 'Attendez le client',
     dotStyle: 'dotArrived',
     containerStyle: 'passiveStatusArrived',
-    subLabel: 'Veuillez confirmer l\'embarquement du client.',
+    subLabel: "Veuillez confirmer l'embarquement du client.",
   },
   [DRIVER_STATUS.IN_PROGRESS]: {
     label: 'TRAJET EN COURS',
@@ -72,6 +74,7 @@ const DriverRideOverlay = () => {
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
 
   const translateY = useSharedValue(300);
+  const pulseScale = useSharedValue(1); // Moteur d'animation pour l'alerte de fin
 
   useEffect(() => {
     translateY.value = withTiming(0, {
@@ -118,6 +121,26 @@ const DriverRideOverlay = () => {
     );
   }, [effectiveLocation, targetLat, targetLng]);
 
+  // Declencheur de l'animation pulsante quand on s'approche de la destination (<150m)
+  useEffect(() => {
+    if (isOngoing && distanceToTarget <= 150) {
+      pulseScale.value = withRepeat(
+        withSequence(
+          withTiming(1.03, { duration: 600, easing: Easing.inOut(Easing.ease) }),
+          withTiming(1, { duration: 600, easing: Easing.inOut(Easing.ease) })
+        ),
+        -1,
+        true
+      );
+    } else {
+      pulseScale.value = withTiming(1);
+    }
+  }, [isOngoing, distanceToTarget, pulseScale]);
+
+  const pulseStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: pulseScale.value }],
+  }));
+
   const bannerConfig = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
 
   const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
@@ -128,7 +151,7 @@ const DriverRideOverlay = () => {
   const handleCallRider = () => {
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de lancer l\'appel.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
     });
   };
 
@@ -198,7 +221,6 @@ const DriverRideOverlay = () => {
 
         <View style={styles.riderInfoCard}>
           <View style={styles.avatarPlaceholder}>
-            {/* MODIFICATION : Affichage conditionnel de la photo du client */}
             {currentRide.riderProfilePicture ? (
               <Image 
                 source={{ uri: currentRide.riderProfilePicture }} 
@@ -249,6 +271,12 @@ const DriverRideOverlay = () => {
 
           {driverStatus === DRIVER_STATUS.ARRIVED ? (
             <StartRideButton />
+          ) : isOngoing && distanceToTarget <= 150 ? (
+            <Animated.View style={[styles.passiveStatusContainer, styles.passiveStatusFinishing, pulseStyle]}>
+              <Ionicons name="flag" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
+              <Text style={[styles.passiveStatusTitle, { color: THEME.COLORS.danger }]}>ARRIVEE IMMINENTE</Text>
+              <Text style={styles.passiveStatusDistance}>La fenetre de fin de course est ouverte.</Text>
+            </Animated.View>
           ) : (
             <View style={[
               styles.passiveStatusContainer,
@@ -285,8 +313,8 @@ const styles = StyleSheet.create({
   dotArrived: { backgroundColor: THEME.COLORS.info },
   statusText: { fontSize: 16, fontWeight: '800', color: THEME.COLORS.textPrimary },
   riderInfoCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, padding: THEME.SPACING.md, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: THEME.SPACING.md },
-  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, // Ajout de overflow: 'hidden'
-  avatarImage: { width: '100%', height: '100%', borderRadius: 28 }, // Nouveau style pour l'image
+  avatarPlaceholder: { width: 56, height: 56, borderRadius: 28, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold, overflow: 'hidden' }, 
+  avatarImage: { width: '100%', height: '100%', borderRadius: 28 }, 
   riderDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   riderName: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
   ratingBadge: { flexDirection: 'row', alignItems: 'center', gap: 4 },
@@ -300,6 +328,7 @@ const styles = StyleSheet.create({
   passiveStatusContainer: { width: '100%', backgroundColor: 'rgba(212, 175, 55, 0.1)', paddingVertical: 16, borderRadius: 28, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)' },
   passiveStatusOngoing: { backgroundColor: 'rgba(46, 204, 113, 0.1)', borderColor: 'rgba(46, 204, 113, 0.3)' },
   passiveStatusArrived: { backgroundColor: 'rgba(52, 152, 219, 0.1)', borderColor: 'rgba(52, 152, 219, 0.4)' },
+  passiveStatusFinishing: { backgroundColor: 'rgba(231, 76, 60, 0.1)', borderColor: 'rgba(231, 76, 60, 0.5)', borderWidth: 2 },
   passiveStatusTitle: { color: THEME.COLORS.textPrimary, fontWeight: '900', fontSize: 15, letterSpacing: 1, marginBottom: 4 },
   passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
 });
