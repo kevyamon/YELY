@@ -14,8 +14,7 @@ import socketService from '../services/socketService';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
 
 import {
-  fetchPromoConfig // NOUVEL IMPORT
-  ,
+  fetchPromoConfig,
   forceSilentRefresh,
   logout,
   restoreAuth,
@@ -25,7 +24,6 @@ import {
   selectSubscriptionStatus,
   updatePromoMode
 } from '../store/slices/authSlice';
-import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 import THEME from '../theme/theme';
 
@@ -58,6 +56,7 @@ import MapManagement from '../screens/admin/MapManagement';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
+import PromoAlertModal from '../components/subscription/PromoAlertModal';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
 import WaitScreen from '../screens/subscription/WaitScreen';
 
@@ -88,8 +87,8 @@ const AppNavigator = () => {
   const [isAuthReady, setIsAuthReady] = useState(false);
   
   const [showSplash, setShowSplash] = useState(true);
+  const [promoAlert, setPromoAlert] = useState({ visible: false, isActive: false, message: '' });
 
-  // SYNCHRONISATION FORCEE AU DEMARRAGE ET LOGIN
   useEffect(() => {
     if (isAuthenticated) {
       dispatch(fetchPromoConfig());
@@ -138,7 +137,7 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  // ECOUTEUR GLOBAL DU MODE VIP POUR LES DEBLOCAGES EN TEMPS REEL
+  // ECOUTEUR GLOBAL DU MODE VIP POUR L'AFFICHAGE DE LA MODALE
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -146,11 +145,13 @@ const AppNavigator = () => {
       dispatch(updatePromoMode(data));
       
       if (user?.role === 'driver') {
-        if (data.isGlobalFreeAccess) {
-          dispatch(showSuccessToast({ title: "Mode VIP Active !", message: data.promoMessage || "Roulez sans abonnement !" }));
-        } else {
-          dispatch(showErrorToast({ title: "Fin de la Promo", message: "Le mode gratuit est termine." }));
-        }
+        setPromoAlert({
+          visible: true,
+          isActive: data.isGlobalFreeAccess,
+          message: data.isGlobalFreeAccess 
+            ? data.promoMessage 
+            : "Le mode gratuit est termine. Votre statut d'abonnement a ete mis a jour."
+        });
       }
     };
 
@@ -234,6 +235,13 @@ const AppNavigator = () => {
           </Stack.Group>
         )}
       </Stack.Navigator>
+
+      <PromoAlertModal 
+        visible={promoAlert.visible}
+        isActive={promoAlert.isActive}
+        message={promoAlert.message}
+        onClose={() => setPromoAlert({ ...promoAlert, visible: false })}
+      />
 
       {showSplash && (
         <SplashScreenComponent 
