@@ -150,7 +150,7 @@ const AppNavigator = () => {
           isActive: data.isGlobalFreeAccess,
           message: data.isGlobalFreeAccess 
             ? data.promoMessage 
-            : "Le mode gratuit est termine. Votre statut d'abonnement a ete mis a jour."
+            : "Le mode gratuit est terminé. Votre statut d'abonnement a été mis à jour."
         });
       }
     };

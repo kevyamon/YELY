@@ -102,7 +102,7 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
                 </View>
                 <Text style={styles.title}>Abonnement Gele</Text>
                 <Text style={styles.dashTextDesc}>
-                  Le mode VIP est active sur le reseau. Le temps de votre abonnement est mis en pause et n'est plus decompte.
+                  Le mode VIP est active sur le reseau. Le temps de votre abonnement est mis en pause et n'est plus decompté.
                 </Text>
                 <Text style={[styles.dashTextDesc, { fontWeight: 'bold', color: THEME.COLORS.champagneGold }]}>
                   Il reprendra et sera prolonge automatiquement a la fin de la promotion.
