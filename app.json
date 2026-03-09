@@ -8,7 +8,7 @@
     "scheme": "yely",
     "userInterfaceStyle": "automatic",
     "updates": {
-      "url": "https://u.expo.dev/YOUR_PROJECT_ID_ICI"
+      "url": "https://u.expo.dev/be0e185d-b91e-41bf-9e18-91923cf7deb5"
     },
     "ios": {
       "supportsTablet": true,
@@ -16,6 +16,9 @@
       "buildNumber": "1",
       "infoPlist": {
         "UIBackgroundModes": [
+          "location",
+          "fetch",
+          "remote-notification",
           "location",
           "fetch",
           "remote-notification"
@@ -45,7 +48,24 @@
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
-        "VIBRATE"
+        "VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ]
     },
     "web": {
@@ -93,8 +113,12 @@
     ],
     "extra": {
       "eas": {
-        "projectId": "YOUR_PROJECT_ID_ICI"
+        "projectId": "be0e185d-b91e-41bf-9e18-91923cf7deb5"
       }
+    },
+    "owner": "kevyllc",
+    "runtimeVersion": {
+      "policy": "appVersion"
     }
   }
 }
