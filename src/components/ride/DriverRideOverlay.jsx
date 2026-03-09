@@ -162,21 +162,20 @@ const DriverRideOverlay = () => {
   const handleOpenGPS = (forcedCoords = null) => {
     const lat = forcedCoords ? forcedCoords.lat : targetLat;
     const lng = forcedCoords ? forcedCoords.lng : targetLng;
-    const isDest = forcedCoords ? true : (isOngoing || isArrived);
 
     if (!lat || !lng) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Destination introuvable.' }));
       return;
     }
 
-    const label = encodeURIComponent(isDest ? 'Destination Yely' : 'Client Yely');
+    // ARCHITECTURE ZERO-CLIC : Lancement direct du mode Navigation (Itineraire trace)
     const url = Platform.select({
-      ios: `maps:0,0?q=${label}&ll=${lat},${lng}`,
-      android: `geo:0,0?q=${lat},${lng}(${label})`,
+      ios: `http://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`,
+      android: `google.navigation:q=${lat},${lng}&mode=d`,
     });
 
     Linking.openURL(url).catch(() => {
-      Linking.openURL(`http://googleusercontent.com/maps.google.com/maps?q=${lat},${lng}`);
+      Linking.openURL(`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}&travelmode=driving`);
     });
   };
 

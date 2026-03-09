@@ -7,6 +7,9 @@ import * as Sentry from '@sentry/react-native';
 // Importation declenchant la validation immediate de l'environnement (Fail-Fast)
 import ENV from './src/config/env';
 
+// DECLARATION TACHE DE FOND (A executer avant tout rendu React)
+import './src/tasks/backgroundLocationTask';
+
 // 1. INITIALISATION DE LA SUPERVISION SILENCIEUSE
 Sentry.init({
   dsn: ENV.SENTRY_DSN || '',

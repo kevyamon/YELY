@@ -1,9 +1,11 @@
 // src/hooks/useGeolocation.js
-// HOOK GÉOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial
+// HOOK GÉOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial (Foreground + Background)
 // STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
+import * as TaskManager from 'expo-task-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
 
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
@@ -44,6 +46,12 @@ const useGeolocation = (options = {}) => {
         setIsLoading(false);
         return false;
       }
+
+      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+      if (backgroundStatus !== 'granted') {
+        if (__DEV__) console.warn("Permission GPS en arrière-plan refusée. Le suivi s'arrêtera si l'app est réduite.");
+      }
+
       return true;
     } catch (err) {
       setError('Erreur lors de la demande de permission');
@@ -59,7 +67,6 @@ const useGeolocation = (options = {}) => {
         accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
 
-      // SECURITE : On bloque le Fake GPS UNIQUEMENT en production
       if (loc.mocked && !__DEV__) {
         setError('Position falsifiée détectée.');
         setIsLoading(false);
@@ -115,7 +122,6 @@ const useGeolocation = (options = {}) => {
           (loc) => {
             if (!mounted) return;
 
-            // SECURITE : On bloque le Fake GPS UNIQUEMENT en production
             if (loc.mocked && !__DEV__) {
               setError('Position falsifiée détectée.');
               return;
@@ -143,8 +149,6 @@ const useGeolocation = (options = {}) => {
 
               if (timeSinceLastUpdate > 0) {
                 const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
-                // En mode developpement avec Fake GPS, on peut se teleporter vite. 
-                // On desactive le bouclier anti-teleportation si on est en __DEV__ pour fluidifier tes tests.
                 if (calculatedSpeedKmh > 180 && !__DEV__) {
                   return;
                 }
@@ -171,6 +175,25 @@ const useGeolocation = (options = {}) => {
         } else {
           watchRef.current = watcher;
         }
+
+        const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
+        if (hasBackgroundPermission) {
+          const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+          if (!isRegistered) {
+            await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+              accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+              timeInterval,
+              distanceInterval,
+              showsBackgroundLocationIndicator: true,
+              foregroundService: {
+                notificationTitle: "Yely Actif",
+                notificationBody: "Suivi GPS en cours pour la course.",
+                notificationColor: "#D4AF37",
+              }
+            });
+          }
+        }
+
       } catch (err) {
         retryTimeoutRef.current = setTimeout(() => {
           if (mounted) initTracking();
@@ -191,6 +214,12 @@ const useGeolocation = (options = {}) => {
         watchRef.current = null;
       }
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      
+      TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK).then(isRegistered => {
+        if (isRegistered) {
+          Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
+        }
+      });
     };
   }, [initTracking]);
 
@@ -201,6 +230,11 @@ const useGeolocation = (options = {}) => {
       watchRef.current.remove();
       watchRef.current = null;
     }
+    TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK).then(isRegistered => {
+      if (isRegistered) {
+        Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
+      }
+    });
     initTracking();
   }, [initTracking]);
 
