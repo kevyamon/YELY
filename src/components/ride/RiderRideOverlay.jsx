@@ -1,5 +1,5 @@
 // src/components/ride/RiderRideOverlay.jsx
-// PANNEAU PASSAGER - Suivi du Chauffeur avec Zero-Latency UI
+// PANNEAU PASSAGER - Suivi du Chauffeur avec Zero-Latency UI (Synchronise Smart Drive 2.0)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -22,7 +22,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { selectCurrentRide, updateRideStatus } from '../../store/slices/rideSlice';
+import { selectCurrentRide } from '../../store/slices/rideSlice';
 import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters, formatDistance } from '../../utils/distanceUtils';
@@ -87,16 +87,13 @@ const RiderRideOverlay = () => {
     return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
   }, [driverLat, driverLng, targetLat, targetLng]);
 
-  useEffect(() => {
-    if (currentRide?.status === 'accepted' && liveDistance !== Infinity && liveDistance <= 30) {
-      dispatch(updateRideStatus({ status: 'arrived', arrivedAt: Date.now() }));
-    }
-  }, [liveDistance, currentRide?.status, dispatch]);
+  // SUPPRESSION ARCHITECTURALE : Le passager ne force plus l'etat "arrived" localement. 
+  // Il fait confiance absolue au Smart Drive 2.0 du chauffeur et au backend.
 
   const resolveStatusLabel = () => {
     switch (riderStatus) {
       case RIDER_STATUS.ARRIVED:
-        return 'Le chauffeur est arrive';
+        return 'Chauffeur sur place. Montez a bord.'; // UX adaptee a l'auto-start
       case RIDER_STATUS.IN_PROGRESS:
         return 'En route vers la destination';
       default:
@@ -123,7 +120,6 @@ const RiderRideOverlay = () => {
     });
   };
 
-  // CORRECTION SENIOR : Extraction securisee de l'avatar et du nom peu importe le format backend
   const driverAvatar = currentRide.driverProfilePicture || currentRide.driverAvatar || currentRide.driver?.profilePicture || currentRide.driver?.avatar;
   const driverName = currentRide.driverName || currentRide.driver?.name || 'Chauffeur Assigne';
 
