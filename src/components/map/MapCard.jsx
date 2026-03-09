@@ -1,5 +1,5 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Interface Liberee et Optimisee (Mode Veille Actif)
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Hack OSM "None" & Mode Veille Actif
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -43,11 +43,9 @@ const MapCard = forwardRef(({
   const mapRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
-  // ETAT DE LIBERTE : Detecte quand l'utilisateur manipule la carte
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
-  // GESTION DU MODE VEILLE DU BOUTON
   const buttonOpacity = useRef(new Animated.Value(1)).current;
   const [isButtonActive, setIsButtonActive] = useState(true);
   const buttonSleepTimeout = useRef(null);
@@ -78,21 +76,13 @@ const MapCard = forwardRef(({
   const isMapDark = false; 
   const mapBackgroundColor = '#FAFAFA';
 
-  const blankMapStyle = [
-    { featureType: 'all', elementType: 'all', stylers: [{ visibility: 'off' }] },
-    { featureType: 'landscape', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: mapBackgroundColor }] },
-    { featureType: 'water', elementType: 'geometry', stylers: [{ visibility: 'on' }, { color: mapBackgroundColor }] }
-  ];
-
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
-
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  // Declencheur du mode Libre et Reveil du Bouton
   const handleMapInteraction = () => {
     wakeUpButton();
     setIsUserInteracting(true);
@@ -147,8 +137,8 @@ const MapCard = forwardRef(({
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
           }}
-          mapType="standard"
-          customMapStyle={blankMapStyle}
+          // 🔥 LE FAMEUX HACK : On coupe le moteur Google et on laisse juste le canevas blanc
+          mapType="none" 
           showsUserLocation={false}
           showsMyLocationButton={false}
           showsCompass={false}
@@ -162,7 +152,6 @@ const MapCard = forwardRef(({
           zoomEnabled={true}
           scrollEnabled={true}
           
-          // DETECTEURS DE GESTES
           onTouchStart={handleMapInteraction}
           onPanDrag={handleMapInteraction}
           onRegionChangeComplete={(region, details) => {
@@ -175,6 +164,7 @@ const MapCard = forwardRef(({
           onMapReady={handleMapReady}
           onPress={onPress}
         >
+          {/* 🔥 NOS TUILES OSM QUI SE DESSINENT PAR DESSUS */}
           <UrlTile
             urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
             maximumZ={17}
