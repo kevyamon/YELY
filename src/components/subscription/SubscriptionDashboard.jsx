@@ -11,7 +11,6 @@ import GoldButton from '../ui/GoldButton';
 const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
   const [timeLeft, setTimeLeft] = useState(null);
   
-  // 🔥 On recupere l'etat promo global
   const promoMode = useSelector(selectPromoMode);
 
   const onExpiredRef = useRef(onExpired);
@@ -20,9 +19,11 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
     onExpiredRef.current = onExpired;
   }, [onExpired]);
 
-  // COMPTEUR TEMPS RÉEL (Uniquement si abonnement actif)
+  // COMPTEUR TEMPS REEL (Seulement si actif ET non gele par le VIP)
   useEffect(() => {
-    if (!status?.expiresAt || !status?.isActive) return;
+    if (!status?.expiresAt || !status?.isActive || promoMode?.isActive) {
+      return; 
+    }
 
     const calculateTimeLeft = () => {
       const difference = new Date(status.expiresAt).getTime() - Date.now();
@@ -43,18 +44,17 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
     calculateTimeLeft();
     const intervalId = setInterval(calculateTimeLeft, 1000);
     return () => clearInterval(intervalId);
-  }, [status?.expiresAt, status?.isActive]);
+  }, [status?.expiresAt, status?.isActive, promoMode?.isActive]);
 
   const padZero = (num) => String(num || 0).padStart(2, '0');
 
   const formatExpirationDate = (dateString) => {
     if (!dateString) return 'Calcul en cours...';
     const date = new Date(dateString);
-    const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
-    return `${date.getDate()} ${mois[date.getMonth()]} ${date.getFullYear()} à ${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
+    const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
+    return `${date.getDate()} ${mois[date.getMonth()]} ${date.getFullYear()} a ${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
-  // 🔥 LE RENDU PRINCIPAL
   return (
     <View style={styles.stepContainer}>
       <GlassCard style={styles.dashboardCard}>
@@ -65,14 +65,14 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
             <View style={[styles.iconContainerActive, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
               <Ionicons name="gift" size={50} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.title, { color: THEME.COLORS.champagneGold }]}>Accès VIP Offert</Text>
+            <Text style={[styles.title, { color: THEME.COLORS.champagneGold }]}>Acces VIP Offert</Text>
             <Text style={styles.promoDesc}>
               {promoMode.message}
             </Text>
           </View>
         ) 
         
-        // CAS 2 : PAIEMENT EN COURS DE VÉRIFICATION
+        // CAS 2 : PAIEMENT EN COURS DE VERIFICATION
         : status.isPending ? (
           <View style={styles.pendingContainer}>
             <View style={styles.iconContainer}>
@@ -81,11 +81,11 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
             </View>
             <Text style={styles.title}>Traitement en cours</Text>
             <Text style={styles.dashTextDesc}>
-              Votre capture d'écran a bien été reçue. Un administrateur vérifie actuellement votre paiement.
+              Votre capture d'ecran a bien ete recue. Un administrateur verifie actuellement votre paiement.
             </Text>
             <View style={styles.infoBox}>
               <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.infoText}>Activation estimée : moins de 15 minutes.</Text>
+              <Text style={styles.infoText}>Activation estimee : moins de 15 minutes.</Text>
             </View>
           </View>
         ) 
@@ -93,45 +93,64 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
         // CAS 3 : ABONNEMENT CLASSIQUE ACTIF
         : (
           <View style={styles.activeContainer}>
-            <View style={styles.iconContainerActive}>
-              <Ionicons name="checkmark-circle" size={50} color="#2ecc71" />
-            </View>
-            <Text style={styles.title}>Pass Yély Actif</Text>
             
-            <View style={styles.countdownRow}>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeValue}>{padZero(timeLeft?.days)}</Text>
-                <Text style={styles.timeLabel}>Jours</Text>
-              </View>
-              <Text style={styles.timeSeparator}>:</Text>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeValue}>{padZero(timeLeft?.hours)}</Text>
-                <Text style={styles.timeLabel}>Hrs</Text>
-              </View>
-              <Text style={styles.timeSeparator}>:</Text>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeValue}>{padZero(timeLeft?.minutes)}</Text>
-                <Text style={styles.timeLabel}>Min</Text>
-              </View>
-              <Text style={styles.timeSeparator}>:</Text>
-              <View style={styles.timeBlock}>
-                <Text style={styles.timeValue}>{padZero(timeLeft?.seconds)}</Text>
-                <Text style={styles.timeLabel}>Sec</Text>
-              </View>
-            </View>
+            {/* SOUS-CAS 3A : ABONNEMENT ACTIF MAIS GELE PAR LE VIP */}
+            {promoMode?.isActive ? (
+              <>
+                <View style={[styles.iconContainerActive, { backgroundColor: 'rgba(52, 152, 219, 0.15)' }]}>
+                  <Ionicons name="snow-outline" size={50} color="#3498db" />
+                </View>
+                <Text style={styles.title}>Abonnement Gele</Text>
+                <Text style={styles.dashTextDesc}>
+                  Le mode VIP est active sur le reseau. Le temps de votre abonnement est mis en pause et n'est plus decompte.
+                </Text>
+                <Text style={[styles.dashTextDesc, { fontWeight: 'bold', color: THEME.COLORS.champagneGold }]}>
+                  Il reprendra et sera prolonge automatiquement a la fin de la promotion.
+                </Text>
+              </>
+            ) : (
+              /* SOUS-CAS 3B : ABONNEMENT ACTIF NORMAL (DECOMPTE) */
+              <>
+                <View style={styles.iconContainerActive}>
+                  <Ionicons name="checkmark-circle" size={50} color="#2ecc71" />
+                </View>
+                <Text style={styles.title}>Pass Yely Actif</Text>
+                
+                <View style={styles.countdownRow}>
+                  <View style={styles.timeBlock}>
+                    <Text style={styles.timeValue}>{padZero(timeLeft?.days)}</Text>
+                    <Text style={styles.timeLabel}>Jours</Text>
+                  </View>
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <View style={styles.timeBlock}>
+                    <Text style={styles.timeValue}>{padZero(timeLeft?.hours)}</Text>
+                    <Text style={styles.timeLabel}>Hrs</Text>
+                  </View>
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <View style={styles.timeBlock}>
+                    <Text style={styles.timeValue}>{padZero(timeLeft?.minutes)}</Text>
+                    <Text style={styles.timeLabel}>Min</Text>
+                  </View>
+                  <Text style={styles.timeSeparator}>:</Text>
+                  <View style={styles.timeBlock}>
+                    <Text style={styles.timeValue}>{padZero(timeLeft?.seconds)}</Text>
+                    <Text style={styles.timeLabel}>Sec</Text>
+                  </View>
+                </View>
 
-            <View style={styles.dateBox}>
-              <Ionicons name="calendar-outline" size={24} color={THEME.COLORS.champagneGold} style={styles.calendarIcon} />
-              <View style={styles.dateTextContainer}>
-                <Text style={styles.dateLabel}>Expire le :</Text>
-                <Text style={styles.dateValue}>{formatExpirationDate(status.expiresAt)}</Text>
-              </View>
-            </View>
+                <View style={styles.dateBox}>
+                  <Ionicons name="calendar-outline" size={24} color={THEME.COLORS.champagneGold} style={styles.calendarIcon} />
+                  <View style={styles.dateTextContainer}>
+                    <Text style={styles.dateLabel}>Expire le :</Text>
+                    <Text style={styles.dateValue}>{formatExpirationDate(status.expiresAt)}</Text>
+                  </View>
+                </View>
+              </>
+            )}
           </View>
         )}
       </GlassCard>
 
-      {/* BOUTON D'ACTION ADAPTATIF */}
       {!status.isPending && (
         <GoldButton 
           title={promoMode?.isActive && !status.isActive ? "Anticiper un Pass" : "Prolonger mon Pass"} 

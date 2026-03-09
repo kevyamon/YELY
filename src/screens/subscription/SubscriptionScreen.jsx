@@ -47,10 +47,19 @@ const SubscriptionScreen = ({ navigation }) => {
   const [proofImage, setProofImage] = useState(null);
 
   useEffect(() => {
-    const handlePromoUpdate = () => refetchConfig();
+    const handlePromoUpdate = () => {
+      refetchConfig();
+      refetchStatus(); // On force le re-telechargement de l'abonnement pour voir le gel ou la prolongation
+    };
+    
     socketService.on('promo_updated', handlePromoUpdate);
-    return () => socketService.off('promo_updated', handlePromoUpdate);
-  }, [refetchConfig]);
+    socketService.on('PROMO_MODE_CHANGED', handlePromoUpdate);
+    
+    return () => {
+      socketService.off('promo_updated', handlePromoUpdate);
+      socketService.off('PROMO_MODE_CHANGED', handlePromoUpdate);
+    };
+  }, [refetchConfig, refetchStatus]);
 
   useFocusEffect(
     useCallback(() => {
