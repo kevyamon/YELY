@@ -8,10 +8,10 @@ import * as ImagePicker from 'expo-image-picker';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useDispatch, useSelector } from 'react-redux'; // 🔥 useSelector ajouté
+import { useDispatch, useSelector } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, selectPromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice'; // 🔥 selectPromoMode ajouté
+import { logout, selectPromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -35,7 +35,7 @@ const PLAN_TYPES = {
 
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
-  const promoMode = useSelector(selectPromoMode); // 🔥 Récupération du mode VIP global
+  const promoMode = useSelector(selectPromoMode);
   
   const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
@@ -61,7 +61,6 @@ const SubscriptionScreen = ({ navigation }) => {
 
   useEffect(() => {
     if (statusData?.data && !isStatusLoading) {
-      // 🔥 MODIFICATION : On va sur le Dashboard si c'est payé, en attente, OU si le mode gratuit est ON
       if (statusData.data.isActive || statusData.data.isPending || promoMode?.isActive) {
         setCurrentStep(STEPS.DASHBOARD);
       } else {
@@ -76,7 +75,7 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const handleSelectPlan = async (planType, paymentLink, price) => {
     if (!paymentLink) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configuré." }));
+      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configure." }));
       return;
     }
     try {
@@ -98,7 +97,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const pickImage = async () => {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (permissionResult.granted === false) {
-      dispatch(showErrorToast({ title: "Permission requise", message: "Accès à la galerie requis." }));
+      dispatch(showErrorToast({ title: "Permission requise", message: "Acces a la galerie requis." }));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -114,11 +113,11 @@ const SubscriptionScreen = ({ navigation }) => {
   const handleSubmitProof = async () => {
     const phoneRegex = /^\+?[0-9\s]{8,20}$/;
     if (!senderPhone || !phoneRegex.test(senderPhone)) {
-      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numéro valide." }));
+      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numero valide." }));
       return;
     }
     if (!proofImage) {
-      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'écran." }));
+      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'ecran." }));
       return;
     }
 
@@ -137,49 +136,41 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       await submitProof(formData).unwrap();
       dispatch(updateSubscriptionStatus({ isPending: true }));
-      dispatch(showSuccessToast({ title: "Transmission réussie", message: "Vérification en cours." }));
+      dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
       if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
         dispatch(showSuccessToast({ 
           title: "Envoi en cours", 
-          message: "Le fichier est lourd, traitement en arrière-plan..." 
+          message: "Le fichier est lourd, traitement en arriere-plan..." 
         }));
         setCurrentStep(STEPS.DASHBOARD);
-        // MODIFICATION : Suppression du refetchStatus() ici pour éviter le toast d'erreur réseau
       } else {
-        dispatch(showErrorToast({ title: "Échec", message: error?.data?.message || "Erreur réseau inattendue." }));
+        dispatch(showErrorToast({ title: "Echec", message: error?.data?.message || "Erreur reseau inattendue." }));
       }
     }
   };
 
   const renderHeader = () => {
-    const isPending = statusData?.data?.isPending;
     const isActive = statusData?.data?.isActive;
-    const isDashboard = currentStep === STEPS.DASHBOARD;
     
-    // 🔥 NOUVEAU: Le bouton retour est autorisé si l'abonnement est actif OU si le mode gratuit est ON
     const isNavigationAllowed = isActive || promoMode?.isActive;
 
     return (
       <View style={styles.header}>
-        {isNavigationAllowed && isDashboard ? (
+        {isNavigationAllowed ? (
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <Ionicons name="arrow-back" size={26} color={THEME.COLORS.textPrimary} />
+            <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.headerSpacer} />
         )}
         
-        <Text style={styles.headerTitle}>Pass Yély</Text>
+        <Text style={styles.headerTitle}>Pass Yely</Text>
 
-        {(!isNavigationAllowed || isPending) ? (
-          <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
-            <Ionicons name="log-out-outline" size={26} color="#e74c3c" />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.headerSpacer} />
-        )}
+        <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
+          <Ionicons name="log-out-outline" size={26} color="#e74c3c" />
+        </TouchableOpacity>
       </View>
     );
   };

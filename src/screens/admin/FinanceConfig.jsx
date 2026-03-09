@@ -1,13 +1,14 @@
 // src/screens/admin/FinanceConfig.jsx
-// ECRAN FINANCE - Integration stricte du theme.js (Light/Dark)
+// ECRAN FINANCE - Gestion Globale & Mode VIP
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { ActivityIndicator, ScrollView, StyleSheet, Switch, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import {
+  useGetDashboardStatsQuery,
   useGetFinanceDataQuery,
   useToggleGlobalFreeAccessMutation,
   useToggleLoadReduceMutation,
@@ -27,7 +28,10 @@ const GlassCard = ({ children, style }) => (
 
 const FinanceConfig = ({ navigation }) => {
   const dispatch = useDispatch();
+  
   const { data: financeResponse, isLoading } = useGetFinanceDataQuery({ period: 'all' });
+  // 🔥 On recupere les stats generales pour avoir l'etat initial des switches
+  const { data: statsData } = useGetDashboardStatsQuery(); 
   
   const [togglePromo, { isLoading: isTogglingPromo }] = useTogglePromoMutation();
   const [toggleLoadReduce, { isLoading: isTogglingLoad }] = useToggleLoadReduceMutation();
@@ -36,11 +40,25 @@ const FinanceConfig = ({ navigation }) => {
   const [isPromoActive, setIsPromoActive] = useState(false);
   const [isLoadReduced, setIsLoadReduced] = useState(false);
   const [isGlobalFreeAccess, setIsGlobalFreeAccess] = useState(false);
+  
+  // 🔥 Etat pour le message personnalisé
+  const [promoMessage, setPromoMessage] = useState("🎉 Yély Régal ! Pour fêter notre lancement, Yély vous offre l'accès VIP.");
 
   const financeData = financeResponse?.data || financeResponse || [];
-  
   const safeFinanceArray = Array.isArray(financeData) ? financeData : [];
   const totalRevenue = safeFinanceArray.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
+
+  // Initialisation des switches avec les donnees du serveur
+  useEffect(() => {
+    if (statsData?.data?.settings) {
+      setIsPromoActive(statsData.data.settings.isPromoActive || false);
+      setIsLoadReduced(statsData.data.settings.isLoadReduced || false);
+      setIsGlobalFreeAccess(statsData.data.settings.isGlobalFreeAccess || false);
+      if (statsData.data.settings.promoMessage) {
+        setPromoMessage(statsData.data.settings.promoMessage);
+      }
+    }
+  }, [statsData]);
 
   const handleTogglePromo = async (value) => {
     setIsPromoActive(value);
@@ -48,7 +66,7 @@ const FinanceConfig = ({ navigation }) => {
       await togglePromo({ isActive: value }).unwrap(); 
       dispatch(showSuccessToast({
         title: 'Succès',
-        message: `Mode Promotionnel ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
+        message: `Mode Promotionnel (Tarifs) ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
       }));
     } catch (e) { 
       setIsPromoActive(!value); 
@@ -75,7 +93,12 @@ const FinanceConfig = ({ navigation }) => {
   const handleToggleGlobalFreeAccess = async (value) => {
     setIsGlobalFreeAccess(value);
     try {
-      await toggleGlobalFreeAccess({ isActive: value }).unwrap();
+      // 🔥 On envoie l'etat ET le message au backend
+      await toggleGlobalFreeAccess({ 
+        isActive: value,
+        promoMessage: value ? promoMessage : undefined // On ne met à jour le message que si on l'active
+      }).unwrap();
+      
       dispatch(showSuccessToast({
         title: 'Gratuité Chauffeurs',
         message: `Accès gratuit ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'} pour tous.`,
@@ -86,6 +109,16 @@ const FinanceConfig = ({ navigation }) => {
         title: 'Échec',
         message: "Impossible de modifier le statut de gratuité.",
       }));
+    }
+  };
+
+  const handleUpdateMessage = async () => {
+    if (!isGlobalFreeAccess) return;
+    try {
+      await toggleGlobalFreeAccess({ isActive: true, promoMessage }).unwrap();
+      dispatch(showSuccessToast({ title: 'Message à jour', message: 'Le texte a été diffusé aux chauffeurs.' }));
+    } catch (e) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de mettre à jour le message.' }));
     }
   };
 
@@ -111,7 +144,7 @@ const FinanceConfig = ({ navigation }) => {
         </GlassCard>
 
         {/* SECTION : ADMINISTRATION EXCEPTIONNELLE */}
-        <Text style={styles.sectionTitle}>Opérations Spéciales</Text>
+        <Text style={styles.sectionTitle}>Opérations Spéciales (VIP)</Text>
         <GlassCard style={styles.actionCard}>
           <View style={styles.rowBetween}>
             <View style={styles.textContainer}>
@@ -126,6 +159,25 @@ const FinanceConfig = ({ navigation }) => {
               disabled={isTogglingFreeAccess}
             />
           </View>
+
+          {/* 🔥 Zone de personnalisation du message (Visible uniquement si actif) */}
+          {isGlobalFreeAccess && (
+            <View style={styles.messageEditorContainer}>
+              <Text style={styles.messageEditorLabel}>Message affiché aux chauffeurs :</Text>
+              <TextInput
+                style={styles.messageInput}
+                value={promoMessage}
+                onChangeText={setPromoMessage}
+                multiline
+                maxLength={150}
+                placeholder="Ex: Profitez de l'app gratuite !"
+                placeholderTextColor={THEME.COLORS.textSecondary}
+              />
+              <TouchableOpacity style={styles.updateMsgBtn} onPress={handleUpdateMessage}>
+                <Text style={styles.updateMsgBtnText}>Mettre à jour le texte</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </GlassCard>
 
         {/* SECTION : OPTIMISATION ET CHARGE DE TRAVAIL */}
@@ -151,8 +203,8 @@ const FinanceConfig = ({ navigation }) => {
         <GlassCard style={styles.actionCard}>
           <View style={styles.rowBetween}>
             <View style={styles.textContainer}>
-              <Text style={styles.cardTitle}>Mode Promotionnel</Text>
-              <Text style={styles.cardDescription}>Active les tarifs réduits pour les chauffeurs.</Text>
+              <Text style={styles.cardTitle}>Mode Promotionnel (Tarifs)</Text>
+              <Text style={styles.cardDescription}>Active les tarifs réduits (Plans Hebdo/Mensuel) pour les chauffeurs.</Text>
             </View>
             <Switch
               trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
@@ -186,7 +238,14 @@ const styles = StyleSheet.create({
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   textContainer: { flex: 1, paddingRight: 15 },
   cardTitle: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
-  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4 }
+  cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4 },
+  
+  // 🔥 Styles pour l'éditeur de message VIP
+  messageEditorContainer: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: THEME.COLORS.border },
+  messageEditorLabel: { color: THEME.COLORS.primary, fontSize: 13, fontWeight: '600', marginBottom: 8 },
+  messageInput: { backgroundColor: 'rgba(0,0,0,0.3)', color: THEME.COLORS.textPrimary, borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: THEME.COLORS.border },
+  updateMsgBtn: { alignSelf: 'flex-end', marginTop: 10, paddingVertical: 8, paddingHorizontal: 16, backgroundColor: 'rgba(212, 175, 55, 0.1)', borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.primary },
+  updateMsgBtnText: { color: THEME.COLORS.primary, fontSize: 12, fontWeight: 'bold' }
 });
 
 export default FinanceConfig;
