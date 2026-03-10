@@ -1,6 +1,7 @@
 {
   "cli": {
-    "version": ">= 7.0.0"
+    "version": ">= 7.0.0",
+    "appVersionSource": "remote"
   },
   "build": {
     "development": {
@@ -13,12 +14,22 @@
       "channel": "preview"
     },
     "production": {
-      "channel": "production"
+      "channel": "production",
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://yely-backend-pu0n.onrender.com/api/v1",
+        "EXPO_PUBLIC_LOCATIONIQ_TOKEN": "pk.4e174e5a5b55092ab9d70c29533077b2",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      }
     },
     "apk": {
       "channel": "production",
       "android": {
         "buildType": "apk"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://yely-backend-pu0n.onrender.com/api/v1",
+        "EXPO_PUBLIC_LOCATIONIQ_TOKEN": "pk.4e174e5a5b55092ab9d70c29533077b2",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },

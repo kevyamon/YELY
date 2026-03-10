@@ -1,5 +1,5 @@
 // src/hooks/useServerWakeup.js
-// HOOK DE SURVIE RÉSEAU - Détection du Cold Start (Render Sleep)
+// HOOK DE SURVIE RESEAU - Detection du Cold Start (Render Sleep)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -23,7 +23,17 @@ const useServerWakeup = () => {
       if (!isMounted) return;
       attemptRef.current += 1;
 
-      // Timeout dynamique : Rapide au premier essai (3s) au cas où le serveur est déjà prêt.
+      // SECURITE ANTI-BLOCAGE : On force l'ouverture apres 4 echecs
+      if (attemptRef.current > 4) {
+        console.warn('[WAKEUP] Timeout maximal atteint, forcage de l\'ouverture.');
+        if (isMounted) {
+          setIsServerReady(true);
+          setIsWakingUp(false);
+        }
+        return;
+      }
+
+      // Timeout dynamique : Rapide au premier essai (3s) au cas ou le serveur est deja pret.
       // Plus long (8s) pour les essais suivants pour laisser Render s'allumer.
       const timeoutDuration = attemptRef.current === 1 ? 3000 : 8000;
       
@@ -35,13 +45,13 @@ const useServerWakeup = () => {
         
         const response = await fetch(`${healthUrl}?t=${Date.now()}`, {
           headers: { 'Accept': 'application/json' },
-          signal: controller.signal // Tue proprement la requête si le timeout expire
+          signal: controller.signal // Tue proprement la requete si le timeout expire
         });
 
         clearTimeout(timeoutId);
 
         if (response.ok) {
-          console.log('[WAKEUP] ✅ Serveur Prêt et Réactif !');
+          console.log('[WAKEUP] Serveur Pret et Reactif !');
           if (isMounted) {
             setIsServerReady(true);
             setIsWakingUp(false);
@@ -51,14 +61,14 @@ const useServerWakeup = () => {
         }
       } catch (error) {
         if (error.name === 'AbortError') {
-           console.warn(`[WAKEUP] ❌ Timeout (${timeoutDuration}ms). Cold start détecté.`);
+           console.warn(`[WAKEUP] Timeout (${timeoutDuration}ms). Cold start detecte.`);
         } else {
-           console.warn(`[WAKEUP] ❌ Échec du ping : ${error.message}`);
+           console.warn(`[WAKEUP] Echec du ping : ${error.message}`);
         }
         
         if (isMounted) {
           setIsWakingUp(true);
-          // On attend 2 secondes avant de retenter pour aérer le thread réseau
+          // On attend 2 secondes avant de retenter pour aerer le thread reseau
           retryTimer = setTimeout(pingServer, 2000);
         }
       }
