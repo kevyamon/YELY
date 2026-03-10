@@ -1,5 +1,5 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Interface, POIs avec Noms Complets (Mode Veille Actif)
+// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+// SUPPRESSION DU CRASH METRO : import 'leaflet/dist/leaflet.css';
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -82,10 +82,22 @@ const MapCard = forwardRef(({
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
-  // GESTION DU MODE VEILLE DU BOUTON (WEB)
   const buttonOpacity = useRef(new Animated.Value(1)).current;
   const [isButtonActive, setIsButtonActive] = useState(true);
   const buttonSleepTimeout = useRef(null);
+
+  // INJECTION DYNAMIQUE DU CSS LEAFLET (Contournement Metro Bundler)
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (!document.getElementById('leaflet-css')) {
+        const link = document.createElement('link');
+        link.id = 'leaflet-css';
+        link.rel = 'stylesheet';
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+        document.head.appendChild(link);
+      }
+    }
+  }, []);
 
   const wakeUpButton = () => {
     setIsButtonActive(true);
