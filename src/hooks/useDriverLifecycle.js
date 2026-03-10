@@ -16,10 +16,22 @@ import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
 const PICKUP_RADIUS_METERS = 30;
 const AUTO_START_RADIUS_METERS = 20; 
-const AUTO_START_SPEED_MS = 4.16; // ~15 km/h
+const AUTO_START_SPEED_MS = 4.16; 
 const AUTO_COMPLETE_RADIUS_METERS = 30; 
-const AUTO_COMPLETE_SPEED_MS = 1.38; // ~5 km/h
+const AUTO_COMPLETE_SPEED_MS = 1.38; 
 const SNOOZE_DELAY_MS = 120000;
+
+// UTILITAIRE INTERNE : Formule de Haversine pour le filtre de distance
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const p1 = lat1 * (Math.PI / 180);
+  const p2 = lat2 * (Math.PI / 180);
+  const dp = (lat2 - lat1) * (Math.PI / 180);
+  const dl = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
 
 const useDriverLifecycle = ({
   user,
@@ -45,7 +57,6 @@ const useDriverLifecycle = ({
   const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   
-  // Conserve pour compatibilite avec d'eventuels autres composants, mais n'est plus declenche automatiquement
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
@@ -142,20 +153,56 @@ const useDriverLifecycle = ({
     }
   }, [location, isAvailable, isRideActive]);
 
+  // LOGIQUE ADRESSE : Securite Anti-Race Condition et Bouclier Spatial Chauffeur
+  const lastGeocodedLocationRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
+
   useEffect(() => {
+    let isMounted = true;
+
     if (location) {
-      const getAddress = async () => {
-        try {
-          const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
-          setCurrentAddress(addr);
-        } catch (error) {
-          setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+      let shouldFetch = false;
+      
+      if (!lastGeocodedLocationRef.current) {
+        shouldFetch = true;
+      } else {
+        const distance = getDistance(
+          location.latitude, location.longitude,
+          lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
+        );
+        // Filtre de 50 metres pour eviter le spam API en conduisant
+        if (distance > 50) {
+          shouldFetch = true;
         }
-      };
-      getAddress();
+      }
+
+      if (shouldFetch) {
+        if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+        
+        debounceTimeoutRef.current = setTimeout(async () => {
+          try {
+            const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+            if (isMounted) {
+              setCurrentAddress(addr);
+              lastGeocodedLocationRef.current = location;
+            }
+          } catch (error) {
+            if (isMounted) {
+              setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+            }
+          }
+        }, 1500);
+      }
     } else if (errorMsg) {
-      setCurrentAddress('Erreur de signal GPS');
+      if (isMounted) {
+        setCurrentAddress('Erreur de signal GPS');
+      }
     }
+
+    return () => {
+      isMounted = false;
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    };
   }, [location, errorMsg]);
 
   useEffect(() => {
@@ -245,14 +292,12 @@ const useDriverLifecycle = ({
     }
   };
 
-  // LE COEUR DU SMART DRIVE 2.0 (Analyse continue du GPS & Telemetrie)
   useEffect(() => {
     if (!location || !currentRide) return;
 
     const status = currentRide.status;
-    const speed = location.speed || 0; // Vitesse en m/s
+    const speed = location.speed || 0; 
 
-    // 1. ARRIVEE AUTO AU POINT DE DEPART (30m)
     if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -280,7 +325,6 @@ const useDriverLifecycle = ({
       }
     }
 
-    // 2. DEMARRAGE AUTO DE LA COURSE (Mouvement detecte ou distance > 20m)
     if (status === 'arrived' && !isProcessingStartRef.current) {
       const target = currentRide.origin;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -315,7 +359,6 @@ const useDriverLifecycle = ({
       }
     }
 
-    // 3. CLOTURE AUTO FANTOME (Arret a destination)
     if (status === 'in_progress' && !isSubmittingRef.current) {
       const target = currentRide.destination;
       const lat = target?.coordinates?.[1] || target?.latitude;
@@ -327,7 +370,6 @@ const useDriverLifecycle = ({
           { latitude: Number(lat), longitude: Number(lng) }
         );
 
-        // Si le chauffeur est dans la zone (30m) ET qu'il est quasiment a l'arret (<5km/h)
         if (distance <= AUTO_COMPLETE_RADIUS_METERS && speed <= AUTO_COMPLETE_SPEED_MS) {
           Vibration.vibrate(200); 
           handleConfirmArrival();

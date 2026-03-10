@@ -1,91 +1,52 @@
 // src/components/map/markers/MobileMarkers.jsx
-// COMPOSANTS VISUELS CARTE MOBILE
+// COMPOSANTS VISUELS CARTE MOBILE (MAPLIBRE)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import MapLibreGL from '@maplibre/maplibre-react-native';
+import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
-import { AnimatedRegion, Marker } from 'react-native-maps';
 import THEME from '../../../theme/theme';
 
 export const TrackedMarker = ({
   coordinate,
-  anchor,
   children,
   zIndex,
   identifier,
   visible = true,
 }) => {
-  const [tracks, setTracks] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 1000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  if (!visible) return null;
+  if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <Marker
-      identifier={identifier}
-      coordinate={coordinate}
-      anchor={anchor}
-      tracksViewChanges={tracks}
-      zIndex={zIndex}
+    <MapLibreGL.MarkerView
+      id={identifier || `marker-${coordinate.latitude}-${coordinate.longitude}`}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
     >
-      {children}
-    </Marker>
+      <View style={{ zIndex }}>
+        {children}
+      </View>
+    </MapLibreGL.MarkerView>
   );
 };
 
-// LE COMPOSANT MANQUANT QUI FAIT GLISSER LE POINT FLUIDEMENT
 export const AnimatedTrackedMarker = ({
   coordinate,
-  anchor,
   children,
   zIndex,
   identifier,
   visible = true,
 }) => {
-  const [tracks, setTracks] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const [markerCoordinate] = useState(
-    new AnimatedRegion({
-      latitude: coordinate?.latitude || 0,
-      longitude: coordinate?.longitude || 0,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-    })
-  );
-
-  useEffect(() => {
-    if (coordinate?.latitude && coordinate?.longitude) {
-      markerCoordinate.timing({
-        latitude: coordinate.latitude,
-        longitude: coordinate.longitude,
-        duration: 1000,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [coordinate?.latitude, coordinate?.longitude, markerCoordinate]);
-
-  if (!visible) return null;
+  if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <Marker.Animated
-      identifier={identifier}
-      coordinate={markerCoordinate}
-      anchor={anchor}
-      tracksViewChanges={tracks}
-      zIndex={zIndex}
+    <MapLibreGL.MarkerView
+      id={identifier || 'animated-tracked-marker'}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
     >
-      {children}
-    </Marker.Animated>
+      <View style={{ zIndex }}>
+        {children}
+      </View>
+    </MapLibreGL.MarkerView>
   );
 };
 
@@ -176,53 +137,23 @@ export const AnimatedDestinationMarker = ({ color }) => {
 };
 
 export const SmoothDriverMarker = ({ coordinate, heading }) => {
-  const [tracks, setTracks] = useState(true);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setTracks(false), 1200);
-    return () => clearTimeout(timer);
-  }, []);
-
-  const [markerCoordinate] = useState(
-    new AnimatedRegion({
-      latitude: coordinate?.latitude || 0,
-      longitude: coordinate?.longitude || 0,
-      latitudeDelta: 0,
-      longitudeDelta: 0,
-    })
-  );
-
-  const lat = coordinate?.latitude;
-  const lng = coordinate?.longitude;
-
-  useEffect(() => {
-    if (lat && lng) {
-      markerCoordinate.timing({
-        latitude: lat,
-        longitude: lng,
-        duration: 800,
-        useNativeDriver: false,
-      }).start();
-    }
-  }, [lat, lng, markerCoordinate]);
+  if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <Marker.Animated
-      coordinate={markerCoordinate}
-      anchor={{ x: 0.5, y: 0.5 }}
-      zIndex={200}
-      flat={true}
-      rotation={heading || 0}
-      tracksViewChanges={tracks}
+    <MapLibreGL.MarkerView
+      id="driver-marker"
+      coordinate={[coordinate.longitude, coordinate.latitude]}
     >
-      <Animated.View style={styles.carMarkerBg}>
-        <Ionicons
-          name="car-sport"
-          size={20}
-          color={THEME.COLORS.champagneGold}
-        />
-      </Animated.View>
-    </Marker.Animated>
+      <View style={{ transform: [{ rotate: `${heading || 0}deg` }], zIndex: 200 }}>
+        <Animated.View style={styles.carMarkerBg}>
+          <Ionicons
+            name="car-sport"
+            size={20}
+            color={THEME.COLORS.champagneGold}
+          />
+        </Animated.View>
+      </View>
+    </MapLibreGL.MarkerView>
   );
 };
 
@@ -230,31 +161,20 @@ const getShortName = (text) => {
   if (!text) return '';
   const words = text.trim().split(/\s+/);
   if (words.length <= 1) return words[0] || '';
-  return `${words[0]}…`;
+  return `${words[0]}...`;
 };
 
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
-  const [tracks, setTracks] = useState(true);
-
-  useEffect(() => {
-    setTracks(true);
-    const timer = setTimeout(() => setTracks(false), 800);
-    return () => clearTimeout(timer);
-  }, [name, color, icon]);
-
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   const shortName = getShortName(name);
 
   return (
-    <Marker
-      coordinate={coordinate}
-      anchor={{ x: 0.5, y: 1 }}
-      zIndex={40}
-      tracksViewChanges={tracks}
-      onPress={onPress}
+    <MapLibreGL.MarkerView
+      id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
     >
-      <View style={styles.poiWrapper}>
+      <View style={styles.poiWrapper} onTouchEnd={onPress}>
         <View style={styles.poiBottom}>
           <View style={[styles.poiDot, { backgroundColor: color }]}>
             <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
@@ -267,7 +187,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
           </Text>
         </View>
       </View>
-    </Marker>
+    </MapLibreGL.MarkerView>
   );
 };
 

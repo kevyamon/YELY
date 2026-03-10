@@ -18,6 +18,18 @@ const MOCK_VEHICLES = [
   { id: '3', type: 'vip', name: 'VIP', duration: '8' }
 ];
 
+// UTILITAIRE INTERNE : Formule de Haversine pour le filtre de distance
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3;
+  const p1 = lat1 * (Math.PI / 180);
+  const p2 = lat2 * (Math.PI / 180);
+  const dp = (lat2 - lat1) * (Math.PI / 180);
+  const dl = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
 const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
   const appState = useRef(AppState.currentState);
@@ -53,10 +65,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
 
       if (fetchedId) {
-        // AFE Standard : On synchronise la data du backend même si c'est la même course (pour capter les mises à jour silencieuses)
         dispatch(setCurrentRide({ ...currentRide, ...ride, rideId: fetchedId }));
       } else if (currentId && isFetchSuccess) {
-        // Anti-Zombie : Le backend a confirmé qu'il n'y a plus de course active
         dispatch(clearCurrentRide());
       }
     }
@@ -74,26 +84,49 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     return () => subscription.remove();
   }, [refetchCurrentRide]);
 
-  // LOGIQUE ADRESSE : Avec securite Anti-Race Condition
+  // LOGIQUE ADRESSE : Securite Anti-Race Condition et Bouclier Spatial
+  const lastGeocodedLocationRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
+
   useEffect(() => {
     let isMounted = true;
 
     if (manualOrigin) {
       setCurrentAddress(manualOrigin.address);
     } else if (location) {
-      const getAddress = async () => {
-        try {
-          const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
-          if (isMounted) {
-            setCurrentAddress(addr);
-          }
-        } catch (error) {
-          if (isMounted) {
-            setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
-          }
+      let shouldFetch = false;
+      
+      if (!lastGeocodedLocationRef.current) {
+        shouldFetch = true;
+      } else {
+        const distance = getDistance(
+          location.latitude, location.longitude,
+          lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
+        );
+        // On ne refait une requete reseau que si le passager s'est deplace de plus de 50 metres
+        if (distance > 50) {
+          shouldFetch = true;
         }
-      };
-      getAddress();
+      }
+
+      if (shouldFetch) {
+        if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+        
+        // Anti-rebond (Debounce) : On attend 1.5s de stabilite avant d'appeler l'API
+        debounceTimeoutRef.current = setTimeout(async () => {
+          try {
+            const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+            if (isMounted) {
+              setCurrentAddress(addr);
+              lastGeocodedLocationRef.current = location;
+            }
+          } catch (error) {
+            if (isMounted) {
+              setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+            }
+          }
+        }, 1500);
+      }
     } else if (errorMsg) {
       if (isMounted) {
         setCurrentAddress("Signal GPS perdu");
@@ -102,6 +135,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
 
     return () => {
       isMounted = false;
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
   }, [location, errorMsg, manualOrigin]);
 
@@ -113,7 +147,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   }, [destination, displayVehicles, selectedVehicle]);
 
   useEffect(() => {
-    // On se fie uniquement à currentRide pour l'UI, fetchedRideData est juste un backup de synchro
     if (rideToRate || !currentRide || currentRide?.status === 'cancelled' || currentRide?.status === 'timeout') {
       setDestination(null);
       setManualOrigin(null); 
@@ -128,7 +161,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     if (!isLocationInMafereZone(selectedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
-        message: 'Le service ne dessert que la zone autorisée pour le moment.' 
+        message: 'Le service ne dessert que la zone autorisee pour le moment.' 
       }));
       setIsSearchModalVisible(false);
       return;
@@ -182,12 +215,12 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
 
     if (!effectiveOrigin) {
-      dispatch(showErrorToast({ title: 'Erreur Départ', message: 'Veuillez définir votre point de départ.' }));
+      dispatch(showErrorToast({ title: 'Erreur Depart', message: 'Veuillez definir votre point de depart.' }));
       return;
     }
     
     if (!isLocationInMafereZone(effectiveOrigin)) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre point de départ est hors de la zone de service.' }));
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre point de depart est hors de la zone de service.' }));
       return;
     }
 
@@ -196,7 +229,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       return;
     }
     if (!selectedVehicle) {
-      dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un type de véhicule.' }));
+      dispatch(showErrorToast({ title: 'Vehicule', message: 'Veuillez selectionner un type de vehicule.' }));
       return;
     }
     
@@ -207,11 +240,11 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       const destLat = Number(destination.latitude || destination.lat || 0);
 
       let safeOriginAddress = String(currentAddress || effectiveOrigin.address || "Position actuelle").trim();
-      if (safeOriginAddress.length < 5) safeOriginAddress += " (Départ)";
+      if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
 
       let safeDestAddress = String(destination.address || destination.name || "Destination").trim();
-      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivée)";
+      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivee)";
       if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
 
       const payload = {

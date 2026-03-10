@@ -1,5 +1,5 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente Conditionnelle (3D Fixe & Anti-Renversement)
+// HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre (3D Fixe & Anti-Renversement)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
@@ -8,7 +8,6 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-// 🧠 INTELLIGENCE SPATIALE : Formule de Haversine
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
   const p1 = (lat1 * Math.PI) / 180;
@@ -22,7 +21,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 
 const useMapAutoFitter = ({
   isMapReady,
-  mapRef,
+  cameraRef, 
   location,
   driverLocation,
   markers,
@@ -35,13 +34,12 @@ const useMapAutoFitter = ({
   const timeoutRef = useRef(null);
 
   useEffect(() => {
-    if (!isMapReady || !mapRef.current) return;
+    if (!isMapReady || !cameraRef.current) return;
     
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    // 🎯 1. IDENTIFICATION DES EXTRÉMITÉS
     const targetMarker = markers.find(m => m.type === 'destination' || m.type === 'pickup');
     const originMarker = driverLocation?.latitude ? driverLocation : location;
 
@@ -59,12 +57,11 @@ const useMapAutoFitter = ({
 
     if (coordsToFit.length === 0) {
       if (!isInitialFitDone.current) {
-        mapRef.current?.animateToRegion({
-          latitude: MAFERE_CENTER.latitude,
-          longitude: MAFERE_CENTER.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02
-        }, 800);
+        cameraRef.current?.setCamera({
+          centerCoordinate: [MAFERE_CENTER.longitude, MAFERE_CENTER.latitude],
+          zoomLevel: 14,
+          animationDuration: 800
+        });
         isInitialFitDone.current = true;
       }
       return;
@@ -78,12 +75,10 @@ const useMapAutoFitter = ({
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
-      // 🛡️ 2. LE BOUCLIER D'ÉVASION (Anti-Implosion)
       const maxAllowedPadding = SCREEN_HEIGHT * 0.35; 
       const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
       const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
 
-      // 🧠 3. DÉCISION DU SUPERPOUVOIR
       let shouldActivateSuperpower = false;
 
       if (isTrackingActive && targetMarker && originMarker) {
@@ -95,44 +90,34 @@ const useMapAutoFitter = ({
         if (distance > 800) {
           shouldActivateSuperpower = true;
         }
-        // Suppression du calcul de l'angle (heading) pour éviter le renversement
       }
+
+      // Calcul de la Bounding Box pour MapLibre
+      const lats = coordsToFit.map(c => c.latitude);
+      const lngs = coordsToFit.map(c => c.longitude);
+      const sw = [Math.min(...lngs), Math.min(...lats)];
+      const ne = [Math.max(...lngs), Math.max(...lats)];
 
       const delay = Platform.OS === 'ios' ? 100 : 250;
 
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-      setTimeout(() => {
-        if (!mapRef.current) return;
+      timeoutRef.current = setTimeout(() => {
+        if (!cameraRef.current || isUserInteracting) return;
 
-        // ÉTAPE 1 : Glissement de la carte
-        mapRef.current.fitToCoordinates(coordsToFit, {
-          edgePadding: {
-            top: dynamicTop,
-            bottom: dynamicBottom,
-            left: SCREEN_WIDTH * 0.12,
-            right: SCREEN_WIDTH * 0.12,
+        cameraRef.current.setCamera({
+          bounds: {
+            ne,
+            sw,
+            paddingTop: dynamicTop,
+            paddingBottom: dynamicBottom,
+            paddingLeft: SCREEN_WIDTH * 0.12,
+            paddingRight: SCREEN_WIDTH * 0.12,
           },
-          animated: true,
+          pitch: shouldActivateSuperpower ? 45 : 0,
+          animationDuration: 1000,
         });
 
-        // ÉTAPE 2 : LE SUPERPOUVOIR CONDITIONNÉ (Sans rotation vertigineuse)
-        if (isTrackingActive) {
-          timeoutRef.current = setTimeout(() => {
-            if (mapRef.current && !isUserInteracting) {
-              if (shouldActivateSuperpower) {
-                // Inclinaison 3D pure, on ne touche plus au "heading" !
-                mapRef.current.animateCamera({
-                  pitch: 45,     
-                }, { duration: 1000 });
-              } else {
-                mapRef.current.animateCamera({
-                  pitch: 0, 
-                }, { duration: 800 });
-              }
-            }
-          }, 1500); 
-        }
       }, delay);
     }
 
@@ -140,7 +125,7 @@ const useMapAutoFitter = ({
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
 
-  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, mapRef]);
+  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, cameraRef]);
 };
 
 export default useMapAutoFitter;

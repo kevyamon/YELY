@@ -59,17 +59,19 @@
       "display": "standalone",
       "backgroundColor": "#000000",
       "themeColor": "#D4AF37",
-      "orientation": "portrait"
+      "orientation": "portrait",
+      "bundler": "metro"
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-icon-light.png",
           "imageWidth": 200,
           "resizeMode": "contain",
-          "backgroundColor": "#000000",
+          "backgroundColor": "#FAFAFA",
           "dark": {
+            "image": "./assets/images/splash-icon-dark.png",
             "backgroundColor": "#000000"
           }
         }

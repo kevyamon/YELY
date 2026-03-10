@@ -1,11 +1,11 @@
 // src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - Hack OSM "None" & Mode Veille Actif
+// COMPOSANT ORCHESTRATEUR CARTE MOBILE - MAPLIBRE NATIVE
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRouteManager from '../../hooks/useRouteManager';
@@ -21,6 +21,10 @@ import {
   TrackedMarker,
 } from './markers/MobileMarkers';
 import useMapAutoFitter from './useMapAutoFitter';
+
+// Desactivation de la telemetrie et suppression des warnings de Token
+MapLibreGL.setAccessToken(null);
+MapLibreGL.setTelemetryEnabled(false);
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -40,7 +44,7 @@ const MapCard = forwardRef(({
   style,
   children,
 }, ref) => {
-  const mapRef = useRef(null);
+  const cameraRef = useRef(null);
   const [isMapReady, setIsMapReady] = useState(false);
 
   const [isUserInteracting, setIsUserInteracting] = useState(false);
@@ -94,7 +98,7 @@ const MapCard = forwardRef(({
 
   useMapAutoFitter({
     isMapReady,
-    mapRef,
+    cameraRef,
     location,
     driverLocation,
     markers,
@@ -107,16 +111,26 @@ const MapCard = forwardRef(({
     wakeUpButton();
     setIsUserInteracting(false);
     if (isMapReady && location && location.latitude) {
-      mapRef.current?.animateToRegion(
-        { latitude: safeLocation.latitude, longitude: safeLocation.longitude, latitudeDelta: 0.01, longitudeDelta: 0.01 },
-        800
-      );
+      cameraRef.current?.setCamera({
+        centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
+        zoomLevel: 15,
+        animationDuration: 800
+      });
     }
   };
 
   useImperativeHandle(ref, () => ({
-    animateToRegion: (region, duration = 800) => { if (isMapReady) mapRef.current?.animateToRegion(region, duration); },
-    fitToCoordinates: (coords, options) => { if (isMapReady) mapRef.current?.fitToCoordinates(coords, options); },
+    animateToRegion: (region, duration = 800) => {
+      if (isMapReady) {
+        cameraRef.current?.setCamera({
+          centerCoordinate: [region.longitude, region.latitude],
+          animationDuration: duration
+        });
+      }
+    },
+    fitToCoordinates: (coords, options) => { 
+      // La logique complexe de recadrage est desormais completement geree par useMapAutoFitter
+    },
     centerOnUser: handleRecenter,
   }));
 
@@ -125,63 +139,69 @@ const MapCard = forwardRef(({
     if (onMapReady) onMapReady();
   };
 
+  // Preparation des coordonnees de la route pour MapLibre (Format GeoJSON Array)
+  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
+
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
       <View style={[styles.mapClip, !floating && styles.mapClipEdge, { backgroundColor: mapBackgroundColor }]}>
-        <MapView
-          ref={mapRef}
-          style={[styles.map, { backgroundColor: mapBackgroundColor }]}
-          initialRegion={{
-            latitude: safeLocation.latitude,
-            longitude: safeLocation.longitude,
-            latitudeDelta: 0.02,
-            longitudeDelta: 0.02,
-          }}
-          // 🔥 LE FAMEUX HACK : On coupe le moteur Google et on laisse juste le canevas blanc
-          mapType="none" 
-          showsUserLocation={false}
-          showsMyLocationButton={false}
-          showsCompass={false}
-          showsPointsOfInterest={false}
-          showsBuildings={false}
-          showsTraffic={false}
-          showsIndoors={false}
-          
-          rotateEnabled={true}
+        
+        <MapLibreGL.MapView
+          style={styles.map}
+          compassEnabled={false}
+          logoEnabled={false}
+          attributionEnabled={false}
           pitchEnabled={true}
-          zoomEnabled={true}
+          rotateEnabled={true}
           scrollEnabled={true}
-          
-          onTouchStart={handleMapInteraction}
-          onPanDrag={handleMapInteraction}
-          onRegionChangeComplete={(region, details) => {
-            if (details?.isGesture) {
-              handleMapInteraction();
-            }
-          }}
-          
-          maxZoomLevel={17}
-          onMapReady={handleMapReady}
+          zoomEnabled={true}
+          onDidFinishLoadingMap={handleMapReady}
+          onRegionWillChange={handleMapInteraction}
           onPress={onPress}
+          styleURL={MapLibreGL.StyleURL.Street}
         >
-          {/* 🔥 NOS TUILES OSM QUI SE DESSINENT PAR DESSUS */}
-          <UrlTile
-            urlTemplate={isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL}
-            maximumZ={17}
-            flipY={false}
-            shouldReplaceMapContent={false}
-            tileSize={256}
-            fadeDuration={0}
-            zIndex={1}
+          <MapLibreGL.Camera
+            ref={cameraRef}
+            defaultSettings={{
+              centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
+              zoomLevel: 14,
+            }}
           />
 
-          {visibleRoutePoints.length > 1 && (
-            <Polyline
-              coordinates={visibleRoutePoints}
-              strokeColor={THEME.COLORS.champagneGold}
-              strokeWidth={4}
-              zIndex={50}
+          {/* INTEGRATION DU FOND DE CARTE GRATUIT CARTO DB (OSM Base) */}
+          <MapLibreGL.RasterSource
+            id="cartodb-source"
+            tileUrlTemplates={[isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL]}
+            tileSize={256}
+          >
+            <MapLibreGL.RasterLayer
+              id="cartodb-layer"
+              sourceID="cartodb-source"
             />
+          </MapLibreGL.RasterSource>
+
+          {/* DESSIN DE LA ROUTE */}
+          {routeCoordinates.length > 1 && (
+            <MapLibreGL.ShapeSource
+              id="route-source"
+              shape={{
+                type: 'Feature',
+                geometry: {
+                  type: 'LineString',
+                  coordinates: routeCoordinates,
+                },
+              }}
+            >
+              <MapLibreGL.LineLayer
+                id="route-layer"
+                style={{
+                  lineColor: THEME.COLORS.champagneGold,
+                  lineWidth: 4,
+                  lineJoin: 'round',
+                  lineCap: 'round',
+                }}
+              />
+            </MapLibreGL.ShapeSource>
           )}
 
           {mapPOIs.map((poi) => (
@@ -199,7 +219,6 @@ const MapCard = forwardRef(({
             <AnimatedTrackedMarker
               identifier="user_loc"
               coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
-              anchor={{ x: 0.5, y: 0.5 }}
               zIndex={100}
             >
               <View style={styles.userMarker}>
@@ -221,31 +240,27 @@ const MapCard = forwardRef(({
 
             if (marker.type === 'pickup') {
               return (
-                <Marker
+                <TrackedMarker
                   identifier="pickup_loc"
                   key={marker.id || `marker-${index}`}
                   coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  anchor={{ x: 0.5, y: 0.5 }}
                   zIndex={120}
-                  tracksViewChanges={true}
                 >
                   <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
-                </Marker>
+                </TrackedMarker>
               );
             }
 
             if (marker.type === 'destination') {
               return (
-                <Marker
+                <TrackedMarker
                   identifier="dest_loc"
                   key={marker.id || `marker-${index}`}
                   coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  anchor={{ x: 0.28, y: 0.85 }}
                   zIndex={110}
-                  tracksViewChanges={true}
                 >
                   <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
-                </Marker>
+                </TrackedMarker>
               );
             }
 
@@ -255,7 +270,6 @@ const MapCard = forwardRef(({
               <TrackedMarker
                 key={marker.id || `marker-${index}`}
                 coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                anchor={{ x: 0.5, y: 0.5 }}
                 zIndex={90}
               >
                 <View onTouchEnd={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
@@ -277,7 +291,7 @@ const MapCard = forwardRef(({
           })}
 
           {children}
-        </MapView>
+        </MapLibreGL.MapView>
       </View>
 
       {showRecenterButton && (
@@ -305,7 +319,7 @@ const styles = StyleSheet.create({
   floating: { marginHorizontal: THEME.SPACING.md, marginVertical: THEME.SPACING.sm, borderRadius: THEME.BORDERS.radius.xxl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder, overflow: 'hidden', ...THEME.SHADOWS.medium },
   mapClip: { ...StyleSheet.absoluteFillObject, borderRadius: THEME.BORDERS.radius.xxl, overflow: 'hidden', zIndex: 1 },
   mapClipEdge: { borderRadius: 0 },
-  map: { width: '100%', height: '100%' },
+  map: { flex: 1 },
   userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
   userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' },
   userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },

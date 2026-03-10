@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
@@ -285,4 +285,14 @@ const styles = StyleSheet.create({
   }
 });
 
-export default SmartHeader;
+// MEMOIZATION STRICTE : On evite les rendus fantomes si les props ne changent pas
+const arePropsEqual = (prevProps, nextProps) => {
+  return (
+    prevProps.address === nextProps.address &&
+    prevProps.isManualOrigin === nextProps.isManualOrigin &&
+    prevProps.hasDestination === nextProps.hasDestination &&
+    prevProps.userName === nextProps.userName
+  );
+};
+
+export default memo(SmartHeader, arePropsEqual);
