@@ -1,5 +1,5 @@
 // src/hooks/useGeolocation.js
-// HOOK GÉOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial (Foreground + Background)
+// HOOK GEOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial (Foreground + Background)
 // STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
@@ -42,14 +42,14 @@ const useGeolocation = (options = {}) => {
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== 'granted') {
-        setError('Permission au premier plan refusée');
+        setError('Permission au premier plan refusee');
         setIsLoading(false);
         return false;
       }
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== 'granted') {
-        if (__DEV__) console.warn("Permission GPS en arrière-plan refusée. Le suivi s'arrêtera si l'app est réduite.");
+        if (__DEV__) console.warn("Permission GPS en arriere-plan refusee. Le suivi s'arretera si l'app est reduite.");
       }
 
       return true;
@@ -68,7 +68,7 @@ const useGeolocation = (options = {}) => {
       });
 
       if (loc.mocked && !__DEV__) {
-        setError('Position falsifiée détectée.');
+        setError('Position falsifiee detectee.');
         setIsLoading(false);
         return null;
       }
@@ -88,6 +88,7 @@ const useGeolocation = (options = {}) => {
       return coords;
     } catch (err) {
       setError('Recherche du signal GPS...');
+      setIsLoading(false); // CORRECTION : On libere l'interface meme en cas d'echec
       return null;
     }
   }, [enableHighAccuracy]);
@@ -123,7 +124,7 @@ const useGeolocation = (options = {}) => {
             if (!mounted) return;
 
             if (loc.mocked && !__DEV__) {
-              setError('Position falsifiée détectée.');
+              setError('Position falsifiee detectee.');
               return;
             }
 

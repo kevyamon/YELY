@@ -3,6 +3,11 @@
 // STANDARD: Industriel / Bank Grade
 
 import * as Sentry from '@sentry/react-native';
+import * as NativeSplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
+
+// Maintien du splash natif jusqu'a ce que notre SplashScreen JS prenne le relais
+NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
 // Importation declenchant la validation immediate de l'environnement (Fail-Fast)
 import ENV from './src/config/env';
@@ -33,7 +38,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -123,6 +128,17 @@ const AppContent = () => {
 };
 
 const App = () => {
+  // Ecouteur de changement de theme systeme
+  useEffect(() => {
+    const subscription = Appearance.addChangeListener(() => {
+      // Recharge silencieuse en production pour regenerer les constantes statiques de theme.js
+      if (!__DEV__) {
+        Updates.reloadAsync().catch(() => {});
+      }
+    });
+    return () => subscription.remove();
+  }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>

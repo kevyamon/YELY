@@ -2,6 +2,7 @@
 // SPLASH SCREEN - LUXURY REVEAL (TRUE DIAGONAL WIPE)
 // STANDARD: Counter-Translation Masking / High-End UI
 
+import * as NativeSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -38,7 +39,10 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
   );
 
   useEffect(() => {
-    // Animation d'entrée standard
+    // Relais immediat avec le splash natif pour eviter le saut visuel
+    NativeSplashScreen.hideAsync().catch(() => {});
+
+    // Animation d'entree standard
     logoOpacity.value = withTiming(1, { duration: 600 });
     logoScale.value = withSequence(
       withSpring(1.1, { damping: 8, stiffness: 200 }),
@@ -54,17 +58,17 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
 
   useEffect(() => {
     if (isServerReady) {
-      // La jauge file à 100%
+      // La jauge file a 100%
       progress.value = withTiming(100, { 
         duration: 400, 
         easing: Easing.inOut(Easing.ease) 
       }, (finished) => {
         if (finished) {
           // Lancement du VRAI balayage diagonal (Wipe)
-          // On va jusqu'à 1.5 pour s'assurer que la diagonale sort complètement de l'écran
+          // On va jusqu'a 1.5 pour s'assurer que la diagonale sort completement de l'ecran
           wipeProgress.value = withTiming(1.5, {
-            duration: 1100, // Une durée légèrement plus longue pour apprécier la fluidité
-            easing: Easing.bezier(0.45, 0, 0.15, 1) // Courbe d'accélération premium (lent-rapide-lent)
+            duration: 1100, // Une duree legerement plus longue pour apprecier la fluidite
+            easing: Easing.bezier(0.45, 0, 0.15, 1) // Courbe d'acceleration premium (lent-rapide-lent)
           }, (done) => {
             if (done && onFinish) {
               runOnJS(onFinish)();
@@ -75,8 +79,8 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     }
   }, [isServerReady]);
 
-  // LE CONTENEUR : Glisse vers le haut à gauche. Il agit comme notre "masque".
-  // On arrondit son coin inférieur droit progressivement pour créer la courbe de balayage.
+  // LE CONTENEUR : Glisse vers le haut a gauche. Il agit comme notre "masque".
+  // On arrondit son coin inferieur droit progressivement pour creer la courbe de balayage.
   const containerStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: -wipeProgress.value * SCREEN_WIDTH },
@@ -85,8 +89,8 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     borderBottomRightRadius: wipeProgress.value * (SCREEN_WIDTH * 1.2),
   }));
 
-  // LE CONTENU INTERNE : Glisse vers le bas à droite EXACTEMENT à la même vitesse.
-  // L'illusion d'optique est parfaite : les éléments restent figés à l'écran pendant que le masque les efface.
+  // LE CONTENU INTERNE : Glisse vers le bas a droite EXACTEMENT a la meme vitesse.
+  // L'illusion d'optique est parfaite : les elements restent figes a l'ecran pendant que le masque les efface.
   const innerStyle = useAnimatedStyle(() => ({
     transform: [
       { translateX: wipeProgress.value * SCREEN_WIDTH },
@@ -121,7 +125,7 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
         </Animated.View>
 
         <Animated.View style={[styles.textContainer, textStyle]}>
-          <Text style={styles.appName}>YÉLY</Text>
+          <Text style={styles.appName}>YELY</Text>
           <Text style={styles.tagline}>Votre course, votre confort</Text>
         </Animated.View>
 
@@ -131,8 +135,8 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
           </View>
           <Text style={styles.progressText}>
             {progressText === 100 
-              ? "Système opérationnel" 
-              : `Connexion sécurisée... ${progressText}%`}
+              ? "Systeme operationnel" 
+              : `Connexion securisee... ${progressText}%`}
           </Text>
         </Animated.View>
 
@@ -149,7 +153,7 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     zIndex: 9999,
-    backgroundColor: COLORS.deepAsphalt,
+    backgroundColor: COLORS.background, // Correction : Adaptation automatique au mode sombre/clair
     overflow: 'hidden',
     // L'ombre suit la bordure de balayage, donnant un effet de page qui se retire
     shadowColor: COLORS.pureBlack,
