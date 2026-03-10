@@ -2,13 +2,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import { Image, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useSubmitReportMutation } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+
+// UTILITAIRE SENIOR : Formatage universel des images pour FormData
+const formatImageForUpload = (imageUri, prefix = 'img') => {
+  let localUri = imageUri;
+  if (Platform.OS === 'android' && !localUri.includes('file://')) {
+    // Normalisation Android
+    localUri = localUri.startsWith('content://') ? localUri : `file://${localUri}`;
+  }
+  
+  const filename = localUri.split('/').pop() || `${prefix}_${Date.now()}.jpg`;
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+  return {
+    uri: localUri,
+    name: filename,
+    type,
+  };
+};
 
 const ReportScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -19,7 +38,9 @@ const ReportScreen = ({ navigation }) => {
   const pickImage = async () => {
     if (images.length >= 3) return;
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
-    if (!res.canceled) setImages([...images, res.assets[0]]);
+    if (!res.canceled && res.assets && res.assets.length > 0) {
+      setImages([...images, res.assets[0]]);
+    }
   };
 
   const removeImage = (indexToRemove) => {
@@ -28,7 +49,7 @@ const ReportScreen = ({ navigation }) => {
 
   const replaceImage = async (indexToReplace) => {
     const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
-    if (!res.canceled) {
+    if (!res.canceled && res.assets && res.assets.length > 0) {
       const newImages = [...images];
       newImages[indexToReplace] = res.assets[0];
       setImages(newImages);
@@ -36,15 +57,17 @@ const ReportScreen = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    // AJOUT SENIOR: Verrou anti-spam. Si c'est déjà en cours d'envoi, on bloque les autres clics.
     if (isLoading) return;
 
     if (!message.trim()) return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
     
     const formData = new FormData();
     formData.append('message', message);
+    
+    // Application de la sécurisation des images
     images.forEach((img, i) => {
-      formData.append('captures', { uri: img.uri, name: `report_${i}.jpg`, type: 'image/jpeg' });
+      const formattedImg = formatImageForUpload(img.uri, `report_${i}`);
+      formData.append('captures', formattedImg);
     });
 
     try {
@@ -73,7 +96,7 @@ const ReportScreen = ({ navigation }) => {
           onChangeText={setMessage} 
           placeholder="Détaillez le problème rencontré..."
           placeholderTextColor={THEME.COLORS.textTertiary}
-          editable={!isLoading} // AJOUT SENIOR: On empêche d'écrire pendant l'envoi
+          editable={!isLoading} 
         />
         
         <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
@@ -82,7 +105,7 @@ const ReportScreen = ({ navigation }) => {
             <View key={i} style={styles.imageContainer}>
               <Image source={{ uri: img.uri }} style={styles.preview} />
               
-              {!isLoading && ( // On cache les actions si ça charge
+              {!isLoading && ( 
                 <>
                   <TouchableOpacity style={styles.removeIcon} onPress={() => removeImage(i)}>
                     <Ionicons name="close-circle" size={24} color={THEME.COLORS.danger} />
@@ -107,7 +130,7 @@ const ReportScreen = ({ navigation }) => {
           title={isLoading ? "ENVOI EN COURS..." : "ENVOYER LE SIGNALEMENT"} 
           onPress={handleSubmit} 
           isLoading={isLoading} 
-          disabled={isLoading} // AJOUT SENIOR: On désactive le bouton
+          disabled={isLoading} 
           style={styles.btn} 
         />
       </ScrollView>
@@ -120,7 +143,6 @@ const styles = StyleSheet.create({
   title: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
   content: { padding: 20 },
   label: { color: THEME.COLORS.textSecondary, marginBottom: 10, fontSize: 14 },
-  // CORRECTION SENIOR: color: THEME.COLORS.textPrimary au lieu de '#FFF' pour s'adapter au mode jour/nuit
   input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 15, padding: 15, color: THEME.COLORS.textPrimary, textAlignVertical: 'top', marginBottom: 25, borderWidth: 1, borderColor: THEME.COLORS.border },
   imageRow: { flexDirection: 'row', marginBottom: 30 },
   imageContainer: { position: 'relative', marginRight: 15 },

@@ -28,6 +28,24 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
+// UTILITAIRE SENIOR : Formatage universel des images pour FormData
+const formatImageForUpload = (imageUri, prefix = 'proof') => {
+  let localUri = imageUri;
+  if (Platform.OS === 'android' && !localUri.includes('file://')) {
+    localUri = localUri.startsWith('content://') ? localUri : `file://${localUri}`;
+  }
+  
+  const filename = localUri.split('/').pop() || `${prefix}_${Date.now()}.jpg`;
+  const match = /\.(\w+)$/.exec(filename);
+  const type = match ? `image/${match[1]}` : `image/jpeg`;
+
+  return {
+    uri: localUri,
+    name: filename,
+    type,
+  };
+};
+
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const promoMode = useSelector(selectPromoMode);
@@ -41,7 +59,6 @@ const SubscriptionScreen = ({ navigation }) => {
   const [senderPhone, setSenderPhone] = useState('');
   const [proofImage, setProofImage] = useState(null);
 
-  // REFLEXE LOCAL : Des que cette page s'ouvre, elle force l'alignement du Redux VIP
   useEffect(() => {
     if (configData?.data) {
       dispatch(updatePromoMode({
@@ -115,7 +132,7 @@ const SubscriptionScreen = ({ navigation }) => {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
+      mediaTypes: ['images'], // Correction selon l'API d'Expo
       allowsEditing: false,
       quality: 0.8, 
     });
@@ -139,13 +156,9 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    const filename = proofImage.uri.split('/').pop();
-    const match = /\.(\w+)$/.exec(filename);
-    formData.append('proofImage', {
-      uri: proofImage.uri,
-      name: filename || 'proof_image.jpg',
-      type: match ? `image/${match[1]}` : `image/jpeg`
-    });
+    // Application de la sécurisation de l'image
+    const formattedProof = formatImageForUpload(proofImage.uri, 'proof');
+    formData.append('proofImage', formattedProof);
 
     try {
       await submitProof(formData).unwrap();
