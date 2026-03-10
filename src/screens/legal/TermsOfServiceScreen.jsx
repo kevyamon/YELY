@@ -54,14 +54,14 @@ const TermsOfServiceScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
+  safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.md, paddingBottom: THEME.SPACING.sm },
   backButton: { flexDirection: 'row', alignItems: 'center', alignSelf: 'flex-start' },
   backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
   scrollContent: { paddingHorizontal: THEME.SPACING.xl, paddingBottom: THEME.SPACING.xxl },
   title: { color: THEME.COLORS.champagneGold, fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.xl, textAlign: 'center' },
   section: { marginBottom: THEME.SPACING.lg },
-  sectionTitle: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', marginBottom: THEME.SPACING.sm },
+  sectionTitle: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold', marginBottom: THEME.SPACING.sm },
   text: { color: THEME.COLORS.textSecondary, fontSize: 14, lineHeight: 22 }
 });
 
