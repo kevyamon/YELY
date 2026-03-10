@@ -100,7 +100,8 @@ const AppContent = () => {
 
   return (
     <>
-      <NavigationContainer>
+      {/* CORRECTION SENIOR : Forcage strict du titre du document Web pour l'installation PWA */}
+      <NavigationContainer documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
           <StatusBar
             style="dark"
