@@ -4,7 +4,6 @@
 
 import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
-import * as Updates from 'expo-updates';
 
 // Maintien du splash natif jusqu'a ce que notre SplashScreen JS prenne le relais
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
@@ -37,7 +36,7 @@ if (!__DEV__) {
 import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import 'react-native-gesture-handler';
@@ -53,6 +52,7 @@ import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
+import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -128,12 +128,15 @@ const AppContent = () => {
 };
 
 const App = () => {
-  // Ecouteur de changement de theme systeme
+  const [themeChanged, setThemeChanged] = useState(false);
+  const initialTheme = useRef(Appearance.getColorScheme());
+
   useEffect(() => {
-    const subscription = Appearance.addChangeListener(() => {
-      // Recharge silencieuse en production pour regenerer les constantes statiques de theme.js
-      if (!__DEV__) {
-        Updates.reloadAsync().catch(() => {});
+    const subscription = Appearance.addChangeListener((preferences) => {
+      if (preferences.colorScheme !== initialTheme.current) {
+        setThemeChanged(true);
+      } else {
+        setThemeChanged(false);
       }
     });
     return () => subscription.remove();
@@ -146,6 +149,7 @@ const App = () => {
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
               <AppContent />
+              {themeChanged && <ThemeChangeModal />}
             </Sentry.ErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>

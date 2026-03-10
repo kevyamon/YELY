@@ -33,7 +33,6 @@ const ProfileScreen = ({ navigation }) => {
   const currentUser = useSelector(selectCurrentUser);
   const isDriver = currentUser?.role === 'driver';
   
-  // NOUVEAU : On extrait le role exact pour l'affichage dynamique
   const userRole = currentUser?.role || 'rider';
 
   const { data: profileData, isLoading: isFetching, refetch } = useGetUserProfileQuery();
@@ -43,13 +42,16 @@ const ProfileScreen = ({ navigation }) => {
 
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
+  // Initialisation instantanee avec les donnees en cache (currentUser)
+  const initialPhone = currentUser?.phone ? currentUser.phone.replace(COUNTRY_CODE, '').trim() : '';
   const [form, setForm] = useState({
-    name: '',
-    phone: '', 
-    vehicleModel: '',
-    vehiclePlate: '',
+    name: currentUser?.name || '',
+    phone: initialPhone, 
+    vehicleModel: currentUser?.vehicle?.model || '',
+    vehiclePlate: currentUser?.vehicle?.plate || '',
   });
 
+  // Mise a jour avec les donnees fraiches du serveur quand elles arrivent
   useEffect(() => {
     if (profileData?.data) {
       const p = profileData.data;
@@ -107,7 +109,7 @@ const ProfileScreen = ({ navigation }) => {
       dispatch(updateUserInfo({ profilePicture: res.data.profilePicture }));
       refetch();
       dispatch(showSuccessToast({ 
-        title: 'Felicitations', 
+        title: 'Succes', 
         message: 'Votre photo de profil a ete mise a jour avec succes.' 
       }));
     } catch (error) {
@@ -160,7 +162,7 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  if (isFetching) {
+  if (isFetching && !currentUser) {
     return (
       <ScreenWrapper style={styles.centerContainer}>
         <GlobalSkeleton visible={true} fullScreen={false} />

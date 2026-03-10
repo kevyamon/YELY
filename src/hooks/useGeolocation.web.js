@@ -37,6 +37,7 @@ const useGeolocation = (options = {}) => {
 
   const watchIdRef = useRef(null);
   const lastValidLocationRef = useRef(null);
+  const hasFetchedAddressRef = useRef(false);
 
   const reverseGeocodeWeb = async (coords) => {
     try {
@@ -65,13 +66,13 @@ const useGeolocation = (options = {}) => {
     setIsLoading(true);
 
     // LA MAGIE WEB : Si on code en local, on force la position a Mafere.
-    // Ce bloc entier est detruit a la compilation de production.
     if (__DEV__) {
       const mockWithTime = { ...MAFERE_MOCK_LOCATION, timestamp: Date.now() };
       setLocation(mockWithTime);
       lastValidLocationRef.current = mockWithTime;
       
-      if (!address) {
+      if (!hasFetchedAddressRef.current) {
+        hasFetchedAddressRef.current = true;
         await reverseGeocodeWeb(MAFERE_MOCK_LOCATION);
       }
       
@@ -95,8 +96,11 @@ const useGeolocation = (options = {}) => {
         setError(null);
         
         const accuracy = position.coords.accuracy || 100;
+        
+        // Tolerance elargie pour le web (Les PC fixes ont une tres mauvaise precision)
+        const maxAccuracy = isMobile ? 150 : 2500;
 
-        if (accuracy > 50) return;
+        if (accuracy > maxAccuracy) return;
 
         const newLat = position.coords.latitude;
         const newLng = position.coords.longitude;
@@ -136,7 +140,11 @@ const useGeolocation = (options = {}) => {
         setLocation(coords);
         setIsLoading(false);
         
-        if (!address) reverseGeocodeWeb(coords);
+        // On effectue le reverse-geocoding une seule fois pour ne pas spammer Nominatim
+        if (!hasFetchedAddressRef.current) {
+          hasFetchedAddressRef.current = true;
+          reverseGeocodeWeb(coords);
+        }
       },
       (err) => {
         setIsLoading(false);
@@ -153,7 +161,7 @@ const useGeolocation = (options = {}) => {
         maximumAge: 5000
       }
     );
-  }, [address]);
+  }, []); // Retrait volontaire de 'address' pour eviter la boucle de rechargement
 
   useEffect(() => {
     startTracking();

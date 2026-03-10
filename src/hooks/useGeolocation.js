@@ -88,7 +88,7 @@ const useGeolocation = (options = {}) => {
       return coords;
     } catch (err) {
       setError('Recherche du signal GPS...');
-      setIsLoading(false); // CORRECTION : On libere l'interface meme en cas d'echec
+      setIsLoading(false); 
       return null;
     }
   }, [enableHighAccuracy]);
@@ -129,7 +129,9 @@ const useGeolocation = (options = {}) => {
             }
 
             const accuracy = loc.coords.accuracy || 100;
-            if (accuracy > 50) return;
+            const maxAccuracy = __DEV__ ? 2000 : 100;
+            
+            if (accuracy > maxAccuracy) return;
 
             const newLat = loc.coords.latitude;
             const newLng = loc.coords.longitude;
@@ -144,7 +146,8 @@ const useGeolocation = (options = {}) => {
               );
               const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-              if (distance < 5) {
+              const minDistance = __DEV__ ? 15 : 10;
+              if (distance < minDistance) {
                 return; 
               }
 
