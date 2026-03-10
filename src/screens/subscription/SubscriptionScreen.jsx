@@ -28,21 +28,23 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
-// UTILITAIRE SENIOR : Formatage universel des images pour FormData
-const formatImageForUpload = (imageUri, prefix = 'proof') => {
-  let localUri = imageUri;
-  if (Platform.OS === 'android' && !localUri.includes('file://')) {
-    localUri = localUri.startsWith('content://') ? localUri : `file://${localUri}`;
-  }
+// CORRECTION SENIOR : Formatage universel des images pour FormData
+const formatImageForUpload = (imageAsset, prefix = 'proof') => {
+  let localUri = imageAsset.uri;
   
-  const filename = localUri.split('/').pop() || `${prefix}_${Date.now()}.jpg`;
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : `image/jpeg`;
+  if (Platform.OS === 'android' && !localUri.includes('file://') && !localUri.startsWith('content://')) {
+    localUri = `file://${localUri}`;
+  } else if (Platform.OS === 'ios') {
+    localUri = localUri.replace('file://', '');
+  }
+
+  const filename = imageAsset.fileName || `${prefix}_${Date.now()}.jpg`;
+  const type = imageAsset.mimeType || 'image/jpeg';
 
   return {
     uri: localUri,
     name: filename,
-    type,
+    type: type,
   };
 };
 
@@ -132,7 +134,7 @@ const SubscriptionScreen = ({ navigation }) => {
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'], // Correction selon l'API d'Expo
+      mediaTypes: ['images'],
       allowsEditing: false,
       quality: 0.8, 
     });
@@ -156,8 +158,8 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    // Application de la sécurisation de l'image
-    const formattedProof = formatImageForUpload(proofImage.uri, 'proof');
+    // Application de la securisation de l'image
+    const formattedProof = formatImageForUpload(proofImage, 'proof');
     formData.append('proofImage', formattedProof);
 
     try {

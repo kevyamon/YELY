@@ -1,7 +1,4 @@
 // src/store/slices/apiSlice.js
-// COEUR RESEAU - Rotation Mutex & Anti-Sniffing & Persistance Robuste & Sentry
-// STANDARD: Industriel / Bank Grade
-
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import * as Sentry from '@sentry/react-native';
 import { Mutex } from 'async-mutex';
@@ -17,7 +14,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_URL,
-  timeout: 60000, // MODIFICATION : Timeout augmenté à 60 secondes pour sécuriser les uploads lourds
+  timeout: 60000, 
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -27,6 +24,10 @@ const baseQuery = fetchBaseQuery({
     
     headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('Accept', 'application/json');
+    
+    // SECURITE: Ne JAMAIS forcer le Content-Type ici.
+    // Si la requete contient un fichier (FormData), le systeme natif s'en chargera
+    // avec le bon format et les bonnes limites (boundary).
     
     return headers;
   },
@@ -38,11 +39,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   const tokenBeforeRequest = api.getState().auth.token;
   let result = await baseQuery(args, api, extraOptions);
 
-  // --- GESTION GLOBALE DES ERREURS API (SENTRY & TOASTS) ---
   if (result.error) {
     const errorStatus = result.error.status;
     
-    // Extraction blindée de l'URL pour identifier la requête
     let requestUrl = '';
     if (typeof args === 'string') {
       requestUrl = args;
@@ -50,9 +49,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       requestUrl = args.url;
     }
     
-    // MODIFICATION MAJEURE : Bouclier inconditionnel. Si l'URL cible l'upload de preuve, 
-    // on force le silence, même si RTK Query a perdu les extraOptions lors du crash.
-    const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit-proof');
+    const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit');
     const isSystemRefreshing = mutex.isLocked() || api.getState().auth.isRefreshing;
 
     if (errorStatus !== 401 && errorStatus !== 400 && errorStatus !== 404 && errorStatus !== 409) {
@@ -109,7 +106,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
            currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
            
            if (!currentRefreshToken) {
-             console.warn('[API] SecureStore potentiellement bloque. Nouvel essai dans 500ms...');
+             console.warn('[API] SecureStore potentiellement bloque. Nouvel essai...');
              await sleep(500);
              currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
            }

@@ -10,22 +10,22 @@ import { useSubmitReportMutation } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-// UTILITAIRE SENIOR : Formatage universel des images pour FormData
-const formatImageForUpload = (imageUri, prefix = 'img') => {
-  let localUri = imageUri;
-  if (Platform.OS === 'android' && !localUri.includes('file://')) {
-    // Normalisation Android
-    localUri = localUri.startsWith('content://') ? localUri : `file://${localUri}`;
-  }
+const formatImageForUpload = (imageAsset, index) => {
+  let localUri = imageAsset.uri;
   
-  const filename = localUri.split('/').pop() || `${prefix}_${Date.now()}.jpg`;
-  const match = /\.(\w+)$/.exec(filename);
-  const type = match ? `image/${match[1]}` : `image/jpeg`;
+  if (Platform.OS === 'android' && !localUri.includes('file://') && !localUri.startsWith('content://')) {
+    localUri = `file://${localUri}`;
+  } else if (Platform.OS === 'ios') {
+    localUri = localUri.replace('file://', '');
+  }
+
+  const filename = imageAsset.fileName || `capture_${Date.now()}_${index}.jpg`;
+  const type = imageAsset.mimeType || 'image/jpeg';
 
   return {
     uri: localUri,
     name: filename,
-    type,
+    type: type,
   };
 };
 
@@ -37,7 +37,10 @@ const ReportScreen = ({ navigation }) => {
 
   const pickImage = async () => {
     if (images.length >= 3) return;
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
+    const res = await ImagePicker.launchImageLibraryAsync({ 
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      quality: 0.5 
+    });
     if (!res.canceled && res.assets && res.assets.length > 0) {
       setImages([...images, res.assets[0]]);
     }
@@ -48,7 +51,10 @@ const ReportScreen = ({ navigation }) => {
   };
 
   const replaceImage = async (indexToReplace) => {
-    const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.5 });
+    const res = await ImagePicker.launchImageLibraryAsync({ 
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      quality: 0.5 
+    });
     if (!res.canceled && res.assets && res.assets.length > 0) {
       const newImages = [...images];
       newImages[indexToReplace] = res.assets[0];
@@ -59,23 +65,24 @@ const ReportScreen = ({ navigation }) => {
   const handleSubmit = async () => {
     if (isLoading) return;
 
-    if (!message.trim()) return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
+    if (!message.trim()) {
+      return dispatch(showErrorToast({ title: 'Message vide', message: 'Decrivez le probleme.' }));
+    }
     
     const formData = new FormData();
     formData.append('message', message);
     
-    // Application de la sécurisation des images
-    images.forEach((img, i) => {
-      const formattedImg = formatImageForUpload(img.uri, `report_${i}`);
+    images.forEach((img, index) => {
+      const formattedImg = formatImageForUpload(img, index);
       formData.append('captures', formattedImg);
     });
 
     try {
       await submitReport(formData).unwrap();
-      dispatch(showSuccessToast({ title: 'Envoyé', message: 'L\'admin traitera votre demande.' }));
+      dispatch(showSuccessToast({ title: 'Envoye', message: 'L\'administration traitera votre demande.' }));
       navigation.goBack();
     } catch (e) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Échec de l\'envoi.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Echec de l\'envoi du signalement.' }));
     }
   };
 
@@ -85,21 +92,21 @@ const ReportScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} disabled={isLoading}>
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Signaler un problème</Text>
+        <Text style={styles.title}>Signaler un probleme</Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Décrivez votre souci</Text>
+        <Text style={styles.label}>Decrivez votre souci</Text>
         <TextInput 
           style={styles.input} 
           multiline numberOfLines={6} 
           value={message} 
           onChangeText={setMessage} 
-          placeholder="Détaillez le problème rencontré..."
+          placeholder="Detaillez le probleme rencontre..."
           placeholderTextColor={THEME.COLORS.textTertiary}
           editable={!isLoading} 
         />
         
-        <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
+        <Text style={styles.label}>Captures d'ecran ({images.length}/3)</Text>
         <View style={styles.imageRow}>
           {images.map((img, i) => (
             <View key={i} style={styles.imageContainer}>
