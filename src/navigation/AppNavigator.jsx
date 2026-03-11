@@ -72,7 +72,7 @@ const PlaceholderScreen = ({ route, navigation }) => (
   </View>
 );
 
-SplashScreen.preventAutoHideAsync();
+SplashScreen.preventAutoHideAsync().catch(() => {});
 
 const Stack = createNativeStackNavigator();
 
@@ -104,7 +104,7 @@ const AppNavigator = () => {
       }
     };
     checkPromoAtStartup();
-  }, [isAuthenticated, dispatch]); // user?.role omis volontairement pour eviter des boucles
+  }, [isAuthenticated, dispatch]); 
 
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
@@ -120,7 +120,8 @@ const AppNavigator = () => {
             try {
               storedUser = JSON.parse(storedUserStr);
             } catch (parseError) {
-              console.warn('[AUTH] Erreur de parsing du profil local.');
+              // Nettoyage de la corruption locale pour eviter un plantage permanent
+              await SecureStorageAdapter.removeItem('userInfo');
             }
           }
 
@@ -139,9 +140,14 @@ const AppNavigator = () => {
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
+        // Protection du masquage : on laisse le temps a l'arbre React Navigation de se construire
         setTimeout(async () => {
-          await SplashScreen.hideAsync();
-        }, 100);
+          try {
+            await SplashScreen.hideAsync();
+          } catch (err) {
+            // Le Splash Screen est potentiellement deja masque, on ignore l'erreur
+          }
+        }, 300);
       }
     };
 

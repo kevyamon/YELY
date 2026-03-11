@@ -1,3 +1,4 @@
+import 'react-native-gesture-handler';
 // App.js
 // POINT D'ENTREE - Cablage Redux, Providers, Sentry & Intelligence PWA/Update
 // STANDARD: Industriel / Bank Grade
@@ -18,23 +19,12 @@ Sentry.init({
   environment: ENV.APP_ENV
 });
 
-if (!__DEV__) {
-  console.log = () => {};
-  console.warn = () => {};
-  console.error = (error, isFatal) => {
-    Sentry.captureException(new Error(error));
-  };
-  console.info = () => {};
-  console.debug = () => {};
-}
-
 import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
-import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 import { Provider as PaperProvider, Portal } from 'react-native-paper';

@@ -2,9 +2,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
-// ADAPTATEUR STOCKAGE HYBRIDE (Tolérance aux pannes & Limite 2048 octets)
+// ADAPTATEUR STOCKAGE HYBRIDE (Tolerance aux pannes & Limite 2048 octets)
 // - userInfo (potentiellement lourd) -> AsyncStorage (Sans limite de taille)
-// - tokens (sensibles) -> SecureStore (Chiffré par l'OS)
+// - tokens (sensibles) -> SecureStore (Chiffre par l'OS)
 // CSCSM Level: Bank Grade
 
 const isWeb = Platform.OS === 'web';
@@ -17,7 +17,15 @@ const SecureStorageAdapter = {
       }
       return await SecureStore.getItemAsync(key);
     } catch (error) {
-      console.error(`[SecureStorage] Erreur lecture pour ${key}:`, error);
+      // Mecanisme Fail-Safe : Si le Keystore natif est corrompu (ex: changement de code PIN du telephone),
+      // on force la purge de la cle pour eviter un crash en boucle au demarrage.
+      if (!isWeb && key !== 'userInfo') {
+        try {
+          await SecureStore.deleteItemAsync(key);
+        } catch (e) {
+          // Echec silencieux accepte ici
+        }
+      }
       return null;
     }
   },
@@ -30,7 +38,7 @@ const SecureStorageAdapter = {
         await SecureStore.setItemAsync(key, value);
       }
     } catch (error) {
-      console.error(`[SecureStorage] Erreur ecriture pour ${key}:`, error);
+      // Les erreurs d'ecriture ne doivent pas crasher l'application
     }
   },
 
@@ -42,7 +50,7 @@ const SecureStorageAdapter = {
         await SecureStore.deleteItemAsync(key);
       }
     } catch (error) {
-      console.error(`[SecureStorage] Erreur suppression pour ${key}:`, error);
+      // Les erreurs de suppression ne doivent pas crasher l'application
     }
   }
 };
