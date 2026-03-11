@@ -1,5 +1,5 @@
 // src/screens/history/HistoryScreen.jsx
-// HISTORIQUE DES COURSES - Tracabilite et gestion de la visibilite
+// HISTORIQUE DES COURSES - Tracabilite et gestion de la visibilite (Ghost Rendering Inclus)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useGetRideHistoryQuery, useHideFromHistoryMutation } from '../../store/api/ridesApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
@@ -133,32 +133,59 @@ const HistoryScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {isLoading ? (
-        <View style={styles.centerContainer}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-        </View>
-      ) : rides.length === 0 ? (
-        <View style={styles.centerContainer}>
-          <Ionicons name="map-outline" size={60} color={THEME.COLORS.textTertiary} />
-          <Text style={styles.emptyText}>Vous n'avez effectué aucune course.</Text>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            ref={flatListRef}
-            data={rides}
-            keyExtractor={(item) => item._id}
-            renderItem={renderRideItem}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onRefresh={refetch}
-            refreshing={isFetching}
-          />
-          <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
-        </>
-      )}
+      <GlobalSkeleton visible={isLoading} style={{ flex: 1 }}>
+        {isLoading ? (
+          <View style={styles.listContainer}>
+            {[1, 2, 3, 4].map((key) => (
+              <GlassCard key={key} style={styles.card}>
+                <View style={styles.cardHeader}>
+                  <SkeletonBone width={80} height={14} />
+                  <SkeletonBone width={80} height={24} borderRadius={12} />
+                </View>
+                <View style={styles.routeContainer}>
+                  <View style={styles.routeTimeline}>
+                    <View style={[styles.dot, { backgroundColor: THEME.COLORS.border, opacity: 0.3 }]} />
+                    <View style={styles.line} />
+                    <View style={[styles.dot, { backgroundColor: THEME.COLORS.border, opacity: 0.3 }]} />
+                  </View>
+                  <View style={styles.routeTexts}>
+                    <SkeletonBone width="80%" height={16} />
+                    <SkeletonBone width="60%" height={16} style={styles.addressBottom} />
+                  </View>
+                </View>
+                <View style={styles.cardFooter}>
+                  <View style={styles.userInfo}>
+                    <SkeletonBone width={20} height={20} borderRadius={10} />
+                    <SkeletonBone width={100} height={14} style={{ marginLeft: 8 }} />
+                  </View>
+                  <SkeletonBone width={70} height={20} />
+                </View>
+              </GlassCard>
+            ))}
+          </View>
+        ) : rides.length === 0 ? (
+          <View style={styles.centerContainer}>
+            <Ionicons name="map-outline" size={60} color={THEME.COLORS.textTertiary} />
+            <Text style={styles.emptyText}>Vous n'avez effectué aucune course.</Text>
+          </View>
+        ) : (
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={rides}
+              keyExtractor={(item) => item._id}
+              renderItem={renderRideItem}
+              contentContainerStyle={styles.listContainer}
+              showsVerticalScrollIndicator={false}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onRefresh={refetch}
+              refreshing={isFetching}
+            />
+            <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
+          </>
+        )}
+      </GlobalSkeleton>
 
       <ConfirmModal 
         visible={!!rideToDelete}

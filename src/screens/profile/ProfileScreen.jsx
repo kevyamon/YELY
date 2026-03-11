@@ -1,5 +1,5 @@
 // src/screens/profile/ProfileScreen.jsx
-// ECRAN PROFIL - Orchestrateur Modulaire
+// ECRAN PROFIL - Orchestrateur Modulaire (Ghost Rendering Inclus)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,7 +9,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassModal from '../../components/ui/GlassModal';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 
@@ -42,7 +42,6 @@ const ProfileScreen = ({ navigation }) => {
 
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
 
-  // Initialisation instantanee avec les donnees en cache (currentUser)
   const initialPhone = currentUser?.phone ? currentUser.phone.replace(COUNTRY_CODE, '').trim() : '';
   const [form, setForm] = useState({
     name: currentUser?.name || '',
@@ -51,7 +50,6 @@ const ProfileScreen = ({ navigation }) => {
     vehiclePlate: currentUser?.vehicle?.plate || '',
   });
 
-  // Mise a jour avec les donnees fraiches du serveur quand elles arrivent
   useEffect(() => {
     if (profileData?.data) {
       const p = profileData.data;
@@ -162,14 +160,6 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
-  if (isFetching && !currentUser) {
-    return (
-      <ScreenWrapper style={styles.centerContainer}>
-        <GlobalSkeleton visible={true} fullScreen={false} />
-      </ScreenWrapper>
-    );
-  }
-
   const userPhoto = profileData?.data?.profilePicture || currentUser?.profilePicture;
   const userEmail = profileData?.data?.email || currentUser?.email;
   const serverRole = profileData?.data?.role || userRole;
@@ -184,37 +174,54 @@ const ProfileScreen = ({ navigation }) => {
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        
-        <ProfileAvatar 
-          userPhoto={userPhoto}
-          email={userEmail}
-          role={serverRole}
-          isUploading={isUploading}
-          onPickImage={handlePickImage}
-        />
+        <GlobalSkeleton visible={isFetching && !currentUser}>
+          {isFetching && !currentUser ? (
+            <View>
+              <View style={styles.ghostAvatarContainer}>
+                <SkeletonBone width={120} height={120} borderRadius={60} style={{ marginBottom: 15 }} />
+                <SkeletonBone width={200} height={16} style={{ marginBottom: 8 }} />
+                <SkeletonBone width={100} height={20} borderRadius={10} />
+              </View>
+              <View style={styles.ghostFormContainer}>
+                <SkeletonBone width="100%" height={52} borderRadius={12} style={{ marginBottom: 15 }} />
+                <SkeletonBone width="100%" height={52} borderRadius={12} style={{ marginBottom: 30 }} />
+                <SkeletonBone width="100%" height={52} borderRadius={26} />
+              </View>
+            </View>
+          ) : (
+            <>
+              <ProfileAvatar 
+                userPhoto={userPhoto}
+                email={userEmail}
+                role={serverRole}
+                isUploading={isUploading}
+                onPickImage={handlePickImage}
+              />
 
-        <ProfileForm 
-          form={form}
-          setForm={setForm}
-          isDriver={isDriver}
-        />
+              <ProfileForm 
+                form={form}
+                setForm={setForm}
+                isDriver={isDriver}
+              />
 
-        <GoldButton 
-          title="SAUVEGARDER" 
-          onPress={handleSave} 
-          isLoading={isUpdating}
-          style={styles.saveBtn}
-        />
+              <GoldButton 
+                title="SAUVEGARDER" 
+                onPress={handleSave} 
+                isLoading={isUpdating}
+                style={styles.saveBtn}
+              />
 
-        <TouchableOpacity 
-          style={styles.deleteBtn} 
-          onPress={() => setIsDeleteModalVisible(true)} 
-          disabled={isDeleting}
-        >
-          <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
-          <Text style={styles.deleteText}>Supprimer mon compte</Text>
-        </TouchableOpacity>
-
+              <TouchableOpacity 
+                style={styles.deleteBtn} 
+                onPress={() => setIsDeleteModalVisible(true)} 
+                disabled={isDeleting}
+              >
+                <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
+                <Text style={styles.deleteText}>Supprimer mon compte</Text>
+              </TouchableOpacity>
+            </>
+          )}
+        </GlobalSkeleton>
       </ScrollView>
 
       <GlassModal visible={isDeleteModalVisible} onClose={() => setIsDeleteModalVisible(false)} position="center">
@@ -242,14 +249,15 @@ const ProfileScreen = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   header: { flexDirection: 'row', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 20 },
   backButton: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 50 },
   
+  ghostAvatarContainer: { alignItems: 'center', paddingVertical: 20 },
+  ghostFormContainer: { marginTop: 10 },
+
   saveBtn: { marginTop: 10 },
-  
   deleteBtn: { 
       flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginTop: 40, padding: 15,
       borderWidth: 1, borderColor: THEME.COLORS.danger, borderRadius: THEME.BORDERS.radius.pill, backgroundColor: 'rgba(231, 76, 60, 0.03)',
