@@ -6,6 +6,7 @@ import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
+import { isLocationInMafereZone, MAFERE_CENTER } from '../utils/mafereZone';
 
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
@@ -37,7 +38,7 @@ const useGeolocation = (options = {}) => {
   const lastValidLocationRef = useRef(null);
   
   const isStartingRef = useRef(false);
-  const retryCountRef = useRef(0); // Compteur pour le Backoff Exponentiel
+  const retryCountRef = useRef(0);
 
   const requestPermission = useCallback(async () => {
     try {
@@ -50,7 +51,7 @@ const useGeolocation = (options = {}) => {
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
       if (backgroundStatus !== 'granted') {
-        if (__DEV__) console.warn("Permission GPS en arriere-plan refusee. Le suivi s'arretera si l'app est reduite.");
+        if (__DEV__) console.warn("Permission GPS en arriere-plan refusee.");
       }
 
       return true;
@@ -68,14 +69,13 @@ const useGeolocation = (options = {}) => {
         accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
 
-      // CORRECTION SENIOR : Au lieu de faire un throw fatal qui casse l'appli, on gere l'etat
       if (loc.mocked && !__DEV__) {
         setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
         setIsLoading(false);
         return 'MOCK_DETECTED';
       }
 
-      const coords = {
+      let coords = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
         heading: loc.coords.heading || 0,
@@ -84,10 +84,22 @@ const useGeolocation = (options = {}) => {
         timestamp: Date.now(),
       };
       
+      // BOUCLIER SPATIAL (GEOFENCING) - Securite d'entree
+      if (!isLocationInMafereZone(coords)) {
+        if (__DEV__) {
+          console.log('[GEOFENCE] Hors zone en DEV. Teleportation a Mafere.');
+          coords = { ...coords, latitude: MAFERE_CENTER.latitude, longitude: MAFERE_CENTER.longitude };
+        } else {
+          setError('Zone non couverte. Yely est uniquement disponible a Mafere.');
+          setIsLoading(false);
+          return 'OUT_OF_ZONE';
+        }
+      }
+
       lastValidLocationRef.current = coords;
       setLocation(coords);
       setIsLoading(false);
-      retryCountRef.current = 0; // Reset du compteur en cas de succes
+      retryCountRef.current = 0; 
       return coords;
     } catch (err) {
       setError('Recherche du signal GPS...');
@@ -104,13 +116,11 @@ const useGeolocation = (options = {}) => {
 
     const initialCoords = await getCurrentPosition();
 
-    // Arret complet de la boucle si Fake GPS
-    if (initialCoords === 'MOCK_DETECTED') {
+    if (initialCoords === 'MOCK_DETECTED' || initialCoords === 'OUT_OF_ZONE') {
        return; 
     }
 
     if (!initialCoords) {
-      // Backoff Exponentiel : 3s, 6s, 12s... max 30s. Evite la saturation du thread JS (Memory Leak)
       const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
       retryCountRef.current += 1;
       
@@ -136,7 +146,7 @@ const useGeolocation = (options = {}) => {
             if (!mounted) return;
 
             if (loc.mocked && !__DEV__) {
-              setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
+              setError('Position falsifiee detectee.');
               if (watchRef.current) {
                 watchRef.current.remove();
                 watchRef.current = null;
@@ -146,12 +156,26 @@ const useGeolocation = (options = {}) => {
 
             const accuracy = loc.coords.accuracy || 100;
             const maxAccuracy = __DEV__ ? 2000 : 100;
-            
             if (accuracy > maxAccuracy) return;
 
-            const newLat = loc.coords.latitude;
-            const newLng = loc.coords.longitude;
+            let newLat = loc.coords.latitude;
+            let newLng = loc.coords.longitude;
             const now = Date.now();
+
+            // BOUCLIER SPATIAL - Suivi Temps Reel
+            if (!isLocationInMafereZone({ latitude: newLat, longitude: newLng })) {
+              if (__DEV__) {
+                newLat = MAFERE_CENTER.latitude;
+                newLng = MAFERE_CENTER.longitude;
+              } else {
+                setError('Zone non couverte. Vous etes sorti de Mafere.');
+                if (watchRef.current) {
+                  watchRef.current.remove();
+                  watchRef.current = null;
+                }
+                return;
+              }
+            }
 
             if (lastValidLocationRef.current) {
               const distance = getDistanceInMeters(
@@ -183,7 +207,7 @@ const useGeolocation = (options = {}) => {
             lastValidLocationRef.current = newCoords;
             setLocation(newCoords);
             setError(null); 
-            retryCountRef.current = 0; // Signal recupere, on reset le backoff
+            retryCountRef.current = 0; 
           }
         );
 
@@ -204,7 +228,7 @@ const useGeolocation = (options = {}) => {
               showsBackgroundLocationIndicator: true,
               foregroundService: {
                 notificationTitle: "Yely Actif",
-                notificationBody: "Suivi GPS en cours pour la course.",
+                notificationBody: "Suivi GPS en cours.",
                 notificationColor: "#D4AF37",
               }
             });

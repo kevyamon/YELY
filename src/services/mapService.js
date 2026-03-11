@@ -3,10 +3,13 @@
 // Moteurs : Nominatim (Geocodage) + OSRM (Routage) + Haversine (Geofencing)
 
 import * as Location from 'expo-location';
+import { Platform } from 'react-native';
 
+// CORRECTION SENIOR : Le navigateur Web interdit de modifier le User-Agent.
+// On ne l'ajoute que si on est sur mobile.
 const API_HEADERS = {
-  'User-Agent': 'YelyApp/1.0 (contact@yely.ci)',
   'Accept': 'application/json',
+  ...(Platform.OS !== 'web' && { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' })
 };
 
 const ADDRESS_CACHE_PRECISION = 4;
