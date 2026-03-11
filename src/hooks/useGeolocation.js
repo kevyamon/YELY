@@ -50,12 +50,6 @@ const useGeolocation = (options = {}) => {
         setIsLoading(false);
         return false;
       }
-
-      const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (backgroundStatus !== 'granted' && __DEV__) {
-        console.warn("Permission GPS en arriere-plan refusee.");
-      }
-
       return true;
     } catch (err) {
       setError('Erreur lors de la demande de permission');
@@ -64,12 +58,26 @@ const useGeolocation = (options = {}) => {
     }
   }, []);
 
+  const getCurrentPositionWithTimeout = async (options) => {
+    return Promise.race([
+      Location.getCurrentPositionAsync(options),
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout GPS')), 10000))
+    ]);
+  };
+
   const getCurrentPosition = useCallback(async () => {
     try {
       setError(null); 
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
-      });
+      
+      let loc;
+      try {
+        loc = await getCurrentPositionWithTimeout({
+          accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+        });
+      } catch (timeoutOrError) {
+        loc = await Location.getLastKnownPositionAsync({});
+        if (!loc) throw new Error('Aucune position connue');
+      }
 
       if (loc.mocked && !__DEV__) {
         setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
@@ -88,7 +96,6 @@ const useGeolocation = (options = {}) => {
       
       if (!isLocationInMafereZone(coords)) {
         if (__DEV__) {
-          console.log('[GEOFENCE] Hors zone en DEV. Teleportation a Mafere.');
           coords = { ...coords, latitude: MAFERE_CENTER.latitude, longitude: MAFERE_CENTER.longitude };
         } else {
           setError('Zone non couverte. Yely est uniquement disponible a Mafere.');
@@ -224,8 +231,8 @@ const useGeolocation = (options = {}) => {
         }
 
         try {
-          const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
-          if (hasBackgroundPermission && !__DEV__) {
+          const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
+          if (backgroundStatus === 'granted' && !__DEV__) {
             const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
             if (!isRegistered) {
               await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {

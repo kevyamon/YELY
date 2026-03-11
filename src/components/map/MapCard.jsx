@@ -83,13 +83,18 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery();
   const mapPOIs = poiResponse?.data || [];
 
-  const handleMapInteraction = () => {
-    wakeUpButton();
-    setIsUserInteracting(true);
-    clearTimeout(interactionTimeout.current);
-    interactionTimeout.current = setTimeout(() => {
-      setIsUserInteracting(false);
-    }, 1000);
+  const handleMapInteraction = (e) => {
+    const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction;
+    
+    if (isHumanInteraction) {
+      wakeUpButton();
+      setIsUserInteracting(true);
+      clearTimeout(interactionTimeout.current);
+      
+      interactionTimeout.current = setTimeout(() => {
+        setIsUserInteracting(false);
+      }, 4000);
+    }
   };
 
   useMapAutoFitter({
@@ -125,7 +130,6 @@ const MapCard = forwardRef(({
       }
     },
     fitToCoordinates: (coords, options) => { 
-      // La logique complexe de recadrage est desormais completement geree par useMapAutoFitter
     },
     centerOnUser: handleRecenter,
   }));
@@ -135,7 +139,6 @@ const MapCard = forwardRef(({
     if (onMapReady) onMapReady();
   };
 
-  // Preparation des coordonnees de la route pour MapLibre (Format GeoJSON Array)
   const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
 
   return (
@@ -164,7 +167,6 @@ const MapCard = forwardRef(({
             }}
           />
 
-          {/* INTEGRATION DU FOND DE CARTE GRATUIT CARTO DB (OSM Base) */}
           <MapLibreGL.RasterSource
             id="cartodb-source"
             tileUrlTemplates={[isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL]}
@@ -176,7 +178,6 @@ const MapCard = forwardRef(({
             />
           </MapLibreGL.RasterSource>
 
-          {/* DESSIN DE LA ROUTE */}
           {routeCoordinates.length > 1 && (
             <MapLibreGL.ShapeSource
               id="route-source"
