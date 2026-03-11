@@ -1,5 +1,5 @@
 // src/components/profile/ProfileAvatar.jsx
-// COMPOSANT MODULAIRE - Gestion de l'Avatar et de l'Identite Visuelle
+// COMPOSANT MODULAIRE - Gestion de l'Avatar et de l'Identite Visuelle (URL Securisees)
 // CSCSM Level: Bank Grade / Cross-Platform Safe
 
 import { Ionicons } from '@expo/vector-icons';
@@ -20,9 +20,6 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
     return roles[userRole] || 'Passager';
   };
 
-  // SECURITE MULTIPLATEFORME : 
-  // Sur le Web, on ne declenche PAS le loader manuellement car react-native-web 
-  // gere mal les evenements de chargement pour les images en cache (evite la boucle).
   const imageProps = Platform.OS === 'web' 
     ? {
         onLoad: () => setIsImageLoading(false),
@@ -34,21 +31,26 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
         onError: () => setIsImageLoading(false),
       };
 
-  // BLINDAGE WEB : On s'assure que l'image est bien traitee selon son type
-  const imageSource = typeof userPhoto === 'string' ? { uri: userPhoto } : userPhoto;
+  // BLINDAGE ABSOLU DE L'URL (HTTPS + ENCODE URI)
+  let secureImageSource = null;
+  
+  if (userPhoto && typeof userPhoto === 'string' && userPhoto.trim() !== '') {
+    secureImageSource = { uri: encodeURI(userPhoto.replace('http://', 'https://')) };
+  } else if (userPhoto && typeof userPhoto === 'object' && userPhoto.uri) {
+    secureImageSource = userPhoto; 
+  }
 
   return (
     <View style={styles.avatarSection}>
       <TouchableOpacity onPress={onPickImage} disabled={isUploading} activeOpacity={0.8}>
         <View style={styles.avatarContainer}>
-          {userPhoto ? (
+          {secureImageSource ? (
             <>
               <Image 
-                source={imageSource} 
+                source={secureImageSource} 
                 style={styles.avatarImage} 
                 {...imageProps}
               />
-              {/* Affichage dynamique du loader */}
               {isImageLoading && !isUploading && (
                 <View style={styles.avatarLoader}>
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} />
@@ -59,7 +61,6 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
             <Ionicons name="person" size={60} color={THEME.COLORS.textSecondary} />
           )}
           
-          {/* Loader existant pour l'upload d'une nouvelle image */}
           {isUploading && (
             <View style={styles.avatarLoader}>
               <ActivityIndicator size="small" color={THEME.COLORS.primary} />

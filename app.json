@@ -8,6 +8,11 @@
     "scheme": "yely",
     "userInterfaceStyle": "automatic",
     "owner": "kevyllc",
+    "splash": {
+      "image": "./assets/images/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#000000"
+    },
     "updates": {
       "url": "https://u.expo.dev/be0e185d-b91e-41bf-9e18-91923cf7deb5"
     },
@@ -58,7 +63,7 @@
       "splash": {
         "image": "./assets/images/splash-icon.png",
         "resizeMode": "contain",
-        "backgroundColor": "#D4AF37"
+        "backgroundColor": "#000000"
       }
     },
     "plugins": [
@@ -67,7 +72,7 @@
         {
           "image": "./assets/images/splash-icon.png",
           "resizeMode": "contain",
-          "backgroundColor": "#D4AF37"
+          "backgroundColor": "#000000"
         }
       ],
       "expo-secure-store",

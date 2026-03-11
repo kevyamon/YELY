@@ -1,5 +1,5 @@
 // src/components/admin/ValidationModal.jsx
-// MODALE DE VALIDATION - Nettoyee, adaptee, HD et Forcage HTTPS
+// MODALE DE VALIDATION - Nettoyee, adaptee, HD et Forcage HTTPS + URI Encoding
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -30,9 +30,9 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     onReject(transaction._id, rejectReason);
   };
 
-  // FORCAGE SECURITE : Remplacement systematique de http en https
+  // FORCAGE SECURITE : Remplacement systematique de http en https ET encodage strict des caracteres speciaux
   const rawImageUrl = transaction.proofUrl || transaction.receiptUrl || transaction.metadata?.proofUrl || transaction.metadata?.receiptUrl || null;
-  const secureImageUrl = rawImageUrl ? rawImageUrl.replace('http://', 'https://') : null;
+  const secureImageUrl = rawImageUrl ? encodeURI(rawImageUrl.replace('http://', 'https://')) : null;
   
   const senderPhone = transaction.senderPhone || transaction.phone || transaction.metadata?.senderPhone || 'Non specifie';
 

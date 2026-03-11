@@ -1,10 +1,10 @@
 // src/screens/admin/UsersManagement.jsx
-// ECRAN UTILISATEURS - Correction payload Zod (Bannissement) & Sécurité UI Admin
+// ECRAN UTILISATEURS - Protection DDoS (Debounce), Bannissement & Securite UI Admin
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
-import React, { useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
 import { useSelector } from 'react-redux';
 
@@ -27,9 +27,20 @@ const GlassCard = ({ children, style }) => (
 
 const UsersManagement = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   
   const currentUser = useSelector(selectCurrentUser);
-  const { data: usersResponse, isLoading, refetch, error } = useGetAllUsersQuery({ page: 1, search: searchQuery });
+
+  // PROTECTION DDOS (DEBOUNCE) : On attend 500ms apres la derniere frappe avant de lancer la recherche
+  useEffect(() => {
+    const timerId = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timerId);
+  }, [searchQuery]);
+
+  // La requete utilise desormais la valeur debounced
+  const { data: usersResponse, isLoading, refetch, error } = useGetAllUsersQuery({ page: 1, search: debouncedSearch });
   const [toggleBan] = useToggleUserBanMutation();
   const [updateRole] = useUpdateUserRoleMutation();
 

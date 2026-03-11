@@ -1,5 +1,5 @@
 // src/screens/admin/AdminReports.jsx
-// DASHBOARD SIGNALEMENTS - Vue modulaire et épurée (Images corrigees HTTPS strict)
+// DASHBOARD SIGNALEMENTS - Vue modulaire et épurée (Images corrigees HTTPS strict + URI Encoding)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -78,8 +78,7 @@ const AdminReports = ({ navigation }) => {
   };
 
   const openImagePreview = (url) => {
-    // FORCAGE SECURITE : Remplacement systematique de http en https pour eviter le blocage natif
-    const secureUrl = url ? url.replace('http://', 'https://') : null;
+    const secureUrl = url ? encodeURI(url.replace('http://', 'https://')) : null;
     setPreviewImageUrl(secureUrl);
     setIsPreviewVisible(true);
   };
@@ -118,11 +117,10 @@ const AdminReports = ({ navigation }) => {
           <Text style={styles.messageText}>{item.message}</Text>
         </View>
 
-        {/* CORRECTION DE L'AFFICHAGE DES IMAGES */}
         {item.captures && item.captures.length > 0 && (
           <View style={styles.imagesRow}>
             {item.captures.map((url, index) => {
-              const secureUrl = url.replace('http://', 'https://');
+              const secureUrl = encodeURI(url.replace('http://', 'https://'));
               return (
                 <TouchableOpacity key={index} onPress={() => openImagePreview(secureUrl)} style={styles.imageContainer}>
                   <Image 

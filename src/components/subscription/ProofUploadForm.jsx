@@ -1,6 +1,6 @@
 // src/components/subscription/ProofUploadForm.jsx
 // COMPOSANT UI - Formulaire de soumission de preuve
-// STANDARD: Industriel / Theme Dynamique
+// STANDARD: Industriel / Theme Dynamique Strict
 
 import React from 'react';
 import { Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -22,11 +22,11 @@ const ProofUploadForm = ({
     <View style={styles.stepContainer}>
       <Text style={styles.title}>Confirmation d'activation</Text>
       <Text style={styles.familiarSubtitle}>
-        Envoie la capture du paiement pour activer ton compte immédiatement.
+        Envoie la capture du paiement pour activer ton compte immediatement.
       </Text>
 
       <GlassCard style={styles.formCard}>
-        <Text style={styles.label}>Numéro qui a fait le dépôt</Text>
+        <Text style={styles.label}>Numero qui a fait le depot</Text>
         <GlassInput 
           placeholder="Ex: 0102030405"
           keyboardType="phone-pad"
@@ -35,7 +35,7 @@ const ProofUploadForm = ({
           editable={!isSubmitting}
         />
 
-        <Text style={styles.label}>La Preuve (Capture d'écran)</Text>
+        <Text style={styles.label}>La Preuve (Capture d'ecran)</Text>
         <TouchableOpacity 
           style={styles.imagePickerArea} 
           onPress={onPickImage}
@@ -76,13 +76,13 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 28,
     fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary || '#FFFFFF',
+    color: THEME.COLORS.textPrimary,
     marginBottom: 10,
     textAlign: 'center',
   },
   familiarSubtitle: {
     fontSize: 16,
-    color: THEME.COLORS.textSecondary || '#E2E8F0',
+    color: THEME.COLORS.textSecondary,
     marginBottom: 30,
     textAlign: 'center',
     fontStyle: 'italic',
@@ -91,7 +91,7 @@ const styles = StyleSheet.create({
     padding: 20,
   },
   label: {
-    color: THEME.COLORS.textPrimary || '#FFFFFF',
+    color: THEME.COLORS.textPrimary,
     fontSize: 14,
     fontWeight: '600',
     marginBottom: 8,
@@ -100,12 +100,12 @@ const styles = StyleSheet.create({
   imagePickerArea: {
     width: '100%',
     height: 180,
-    borderRadius: 12,
+    borderRadius: THEME.BORDERS.radius.md,
     borderWidth: 2,
-    borderColor: THEME.COLORS.champagneGold ? `${THEME.COLORS.champagneGold}40` : 'rgba(255, 215, 0, 0.3)',
+    borderColor: THEME.COLORS.champagneGold,
     borderStyle: 'dashed',
     overflow: 'hidden',
-    backgroundColor: THEME.COLORS.glassDark ? `${THEME.COLORS.glassDark}80` : 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: THEME.COLORS.overlay,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 25,
@@ -120,7 +120,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   placeholderText: {
-    color: THEME.COLORS.champagneGold || '#FFD700',
+    color: THEME.COLORS.champagneGold,
     fontSize: 16,
     fontWeight: '500',
   },
@@ -132,7 +132,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   cancelBtnText: {
-    color: THEME.COLORS.textSecondary || '#A0AEC0',
+    color: THEME.COLORS.textSecondary,
     fontSize: 16,
   }
 });
