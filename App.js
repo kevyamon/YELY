@@ -1,20 +1,16 @@
 // App.js
-// POINT D'ENTREE - Cablage Redux, Providers & Observabilite Sentry
+// POINT D'ENTREE - Cablage Redux, Providers, Sentry & Intelligence PWA/Update
 // STANDARD: Industriel / Bank Grade
 
 import * as Sentry from '@sentry/react-native';
+import Constants from 'expo-constants';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
-// Maintien du splash natif jusqu'a ce que notre SplashScreen JS prenne le relais
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
-// Importation declenchant la validation immediate de l'environnement (Fail-Fast)
 import ENV from './src/config/env';
-
-// DECLARATION TACHE DE FOND (A executer avant tout rendu React)
 import './src/tasks/backgroundLocationTask';
 
-// 1. INITIALISATION DE LA SUPERVISION SILENCIEUSE
 Sentry.init({
   dsn: ENV.SENTRY_DSN || '',
   debug: false, 
@@ -22,7 +18,6 @@ Sentry.init({
   environment: ENV.APP_ENV
 });
 
-// 2. SILENCE STRICT DE PRODUCTION
 if (!__DEV__) {
   console.log = () => {};
   console.warn = () => {};
@@ -37,7 +32,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import 'react-native-gesture-handler';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -51,6 +46,7 @@ import store from './src/store/store';
 import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
+import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
@@ -59,7 +55,12 @@ import usePushNotifications from './src/hooks/usePushNotifications';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
-// 3. COMPOSANT DE REPLI EN CAS DE CRASH FATAL (Evite l'ecran blanc)
+// Import conditionnel pour le Web uniquement
+let PwaIOSInstallGuide = () => null;
+if (Platform.OS === 'web') {
+  PwaIOSInstallGuide = require('./src/components/ui/PwaIOSInstallGuide.web').default;
+}
+
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
@@ -76,8 +77,16 @@ const AppContent = () => {
   const dispatch = useDispatch();
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
+  
+  // STATE POUR LA MISE A JOUR
+  const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
+  const [versionInfo, setVersionInfo] = useState({
+    latestVersion: currentAppVersion,
+    mandatoryUpdate: false,
+    updateUrl: 'https://download-yely.onrender.com'
+  });
 
-  useSocket();
+  const socket = useSocket();
   useSocketEvents();
   usePushNotifications();
 
@@ -98,16 +107,31 @@ const AppContent = () => {
     return () => unsubscribe();
   }, [dispatch, toast]);
 
+  // ECOUTEUR WEBSOCKET POUR LA MISE A JOUR (Declenche par le SuperAdmin)
+  useEffect(() => {
+    if (socket) {
+      socket.on('APP_VERSION_UPDATED', (data) => {
+        setVersionInfo({
+          latestVersion: data.latestVersion,
+          mandatoryUpdate: data.mandatoryUpdate,
+          updateUrl: data.updateUrl
+        });
+      });
+    }
+    return () => {
+      if (socket) socket.off('APP_VERSION_UPDATED');
+    };
+  }, [socket]);
+
+  // LOGIQUE INTELLIGENTE DE COMPARAISON :
+  // Si la version serveur est differente de la version locale, on affiche la modale.
+  const isUpdateAvailable = versionInfo.latestVersion !== currentAppVersion;
+
   return (
     <>
-      {/* CORRECTION SENIOR : Forcage strict du titre du document Web pour l'installation PWA */}
       <NavigationContainer documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
-          <StatusBar
-            style="dark"
-            backgroundColor="transparent"
-            translucent={true}
-          />
+          <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
           <AppNavigator />
         </View>
       </NavigationContainer>
@@ -122,7 +146,16 @@ const AppContent = () => {
           onHide={() => dispatch(hideToast())}
         />
         
-        <GlobalSkeleton visible={loading.visible} message={loading.message} />
+        <GlobalSkeleton visible={loading.visible} fullScreen={true} />
+        
+        <ForceUpdateModal 
+          visible={isUpdateAvailable}
+          latestVersion={versionInfo.latestVersion}
+          mandatoryUpdate={versionInfo.mandatoryUpdate}
+          updateUrl={versionInfo.updateUrl}
+        />
+
+        {Platform.OS === 'web' && <PwaIOSInstallGuide />}
       </Portal>
     </>
   );
@@ -134,11 +167,7 @@ const App = () => {
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener((preferences) => {
-      if (preferences.colorScheme !== initialTheme.current) {
-        setThemeChanged(true);
-      } else {
-        setThemeChanged(false);
-      }
+      setThemeChanged(preferences.colorScheme !== initialTheme.current);
     });
     return () => subscription.remove();
   }, []);
@@ -162,38 +191,10 @@ const App = () => {
 export default Sentry.wrap(App);
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
-  fallbackContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.background,
-    padding: 20,
-  },
-  fallbackTitle: {
-    color: THEME.COLORS.primary,
-    fontSize: 22,
-    fontWeight: 'bold',
-    marginBottom: 10,
-  },
-  fallbackText: {
-    color: THEME.COLORS.textPrimary,
-    textAlign: 'center',
-    marginBottom: 30,
-    fontSize: 14,
-  },
-  fallbackButton: {
-    backgroundColor: THEME.COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: THEME.BORDERS.radius.md,
-  },
-  fallbackButtonText: {
-    color: THEME.COLORS.background,
-    fontWeight: 'bold',
-    fontSize: 16,
-  }
+  container: { flex: 1, backgroundColor: THEME.COLORS.background },
+  fallbackContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.background, padding: 20 },
+  fallbackTitle: { color: THEME.COLORS.primary, fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
+  fallbackText: { color: THEME.COLORS.textPrimary, textAlign: 'center', marginBottom: 30, fontSize: 14 },
+  fallbackButton: { backgroundColor: THEME.COLORS.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
+  fallbackButtonText: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 }
 });
