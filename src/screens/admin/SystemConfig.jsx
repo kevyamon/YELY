@@ -3,12 +3,11 @@
 // CSCSM Level: Bank Grade
 
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenHeader from '../../components/ui/ScreenHeader';
 
@@ -19,7 +18,7 @@ import THEME from '../../theme/theme';
 const SystemConfig = ({ navigation }) => {
   const dispatch = useDispatch();
 
-  const { data: configData, isLoading: isConfigLoading, refetch } = useGetSystemConfigQuery();
+  const { data: configData, isLoading: isConfigLoading } = useGetSystemConfigQuery();
   const [updateVersion, { isLoading: isUpdating }] = useUpdateAppVersionMutation();
 
   const [form, setForm] = useState({
@@ -51,12 +50,12 @@ const SystemConfig = ({ navigation }) => {
       await updateVersion(form).unwrap();
       dispatch(showSuccessToast({
         title: "Mise a jour diffusee",
-        message: "Tous les appareils connectes ont recu l'instruction de mise a jour."
+        message: "Tous les appareils connectes ont recu l'instruction."
       }));
     } catch (error) {
       dispatch(showErrorToast({
         title: "Erreur de diffusion",
-        message: error.data?.message || "Une erreur est survenue lors de la mise a jour du systeme."
+        message: error.data?.message || "Une erreur est survenue lors de la mise a jour."
       }));
     }
   };
@@ -65,10 +64,7 @@ const SystemConfig = ({ navigation }) => {
     setForm(prev => ({ ...prev, mandatoryUpdate: !prev.mandatoryUpdate }));
   };
 
-  if (isConfigLoading) {
-    return <GlobalSkeleton visible={true} fullScreen={true} />;
-  }
-
+  // L'ossature racine reste stable pendant la navigation pour eviter le crash "interpolate"
   return (
     <KeyboardAvoidingView 
       style={styles.container} 
@@ -76,68 +72,74 @@ const SystemConfig = ({ navigation }) => {
     >
       <ScreenHeader title="Configuration Systeme" onBack={() => navigation.goBack()} />
       
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled"
-      >
-        <Text style={styles.warningText}>
-          Attention : Modifier la version exigee deploiera instantanement une modale de blocage sur tous les appareils possedant une version inferieure.
-        </Text>
+      {isConfigLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <Text style={styles.loadingText}>Chargement de la configuration...</Text>
+        </View>
+      ) : (
+        <ScrollView 
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <Text style={styles.warningText}>
+            Attention : Modifier la version exigee deploiera instantanement une modale de blocage sur tous les appareils possedant une version inferieure.
+          </Text>
 
-        <GlassCard style={styles.card}>
-          <Text style={styles.sectionTitle}>Controle des Versions</Text>
-          
-          <GlassInput
-            label="Version exigee (ex: 1.2.0)"
-            value={form.latestVersion}
-            onChangeText={(val) => setForm({ ...form, latestVersion: val })}
-            placeholder="1.2.0"
-            keyboardType="default"
-          />
+          <GlassCard style={styles.card}>
+            <Text style={styles.sectionTitle}>Controle des Versions</Text>
+            
+            <GlassInput
+              label="Version exigee (ex: 1.2.0)"
+              value={form.latestVersion}
+              onChangeText={(val) => setForm({ ...form, latestVersion: val })}
+              placeholder="1.2.0"
+              keyboardType="default"
+            />
 
-          <GlassInput
-            label="Lien de telechargement (APK ou Store)"
-            value={form.updateUrl}
-            onChangeText={(val) => setForm({ ...form, updateUrl: val })}
-            placeholder="https://votre-lien.com"
-            keyboardType="url"
-            autoCapitalize="none"
-          />
+            <GlassInput
+              label="Lien de telechargement (APK ou Store)"
+              value={form.updateUrl}
+              onChangeText={(val) => setForm({ ...form, updateUrl: val })}
+              placeholder="https://votre-lien.com"
+              keyboardType="url"
+              autoCapitalize="none"
+            />
 
-          {/* Remplacement du Switch buggue par un composant Custom stable */}
-          <View style={styles.switchContainer}>
-            <View style={styles.switchLabelContainer}>
-              <Text style={styles.switchLabel}>Mise a jour obligatoire</Text>
-              <Text style={styles.switchSubLabel}>Bloque l'acces si non a jour.</Text>
+            <View style={styles.switchContainer}>
+              <View style={styles.switchLabelContainer}>
+                <Text style={styles.switchLabel}>Mise a jour obligatoire</Text>
+                <Text style={styles.switchSubLabel}>Bloque l'acces si l'app n'est pas a jour.</Text>
+              </View>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={toggleMandatory}
+                style={[
+                  styles.customToggleBtn, 
+                  form.mandatoryUpdate ? styles.toggleActive : styles.toggleInactive
+                ]}
+              >
+                <Text style={[
+                  styles.toggleText, 
+                  form.mandatoryUpdate ? styles.toggleTextActive : styles.toggleTextInactive
+                ]}>
+                  {form.mandatoryUpdate ? "OUI" : "NON"}
+                </Text>
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={toggleMandatory}
-              style={[
-                styles.customToggleBtn, 
-                form.mandatoryUpdate ? styles.toggleActive : styles.toggleInactive
-              ]}
-            >
-              <Text style={[
-                styles.toggleText, 
-                form.mandatoryUpdate ? styles.toggleTextActive : styles.toggleTextInactive
-              ]}>
-                {form.mandatoryUpdate ? "OUI" : "NON"}
-              </Text>
-            </TouchableOpacity>
+
+          </GlassCard>
+
+          <View style={styles.buttonContainer}>
+            <GoldButton 
+              title="Diffuser la configuration" 
+              onPress={handleSave} 
+              loading={isUpdating}
+            />
           </View>
 
-        </GlassCard>
-
-        <View style={styles.buttonContainer}>
-          <GoldButton 
-            title="Diffuser la configuration" 
-            onPress={handleSave} 
-            loading={isUpdating}
-          />
-        </View>
-
-      </ScrollView>
+        </ScrollView>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -146,6 +148,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    marginTop: 15,
+    color: THEME.COLORS.champagneGold,
+    fontSize: 16,
+    fontWeight: '500',
   },
   scrollContent: {
     padding: THEME.SPACING.lg,
@@ -194,7 +207,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     marginTop: 4,
   },
-  // Nouveaux styles pour le bouton bascule
   customToggleBtn: {
     paddingVertical: 8,
     paddingHorizontal: 16,
@@ -202,7 +214,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
   },
   toggleActive: {
-    backgroundColor: 'rgba(212, 175, 55, 0.2)', // Fond dore leger
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
     borderColor: THEME.COLORS.primary,
   },
   toggleInactive: {
