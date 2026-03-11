@@ -8,7 +8,8 @@ import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, {
   Extrapolation,
   interpolate,
-  useAnimatedStyle
+  useAnimatedStyle,
+  useSharedValue
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
@@ -49,21 +50,24 @@ const SmartHeader = ({
 
   const isFetchingAddress = address.toLowerCase().includes('recherche');
 
+  const defaultScrollY = useSharedValue(0);
+  const activeScrollY = scrollY || defaultScrollY;
+
   const headerAnimatedStyle = useAnimatedStyle(() => {
-    const height = interpolate(scrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
-    const shadowOpacity = interpolate(scrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
+    const height = interpolate(activeScrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
+    const shadowOpacity = interpolate(activeScrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
     return { height, shadowOpacity, elevation: shadowOpacity * 20 };
   });
 
   const ctaAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [0, scrollDistance * 0.6], [1, 0], Extrapolation.CLAMP);
-    const translateY = interpolate(scrollY.value, [0, scrollDistance], [0, -15], Extrapolation.CLAMP);
+    const opacity = interpolate(activeScrollY.value, [0, scrollDistance * 0.6], [1, 0], Extrapolation.CLAMP);
+    const translateY = interpolate(activeScrollY.value, [0, scrollDistance], [0, -15], Extrapolation.CLAMP);
     return { opacity, transform: [{ translateY }], display: opacity === 0 ? 'none' : 'flex' };
   });
 
   const titleAnimatedStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [scrollDistance * 0.7, scrollDistance], [0, 1], Extrapolation.CLAMP);
-    const translateY = interpolate(scrollY.value, [scrollDistance * 0.5, scrollDistance], [10, 0], Extrapolation.CLAMP);
+    const opacity = interpolate(activeScrollY.value, [scrollDistance * 0.7, scrollDistance], [0, 1], Extrapolation.CLAMP);
+    const translateY = interpolate(activeScrollY.value, [scrollDistance * 0.5, scrollDistance], [10, 0], Extrapolation.CLAMP);
     return { opacity, transform: [{ translateY }] };
   });
 
@@ -285,7 +289,6 @@ const styles = StyleSheet.create({
   }
 });
 
-// MEMOIZATION STRICTE : On evite les rendus fantomes si les props ne changent pas
 const arePropsEqual = (prevProps, nextProps) => {
   return (
     prevProps.address === nextProps.address &&
