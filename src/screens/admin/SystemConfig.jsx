@@ -3,13 +3,14 @@
 // CSCSM Level: Bank Grade
 
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
-import ScreenHeader from '../../components/ui/ScreenHeader';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import SmartHeader from '../../components/ui/SmartHeader';
 
 import { useGetSystemConfigQuery, useUpdateAppVersionMutation } from '../../store/api/adminApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -64,13 +65,13 @@ const SystemConfig = ({ navigation }) => {
     setForm(prev => ({ ...prev, mandatoryUpdate: !prev.mandatoryUpdate }));
   };
 
-  // L'ossature racine reste stable pendant la navigation pour eviter le crash "interpolate"
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
-      <ScreenHeader title="Configuration Systeme" onBack={() => navigation.goBack()} />
+    <ScreenWrapper>
+      <SmartHeader 
+        title="Configuration Systeme" 
+        showBack={true} 
+        onBack={() => navigation.goBack()} 
+      />
       
       {isConfigLoading ? (
         <View style={styles.loadingContainer}>
@@ -81,10 +82,13 @@ const SystemConfig = ({ navigation }) => {
         <ScrollView 
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <Text style={styles.warningText}>
-            Attention : Modifier la version exigee deploiera instantanement une modale de blocage sur tous les appareils possedant une version inferieure.
-          </Text>
+          <View style={styles.warningBox}>
+            <Text style={styles.warningText}>
+              Attention : Modifier la version exigee deploiera instantanement une modale de blocage sur tous les appareils possedant une version inferieure.
+            </Text>
+          </View>
 
           <GlassCard style={styles.card}>
             <Text style={styles.sectionTitle}>Controle des Versions</Text>
@@ -140,22 +144,18 @@ const SystemConfig = ({ navigation }) => {
 
         </ScrollView>
       )}
-    </KeyboardAvoidingView>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
   loadingContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   loadingText: {
-    marginTop: 15,
+    marginTop: THEME.SPACING.md,
     color: THEME.COLORS.champagneGold,
     fontSize: 16,
     fontWeight: '500',
@@ -164,15 +164,18 @@ const styles = StyleSheet.create({
     padding: THEME.SPACING.lg,
     paddingBottom: 100,
   },
-  warningText: {
-    color: THEME.COLORS.danger,
-    fontSize: 13,
-    marginBottom: THEME.SPACING.lg,
+  warningBox: {
     backgroundColor: 'rgba(231, 76, 60, 0.1)',
     padding: THEME.SPACING.md,
     borderRadius: THEME.BORDERS.radius.md,
     borderWidth: 1,
     borderColor: 'rgba(231, 76, 60, 0.3)',
+    marginBottom: THEME.SPACING.xl,
+  },
+  warningText: {
+    color: THEME.COLORS.danger,
+    fontSize: 13,
+    lineHeight: 18,
   },
   card: {
     padding: THEME.SPACING.lg,
@@ -232,7 +235,7 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
   },
   buttonContainer: {
-    marginTop: THEME.SPACING.md,
+    marginTop: THEME.SPACING.sm,
   }
 });
 

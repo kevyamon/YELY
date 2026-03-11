@@ -1,56 +1,82 @@
 // src/components/ui/GlobalSkeleton.jsx
-// SKELETON ADAPTATIF ET MODULAIRE
+// SKELETON ADAPTATIF ET MODULAIRE - Moteur Shimmer Natif 60FPS
 // CSCSM Level: Bank Grade
 
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const GlobalSkeleton = ({ visible, fullScreen = true, children }) => {
-  const pulseAnim = useRef(new Animated.Value(0.4)).current;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+const GlobalSkeleton = ({ visible, fullScreen = true, children, style }) => {
+  const translateX = useRef(new Animated.Value(-SCREEN_WIDTH)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 0.8,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 0.3,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
+      const shimmerAnim = Animated.loop(
+        Animated.timing(translateX, {
+          toValue: SCREEN_WIDTH,
+          duration: 1500,
+          useNativeDriver: true,
+        })
+      );
+      shimmerAnim.start();
+      return () => shimmerAnim.stop();
     } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(0.4);
+      translateX.setValue(-SCREEN_WIDTH);
     }
-  }, [visible, pulseAnim]);
+  }, [visible, translateX]);
 
   if (!visible) return null;
 
-  // Si le developpeur a fourni ses propres formes a faire clignoter
+  const shimmerOverlay = (
+    <Animated.View
+      style={[
+        StyleSheet.absoluteFillObject,
+        { transform: [{ translateX }] },
+        { zIndex: 10 }
+      ]}
+      pointerEvents="none"
+    >
+      <LinearGradient
+        colors={[
+          'rgba(255, 255, 255, 0)',
+          'rgba(255, 255, 255, 0.03)',
+          'rgba(255, 255, 255, 0.15)',
+          'rgba(255, 255, 255, 0.03)',
+          'rgba(255, 255, 255, 0)'
+        ]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={StyleSheet.absoluteFillObject}
+      />
+    </Animated.View>
+  );
+
   if (children) {
     return (
-      <Animated.View style={[{ opacity: pulseAnim }, fullScreen && styles.overlay]}>
+      <View style={[styles.container, fullScreen && styles.overlay, style]}>
         {children}
-      </Animated.View>
+        {shimmerOverlay}
+      </View>
     );
   }
 
-  // Comportement par defaut si aucun composant enfant n'est fourni
   return (
-    <View style={fullScreen ? styles.overlay : styles.inlineContainer}>
-      <Animated.View style={[styles.defaultLoaderBlock, { opacity: pulseAnim }]} />
+    <View style={[styles.container, fullScreen ? styles.overlay : styles.inlineContainer, style]}>
+      <View style={styles.defaultLoaderBlock}>
+        {shimmerOverlay}
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    overflow: 'hidden',
+    position: 'relative',
+  },
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.COLORS.background,
@@ -73,6 +99,8 @@ const styles = StyleSheet.create({
     borderRadius: THEME.BORDERS.radius.xl,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
+    overflow: 'hidden',
+    position: 'relative',
   }
 });
 
