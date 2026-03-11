@@ -1,4 +1,3 @@
-import 'react-native-gesture-handler';
 // App.js
 // POINT D'ENTREE - Cablage Redux, Providers, Sentry & Intelligence PWA/Update
 // STANDARD: Industriel / Bank Grade
@@ -42,10 +41,10 @@ import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
+import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
-// Import conditionnel pour le Web uniquement
 let PwaIOSInstallGuide = () => null;
 if (Platform.OS === 'web') {
   PwaIOSInstallGuide = require('./src/components/ui/PwaIOSInstallGuide.web').default;
@@ -68,7 +67,6 @@ const AppContent = () => {
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   
-  // STATE POUR LA MISE A JOUR
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const [versionInfo, setVersionInfo] = useState({
     latestVersion: currentAppVersion,
@@ -77,8 +75,10 @@ const AppContent = () => {
   });
 
   const socket = useSocket();
+  
   useSocketEvents();
   usePushNotifications();
+  usePwaAutoUpdate(); 
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
@@ -97,7 +97,6 @@ const AppContent = () => {
     return () => unsubscribe();
   }, [dispatch, toast]);
 
-  // ECOUTEUR WEBSOCKET POUR LA MISE A JOUR (Declenche par le SuperAdmin)
   useEffect(() => {
     if (socket) {
       socket.on('APP_VERSION_UPDATED', (data) => {
@@ -113,8 +112,6 @@ const AppContent = () => {
     };
   }, [socket]);
 
-  // LOGIQUE INTELLIGENTE DE COMPARAISON :
-  // Si la version serveur est differente de la version locale, on affiche la modale.
   const isUpdateAvailable = versionInfo.latestVersion !== currentAppVersion;
 
   return (
