@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
+import React, { useRef } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import THEME from '../../theme/theme';
@@ -7,25 +8,27 @@ import SearchBar from './SearchBar';
 
 export default function ScreenHeader({ 
   locationText = "Localisation...",
-  scrollY // On reçoit la valeur du scroll
+  scrollY 
 }) {
   const navigation = useNavigation();
   const insets = useSafeAreaInsets();
 
-  // Animations de transition
-  const headerHeight = scrollY.interpolate({
+  const fallbackScrollY = useRef(new Animated.Value(0)).current;
+  const safeScrollY = scrollY || fallbackScrollY;
+
+  const headerHeight = safeScrollY.interpolate({
     inputRange: [0, 80],
     outputRange: [THEME.LAYOUT.HEADER_EXPANDED_HEIGHT + insets.top, THEME.LAYOUT.HEADER_HEIGHT + insets.top],
     extrapolate: 'clamp',
   });
 
-  const searchOpacity = scrollY.interpolate({
+  const searchOpacity = safeScrollY.interpolate({
     inputRange: [0, 50],
     outputRange: [1, 0],
     extrapolate: 'clamp',
   });
 
-  const titleOpacity = scrollY.interpolate({
+  const titleOpacity = safeScrollY.interpolate({
     inputRange: [40, 80],
     outputRange: [0, 1],
     extrapolate: 'clamp',
@@ -34,24 +37,20 @@ export default function ScreenHeader({
   return (
     <Animated.View style={[styles.headerContainer, { height: headerHeight, paddingTop: insets.top }]}>
       <View style={styles.topRow}>
-        {/* GAUCHE : NOTIFICATIONS */}
         <TouchableOpacity style={styles.iconButton}>
           <Ionicons name="notifications-outline" size={22} color={THEME.COLORS.textPrimary} />
           <View style={styles.badge} />
         </TouchableOpacity>
 
-        {/* CENTRE : TITRE RÉDUIT (Apparaît au scroll) */}
         <Animated.View style={[styles.centerContent, { opacity: titleOpacity }]}>
            <Text style={styles.locationTextSmall}>{locationText}</Text>
         </Animated.View>
 
-        {/* DROITE : MENU */}
         <TouchableOpacity style={styles.iconButton} onPress={() => navigation.openDrawer()}>
           <Ionicons name="menu" size={28} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       </View>
 
-      {/* ZONE BASSE : RECHERCHE (Disparaît au scroll) */}
       <Animated.View style={[styles.searchRow, { opacity: searchOpacity }]}>
         <View style={styles.locationHeader}>
           <Text style={styles.labelCaption}>POSITION ACTUELLE</Text>

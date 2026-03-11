@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -80,7 +80,7 @@ const DriverHome = ({ navigation }) => {
           await AsyncStorage.setItem(storageKey, 'true');
         }
       } catch (error) {
-        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
+        if (__DEV__) console.log("Erreur lecture AsyncStorage", error);
       }
     };
     checkFirstVisit();
@@ -99,7 +99,6 @@ const DriverHome = ({ navigation }) => {
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // Plus besoin d'extraire isArrivalModalVisible, handleConfirmArrival, handleSnoozeArrival
   const {
     isAvailable,
     currentAddress,
@@ -133,7 +132,7 @@ const DriverHome = ({ navigation }) => {
               <Text style={styles.blockerTitle}>Verification en cours</Text>
               <Text style={styles.blockerDesc}>Votre paiement a ete recu. Un administrateur valide votre acces.</Text>
               <View style={styles.loaderSpacing}>
-                <GlobalSkeleton visible={true} fullScreen={false} />
+                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
               </View>
               <GoldButton title="SE DECONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
             </>
@@ -179,7 +178,7 @@ const DriverHome = ({ navigation }) => {
         
         {!effectiveLocation && (
           <View style={styles.floatingLoader}>
-            <GlobalSkeleton visible={true} fullScreen={false} />
+            <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
             <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>
           </View>
         )}
