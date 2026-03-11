@@ -23,7 +23,7 @@ const useSocket = () => {
         nextAppState === 'active'
       ) {
         if (isAuthenticated && token && !socketService.getIsConnected()) {
-          console.log('[useSocket] Retour premier plan : Reconnexion forcée');
+          console.log('[useSocket] Retour premier plan : Reconnexion forcee');
           socketService.connect(token);
           wasConnected.current = true;
         }
@@ -68,6 +68,8 @@ const useSocket = () => {
 
   return {
     isConnected: socketService.getIsConnected(),
+    on: (event, callback) => socketService.on(event, callback),
+    off: (event, callback) => socketService.off(event, callback),
     emit: (event, data) => socketService.emit(event, data),
     emitLocation: (coords) => socketService.emitLocation(coords),
     joinRoom: (roomId) => socketService.joinRoom(roomId),

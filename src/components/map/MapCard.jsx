@@ -22,10 +22,6 @@ import {
 } from './markers/MobileMarkers';
 import useMapAutoFitter from './useMapAutoFitter';
 
-// Desactivation de la telemetrie et suppression des warnings de Token
-MapLibreGL.setAccessToken(null);
-MapLibreGL.setTelemetryEnabled(false);
-
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
@@ -158,7 +154,7 @@ const MapCard = forwardRef(({
           onDidFinishLoadingMap={handleMapReady}
           onRegionWillChange={handleMapInteraction}
           onPress={onPress}
-          styleURL={MapLibreGL.StyleURL.Street}
+          styleJSON={JSON.stringify({ version: 8, sources: {}, layers: [] })}
         >
           <MapLibreGL.Camera
             ref={cameraRef}

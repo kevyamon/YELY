@@ -32,7 +32,7 @@
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundColor": "#D4AF37"
+        "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
       "permissions": [
@@ -48,12 +48,18 @@
     "web": {
       "name": "Yély",
       "shortName": "Yély",
+      "icon": "./assets/images/icon-hd.png",
       "favicon": "./assets/images/favicon.png",
       "display": "standalone",
       "backgroundColor": "#000000",
       "themeColor": "#D4AF37",
       "orientation": "portrait",
-      "bundler": "metro"
+      "bundler": "metro",
+      "splash": {
+        "image": "./assets/images/splash-icon.png",
+        "resizeMode": "contain",
+        "backgroundColor": "#D4AF37"
+      }
     },
     "plugins": [
       [
@@ -69,13 +75,14 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "Yely a besoin de votre position pour vous attribuer des courses.",
-          "locationAlwaysPermission": "Yely a besoin de votre position pour que les clients puissent suivre votre approche.",
+          "locationAlwaysPermission": "Yely a besoin de votre position pour que clients puissent suivre votre approche.",
           "locationWhenInUsePermission": "Yely a besoin de votre position pour identifier les trajets.",
           "isAndroidBackgroundLocationEnabled": true,
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-video"
+      "expo-video",
+      "@sentry/react-native/expo"
     ],
     "extra": {
       "eas": {
