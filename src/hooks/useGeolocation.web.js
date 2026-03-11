@@ -65,7 +65,6 @@ const useGeolocation = (options = {}) => {
 
     setIsLoading(true);
 
-    // LA MAGIE WEB : Si on code en local, on force la position a Mafere.
     if (__DEV__) {
       const mockWithTime = { ...MAFERE_MOCK_LOCATION, timestamp: Date.now() };
       setLocation(mockWithTime);
@@ -81,7 +80,6 @@ const useGeolocation = (options = {}) => {
       return; 
     }
 
-    // --- LE RESTE DU CODE EST POUR LA PRODUCTION (Vrai GPS) ---
     if (!navigator.geolocation) {
       setError("La geolocalisation n'est pas supportee par ce navigateur.");
       setIsLoading(false);
@@ -96,8 +94,6 @@ const useGeolocation = (options = {}) => {
         setError(null);
         
         const accuracy = position.coords.accuracy || 100;
-        
-        // Tolerance elargie pour le web (Les PC fixes ont une tres mauvaise precision)
         const maxAccuracy = isMobile ? 150 : 2500;
 
         if (accuracy > maxAccuracy) return;
@@ -115,15 +111,11 @@ const useGeolocation = (options = {}) => {
           );
           const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
 
-          if (distance < 12) {
-            return; 
-          }
+          if (distance < 12) return; 
 
           if (timeSinceLastUpdate > 0) {
             const calculatedSpeed = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
-            if (calculatedSpeed > 180) {
-              return;
-            }
+            if (calculatedSpeed > 180) return;
           }
         }
 
@@ -140,7 +132,6 @@ const useGeolocation = (options = {}) => {
         setLocation(coords);
         setIsLoading(false);
         
-        // On effectue le reverse-geocoding une seule fois pour ne pas spammer Nominatim
         if (!hasFetchedAddressRef.current) {
           hasFetchedAddressRef.current = true;
           reverseGeocodeWeb(coords);
@@ -161,7 +152,7 @@ const useGeolocation = (options = {}) => {
         maximumAge: 5000
       }
     );
-  }, []); // Retrait volontaire de 'address' pour eviter la boucle de rechargement
+  }, []);
 
   useEffect(() => {
     startTracking();

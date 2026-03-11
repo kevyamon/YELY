@@ -1,5 +1,5 @@
 // src/hooks/useGeolocation.js
-// HOOK GEOLOCALISATION - Anti-Zombie Watchers & Bouclier Spatial (Foreground + Background)
+// HOOK GEOLOCALISATION - Anti-Crash, Backoff Exponentiel & Bouclier Spatial
 // STANDARD: Industriel / Bank Grade
 
 import * as Location from 'expo-location';
@@ -37,6 +37,7 @@ const useGeolocation = (options = {}) => {
   const lastValidLocationRef = useRef(null);
   
   const isStartingRef = useRef(false);
+  const retryCountRef = useRef(0); // Compteur pour le Backoff Exponentiel
 
   const requestPermission = useCallback(async () => {
     try {
@@ -67,9 +68,11 @@ const useGeolocation = (options = {}) => {
         accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
       });
 
+      // CORRECTION SENIOR : Au lieu de faire un throw fatal qui casse l'appli, on gere l'etat
       if (loc.mocked && !__DEV__) {
-        // CORRECTION SENIOR : On lance une alerte rouge immediate au lieu de juste retourner null
-        throw new Error('MOCK_DETECTED');
+        setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
+        setIsLoading(false);
+        return 'MOCK_DETECTED';
       }
 
       const coords = {
@@ -84,11 +87,9 @@ const useGeolocation = (options = {}) => {
       lastValidLocationRef.current = coords;
       setLocation(coords);
       setIsLoading(false);
+      retryCountRef.current = 0; // Reset du compteur en cas de succes
       return coords;
     } catch (err) {
-      if (err.message === 'MOCK_DETECTED') {
-        throw err; // On fait remonter l'erreur critique
-      }
       setError('Recherche du signal GPS...');
       setIsLoading(false); 
       return null;
@@ -101,125 +102,123 @@ const useGeolocation = (options = {}) => {
     
     if (!granted) return;
 
-    try {
-      const initialCoords = await getCurrentPosition();
+    const initialCoords = await getCurrentPosition();
 
-      if (!initialCoords) {
-        retryTimeoutRef.current = setTimeout(() => {
-          if (mounted) initTracking();
-        }, 3000); 
-        return; 
-      }
+    // Arret complet de la boucle si Fake GPS
+    if (initialCoords === 'MOCK_DETECTED') {
+       return; 
+    }
 
-      if (watchPosition && !watchRef.current && !isStartingRef.current) {
-        isStartingRef.current = true;
-        try {
-          const watcher = await Location.watchPositionAsync(
-            {
+    if (!initialCoords) {
+      // Backoff Exponentiel : 3s, 6s, 12s... max 30s. Evite la saturation du thread JS (Memory Leak)
+      const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
+      retryCountRef.current += 1;
+      
+      retryTimeoutRef.current = setTimeout(() => {
+        if (mounted) initTracking();
+      }, backoffTime); 
+      return; 
+    }
+
+    if (watchPosition && !watchRef.current && !isStartingRef.current) {
+      isStartingRef.current = true;
+      try {
+        const watcher = await Location.watchPositionAsync(
+          {
+            accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+            timeInterval,
+            distanceInterval,
+            showsBackgroundLocationIndicator: true, 
+            deferredUpdatesDistance: distanceInterval,
+            deferredUpdatesInterval: timeInterval
+          },
+          (loc) => {
+            if (!mounted) return;
+
+            if (loc.mocked && !__DEV__) {
+              setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
+              if (watchRef.current) {
+                watchRef.current.remove();
+                watchRef.current = null;
+              }
+              return;
+            }
+
+            const accuracy = loc.coords.accuracy || 100;
+            const maxAccuracy = __DEV__ ? 2000 : 100;
+            
+            if (accuracy > maxAccuracy) return;
+
+            const newLat = loc.coords.latitude;
+            const newLng = loc.coords.longitude;
+            const now = Date.now();
+
+            if (lastValidLocationRef.current) {
+              const distance = getDistanceInMeters(
+                lastValidLocationRef.current.latitude,
+                lastValidLocationRef.current.longitude,
+                newLat,
+                newLng
+              );
+              const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
+
+              const minDistance = __DEV__ ? 15 : 10;
+              if (distance < minDistance) return; 
+
+              if (timeSinceLastUpdate > 0) {
+                const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
+                if (calculatedSpeedKmh > 180 && !__DEV__) return;
+              }
+            }
+            
+            const newCoords = {
+              latitude: newLat,
+              longitude: newLng,
+              heading: loc.coords.heading || 0,
+              speed: loc.coords.speed || 0,
+              accuracy: accuracy,
+              timestamp: now,
+            };
+
+            lastValidLocationRef.current = newCoords;
+            setLocation(newCoords);
+            setError(null); 
+            retryCountRef.current = 0; // Signal recupere, on reset le backoff
+          }
+        );
+
+        if (!mounted) {
+          watcher.remove();
+        } else {
+          watchRef.current = watcher;
+        }
+
+        const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
+        if (hasBackgroundPermission) {
+          const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+          if (!isRegistered) {
+            await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
               accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
               timeInterval,
               distanceInterval,
-              showsBackgroundLocationIndicator: true, 
-              deferredUpdatesDistance: distanceInterval,
-              deferredUpdatesInterval: timeInterval
-            },
-            (loc) => {
-              if (!mounted) return;
-
-              if (loc.mocked && !__DEV__) {
-                setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
-                // CORRECTION SENIOR : On detruit immediatement le radar pour stopper la boucle
-                if (watchRef.current) {
-                  watchRef.current.remove();
-                  watchRef.current = null;
-                }
-                return;
+              showsBackgroundLocationIndicator: true,
+              foregroundService: {
+                notificationTitle: "Yely Actif",
+                notificationBody: "Suivi GPS en cours pour la course.",
+                notificationColor: "#D4AF37",
               }
-
-              const accuracy = loc.coords.accuracy || 100;
-              const maxAccuracy = __DEV__ ? 2000 : 100;
-              
-              if (accuracy > maxAccuracy) return;
-
-              const newLat = loc.coords.latitude;
-              const newLng = loc.coords.longitude;
-              const now = Date.now();
-
-              if (lastValidLocationRef.current) {
-                const distance = getDistanceInMeters(
-                  lastValidLocationRef.current.latitude,
-                  lastValidLocationRef.current.longitude,
-                  newLat,
-                  newLng
-                );
-                const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
-
-                const minDistance = __DEV__ ? 15 : 10;
-                if (distance < minDistance) {
-                  return; 
-                }
-
-                if (timeSinceLastUpdate > 0) {
-                  const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
-                  if (calculatedSpeedKmh > 180 && !__DEV__) {
-                    return;
-                  }
-                }
-              }
-              
-              const newCoords = {
-                latitude: newLat,
-                longitude: newLng,
-                heading: loc.coords.heading || 0,
-                speed: loc.coords.speed || 0,
-                accuracy: accuracy,
-                timestamp: now,
-              };
-
-              lastValidLocationRef.current = newCoords;
-              setLocation(newCoords);
-              setError(null); 
-            }
-          );
-
-          if (!mounted) {
-            watcher.remove();
-          } else {
-            watchRef.current = watcher;
+            });
           }
-
-          const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
-          if (hasBackgroundPermission) {
-            const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
-            if (!isRegistered) {
-              await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-                accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
-                timeInterval,
-                distanceInterval,
-                showsBackgroundLocationIndicator: true,
-                foregroundService: {
-                  notificationTitle: "Yely Actif",
-                  notificationBody: "Suivi GPS en cours pour la course.",
-                  notificationColor: "#D4AF37",
-                }
-              });
-            }
-          }
-
-        } catch (err) {
-          retryTimeoutRef.current = setTimeout(() => {
-            if (mounted) initTracking();
-          }, 3000);
-        } finally {
-          isStartingRef.current = false;
         }
-      }
-    } catch (err) {
-      // CORRECTION SENIOR : Interception finale. Si c'est un Fake GPS, on bloque tout, on ne relance pas.
-      if (err.message === 'MOCK_DETECTED') {
-        setError("Position falsifiee detectee. Desactivez votre Fake GPS et relancez l'application.");
-        setIsLoading(false);
-        return; 
+
+      } catch (err) {
+        const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
+        retryCountRef.current += 1;
+        retryTimeoutRef.current = setTimeout(() => {
+          if (mounted) initTracking();
+        }, backoffTime);
+      } finally {
+        isStartingRef.current = false;
       }
     }
     
@@ -247,6 +246,7 @@ const useGeolocation = (options = {}) => {
   const forceRefresh = useCallback(() => {
     setIsLoading(true);
     setError(null);
+    retryCountRef.current = 0; 
     if (watchRef.current) {
       watchRef.current.remove();
       watchRef.current = null;
