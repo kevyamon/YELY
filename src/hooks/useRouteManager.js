@@ -9,7 +9,8 @@ const ROUTE_DRAW_DURATION_MS = 1500;
 const ROUTE_DRAW_INTERVAL_MS = 16;
 const TRIM_THRESHOLD_METERS = 2;
 const DEVIATION_THRESHOLD_METERS = 60;
-const SILENT_RETRY_DELAY_MS = 5000;
+// Augmentation du délai de réessai pour être moins sensible aux intempéries réseau
+const SILENT_RETRY_DELAY_MS = 10000; 
 
 const computeStepSize = (totalPoints) => {
   const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
@@ -109,28 +110,36 @@ const useRouteManager = (location, driverLocation, markers) => {
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
       lastRouteFetchTimeRef.current = Date.now();
 
-      const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+      try {
+        const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+        
+        if (lastRouteDestKeyRef.current !== destKey) return;
 
-      if (lastRouteDestKeyRef.current !== destKey) {
-        return;
-      }
+        if (!routePoints) {
+           // Si échec réseau, on garde l'ancien tracé s'il existe et on retente plus tard
+           clearTimeout(retryTimeoutRef.current);
+           retryTimeoutRef.current = setTimeout(() => {
+              if (lastRouteDestKeyRef.current === destKey) {
+                 lastRouteFetchTimeRef.current = 0; // Force un nouveau fetch au prochain cycle
+              }
+           }, SILENT_RETRY_DELAY_MS);
+           return;
+        }
 
-      if (!routePoints) {
         clearTimeout(retryTimeoutRef.current);
-        retryTimeoutRef.current = setTimeout(() => {
-          if (lastRouteDestKeyRef.current === destKey) {
-            lastRouteFetchTimeRef.current = 0;
-          }
-        }, SILENT_RETRY_DELAY_MS);
-        return;
+        fullRoutePointsRef.current = routePoints;
+        setFullRoutePoints(routePoints);
+        lastPassedIndexRef.current = 0;
+        animateRouteDraw(routePoints);
+      } catch (error) {
+         // En cas d'erreur (ex: perte connexion), on ne supprime pas le tracé existant.
+         clearTimeout(retryTimeoutRef.current);
+         retryTimeoutRef.current = setTimeout(() => {
+            if (lastRouteDestKeyRef.current === destKey) {
+               lastRouteFetchTimeRef.current = 0;
+            }
+         }, SILENT_RETRY_DELAY_MS);
       }
-
-      clearTimeout(retryTimeoutRef.current);
-      const validPoints = routePoints || [];
-      fullRoutePointsRef.current = validPoints;
-      setFullRoutePoints(validPoints);
-      lastPassedIndexRef.current = 0;
-      animateRouteDraw(validPoints);
     },
     [animateRouteDraw, stopDrawAnimation]
   );
@@ -211,6 +220,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
     if (!activeTarget || !location) {
+      // Nettoyage uniquement si on n'a plus de cible ou plus de position du tout
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       setFullRoutePoints([]);
@@ -271,7 +281,8 @@ const useRouteManager = (location, driverLocation, markers) => {
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
-      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
+      // On attend 20 secondes (au lieu de 15) avant de forcer un recalcul dû à une déviation
+      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 20000)) {
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude },

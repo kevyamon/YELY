@@ -45,20 +45,21 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
           });
         }
 
-        if (destLat && destLng) {
+        // SUPPRESSION DU DRAPEAU CHEZ LE PASSAGER EN COURS DE ROUTE
+        // Le passager n'a pas besoin du drapeau de destination car son écran indique déjà où il va.
+        /* if (destLat && destLng) {
           markers.push({
             id: 'destination',
-            type: 'destination',
-            latitude: Number(destLat),
-            longitude: Number(destLng),
-            title: currentRide?.destination?.address || 'Destination',
-            iconColor: THEME.COLORS.danger,
+            type: 'destination', // C'est ce type qui déclenche AnimatedDestinationMarker
+            ...
           });
         }
+        */
 
         return markers;
       }
 
+      // Si le chauffeur est en route vers nous (accepted, arrived)
       if (!originLat || !originLng) return [];
 
       return [{
@@ -73,6 +74,7 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
 
     if (!destination) return [];
 
+    // Marqueur de destination AVANT la commande (utile pour visualiser où on veut aller)
     return [{
       id: 'destination',
       latitude: Number(destination.latitude),
@@ -84,10 +86,7 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
   }, [destination, isRideActive, rideStatus, originLat, originLng, destLat, destLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
   // GESTION SPATIALE DYNAMIQUE
-  // Top: Espace pour le SmartHeader + Safe Area (environ 140px)
   const mapTopPadding = 140; 
-  
-  // Bottom: S'ajuste selon la hauteur du BottomSheet actif pour ne jamais cacher le tracé
   const mapBottomPadding = isRideActive ? 320 : (destination ? 380 : 240);
 
   const mapTraceOrigin = location;

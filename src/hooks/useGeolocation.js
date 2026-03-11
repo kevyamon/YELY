@@ -1,12 +1,12 @@
 // src/hooks/useGeolocation.js
-// HOOK GEOLOCALISATION - Anti-Crash, Backoff Exponentiel & Bouclier Spatial
-// STANDARD: Industriel / Bank Grade
+// HOOK GEOLOCALISATION - Anti-Crash, Résilient aux Fake GPS & Sans Forçage Spatial
+// CSCSM Level: Bank Grade
 
 import * as Location from 'expo-location';
 import * as TaskManager from 'expo-task-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
-import { isLocationInMafereZone, MAFERE_CENTER } from '../utils/mafereZone';
+import { isLocationInMafereZone } from '../utils/mafereZone';
 
 const MAX_RETRIES = 3;
 
@@ -46,7 +46,7 @@ const useGeolocation = (options = {}) => {
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== 'granted') {
-        setError('Permission au premier plan refusee');
+        setError('Permission au premier plan refusée');
         setIsLoading(false);
         return false;
       }
@@ -79,12 +79,6 @@ const useGeolocation = (options = {}) => {
         if (!loc) throw new Error('Aucune position connue');
       }
 
-      if (loc.mocked && !__DEV__) {
-        setError('Position falsifiee detectee. Veuillez desactiver le Fake GPS.');
-        setIsLoading(false);
-        return 'MOCK_DETECTED';
-      }
-
       let coords = {
         latitude: loc.coords.latitude,
         longitude: loc.coords.longitude,
@@ -94,14 +88,12 @@ const useGeolocation = (options = {}) => {
         timestamp: Date.now(),
       };
       
+      // LOGIQUE METIER CORRIGEE : On ne bloque plus si Fake GPS ou Hors Zone.
+      // On se contente d'informer, mais on met TOUJOURS à jour la position réelle.
       if (!isLocationInMafereZone(coords)) {
-        if (__DEV__) {
-          coords = { ...coords, latitude: MAFERE_CENTER.latitude, longitude: MAFERE_CENTER.longitude };
-        } else {
-          setError('Zone non couverte. Yely est uniquement disponible a Mafere.');
-          setIsLoading(false);
-          return 'OUT_OF_ZONE';
-        }
+        setError('Vous êtes hors de la zone de couverture de Yély.');
+      } else {
+        setError(null);
       }
 
       lastValidLocationRef.current = coords;
@@ -124,13 +116,9 @@ const useGeolocation = (options = {}) => {
 
     const initialCoords = await getCurrentPosition();
 
-    if (initialCoords === 'MOCK_DETECTED' || initialCoords === 'OUT_OF_ZONE') {
-       return; 
-    }
-
     if (!initialCoords) {
       if (retryCountRef.current >= MAX_RETRIES) {
-        setError('Impossible d obtenir la position GPS. Verifiez vos parametres.');
+        setError('Impossible d obtenir la position GPS. Vérifiez vos paramètres.');
         setIsLoading(false);
         return; 
       }
@@ -159,35 +147,18 @@ const useGeolocation = (options = {}) => {
           (loc) => {
             if (!mounted) return;
 
-            if (loc.mocked && !__DEV__) {
-              setError('Position falsifiee detectee.');
-              if (watchRef.current) {
-                watchRef.current.remove();
-                watchRef.current = null;
-              }
-              return;
-            }
-
+            // Retrait de la restriction d'accuracy trop stricte
             const accuracy = loc.coords.accuracy || 100;
-            const maxAccuracy = __DEV__ ? 2000 : 100;
-            if (accuracy > maxAccuracy) return;
+            if (accuracy > 2000) return; // Tolérance très large pour accepter tous les signaux
 
             let newLat = loc.coords.latitude;
             let newLng = loc.coords.longitude;
             const now = Date.now();
 
             if (!isLocationInMafereZone({ latitude: newLat, longitude: newLng })) {
-              if (__DEV__) {
-                newLat = MAFERE_CENTER.latitude;
-                newLng = MAFERE_CENTER.longitude;
-              } else {
-                setError('Zone non couverte. Vous etes sorti de Mafere.');
-                if (watchRef.current) {
-                  watchRef.current.remove();
-                  watchRef.current = null;
-                }
-                return;
-              }
+              setError('Vous êtes hors de la zone de couverture.');
+            } else {
+              setError(null);
             }
 
             if (lastValidLocationRef.current) {
@@ -197,15 +168,11 @@ const useGeolocation = (options = {}) => {
                 newLat,
                 newLng
               );
-              const timeSinceLastUpdate = now - (lastValidLocationRef.current.timestamp || 0);
-
-              const minDistance = __DEV__ ? 15 : 10;
+              
+              // On réduit la distance minimale pour plus de fluidité
+              // Et on SUPPRIME le calcul de vitesse qui bloquait les téléportations Fake GPS
+              const minDistance = 5; 
               if (distance < minDistance) return; 
-
-              if (timeSinceLastUpdate > 0) {
-                const calculatedSpeedKmh = (distance / (timeSinceLastUpdate / 1000)) * 3.6;
-                if (calculatedSpeedKmh > 180 && !__DEV__) return;
-              }
             }
             
             const newCoords = {
@@ -219,7 +186,6 @@ const useGeolocation = (options = {}) => {
 
             lastValidLocationRef.current = newCoords;
             setLocation(newCoords);
-            setError(null); 
             retryCountRef.current = 0; 
           }
         );

@@ -18,7 +18,6 @@ const MOCK_VEHICLES = [
   { id: '3', type: 'vip', name: 'VIP', duration: '8' }
 ];
 
-// UTILITAIRE INTERNE : Formule de Haversine pour le filtre de distance
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
   const p1 = lat1 * (Math.PI / 180);
@@ -84,7 +83,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     return () => subscription.remove();
   }, [refetchCurrentRide]);
 
-  // LOGIQUE ADRESSE : Securite Anti-Race Condition et Bouclier Spatial
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
@@ -103,7 +101,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
           location.latitude, location.longitude,
           lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
         );
-        // On ne refait une requete reseau que si le passager s'est deplace de plus de 50 metres
         if (distance > 50) {
           shouldFetch = true;
         }
@@ -112,7 +109,6 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       if (shouldFetch) {
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
         
-        // Anti-rebond (Debounce) : On attend 1.5s de stabilite avant d'appeler l'API
         debounceTimeoutRef.current = setTimeout(async () => {
           try {
             const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
@@ -228,6 +224,22 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       dispatch(showErrorToast({ title: 'Destination', message: 'Veuillez choisir une destination.' }));
       return;
     }
+
+    // AJOUT : Blocage Trajet Absurde (A vers A)
+    const distanceOriginDest = getDistance(
+      effectiveOrigin.latitude, effectiveOrigin.longitude,
+      destination.latitude, destination.longitude
+    );
+
+    // On bloque si la distance est inférieure à 10 mètres pour éviter les commandes sur place
+    if (distanceOriginDest < 10) {
+      dispatch(showErrorToast({ 
+        title: 'Trajet non valide', 
+        message: 'Votre point de départ et votre destination sont identiques.' 
+      }));
+      return;
+    }
+
     if (!selectedVehicle) {
       dispatch(showErrorToast({ title: 'Vehicule', message: 'Veuillez selectionner un type de vehicule.' }));
       return;
