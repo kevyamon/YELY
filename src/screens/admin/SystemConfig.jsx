@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import React, { useEffect, useState } from 'react';
-import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Switch, Text, View } from 'react-native';
+import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
@@ -61,6 +61,10 @@ const SystemConfig = ({ navigation }) => {
     }
   };
 
+  const toggleMandatory = () => {
+    setForm(prev => ({ ...prev, mandatoryUpdate: !prev.mandatoryUpdate }));
+  };
+
   if (isConfigLoading) {
     return <GlobalSkeleton visible={true} fullScreen={true} />;
   }
@@ -100,17 +104,27 @@ const SystemConfig = ({ navigation }) => {
             autoCapitalize="none"
           />
 
+          {/* Remplacement du Switch buggue par un composant Custom stable */}
           <View style={styles.switchContainer}>
             <View style={styles.switchLabelContainer}>
               <Text style={styles.switchLabel}>Mise a jour obligatoire</Text>
-              <Text style={styles.switchSubLabel}>Bloque totalement l'acces a l'application si la version n'est pas a jour.</Text>
+              <Text style={styles.switchSubLabel}>Bloque l'acces si non a jour.</Text>
             </View>
-            <Switch
-              value={form.mandatoryUpdate}
-              onValueChange={(val) => setForm({ ...form, mandatoryUpdate: val })}
-              trackColor={{ false: THEME.COLORS.textSecondary, true: THEME.COLORS.primary }}
-              thumbColor={THEME.COLORS.pureWhite}
-            />
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={toggleMandatory}
+              style={[
+                styles.customToggleBtn, 
+                form.mandatoryUpdate ? styles.toggleActive : styles.toggleInactive
+              ]}
+            >
+              <Text style={[
+                styles.toggleText, 
+                form.mandatoryUpdate ? styles.toggleTextActive : styles.toggleTextInactive
+              ]}>
+                {form.mandatoryUpdate ? "OUI" : "NON"}
+              </Text>
+            </TouchableOpacity>
           </View>
 
         </GlassCard>
@@ -179,6 +193,31 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
     fontSize: 12,
     marginTop: 4,
+  },
+  // Nouveaux styles pour le bouton bascule
+  customToggleBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: THEME.BORDERS.radius.lg,
+    borderWidth: 1,
+  },
+  toggleActive: {
+    backgroundColor: 'rgba(212, 175, 55, 0.2)', // Fond dore leger
+    borderColor: THEME.COLORS.primary,
+  },
+  toggleInactive: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: THEME.COLORS.textSecondary,
+  },
+  toggleText: {
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  toggleTextActive: {
+    color: THEME.COLORS.primary,
+  },
+  toggleTextInactive: {
+    color: THEME.COLORS.textSecondary,
   },
   buttonContainer: {
     marginTop: THEME.SPACING.md,
