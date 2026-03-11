@@ -8,6 +8,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
 import { isLocationInMafereZone, MAFERE_CENTER } from '../utils/mafereZone';
 
+const MAX_RETRIES = 3;
+
 const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
   const p1 = lat1 * (Math.PI / 180);
@@ -50,8 +52,8 @@ const useGeolocation = (options = {}) => {
       }
 
       const { status: backgroundStatus } = await Location.requestBackgroundPermissionsAsync();
-      if (backgroundStatus !== 'granted') {
-        if (__DEV__) console.warn("Permission GPS en arriere-plan refusee.");
+      if (backgroundStatus !== 'granted' && __DEV__) {
+        console.warn("Permission GPS en arriere-plan refusee.");
       }
 
       return true;
@@ -84,7 +86,6 @@ const useGeolocation = (options = {}) => {
         timestamp: Date.now(),
       };
       
-      // BOUCLIER SPATIAL (GEOFENCING) - Securite d'entree
       if (!isLocationInMafereZone(coords)) {
         if (__DEV__) {
           console.log('[GEOFENCE] Hors zone en DEV. Teleportation a Mafere.');
@@ -121,7 +122,13 @@ const useGeolocation = (options = {}) => {
     }
 
     if (!initialCoords) {
-      const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
+      if (retryCountRef.current >= MAX_RETRIES) {
+        setError('Impossible d obtenir la position GPS. Verifiez vos parametres.');
+        setIsLoading(false);
+        return; 
+      }
+
+      const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 15000);
       retryCountRef.current += 1;
       
       retryTimeoutRef.current = setTimeout(() => {
@@ -162,7 +169,6 @@ const useGeolocation = (options = {}) => {
             let newLng = loc.coords.longitude;
             const now = Date.now();
 
-            // BOUCLIER SPATIAL - Suivi Temps Reel
             if (!isLocationInMafereZone({ latitude: newLat, longitude: newLng })) {
               if (__DEV__) {
                 newLat = MAFERE_CENTER.latitude;
@@ -217,30 +223,36 @@ const useGeolocation = (options = {}) => {
           watchRef.current = watcher;
         }
 
-        const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
-        if (hasBackgroundPermission) {
-          const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
-          if (!isRegistered) {
-            await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-              accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
-              timeInterval,
-              distanceInterval,
-              showsBackgroundLocationIndicator: true,
-              foregroundService: {
-                notificationTitle: "Yely Actif",
-                notificationBody: "Suivi GPS en cours.",
-                notificationColor: "#D4AF37",
-              }
-            });
+        try {
+          const hasBackgroundPermission = (await Location.getBackgroundPermissionsAsync()).status === 'granted';
+          if (hasBackgroundPermission && !__DEV__) {
+            const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
+            if (!isRegistered) {
+              await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
+                accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+                timeInterval,
+                distanceInterval,
+                showsBackgroundLocationIndicator: true,
+                foregroundService: {
+                  notificationTitle: "Yely Actif",
+                  notificationBody: "Suivi GPS en cours.",
+                  notificationColor: "#D4AF37",
+                }
+              });
+            }
           }
+        } catch (taskError) {
+          console.log('Ignored TaskManager error in dev mode.');
         }
 
       } catch (err) {
-        const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 30000);
-        retryCountRef.current += 1;
-        retryTimeoutRef.current = setTimeout(() => {
-          if (mounted) initTracking();
-        }, backoffTime);
+        if (retryCountRef.current < MAX_RETRIES) {
+          const backoffTime = Math.min(3000 * Math.pow(2, retryCountRef.current), 15000);
+          retryCountRef.current += 1;
+          retryTimeoutRef.current = setTimeout(() => {
+            if (mounted) initTracking();
+          }, backoffTime);
+        }
       } finally {
         isStartingRef.current = false;
       }
@@ -259,11 +271,13 @@ const useGeolocation = (options = {}) => {
       }
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       
-      TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK).then(isRegistered => {
-        if (isRegistered) {
-          Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
-        }
-      });
+      try {
+        TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK).then(isRegistered => {
+          if (isRegistered) {
+            Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
+          }
+        }).catch(() => {});
+      } catch (e) {}
     };
   }, [initTracking]);
 
@@ -275,11 +289,6 @@ const useGeolocation = (options = {}) => {
       watchRef.current.remove();
       watchRef.current = null;
     }
-    TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK).then(isRegistered => {
-      if (isRegistered) {
-        Location.stopLocationUpdatesAsync(BACKGROUND_LOCATION_TASK).catch(() => {});
-      }
-    });
     initTracking();
   }, [initTracking]);
 

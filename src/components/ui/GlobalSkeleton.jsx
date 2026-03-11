@@ -1,12 +1,12 @@
 // src/components/ui/GlobalSkeleton.jsx
-// SKELETON PLEIN ECRAN - Remplacement du composant pulse central
+// SKELETON ADAPTATIF ET MODULAIRE
 // CSCSM Level: Bank Grade
 
 import React, { useEffect, useRef } from 'react';
-import { Animated, SafeAreaView, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const GlobalSkeleton = ({ visible, fullScreen = true }) => {
+const GlobalSkeleton = ({ visible, fullScreen = true, children }) => {
   const pulseAnim = useRef(new Animated.Value(0.4)).current;
 
   useEffect(() => {
@@ -14,12 +14,12 @@ const GlobalSkeleton = ({ visible, fullScreen = true }) => {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, {
-            toValue: 1,
+            toValue: 0.8,
             duration: 800,
             useNativeDriver: true,
           }),
           Animated.timing(pulseAnim, {
-            toValue: 0.4,
+            toValue: 0.3,
             duration: 800,
             useNativeDriver: true,
           }),
@@ -33,35 +33,19 @@ const GlobalSkeleton = ({ visible, fullScreen = true }) => {
 
   if (!visible) return null;
 
-  const renderCardSkeleton = (key) => (
-    <View key={key} style={styles.card}>
-      <View style={styles.cardHeader}>
-        <Animated.View style={[styles.avatarBox, { opacity: pulseAnim }]} />
-        <View style={styles.headerTextGroup}>
-          <Animated.View style={[styles.line, styles.lineTitle, { opacity: pulseAnim }]} />
-          <Animated.View style={[styles.line, styles.lineSubtitle, { opacity: pulseAnim }]} />
-        </View>
-      </View>
-      <Animated.View style={[styles.contentBlock, { opacity: pulseAnim }]} />
-      <Animated.View style={[styles.buttonLine, { opacity: pulseAnim }]} />
-    </View>
-  );
+  // Si le developpeur a fourni ses propres formes a faire clignoter
+  if (children) {
+    return (
+      <Animated.View style={[{ opacity: pulseAnim }, fullScreen && styles.overlay]}>
+        {children}
+      </Animated.View>
+    );
+  }
 
+  // Comportement par defaut si aucun composant enfant n'est fourni
   return (
     <View style={fullScreen ? styles.overlay : styles.inlineContainer}>
-      <SafeAreaView style={styles.safeArea}>
-        {/* Fake Header */}
-        <View style={styles.header}>
-          <Animated.View style={[styles.headerIcon, { opacity: pulseAnim }]} />
-          <Animated.View style={[styles.headerTitle, { opacity: pulseAnim }]} />
-          <Animated.View style={[styles.headerIcon, { opacity: pulseAnim }]} />
-        </View>
-
-        {/* Fake Content Cards */}
-        <View style={styles.scrollContent}>
-          {[1, 2, 3].map(renderCardSkeleton)}
-        </View>
-      </SafeAreaView>
+      <Animated.View style={[styles.defaultLoaderBlock, { opacity: pulseAnim }]} />
     </View>
   );
 };
@@ -71,84 +55,24 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFillObject,
     backgroundColor: THEME.COLORS.background,
     zIndex: 9999,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inlineContainer: {
     flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  header: {
-    flexDirection: 'row',
+    backgroundColor: 'transparent',
+    justifyContent: 'center',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 15,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.border,
+    width: '100%',
+    height: '100%',
   },
-  headerIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: THEME.COLORS.overlay,
-  },
-  headerTitle: {
-    width: 150,
-    height: 20,
-    borderRadius: 10,
-    backgroundColor: THEME.COLORS.overlay,
-  },
-  scrollContent: {
-    padding: 20,
-    gap: 15,
-  },
-  card: {
+  defaultLoaderBlock: {
+    width: '80%',
+    height: 120,
     backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: 16,
-    padding: 15,
+    borderRadius: THEME.BORDERS.radius.xl,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-  },
-  cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 15,
-  },
-  avatarBox: {
-    width: 45,
-    height: 45,
-    borderRadius: 22.5,
-    backgroundColor: THEME.COLORS.overlay,
-    marginRight: 15,
-  },
-  headerTextGroup: {
-    flex: 1,
-    gap: 8,
-  },
-  line: {
-    height: 12,
-    borderRadius: 6,
-    backgroundColor: THEME.COLORS.overlay,
-  },
-  lineTitle: {
-    width: '60%',
-  },
-  lineSubtitle: {
-    width: '40%',
-  },
-  contentBlock: {
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: THEME.COLORS.overlay,
-    marginBottom: 15,
-  },
-  buttonLine: {
-    height: 40,
-    borderRadius: 8,
-    backgroundColor: THEME.COLORS.overlay,
   }
 });
 
