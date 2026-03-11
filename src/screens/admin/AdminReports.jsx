@@ -1,5 +1,5 @@
 // src/screens/admin/AdminReports.jsx
-// DASHBOARD SIGNALEMENTS - Vue modulaire et épurée
+// DASHBOARD SIGNALEMENTS - Vue modulaire et épurée (Images corrigees HTTPS strict)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +40,6 @@ const AdminReports = ({ navigation }) => {
   const handleScroll = (event) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
-    
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
@@ -60,7 +59,7 @@ const AdminReports = ({ navigation }) => {
       await resolveReport({ id, note }).unwrap();
       setIsModalVisible(false);
       setSelectedReport(null);
-      dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement résolu avec succès.' }));
+      dispatch(showSuccessToast({ title: 'Succes', message: 'Signalement resolu avec succes.' }));
     } catch (error) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de clore ce signalement.' }));
     }
@@ -71,7 +70,7 @@ const AdminReports = ({ navigation }) => {
     try {
       await deleteAdminReport(reportToDelete).unwrap();
       setReportToDelete(null);
-      dispatch(showSuccessToast({ title: 'Supprimé', message: 'Signalement effacé définitivement.' }));
+      dispatch(showSuccessToast({ title: 'Supprime', message: 'Signalement efface definitivement.' }));
     } catch (error) {
       setReportToDelete(null);
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
@@ -79,7 +78,9 @@ const AdminReports = ({ navigation }) => {
   };
 
   const openImagePreview = (url) => {
-    setPreviewImageUrl(url);
+    // FORCAGE SECURITE : Remplacement systematique de http en https pour eviter le blocage natif
+    const secureUrl = url ? url.replace('http://', 'https://') : null;
+    setPreviewImageUrl(secureUrl);
     setIsPreviewVisible(true);
   };
 
@@ -91,12 +92,12 @@ const AdminReports = ({ navigation }) => {
         <View style={styles.cardHeader}>
           <View style={styles.userInfoWrapper}>
             <Text style={styles.userName}>{item.user?.name || 'Utilisateur inconnu'}</Text>
-            <Text style={styles.userPhone}>{item.user?.phone || 'Pas de numéro'}</Text>
+            <Text style={styles.userPhone}>{item.user?.phone || 'Pas de numero'}</Text>
           </View>
           
           <View style={styles.headerRightActions}>
             <View style={[styles.statusBadge, { backgroundColor: isResolved ? THEME.COLORS.success : THEME.COLORS.danger }]}>
-              <Text style={styles.statusText}>{isResolved ? 'RÉSOLU' : 'OUVERT'}</Text>
+              <Text style={styles.statusText}>{isResolved ? 'RESOLU' : 'OUVERT'}</Text>
             </View>
             
             <TouchableOpacity 
@@ -110,23 +111,31 @@ const AdminReports = ({ navigation }) => {
         </View>
 
         <Text style={styles.dateText}>
-          {new Date(item.createdAt).toLocaleDateString('fr-FR')} à {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+          {new Date(item.createdAt).toLocaleDateString('fr-FR')} a {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
         </Text>
 
         <View style={styles.messageBox}>
           <Text style={styles.messageText}>{item.message}</Text>
         </View>
 
+        {/* CORRECTION DE L'AFFICHAGE DES IMAGES */}
         {item.captures && item.captures.length > 0 && (
           <View style={styles.imagesRow}>
-            {item.captures.map((url, index) => (
-              <TouchableOpacity key={index} onPress={() => openImagePreview(url)}>
-                <Image source={{ uri: url }} style={styles.captureImage} />
-                <View style={styles.zoomIconOverlay}>
-                  <Ionicons name="search" size={12} color="#FFF" />
-                </View>
-              </TouchableOpacity>
-            ))}
+            {item.captures.map((url, index) => {
+              const secureUrl = url.replace('http://', 'https://');
+              return (
+                <TouchableOpacity key={index} onPress={() => openImagePreview(secureUrl)} style={styles.imageContainer}>
+                  <Image 
+                    source={{ uri: secureUrl }} 
+                    style={styles.captureImage} 
+                    resizeMode="cover"
+                  />
+                  <View style={styles.zoomIconOverlay}>
+                    <Ionicons name="search" size={12} color="#FFF" />
+                  </View>
+                </TouchableOpacity>
+              );
+            })}
           </View>
         )}
 
@@ -141,7 +150,7 @@ const AdminReports = ({ navigation }) => {
             onPress={() => openResolveModal(item)}
           >
             <Ionicons name="shield-checkmark-outline" size={18} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
-            <Text style={styles.resolveButtonText}>Marquer comme résolu</Text>
+            <Text style={styles.resolveButtonText}>Marquer comme resolu</Text>
           </TouchableOpacity>
         )}
       </GlassCard>
@@ -158,10 +167,7 @@ const AdminReports = ({ navigation }) => {
       </View>
 
       {isLoading ? (
-        <View style={styles.centerContainer}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-          <Text style={styles.loadingText}>Chargement des plaintes...</Text>
-        </View>
+        <GlobalSkeleton visible={true} fullScreen={false} />
       ) : (
         <>
           <FlatList
@@ -198,7 +204,7 @@ const AdminReports = ({ navigation }) => {
       <ConfirmModal 
         visible={!!reportToDelete}
         title="Supprimer le signalement"
-        message="Cette action est irréversible. Les images associées seront également supprimées des serveurs."
+        message="Cette action est irreversible. Les images associees seront egalement supprimees des serveurs."
         isDestructive={true}
         onConfirm={handleDelete}
         onCancel={() => setReportToDelete(null)}
@@ -218,8 +224,6 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center' },
   backButton: { marginRight: 15 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10 },
   listContent: { paddingHorizontal: 20, paddingBottom: 40 },
   
   reportCard: { padding: 15, marginBottom: 15 },
@@ -237,8 +241,9 @@ const styles = StyleSheet.create({
   messageBox: { backgroundColor: THEME.COLORS.overlay, padding: 12, borderRadius: 8, borderWidth: 1, borderColor: THEME.COLORS.border, marginBottom: 12 },
   messageText: { color: THEME.COLORS.textPrimary, fontSize: 14, lineHeight: 20 },
   
-  imagesRow: { flexDirection: 'row', marginBottom: 12, flexWrap: 'wrap', gap: 12 },
-  captureImage: { width: 70, height: 70, borderRadius: 8, borderWidth: 1, borderColor: THEME.COLORS.border },
+  imagesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginBottom: 12 },
+  imageContainer: { width: 70, height: 70, borderRadius: 8, overflow: 'hidden', borderWidth: 1, borderColor: THEME.COLORS.border, position: 'relative' },
+  captureImage: { width: '100%', height: '100%', backgroundColor: THEME.COLORS.overlay },
   zoomIconOverlay: { position: 'absolute', bottom: 4, right: 4, backgroundColor: 'rgba(0,0,0,0.6)', padding: 4, borderRadius: 10 },
   
   resolveButton: { backgroundColor: THEME.COLORS.primary, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', padding: 12, borderRadius: 8, marginTop: 5 },

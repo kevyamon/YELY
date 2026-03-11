@@ -1,5 +1,5 @@
 // src/components/admin/ValidationModal.jsx
-// MODALE DE VALIDATION - Nettoyee, adaptee et integration du viewer HD
+// MODALE DE VALIDATION - Nettoyee, adaptee, HD et Forcage HTTPS
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -30,7 +30,10 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
     onReject(transaction._id, rejectReason);
   };
 
-  const imageUrl = transaction.proofUrl || transaction.receiptUrl || transaction.metadata?.proofUrl || transaction.metadata?.receiptUrl || null;
+  // FORCAGE SECURITE : Remplacement systematique de http en https
+  const rawImageUrl = transaction.proofUrl || transaction.receiptUrl || transaction.metadata?.proofUrl || transaction.metadata?.receiptUrl || null;
+  const secureImageUrl = rawImageUrl ? rawImageUrl.replace('http://', 'https://') : null;
+  
   const senderPhone = transaction.senderPhone || transaction.phone || transaction.metadata?.senderPhone || 'Non specifie';
 
   return (
@@ -72,14 +75,14 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
             </View>
 
             <View style={styles.imageContainer}>
-              {imageUrl ? (
+              {secureImageUrl ? (
                 <TouchableOpacity 
                   onPress={() => setPreviewVisible(true)} 
                   activeOpacity={0.9} 
                   style={styles.imageWrapper}
                 >
                   <Image 
-                    source={{ uri: imageUrl }} 
+                    source={{ uri: secureImageUrl }} 
                     style={styles.proofImage} 
                     resizeMode="contain"
                   />
@@ -111,7 +114,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                   onPress={() => setConfirmApproveMode(true)}
                   disabled={isProcessing}
                 >
-                  <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.textInverse || '#FFFFFF'} style={styles.buttonIcon} />
+                  <Ionicons name="checkmark-circle-outline" size={20} color={THEME.COLORS.background} style={styles.buttonIcon} />
                   <Text style={styles.buttonTextInverse}>Valider & Activer</Text>
                 </TouchableOpacity>
               </View>
@@ -140,7 +143,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                     disabled={isProcessing || !rejectReason.trim()}
                   >
                     {isProcessing ? (
-                      <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
+                      <ActivityIndicator color={THEME.COLORS.background} />
                     ) : (
                       <Text style={styles.buttonTextInverseBold}>Confirmer Rejet</Text>
                     )}
@@ -165,7 +168,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
                     disabled={isProcessing}
                   >
                     {isProcessing ? (
-                      <ActivityIndicator color={THEME.COLORS.textInverse || "#FFFFFF"} />
+                      <ActivityIndicator color={THEME.COLORS.background} />
                     ) : (
                       <Text style={styles.buttonTextInverseBold}>Oui, Activer</Text>
                     )}
@@ -179,7 +182,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
       <ImagePreviewModal 
         visible={previewVisible} 
-        imageUrl={imageUrl} 
+        imageUrl={secureImageUrl} 
         onClose={() => setPreviewVisible(false)} 
       />
     </Modal>
@@ -210,8 +213,8 @@ const styles = StyleSheet.create({
   confirmSuccessButton: { backgroundColor: THEME.COLORS.primary },
   buttonDisabled: { opacity: 0.5 },
   buttonIcon: { marginRight: 8 },
-  buttonTextInverse: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  buttonTextInverseBold: { color: THEME.COLORS.textInverse || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
+  buttonTextInverse: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 },
+  buttonTextInverseBold: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 },
   buttonTextDanger: { color: THEME.COLORS.danger, fontWeight: 'bold', fontSize: 16 },
   buttonTextPrimary: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
   actionSection: { width: '100%' },

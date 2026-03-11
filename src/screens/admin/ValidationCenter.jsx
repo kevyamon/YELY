@@ -52,11 +52,10 @@ const ValidationCenter = ({ navigation }) => {
     try { 
       await approveTx(id).unwrap(); 
       setSelectedTransaction(null);
-      dispatch(showSuccessToast({ message: "Abonnement active avec succes." }));
+      dispatch(showSuccessToast({ title: "Succes", message: "Abonnement active avec succes." }));
     } catch (e) { 
-      console.error("[ValidationCenter] Erreur lors de l'approbation:", e);
       const errorMessage = e?.data?.message || "Erreur serveur lors de l'activation.";
-      dispatch(showErrorToast({ message: errorMessage }));
+      dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));
     }
   };
 
@@ -64,11 +63,10 @@ const ValidationCenter = ({ navigation }) => {
     try { 
       await rejectTx({ transactionId: id, reason }).unwrap(); 
       setSelectedTransaction(null);
-      dispatch(showSuccessToast({ message: "Preuve rejetee et notifiee au chauffeur." }));
+      dispatch(showSuccessToast({ title: "Rejete", message: "Preuve rejetee et notifiee au chauffeur." }));
     } catch (e) { 
-      console.error("[ValidationCenter] Erreur lors du rejet:", e);
       const errorMessage = e?.data?.message || "Erreur serveur lors du rejet.";
-      dispatch(showErrorToast({ message: errorMessage }));
+      dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));
     }
   };
 
@@ -147,9 +145,9 @@ const ValidationCenter = ({ navigation }) => {
       <View style={styles.listContainer}>
         {error && (
           <View style={styles.errorBanner}>
-            <Ionicons name="warning-outline" size={24} color={THEME.COLORS.textPrimary || '#FFFFFF'} style={styles.errorIcon} />
+            <Ionicons name="warning-outline" size={24} color={THEME.COLORS.background} style={styles.errorIcon} />
             <View style={styles.errorTextContainer}>
-              <Text style={styles.errorTitle}>Erreur Reseau ({error?.status || 'X'})</Text>
+              <Text style={styles.errorTitle}>Erreur Reseau</Text>
               <Text style={styles.errorDetail}>Impossible de synchroniser avec le serveur.</Text>
             </View>
           </View>
@@ -204,13 +202,13 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
   listContainer: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 80 },
-  loader: { marginTop: 50 },
-  errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.error || '#FF4757', padding: 15, marginHorizontal: 20, borderRadius: THEME.BORDERS?.radius?.md || 8, marginBottom: 20, alignItems: 'center' },
+  loader: { marginTop: 50, paddingHorizontal: 20 },
+  errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.danger, padding: 15, marginHorizontal: 20, borderRadius: 8, marginBottom: 20, alignItems: 'center' },
   errorIcon: { marginRight: 15 },
   errorTextContainer: { flex: 1 },
-  errorTitle: { color: THEME.COLORS.textPrimary || '#FFFFFF', fontWeight: 'bold', fontSize: 16 },
-  errorDetail: { color: THEME.COLORS.textPrimary || '#FFFFFF', fontSize: 13, marginTop: 4 },
-  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS?.radius?.lg || 12, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.glassDark || 'rgba(255, 255, 255, 0.05)', marginBottom: 15 },
+  errorTitle: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 },
+  errorDetail: { color: THEME.COLORS.background, fontSize: 13, marginTop: 4 },
+  glassContainer: { overflow: 'hidden', borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 15 },
   glassContent: { padding: 15 },
   transactionCard: { padding: 0 },
   cardHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 },
