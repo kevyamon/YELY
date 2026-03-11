@@ -53,6 +53,7 @@ import AdminJournal from '../screens/admin/AdminJournal';
 import AdminReports from '../screens/admin/AdminReports';
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import MapManagement from '../screens/admin/MapManagement';
+import SystemConfig from '../screens/admin/SystemConfig'; // NOUVEL ECRAN
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
@@ -89,7 +90,6 @@ const AppNavigator = () => {
   const [showSplash, setShowSplash] = useState(true);
   const [promoAlert, setPromoAlert] = useState({ visible: false, isActive: false, message: '' });
 
-  // REFLEXE DE CONNEXION : Verification du VIP a l'ouverture ou au Login
   useEffect(() => {
     const checkPromoAtStartup = async () => {
       if (isAuthenticated && user?.role === 'driver') {
@@ -104,7 +104,7 @@ const AppNavigator = () => {
       }
     };
     checkPromoAtStartup();
-  }, [isAuthenticated, dispatch]); 
+  }, [isAuthenticated, dispatch]);
 
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
@@ -120,7 +120,6 @@ const AppNavigator = () => {
             try {
               storedUser = JSON.parse(storedUserStr);
             } catch (parseError) {
-              // Nettoyage de la corruption locale pour eviter un plantage permanent
               await SecureStorageAdapter.removeItem('userInfo');
             }
           }
@@ -140,12 +139,11 @@ const AppNavigator = () => {
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
-        // Protection du masquage : on laisse le temps a l'arbre React Navigation de se construire
         setTimeout(async () => {
           try {
             await SplashScreen.hideAsync();
           } catch (err) {
-            // Le Splash Screen est potentiellement deja masque, on ignore l'erreur
+            // Ignorer l'erreur si deja masque
           }
         }, 300);
       }
@@ -154,7 +152,6 @@ const AppNavigator = () => {
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  // REFLEXE TEMPS REEL : Ecouteur Socket pour quand le bouton Admin est clique
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -208,6 +205,7 @@ const AppNavigator = () => {
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />
             <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
+            <Stack.Screen name="SystemConfig" component={SystemConfig} /> 
             <Stack.Screen name="AdminJournal" component={AdminJournal} />
             <Stack.Screen name="AdminReports" component={AdminReports} />
             <Stack.Screen name="MapManagement" component={MapManagement} />

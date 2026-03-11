@@ -123,7 +123,9 @@ const AdminDashboard = () => {
     },
     { id: 'journal', title: 'Mon Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
-    { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin }
+    { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },
+    // AJOUT VAGUE 2 : L'accès au module de configuration technique
+    { id: 'systemConfig', title: 'Configuration Système', icon: 'settings-outline', route: 'SystemConfig', allowed: isSuperAdmin }
   ];
 
   const handleScroll = (event) => {

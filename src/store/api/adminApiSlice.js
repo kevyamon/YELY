@@ -96,7 +96,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog'],
     }),
 
-    // 🔥 CORRECTION FATALE ICI : Le Backend attend isGlobalFreeAccess et promoMessage
     toggleGlobalFreeAccess: builder.mutation({
       query: (payload) => ({
         url: '/admin/free-access/toggle',
@@ -135,6 +134,21 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       query: ({ page = 1 }) => `/admin/logs?page=${page}`,
       providesTags: ['AuditLog'],
     }),
+
+    // --- AJOUT VAGUE 2 : CONFIGURATION SYSTEME & VERSIONING ---
+    getSystemConfig: builder.query({
+      query: () => '/admin/system-config',
+      providesTags: ['SystemConfig'],
+    }),
+
+    updateAppVersion: builder.mutation({
+      query: (payload) => ({
+        url: '/admin/app-version',
+        method: 'PUT',
+        body: payload,
+      }),
+      invalidatesTags: ['SystemConfig', 'AuditLog'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -155,5 +169,7 @@ export const {
   useUpdateMapSettingsMutation,
   useGetNotificationsQuery,
   useMarkNotificationsReadMutation,
-  useGetAuditLogsQuery, 
+  useGetAuditLogsQuery,
+  useGetSystemConfigQuery,
+  useUpdateAppVersionMutation,
 } = adminApiSlice;
