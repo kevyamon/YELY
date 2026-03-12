@@ -40,7 +40,7 @@ const RegisterPage = ({ navigation, route }) => {
   const [passwordScore, setPasswordScore] = useState(0);
   const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
   
-  // 🛡️ State pour la modale de blocage iOS/PWA pour les chauffeurs
+  // Securite: State pour la modale de blocage iOS/PWA pour les chauffeurs
   const [showDriverRestrictionModal, setShowDriverRestrictionModal] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -50,13 +50,12 @@ const RegisterPage = ({ navigation, route }) => {
     phone: ''
   });
 
-  // 🛡️ Logique de sélection du rôle avec bouclier
+  // Logique de sélection du rôle avec bouclier
   const handleRoleSelection = (selectedRole) => {
     if (selectedRole === 'driver') {
-      // Si ce n'est pas l'application native Android (donc iOS ou Web/PWA)
       if (Platform.OS !== 'android') {
         setShowDriverRestrictionModal(true);
-        return; // On bloque le changement de rôle
+        return;
       }
     }
     setRole(selectedRole);
@@ -169,11 +168,14 @@ const RegisterPage = ({ navigation, route }) => {
               onChangeText={(t) => setFormData({ ...formData, email: t })}
             />
 
-            <PasswordStrengthInput 
-              password={formData.password}
-              setPassword={(t) => setFormData({ ...formData, password: t })}
-              onStrengthChange={setPasswordScore}
-            />
+            {/* Conteneur fixe pour bloquer le saut visuel */}
+            <View style={styles.passwordWrapper}>
+              <PasswordStrengthInput 
+                password={formData.password}
+                setPassword={(t) => setFormData({ ...formData, password: t })}
+                onStrengthChange={setPasswordScore}
+              />
+            </View>
 
             <View style={styles.legalContainer}>
               <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
@@ -206,7 +208,6 @@ const RegisterPage = ({ navigation, route }) => {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* MODALE DE RESTRICTION CHAUFFEUR */}
       <GlassModal
         visible={showDriverRestrictionModal}
         onClose={() => setShowDriverRestrictionModal(false)}
@@ -242,6 +243,7 @@ const styles = StyleSheet.create({
   roleBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: '#FFF' },
+  passwordWrapper: { minHeight: 110, justifyContent: 'flex-start' }, // C'est ici que la magie de la stabilité opère
   legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
   checkbox: { marginRight: THEME.SPACING.sm },
   legalText: { color: THEME.COLORS.textSecondary, fontSize: 12, lineHeight: 18, flexShrink: 1 },

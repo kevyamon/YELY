@@ -2,10 +2,10 @@
 // COMPOSANT MARQUEUR UTILISATEUR - Localisation Précise et Animée
 // CSCSM Level: Bank Grade
 
+import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import THEME from '../../../theme/theme';
-import { AnimatedTrackedMarker } from './MobileMarkers';
 
 const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = true }) => {
   const pulseAnim = useRef(new Animated.Value(0)).current;
@@ -50,10 +50,10 @@ const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = tru
   });
 
   return (
-    <AnimatedTrackedMarker
-      identifier={identifier}
-      coordinate={{ latitude: coordinate.latitude, longitude: coordinate.longitude }}
-      zIndex={150}
+    <MapLibreGL.PointAnnotation
+      id={identifier}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={styles.container}>
         <Animated.View
@@ -68,7 +68,7 @@ const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = tru
         />
         <View style={[styles.innerCircle, { backgroundColor: THEME.COLORS.champagneGold }]} />
       </View>
-    </AnimatedTrackedMarker>
+    </MapLibreGL.PointAnnotation>
   );
 };
 
@@ -99,4 +99,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(UserLocationMarker);
+export default React.memo(UserLocationMarker);  
