@@ -1,10 +1,10 @@
-// src/components/map/useMapAutoFitter.js
+// src/hooks/useMapFitter.js
 // HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre (3D Fixe & Anti-Renversement)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
 import { Dimensions, Platform } from 'react-native';
-import { MAFERE_CENTER } from '../../utils/mafereZone';
+import { MAFERE_CENTER } from '../utils/mafereZone';
 
 const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
