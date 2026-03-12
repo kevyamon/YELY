@@ -17,7 +17,7 @@ import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import PlanSelection from '../../components/subscription/PlanSelection';
 import ProofUploadForm from '../../components/subscription/ProofUploadForm';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
@@ -28,7 +28,6 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
-// CORRECTION SENIOR : Formatage universel des images pour FormData
 const formatImageForUpload = (imageAsset, prefix = 'proof') => {
   let localUri = imageAsset.uri;
   
@@ -158,7 +157,6 @@ const SubscriptionScreen = ({ navigation }) => {
     formData.append('planId', selectedPlan);
     formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
     
-    // Application de la securisation de l'image
     const formattedProof = formatImageForUpload(proofImage, 'proof');
     formData.append('proofImage', formattedProof);
 
@@ -206,9 +204,20 @@ const SubscriptionScreen = ({ navigation }) => {
   if (isConfigLoading || isStatusLoading || !currentStep) {
     return (
       <SafeAreaView style={styles.safeArea}>
-        <View style={styles.centerContainer}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-          <Text style={styles.loadingText}>Synchronisation du profil...</Text>
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <SkeletonBone width={40} height={40} borderRadius={20} />
+            <SkeletonBone width={120} height={24} />
+            <SkeletonBone width={40} height={40} borderRadius={20} />
+          </View>
+          <View style={styles.content}>
+            <GlobalSkeleton visible={true} style={{ flex: 1, justifyContent: 'center' }}>
+              <SkeletonBone width="100%" height={240} borderRadius={24} style={{ marginBottom: 30 }} />
+              <SkeletonBone width="70%" height={20} style={{ alignSelf: 'center', marginBottom: 15 }} />
+              <SkeletonBone width="50%" height={16} style={{ alignSelf: 'center', marginBottom: 40 }} />
+              <SkeletonBone width="100%" height={56} borderRadius={28} />
+            </GlobalSkeleton>
+          </View>
         </View>
       </SafeAreaView>
     );
@@ -258,8 +267,6 @@ const SubscriptionScreen = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
   container: { flex: 1 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
   headerButton: { padding: 8, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)' },

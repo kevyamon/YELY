@@ -9,7 +9,7 @@ import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native
 import { useDispatch, useSelector } from 'react-redux';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import ValidationModal from '../../components/admin/ValidationModal';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import { useApproveTransactionMutation, useGetValidationQueueQuery, useRejectTransactionMutation } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -153,32 +153,50 @@ const ValidationCenter = ({ navigation }) => {
           </View>
         )}
 
-        {isLoading && !isFetching ? (
-          <View style={styles.loader}>
-            <GlobalSkeleton visible={true} fullScreen={false} />
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={transactions}
-            keyExtractor={(item) => item._id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onRefresh={refetch}
-            refreshing={isFetching && transactions.length === 0}
-            ListEmptyComponent={
-              !error && (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="checkmark-done-circle-outline" size={64} color={THEME.COLORS.textTertiary} />
-                  <Text style={styles.emptyText}>Aucune assignation en attente.</Text>
-                  <Text style={styles.emptySubtext}>Votre file de travail est vide.</Text>
-                </View>
-              )
-            }
-          />
-        )}
+        <GlobalSkeleton visible={isLoading && !isFetching} style={{ flex: 1 }}>
+          {isLoading && !isFetching ? (
+            <View style={styles.listContent}>
+              {[1, 2, 3, 4, 5].map((key) => (
+                <GlassCard key={key} style={styles.transactionCard}>
+                  <View style={styles.cardHeader}>
+                    <SkeletonBone width={100} height={24} borderRadius={8} />
+                    <SkeletonBone width={80} height={14} />
+                  </View>
+                  <View style={styles.cardBody}>
+                    <SkeletonBone width={24} height={24} borderRadius={12} style={styles.icon} />
+                    <View style={styles.cardInfo}>
+                      <SkeletonBone width={120} height={20} style={{ marginBottom: 6 }} />
+                      <SkeletonBone width={150} height={16} style={{ marginBottom: 4 }} />
+                      <SkeletonBone width={130} height={14} />
+                    </View>
+                    <SkeletonBone width={20} height={20} borderRadius={10} />
+                  </View>
+                </GlassCard>
+              ))}
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={transactions}
+              keyExtractor={(item) => item._id}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContent}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              onRefresh={refetch}
+              refreshing={isFetching && transactions.length === 0}
+              ListEmptyComponent={
+                !error && (
+                  <View style={styles.emptyContainer}>
+                    <Ionicons name="checkmark-done-circle-outline" size={64} color={THEME.COLORS.textTertiary} />
+                    <Text style={styles.emptyText}>Aucune assignation en attente.</Text>
+                    <Text style={styles.emptySubtext}>Votre file de travail est vide.</Text>
+                  </View>
+                )
+              }
+            />
+          )}
+        </GlobalSkeleton>
       </View>
 
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
@@ -202,7 +220,6 @@ const styles = StyleSheet.create({
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
   listContainer: { flex: 1 },
   listContent: { paddingHorizontal: 20, paddingBottom: 80 },
-  loader: { marginTop: 50, paddingHorizontal: 20 },
   errorBanner: { flexDirection: 'row', backgroundColor: THEME.COLORS.danger, padding: 15, marginHorizontal: 20, borderRadius: 8, marginBottom: 20, alignItems: 'center' },
   errorIcon: { marginRight: 15 },
   errorTextContainer: { flex: 1 },

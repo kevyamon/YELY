@@ -7,7 +7,7 @@ import { BlurView } from 'expo-blur';
 import React, { useMemo, useRef, useState } from 'react';
 import { SectionList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import { useGetAuditLogsQuery } from '../../store/api/adminApiSlice';
 import THEME from '../../theme/theme';
 
@@ -116,43 +116,57 @@ const AdminJournal = ({ navigation }) => {
         <Text style={styles.headerTitle}>Journal d'Audit</Text>
       </View>
 
-      {isLoading ? (
-        <View style={styles.centerContainer}>
-            <GlobalSkeleton visible={true} fullScreen={false} />
-            <Text style={styles.loadingText}>Chargement des archives...</Text>
-        </View>
-      ) : (
-        <>
-          <SectionList
-              ref={sectionListRef}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-              sections={groupedData}
-              keyExtractor={(item, index) => item._id || index.toString()}
-              renderItem={renderItem}
-              renderSectionHeader={({ section: { title } }) => (
-                <View style={styles.sectionHeader}>
-                    <Text style={styles.sectionTitle}>{title}</Text>
+      <GlobalSkeleton visible={isLoading} style={{ flex: 1 }}>
+        {isLoading ? (
+          <View style={styles.listContent}>
+            <View style={styles.sectionHeader}>
+              <SkeletonBone width={150} height={16} />
+            </View>
+            {[1, 2, 3, 4, 5, 6].map((key) => (
+              <GlassCard key={key} style={styles.logCard}>
+                <View style={styles.logHeader}>
+                  <SkeletonBone width={130} height={16} />
+                  <SkeletonBone width={80} height={12} />
                 </View>
-              )}
-              contentContainerStyle={styles.listContent}
-              onRefresh={refetch}
-              refreshing={isFetching}
-              ListEmptyComponent={
-                <View style={styles.emptyContainer}>
-                    <GlassCard style={styles.emptyCard}>
-                    <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
-                    <Text style={styles.emptyTitle}>Journal d'activité</Text>
-                    <Text style={styles.emptyText}>
-                        Le journal est complètement vide. Aucune action d'administration n'a encore été effectuée récemment.
-                    </Text>
-                    </GlassCard>
-                </View>
-              }
-          />
-          <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
-        </>
-      )}
+                <SkeletonBone width="100%" height={14} style={{ marginBottom: 6 }} />
+                <SkeletonBone width="80%" height={14} style={{ marginBottom: 10 }} />
+                <SkeletonBone width={120} height={12} />
+              </GlassCard>
+            ))}
+          </View>
+        ) : (
+          <>
+            <SectionList
+                ref={sectionListRef}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+                sections={groupedData}
+                keyExtractor={(item, index) => item._id || index.toString()}
+                renderItem={renderItem}
+                renderSectionHeader={({ section: { title } }) => (
+                  <View style={styles.sectionHeader}>
+                      <Text style={styles.sectionTitle}>{title}</Text>
+                  </View>
+                )}
+                contentContainerStyle={styles.listContent}
+                onRefresh={refetch}
+                refreshing={isFetching}
+                ListEmptyComponent={
+                  <View style={styles.emptyContainer}>
+                      <GlassCard style={styles.emptyCard}>
+                      <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
+                      <Text style={styles.emptyTitle}>Journal d'activité</Text>
+                      <Text style={styles.emptyText}>
+                          Le journal est complètement vide. Aucune action d'administration n'a encore été effectuée récemment.
+                      </Text>
+                      </GlassCard>
+                  </View>
+                }
+            />
+            <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
+          </>
+        )}
+      </GlobalSkeleton>
     </View>
   );
 };
@@ -162,8 +176,6 @@ const styles = StyleSheet.create({
   header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
   backButton: { marginRight: 15 },
   headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
-  centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { color: THEME.COLORS.textSecondary, marginTop: 10 },
   listContent: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
   sectionHeader: { backgroundColor: THEME.COLORS.background, paddingVertical: 10, marginTop: 10 },
   sectionTitle: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },

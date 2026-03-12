@@ -11,7 +11,7 @@ import { useSelector } from 'react-redux';
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import UserInfoModal from '../../components/admin/UserInfoModal';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import { useGetAllUsersQuery, useToggleUserBanMutation, useUpdateUserRoleMutation } from '../../store/api/adminApiSlice';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
@@ -167,24 +167,41 @@ const UsersManagement = ({ navigation }) => {
         </View>
       )}
 
-      {isLoading ? (
-        <View style={{ marginTop: 50 }}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={users}
-          keyExtractor={(item) => item._id}
-          renderItem={renderUserItem}
-          contentContainerStyle={styles.listContent}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-          onRefresh={refetch}
-          refreshing={isLoading}
-          ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouve.</Text>}
-        />
-      )}
+      <GlobalSkeleton visible={isLoading} style={{ flex: 1 }}>
+        {isLoading ? (
+          <View style={styles.listContent}>
+            {[1, 2, 3, 4, 5, 6].map((key) => (
+              <GlassCard key={key} style={styles.userCard}>
+                <View style={styles.userInfo}>
+                  <View style={styles.textContainer}>
+                    <SkeletonBone width={140} height={18} style={{ marginBottom: 4 }} />
+                    <SkeletonBone width={200} height={14} style={{ marginBottom: 8 }} />
+                    <SkeletonBone width={70} height={20} borderRadius={8} />
+                  </View>
+                  <View style={styles.actionsContainer}>
+                    <SkeletonBone width={36} height={36} borderRadius={18} style={{ marginLeft: 8 }} />
+                    <SkeletonBone width={36} height={36} borderRadius={18} style={{ marginLeft: 8 }} />
+                    <SkeletonBone width={36} height={36} borderRadius={18} style={{ marginLeft: 8 }} />
+                  </View>
+                </View>
+              </GlassCard>
+            ))}
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={users}
+            keyExtractor={(item) => item._id}
+            renderItem={renderUserItem}
+            contentContainerStyle={styles.listContent}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+            onRefresh={refetch}
+            refreshing={isLoading}
+            ListEmptyComponent={<Text style={styles.emptyText}>Aucun utilisateur trouve.</Text>}
+          />
+        )}
+      </GlobalSkeleton>
 
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
@@ -222,6 +239,7 @@ const styles = StyleSheet.create({
   listContent: { paddingHorizontal: 20, paddingBottom: 80 },
   glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.lg, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay, marginBottom: 12 },
   glassContent: { padding: 15 },
+  userCard: {},
   userInfo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   textContainer: { flex: 1, paddingRight: 10 },
   userName: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },

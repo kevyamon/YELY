@@ -11,7 +11,7 @@ import { ConfirmModal } from '../../components/admin/AdminModals';
 import ResolveReportModal from '../../components/admin/ResolveReportModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ImagePreviewModal from '../../components/ui/ImagePreviewModal';
 
 import { useDeleteAdminReportMutation, useGetAllReportsQuery, useResolveReportMutation } from '../../store/api/reportsApiSlice';
@@ -164,32 +164,56 @@ const AdminReports = ({ navigation }) => {
         <Text style={styles.headerTitle}>Signalements</Text>
       </View>
 
-      {isLoading ? (
-        <GlobalSkeleton visible={true} fullScreen={false} />
-      ) : (
-        <>
-          <FlatList
-            ref={flatListRef}
-            data={reports}
-            keyExtractor={(item) => item._id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.listContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            showsVerticalScrollIndicator={false}
-            onRefresh={refetch}
-            refreshing={isFetching}
-            ListEmptyComponent={
-              <View style={styles.emptyContainer}>
-                <Ionicons name="checkmark-circle-outline" size={60} color={THEME.COLORS.success} />
-                <Text style={styles.emptyText}>Aucun signalement en cours.</Text>
-                <Text style={styles.emptySubText}>Tout fonctionne parfaitement !</Text>
-              </View>
-            }
-          />
-          <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
-        </>
-      )}
+      <GlobalSkeleton visible={isLoading} style={{ flex: 1 }}>
+        {isLoading ? (
+          <View style={styles.listContent}>
+            {[1, 2, 3].map((key) => (
+              <GlassCard key={key} style={styles.reportCard}>
+                <View style={styles.cardHeader}>
+                  <View style={styles.userInfoWrapper}>
+                    <SkeletonBone width={130} height={18} style={{ marginBottom: 6 }} />
+                    <SkeletonBone width={90} height={14} />
+                  </View>
+                  <SkeletonBone width={70} height={22} borderRadius={8} />
+                </View>
+                <SkeletonBone width={120} height={12} style={{ marginTop: 8, marginBottom: 12 }} />
+                <View style={styles.messageBox}>
+                  <SkeletonBone width="100%" height={14} style={{ marginBottom: 6 }} />
+                  <SkeletonBone width="80%" height={14} />
+                </View>
+                <View style={styles.imagesRow}>
+                  <SkeletonBone width={70} height={70} borderRadius={8} />
+                  <SkeletonBone width={70} height={70} borderRadius={8} />
+                </View>
+                <SkeletonBone width="100%" height={45} borderRadius={8} style={{ marginTop: 5 }} />
+              </GlassCard>
+            ))}
+          </View>
+        ) : (
+          <>
+            <FlatList
+              ref={flatListRef}
+              data={reports}
+              keyExtractor={(item) => item._id}
+              renderItem={renderItem}
+              contentContainerStyle={styles.listContent}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={false}
+              onRefresh={refetch}
+              refreshing={isFetching}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Ionicons name="checkmark-circle-outline" size={60} color={THEME.COLORS.success} />
+                  <Text style={styles.emptyText}>Aucun signalement en cours.</Text>
+                  <Text style={styles.emptySubText}>Tout fonctionne parfaitement !</Text>
+                </View>
+              }
+            />
+            <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
+          </>
+        )}
+      </GlobalSkeleton>
 
       <ResolveReportModal 
         visible={isModalVisible} 

@@ -14,7 +14,7 @@ import { ConfirmModal } from '../../components/admin/AdminModals';
 import PoiFormModal from '../../components/admin/PoiFormModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassInput from '../../components/ui/GlassInput';
-import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
@@ -150,23 +150,37 @@ const MapManagement = () => {
           />
         </View>
 
-        {isFetching || isImporting ? (
-          <View style={styles.loader}>
-            <GlobalSkeleton visible={true} fullScreen={false} />
-          </View>
-        ) : (
-          <FlatList
-            ref={flatListRef}
-            data={filteredPois}
-            keyExtractor={(item) => item._id}
-            renderItem={renderPoiItem}
-            contentContainerStyle={styles.listContent}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            ListEmptyComponent={<Text style={styles.emptyText}>Aucun lieu enregistré ou trouvé</Text>}
-            showsVerticalScrollIndicator={false}
-          />
-        )}
+        <GlobalSkeleton visible={isFetching || isImporting} style={{ flex: 1 }}>
+          {isFetching || isImporting ? (
+            <View style={styles.listContent}>
+              {[1, 2, 3, 4, 5, 6].map((key) => (
+                <View key={key} style={styles.poiCard}>
+                  <SkeletonBone width={54} height={54} borderRadius={27} />
+                  <View style={styles.poiInfo}>
+                    <SkeletonBone width={160} height={18} style={{ marginBottom: 6 }} />
+                    <SkeletonBone width={110} height={14} />
+                  </View>
+                  <View style={styles.actionButtons}>
+                    <SkeletonBone width={42} height={42} borderRadius={12} style={{ marginRight: 8 }} />
+                    <SkeletonBone width={42} height={42} borderRadius={12} />
+                  </View>
+                </View>
+              ))}
+            </View>
+          ) : (
+            <FlatList
+              ref={flatListRef}
+              data={filteredPois}
+              keyExtractor={(item) => item._id}
+              renderItem={renderPoiItem}
+              contentContainerStyle={styles.listContent}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              ListEmptyComponent={<Text style={styles.emptyText}>Aucun lieu enregistré ou trouvé</Text>}
+              showsVerticalScrollIndicator={false}
+            />
+          )}
+        </GlobalSkeleton>
       </View>
 
       <TouchableOpacity style={styles.fab} activeOpacity={0.8} onPress={openAddModal}>
@@ -209,7 +223,6 @@ const styles = StyleSheet.create({
   actionButtons: { flexDirection: 'row' },
   editBtn: { padding: 10, backgroundColor: 'rgba(52, 152, 219, 0.1)', borderRadius: 12, marginRight: 8 },
   deleteBtn: { padding: 10, backgroundColor: 'rgba(231, 76, 60, 0.1)', borderRadius: 12 },
-  loader: { marginTop: 50 },
   fab: { position: 'absolute', bottom: 30, right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', ...THEME.SHADOWS.strong },
   emptyText: { textAlign: 'center', color: THEME.COLORS.textTertiary, marginTop: 40, fontSize: 14 }
 });
