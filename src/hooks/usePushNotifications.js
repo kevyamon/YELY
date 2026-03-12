@@ -30,7 +30,7 @@ const usePushNotifications = () => {
           name: 'Yely Courses',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#D4AF37', // Champagne Gold
+          lightColor: '#D4AF37',
         });
       }
 
@@ -49,11 +49,12 @@ const usePushNotifications = () => {
         }
 
         try {
-          // Obtention du Token FCM Brut pour Firebase Admin (Backend)
+          // Note Senior: Sur Android, getDevicePushTokenAsync renvoie un token FCM natif.
+          // Sur iOS, cela renverra un token APNs. L'integration de @react-native-firebase/messaging 
+          // sera requise pour iOS afin d'obtenir un token FCM unifie et direct (Zero intermediaire).
           const tokenData = await Notifications.getDevicePushTokenAsync();
           const fcmToken = tokenData.data;
 
-          // Envoi au backend (Utilisation de fetch pur pour éviter une dépendance RTK Query circulaire)
           const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
           await fetch(`${API_URL}/auth/fcm-token`, {
             method: 'PUT',

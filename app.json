@@ -88,7 +88,14 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-video"
+      "expo-video",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/images/android-icon-monochrome.png",
+          "color": "#D4AF37"
+        }
+      ]
     ],
     "extra": {
       "eas": {
