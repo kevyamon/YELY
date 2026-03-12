@@ -1,25 +1,37 @@
-// src/hooks/useMapFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente MapLibre (Bounding Box & Anti-Eclipse UI)
+// src/components/map/useMapAutoFitter.js
+// HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre (3D Fixe & Anti-Renversement)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
-import { Dimensions } from 'react-native';
-import { MAFERE_CENTER } from '../utils/mafereZone';
+import { Dimensions, Platform } from 'react-native';
+import { MAFERE_CENTER } from '../../utils/mafereZone';
 
-const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+const { height: SCREEN_HEIGHT, width: SCREEN_WIDTH } = Dimensions.get('window');
 
-const useMapFitter = ({
+const getDistance = (lat1, lon1, lat2, lon2) => {
+  const R = 6371e3; 
+  const p1 = (lat1 * Math.PI) / 180;
+  const p2 = (lat2 * Math.PI) / 180;
+  const dp = ((lat2 - lat1) * Math.PI) / 180;
+  const dl = ((lon2 - lon1) * Math.PI) / 180;
+  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c; 
+};
+
+const useMapAutoFitter = ({
   isMapReady,
-  cameraRef,
+  cameraRef, 
   location,
   driverLocation,
   markers,
   mapTopPadding = 140,
   mapBottomPadding = 240,
-  isUserInteracting,
+  isUserInteracting, 
 }) => {
   const lastUpdateRef = useRef(0);
   const isInitialFitDone = useRef(false);
+  const timeoutRef = useRef(null);
 
   useEffect(() => {
     if (!isMapReady || !cameraRef.current) return;
@@ -35,13 +47,6 @@ const useMapFitter = ({
         { latitude: originMarker.latitude, longitude: originMarker.longitude },
         { latitude: targetMarker.latitude, longitude: targetMarker.longitude }
       ];
-
-      if (Math.abs(originMarker.latitude - targetMarker.latitude) < 0.00005) {
-        coordsToFit.push({ latitude: originMarker.latitude + 0.0001, longitude: originMarker.longitude });
-      }
-      if (Math.abs(originMarker.longitude - targetMarker.longitude) < 0.00005) {
-        coordsToFit.push({ latitude: originMarker.latitude, longitude: originMarker.longitude + 0.0001 });
-      }
     } else if (originMarker) {
       coordsToFit.push({ latitude: originMarker.latitude, longitude: originMarker.longitude });
       markers.forEach(m => {
@@ -63,42 +68,77 @@ const useMapFitter = ({
 
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 300) : 300;
+    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
-      isInitialFitDone.current = true;
 
-      let safeTop = mapTopPadding + 40;
-      let safeBottom = mapBottomPadding + 40;
-      
-      const maxAllowed = SCREEN_HEIGHT * 0.75;
-      if (safeTop + safeBottom > maxAllowed) {
-          const ratio = maxAllowed / (safeTop + safeBottom);
-          safeTop *= ratio;
-          safeBottom *= ratio;
-      }
+      const delay = Platform.OS === 'ios' ? 100 : 250;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
-      const lats = coordsToFit.map(c => c.latitude);
-      const lngs = coordsToFit.map(c => c.longitude);
-      const maxLat = Math.max(...lats);
-      const minLat = Math.min(...lats);
-      const maxLng = Math.max(...lngs);
-      const minLng = Math.min(...lngs);
+      timeoutRef.current = setTimeout(() => {
+        if (!cameraRef.current || isUserInteracting) return;
 
-      setTimeout(() => {
-        if (cameraRef.current) {
-          cameraRef.current.fitBounds(
-            [maxLng, maxLat],
-            [minLng, minLat],
-            [safeTop, 50, safeBottom, 50],
-            800
-          );
+        const maxAllowedPadding = SCREEN_HEIGHT * 0.35; 
+        const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
+        const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
+
+        if (coordsToFit.length === 1) {
+          cameraRef.current.setCamera({
+            centerCoordinate: [coordsToFit[0].longitude, coordsToFit[0].latitude],
+            zoomLevel: 15,
+            padding: {
+              paddingTop: mapTopPadding,
+              paddingBottom: mapBottomPadding,
+              paddingLeft: 0,
+              paddingRight: 0
+            },
+            animationDuration: isInitialFitDone.current ? 1000 : 2000,
+          });
+          isInitialFitDone.current = true;
+          return;
         }
-      }, 100);
+
+        let shouldActivateSuperpower = false;
+
+        if (isTrackingActive && targetMarker && originMarker) {
+          const distance = getDistance(
+            originMarker.latitude, originMarker.longitude,
+            targetMarker.latitude, targetMarker.longitude
+          );
+
+          if (distance < 600 || distance > 800) {
+            shouldActivateSuperpower = true;
+          }
+        }
+
+        const lats = coordsToFit.map(c => c.latitude);
+        const lngs = coordsToFit.map(c => c.longitude);
+        const sw = [Math.min(...lngs), Math.min(...lats)];
+        const ne = [Math.max(...lngs), Math.max(...lats)];
+
+        cameraRef.current.setCamera({
+          bounds: {
+            ne,
+            sw,
+            paddingTop: shouldActivateSuperpower ? dynamicTop + 40 : dynamicTop,
+            paddingBottom: shouldActivateSuperpower ? dynamicBottom + 40 : dynamicBottom,
+            paddingLeft: SCREEN_WIDTH * 0.12,
+            paddingRight: SCREEN_WIDTH * 0.12,
+          },
+          pitch: shouldActivateSuperpower ? 45 : 0,
+          animationDuration: 1000,
+        });
+
+        isInitialFitDone.current = true;
+      }, delay);
     }
+
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
 
   }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, cameraRef]);
 };
 
-export default useMapFitter;
+export default useMapAutoFitter;

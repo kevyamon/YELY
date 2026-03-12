@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Easing, StyleSheet, Text, View } from 'react-native';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../../theme/theme';
 
 export const TrackedMarker = ({
@@ -174,7 +174,11 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
       id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
       coordinate={[coordinate.longitude, coordinate.latitude]}
     >
-      <View style={styles.poiWrapper} onTouchEnd={onPress}>
+      <TouchableOpacity 
+        activeOpacity={0.8} 
+        style={styles.poiWrapper} 
+        onPress={onPress}
+      >
         <View style={styles.poiBottom}>
           <View style={[styles.poiDot, { backgroundColor: color }]}>
             <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
@@ -186,7 +190,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
             {shortName}
           </Text>
         </View>
-      </View>
+      </TouchableOpacity>
     </MapLibreGL.MarkerView>
   );
 };

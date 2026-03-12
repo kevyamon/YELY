@@ -117,6 +117,12 @@ const MapCard = forwardRef(({
       cameraRef.current?.setCamera({
         centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
         zoomLevel: 15,
+        padding: {
+          paddingTop: mapTopPadding,
+          paddingBottom: mapBottomPadding,
+          paddingLeft: 0,
+          paddingRight: 0
+        },
         animationDuration: 800
       });
     }
@@ -131,8 +137,7 @@ const MapCard = forwardRef(({
         });
       }
     },
-    fitToCoordinates: () => {
-    },
+    fitToCoordinates: () => {},
     centerOnUser: handleRecenter,
   }));
 
@@ -142,6 +147,11 @@ const MapCard = forwardRef(({
   };
 
   const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
+  
+  // ANCRAGE DU TRACE : Forcer le premier point géométrique à coller exactement à la position GPS brute du user
+  if (routeCoordinates.length > 0 && !isDriver && location && location.latitude) {
+    routeCoordinates[0] = [location.longitude, location.latitude];
+  }
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
@@ -277,7 +287,7 @@ const MapCard = forwardRef(({
                 coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                 zIndex={90}
               >
-                <View onTouchEnd={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
+                <TouchableOpacity activeOpacity={0.8} onPress={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
                   {marker.customView || (
                     <View style={[styles.defaultMarker, marker.style]}>
                       <Ionicons
@@ -290,7 +300,7 @@ const MapCard = forwardRef(({
                   {marker.name && (
                     <Text style={styles.markerLabel}>{marker.name}</Text>
                   )}
-                </View>
+                </TouchableOpacity>
               </TrackedMarker>
             );
           })}
