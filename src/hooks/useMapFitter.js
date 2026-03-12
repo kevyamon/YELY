@@ -1,16 +1,16 @@
-// src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Caméra Intelligente (Logique Extrémités + Anti-Eclipse UI)
+// src/hooks/useMapFitter.js
+// HOOK CARTE NATIF - Caméra Intelligente MapLibre (Bounding Box & Anti-Eclipse UI)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
 import { Dimensions } from 'react-native';
-import { MAFERE_CENTER } from '../../utils/mafereZone';
+import { MAFERE_CENTER } from '../utils/mafereZone';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-const useMapAutoFitter = ({
+const useMapFitter = ({
   isMapReady,
-  mapRef,
+  cameraRef,
   location,
   driverLocation,
   markers,
@@ -22,8 +22,7 @@ const useMapAutoFitter = ({
   const isInitialFitDone = useRef(false);
 
   useEffect(() => {
-    if (!isMapReady || !mapRef.current) return;
-    
+    if (!isMapReady || !cameraRef.current) return;
     if (isUserInteracting) return;
 
     let coordsToFit = [];
@@ -37,8 +36,6 @@ const useMapAutoFitter = ({
         { latitude: targetMarker.latitude, longitude: targetMarker.longitude }
       ];
 
-      // 🛡️ ANTI-ALIGNEMENT MORTEL : Si les 2 points sont sur la même ligne exacte, le SDK panique.
-      // On ajoute un faux 3e point invisible, décalé de quelques mètres, pour forcer une vraie BoundingBox.
       if (Math.abs(originMarker.latitude - targetMarker.latitude) < 0.00005) {
         coordsToFit.push({ latitude: originMarker.latitude + 0.0001, longitude: originMarker.longitude });
       }
@@ -54,12 +51,11 @@ const useMapAutoFitter = ({
 
     if (coordsToFit.length === 0) {
       if (!isInitialFitDone.current) {
-        mapRef.current?.animateToRegion({
-          latitude: MAFERE_CENTER.latitude,
-          longitude: MAFERE_CENTER.longitude,
-          latitudeDelta: 0.02,
-          longitudeDelta: 0.02
-        }, 800);
+        cameraRef.current?.setCamera({
+          centerCoordinate: [MAFERE_CENTER.longitude, MAFERE_CENTER.latitude],
+          zoomLevel: 14,
+          animationDuration: 800
+        });
         isInitialFitDone.current = true;
       }
       return;
@@ -67,39 +63,42 @@ const useMapAutoFitter = ({
 
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
+    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 300) : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
-      // 🛡️ ANTI-ECLIPSE UI : 
-      // On prend exactement la taille de tes menus (+20px de respiration pour que le point ne touche pas le bord)
-      let safeTop = mapTopPadding + 20;
-      let safeBottom = mapBottomPadding + 20;
+      let safeTop = mapTopPadding + 40;
+      let safeBottom = mapBottomPadding + 40;
       
-      // Sécurité ultime anti-crash : Les menus ne doivent pas dépasser 80% de l'écran
-      const maxAllowed = SCREEN_HEIGHT * 0.8;
+      const maxAllowed = SCREEN_HEIGHT * 0.75;
       if (safeTop + safeBottom > maxAllowed) {
           const ratio = maxAllowed / (safeTop + safeBottom);
           safeTop *= ratio;
           safeBottom *= ratio;
       }
 
+      const lats = coordsToFit.map(c => c.latitude);
+      const lngs = coordsToFit.map(c => c.longitude);
+      const maxLat = Math.max(...lats);
+      const minLat = Math.min(...lats);
+      const maxLng = Math.max(...lngs);
+      const minLng = Math.min(...lngs);
+
       setTimeout(() => {
-        mapRef.current?.fitToCoordinates(coordsToFit, {
-          edgePadding: {
-            top: safeTop,
-            bottom: safeBottom,
-            left: 40,
-            right: 40,
-          },
-          animated: true,
-        });
+        if (cameraRef.current) {
+          cameraRef.current.fitBounds(
+            [maxLng, maxLat],
+            [minLng, minLat],
+            [safeTop, 50, safeBottom, 50],
+            800
+          );
+        }
       }, 100);
     }
 
-  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, mapRef]);
+  }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, cameraRef]);
 };
 
-export default useMapAutoFitter;
+export default useMapFitter;

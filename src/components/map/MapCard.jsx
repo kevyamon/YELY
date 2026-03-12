@@ -7,6 +7,7 @@ import MapLibreGL from '@maplibre/maplibre-react-native';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import useMapFitter from '../../hooks/useMapFitter';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
@@ -15,12 +16,11 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
-  AnimatedTrackedMarker,
   PoiMarker,
   SmoothDriverMarker,
   TrackedMarker,
 } from './markers/MobileMarkers';
-import useMapAutoFitter from './useMapAutoFitter';
+import UserLocationMarker from './markers/UserLocationMarker';
 
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -29,6 +29,8 @@ const MapCard = forwardRef(({
   location,
   driverLocation,
   markers = [],
+  isDriver = false,
+  rideStatus = null,
   showUserMarker = true,
   showRecenterButton = true,
   floating = false,
@@ -97,7 +99,7 @@ const MapCard = forwardRef(({
     }
   };
 
-  useMapAutoFitter({
+  useMapFitter({
     isMapReady,
     cameraRef,
     location,
@@ -122,14 +124,14 @@ const MapCard = forwardRef(({
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region, duration = 800) => {
-      if (isMapReady) {
-        cameraRef.current?.setCamera({
+      if (isMapReady && cameraRef.current) {
+        cameraRef.current.setCamera({
           centerCoordinate: [region.longitude, region.latitude],
           animationDuration: duration
         });
       }
     },
-    fitToCoordinates: (coords, options) => { 
+    fitToCoordinates: () => {
     },
     centerOnUser: handleRecenter,
   }));
@@ -213,16 +215,7 @@ const MapCard = forwardRef(({
           ))}
 
           {showUserMarker && location && location.latitude && (
-            <AnimatedTrackedMarker
-              identifier="user_loc"
-              coordinate={{ latitude: safeLocation.latitude, longitude: safeLocation.longitude }}
-              zIndex={100}
-            >
-              <View style={styles.userMarker}>
-                <View style={styles.userMarkerPulse} />
-                <View style={styles.userMarkerInner} />
-              </View>
-            </AnimatedTrackedMarker>
+            <UserLocationMarker coordinate={safeLocation} />
           )}
 
           {driverLocation && driverLocation.latitude && driverLocation.longitude && (
@@ -249,16 +242,31 @@ const MapCard = forwardRef(({
             }
 
             if (marker.type === 'destination') {
-              return (
-                <TrackedMarker
-                  identifier="dest_loc"
-                  key={marker.id || `marker-${index}`}
-                  coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  zIndex={110}
-                >
-                  <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
-                </TrackedMarker>
-              );
+              const showFlag = isDriver && rideStatus === 'ongoing';
+
+              if (showFlag) {
+                return (
+                  <TrackedMarker
+                    identifier="dest_loc"
+                    key={marker.id || `marker-${index}`}
+                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                    zIndex={110}
+                  >
+                    <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
+                  </TrackedMarker>
+                );
+              } else {
+                return (
+                  <PoiMarker
+                    key={marker.id || `marker-${index}`}
+                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                    name={marker.name || "Destination"}
+                    icon="location"
+                    color={THEME.COLORS.danger}
+                    onPress={() => onMarkerPress?.(marker)}
+                  />
+                );
+              }
             }
 
             if (marker.type === 'pickup_origin') return null;
@@ -317,9 +325,6 @@ const styles = StyleSheet.create({
   mapClip: { ...StyleSheet.absoluteFillObject, borderRadius: THEME.BORDERS.radius.xxl, overflow: 'hidden', zIndex: 1 },
   mapClipEdge: { borderRadius: 0 },
   map: { flex: 1 },
-  userMarker: { width: 34, height: 34, justifyContent: 'center', alignItems: 'center' },
-  userMarkerPulse: { position: 'absolute', width: 34, height: 34, borderRadius: 17, backgroundColor: 'rgba(212, 175, 55, 0.3)' },
-  userMarkerInner: { width: 14, height: 14, borderRadius: 7, backgroundColor: THEME.COLORS.champagneGold, borderWidth: 2.5, borderColor: '#FFFFFF' },
   customMarkerWrapper: { alignItems: 'center', justifyContent: 'center' },
   defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
   markerLabel: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11, backgroundColor: 'rgba(18, 20, 24, 0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden', marginTop: 4, textAlign: 'center' },
@@ -340,7 +345,9 @@ const arePropsEqual = (prevProps, nextProps) => {
     isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
     prevProps.markers?.length === nextProps.markers?.length &&
     prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
-    prevProps.showUserMarker === nextProps.showUserMarker
+    prevProps.showUserMarker === nextProps.showUserMarker &&
+    prevProps.isDriver === nextProps.isDriver &&
+    prevProps.rideStatus === nextProps.rideStatus
   );
 };
 
