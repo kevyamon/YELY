@@ -22,7 +22,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -44,11 +44,6 @@ import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
-
-let PwaIOSInstallGuide = () => null;
-if (Platform.OS === 'web') {
-  PwaIOSInstallGuide = require('./src/components/ui/PwaIOSInstallGuide.web').default;
-}
 
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
@@ -141,8 +136,6 @@ const AppContent = () => {
           mandatoryUpdate={versionInfo.mandatoryUpdate}
           updateUrl={versionInfo.updateUrl}
         />
-
-        {Platform.OS === 'web' && <PwaIOSInstallGuide />}
       </Portal>
     </>
   );

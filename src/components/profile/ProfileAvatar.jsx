@@ -31,11 +31,17 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
         onError: () => setIsImageLoading(false),
       };
 
-  // BLINDAGE ABSOLU DE L'URL (HTTPS + ENCODE URI)
+  // BLINDAGE ABSOLU DE L'URL (Anti-Double Encodage + HTTPS)
   let secureImageSource = null;
   
   if (userPhoto && typeof userPhoto === 'string' && userPhoto.trim() !== '') {
-    secureImageSource = { uri: encodeURI(userPhoto.replace('http://', 'https://')) };
+    try {
+      // Decode d'abord pour eviter de transformer un %20 existant en %2520
+      const cleanUrl = decodeURI(userPhoto.trim()).replace('http://', 'https://');
+      secureImageSource = { uri: encodeURI(cleanUrl) };
+    } catch (e) {
+      secureImageSource = { uri: userPhoto.replace('http://', 'https://') };
+    }
   } else if (userPhoto && typeof userPhoto === 'object' && userPhoto.uri) {
     secureImageSource = userPhoto; 
   }
