@@ -86,8 +86,7 @@
           "isAndroidForegroundServiceEnabled": true
         }
       ],
-      "expo-video",
-      "@sentry/react-native/expo"
+      "expo-video"
     ],
     "extra": {
       "eas": {
