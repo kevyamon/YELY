@@ -46,7 +46,6 @@ const RiderHome = ({ navigation }) => {
   const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // Verification de la premiere visite liee au compte utilisateur
   useEffect(() => {
     const checkFirstVisit = async () => {
       if (!user) return; 
@@ -134,9 +133,9 @@ const RiderHome = ({ navigation }) => {
       <View style={styles.mapContainer}>
         <MapCard 
           ref={mapRef}
-          location={mapTraceOrigin}
+          location={location} 
           driverLocation={activeDriverLocation}
-          showUserMarker={currentRide?.status !== 'in_progress' && !!effectiveOrigin}
+          showUserMarker={currentRide?.status !== 'in_progress' && !!location}
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
@@ -149,7 +148,7 @@ const RiderHome = ({ navigation }) => {
           }}
         />
         
-        {!effectiveOrigin && (
+        {!location && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
             <Text style={styles.floatingLoaderText}>Synchronisation GPS...</Text>

@@ -10,7 +10,7 @@ import { Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } fr
 import THEME from '../../theme/theme';
 
 const REMINDER_KEY = 'yely_update_reminder_timestamp';
-const REMINDER_DELAY_MS = 2 * 60 * 60 * 1000; // 2 heures
+const REMINDER_DELAY_MS = 2 * 60 * 60 * 1000; 
 
 const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }) => {
   const [showModal, setShowModal] = useState(false);
@@ -23,7 +23,7 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
       }
 
       if (mandatoryUpdate) {
-        setShowModal(true); // Si obligatoire, on ignore le rappel, on bloque
+        setShowModal(true); 
         return;
       }
 
@@ -56,11 +56,29 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
     checkReminder();
   }, [visible, mandatoryUpdate]);
 
-  const handleUpdate = () => {
+  const handleUpdate = async () => {
     if (Platform.OS === 'web') {
       window.location.reload(true);
     } else {
-      if (updateUrl) Linking.openURL(updateUrl);
+      if (updateUrl) {
+        let finalUrl = updateUrl.trim();
+        
+        // AJOUT: Sanitization de l'URL pour eviter le crash de Linking.openURL
+        if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+          finalUrl = `https://${finalUrl}`;
+        }
+        
+        try {
+          const supported = await Linking.canOpenURL(finalUrl);
+          if (supported) {
+            await Linking.openURL(finalUrl);
+          } else {
+            await Linking.openURL(finalUrl); 
+          }
+        } catch (error) {
+          console.warn("Erreur lors de l'ouverture du lien de mise a jour:", error);
+        }
+      }
     }
   };
 
@@ -89,16 +107,16 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
             <Ionicons name="cloud-download-outline" size={50} color={THEME.COLORS.background} />
           </View>
           
-          <Text style={styles.title}>Mise à jour requise</Text>
+          <Text style={styles.title}>Mise a jour requise</Text>
           <Text style={styles.version}>Version {latestVersion} disponible</Text>
           
           <Text style={styles.message}>
-            Une nouvelle version de Yely est disponible. {Platform.OS === 'web' ? 'Rechargez la page' : 'Téléchargez-la'} pour profiter des dernieres fonctionnalites et ameliorations de stabilite par la YelyDev Team.
+            Une nouvelle version de Yely est disponible. {Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la'} pour profiter des dernieres fonctionnalites et ameliorations de stabilite par la YelyDev Team.
           </Text>
 
           <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
             <Text style={styles.updateButtonText}>
-              {Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre à jour maintenant'}
+              {Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant'}
             </Text>
           </TouchableOpacity>
 
