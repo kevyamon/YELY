@@ -24,8 +24,6 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         method: 'POST',
       }),
     }),
-    
-    // NOUVEAUTÉ : Mot de passe oublié
     forgotPassword: builder.mutation({
       query: (data) => ({
         url: '/auth/forgot-password',
@@ -40,8 +38,6 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         body: data,
       }),
     }),
-
-    // ... (le reste de tes endpoints existants)
     getUserProfile: builder.query({
       query: () => '/users/profile',
       providesTags: ['User'],
@@ -76,6 +72,14 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         body: data,
       }),
     }),
+    // NOUVELLE MUTATION : Mise a jour propre du Token FCM via RTK Query
+    updateFcmToken: builder.mutation({
+      query: (data) => ({
+        url: '/auth/fcm-token',
+        method: 'PUT',
+        body: data,
+      }),
+    }),
   }),
 });
 
@@ -90,4 +94,5 @@ export const {
   useUploadProfilePictureMutation,
   useDeleteAccountMutation,
   useUpdateAvailabilityMutation,
+  useUpdateFcmTokenMutation, // Export du hook
 } = usersApiSlice;

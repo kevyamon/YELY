@@ -1,13 +1,14 @@
 // src/hooks/usePushNotifications.js
-// GESTION FCM - Enregistrement et synchronisation du token Push
+// GESTION FCM - Enregistrement et synchronisation du token Push (Avec Listeners Actifs)
 // CSCSM Level: Bank Grade
 
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { useEffect } from 'react';
+import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSelector } from 'react-redux';
-import { selectIsAuthenticated, selectToken } from '../store/slices/authSlice';
+import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
+import { selectIsAuthenticated } from '../store/slices/authSlice';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -19,10 +20,13 @@ Notifications.setNotificationHandler({
 
 const usePushNotifications = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  const authToken = useSelector(selectToken);
+  const [updateFcmToken] = useUpdateFcmTokenMutation();
+  
+  const notificationListener = useRef();
+  const responseListener = useRef();
 
   useEffect(() => {
-    if (!isAuthenticated || !authToken) return;
+    if (!isAuthenticated) return;
 
     const registerForPushNotificationsAsync = async () => {
       if (Platform.OS === 'android') {
@@ -44,35 +48,55 @@ const usePushNotifications = () => {
         }
         
         if (finalStatus !== 'granted') {
-          console.warn('[PUSH] Permission refusée par l\'utilisateur.');
+          console.warn('[PUSH] Permission refusee par l\'utilisateur.');
           return;
         }
 
         try {
-          // Note Senior: Sur Android, getDevicePushTokenAsync renvoie un token FCM natif.
-          // Sur iOS, cela renverra un token APNs. L'integration de @react-native-firebase/messaging 
-          // sera requise pour iOS afin d'obtenir un token FCM unifie et direct (Zero intermediaire).
+          // Recuperation du token natif Firebase (FCM)
           const tokenData = await Notifications.getDevicePushTokenAsync();
           const fcmToken = tokenData.data;
 
-          const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-          await fetch(`${API_URL}/auth/fcm-token`, {
-            method: 'PUT',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${authToken}`
-            },
-            body: JSON.stringify({ fcmToken })
-          });
+          if (fcmToken) {
+            // Utilisation de l'architecture RTK Query propre
+            await updateFcmToken({ fcmToken }).unwrap();
+          }
           
         } catch (error) {
-          console.warn('[PUSH] Erreur lors de la récupération/envoi du token:', error);
+          console.warn('[PUSH] Erreur lors de la recuperation/envoi du token:', error);
         }
       }
     };
 
     registerForPushNotificationsAsync();
-  }, [isAuthenticated, authToken]);
+
+    // ECOUTEUR 1 : L'application est OUVERTE et recoit une notification
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
+      const data = notification.request.content.data;
+      // Tu pourras ajouter ici des dispatch Redux pour rafraichir des listes
+      // ex: dispatch(apiSlice.util.invalidateTags(['Ride', 'Report']))
+    });
+
+    // ECOUTEUR 2 : L'utilisateur CLIQUE sur la notification (App en arriere-plan ou fermee)
+    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      
+      // Ici, nous pourrons implementer le "Deep Linking" ou la navigation conditionnelle.
+      // Par exemple : if (data.type === 'NEW_RIDE_REQUEST') navigate('DriverHome')
+      if (__DEV__) {
+        console.log('[PUSH] Interaction utilisateur avec la notification. Data:', data);
+      }
+    });
+
+    return () => {
+      if (notificationListener.current) {
+        Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener.current) {
+        Notifications.removeNotificationSubscription(responseListener.current);
+      }
+    };
+  }, [isAuthenticated, updateFcmToken]);
 };
 
 export default usePushNotifications;
