@@ -89,11 +89,13 @@ const usePushNotifications = () => {
     });
 
     return () => {
-      if (notificationListener.current) {
-        Notifications.removeNotificationSubscription(notificationListener.current);
+      // CORRECTION SENIOR : L'API d'Expo a evolue. 
+      // La destruction de l'ecouteur se fait desormais directement via sa methode .remove()
+      if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
+        notificationListener.current.remove();
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
+      if (responseListener.current && typeof responseListener.current.remove === 'function') {
+        responseListener.current.remove();
       }
     };
   }, [isAuthenticated, updateFcmToken]);
