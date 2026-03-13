@@ -1,6 +1,9 @@
 // src/hooks/useDriverMapFeatures.js
 // HOOK METIER - Gestion dynamique des marqueurs et de l'UI de la carte Chauffeur
 // CSCSM Level: Bank Grade
+// src/hooks/useDriverMapFeatures.js
+// HOOK METIER - Gestion dynamique des marqueurs et de l'UI de la carte Chauffeur
+// CSCSM Level: Bank Grade
 
 import { useMemo } from 'react';
 import THEME from '../theme/theme';
@@ -17,12 +20,6 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
     const destLng = currentRide.destination?.coordinates?.[0] ?? currentRide.destination?.longitude;
 
     if (isOngoing) {
-      // Phase 2 : le chauffeur roule vers la destination du client.
-      // On pose un marqueur pickup_origin sur le point de rencontre afin que
-      // useRouteManager sache qu'on est en phase "destination finale" et trace
-      // la route depuis la position actuelle du chauffeur vers la destination.
-      // Sans ce marqueur, le hook ne sait pas distinguer les deux phases et
-      // recalcule la route en boucle ou ne la trace pas du tout.
       const markers = [];
 
       if (originLat && originLng) {
@@ -49,9 +46,6 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
       return markers;
     }
 
-    // Phase 1 : le chauffeur se dirige vers le point de rencontre (statuts accepted/arrived).
-    // Marqueur type 'pickup' = cible du trace. useRouteManager utilisera
-    // la position GPS du chauffeur (passee via location/driverLocation) comme origine.
     if (originLat && originLng) {
       return [{
         id: 'pickup',
@@ -66,12 +60,12 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
     return [];
   }, [isRideActive, currentRide]);
 
-  // CORRECTION : Augmentation de la marge de sécurité en bas de la carte.
-  // 380px en course (gros panneau) et 280px au repos, pour pousser le bouton de position vers le haut.
+  const mapTopPadding = isRideActive ? 160 : 140;
   const mapBottomPadding = isRideActive ? 380 : 280;
 
   return {
     mapMarkers,
+    mapTopPadding,
     mapBottomPadding,
   };
 };

@@ -1,7 +1,8 @@
 // src/hooks/usePushNotifications.js
-// GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
+// GESTION FCM & EXPO - Enregistrement, Synchronisation et Aiguillage Deep Link
 // CSCSM Level: Bank Grade
 
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
@@ -27,6 +28,7 @@ const usePushNotifications = () => {
   const notificationListener = useRef();
   const responseListener = useRef();
 
+  // 1. GESTION DE L'ENREGISTREMENT (Requiert l'authentification)
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -55,7 +57,13 @@ const usePushNotifications = () => {
         }
 
         try {
-          const tokenData = await Notifications.getDevicePushTokenAsync();
+          // CORRECTION CRITIQUE : Génération d'un token compatible avec les serveurs d'Expo
+          // Le projectId est dynamiquement récupéré depuis ton app.json
+          const projectId = Constants.expoConfig?.extra?.eas?.projectId;
+          const tokenData = await Notifications.getExpoPushTokenAsync({
+            projectId: projectId,
+          });
+          
           const fcmToken = tokenData.data;
 
           if (fcmToken) {
@@ -69,7 +77,10 @@ const usePushNotifications = () => {
     };
 
     registerForPushNotificationsAsync();
+  }, [isAuthenticated, updateFcmToken]);
 
+  // 2. GESTION DES ÉCOUTEURS (Indépendant de l'auth pour garantir le Deep Linking en Cold Start)
+  useEffect(() => {
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
       // Optionnel : Invalider des tags RTK Query ici si necessaire a l'avenir
     });
@@ -128,7 +139,7 @@ const usePushNotifications = () => {
         responseListener.current.remove();
       }
     };
-  }, [isAuthenticated, updateFcmToken, user]);
+  }, [user]); 
 };
 
 export default usePushNotifications;

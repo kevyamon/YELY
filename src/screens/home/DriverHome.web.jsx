@@ -69,7 +69,6 @@ const DriverHome = ({ navigation }) => {
   
   const isBlocked = !isActive && !promoMode?.isActive;
 
-  // Verification de la premiere visite liee au compte utilisateur (Web)
   useEffect(() => {
     const checkFirstVisit = async () => {
       if (!user) return;
@@ -99,7 +98,6 @@ const DriverHome = ({ navigation }) => {
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   
-  // SUBSTITUTION DE POSITION WEB
   const location = simulatedLocation || realLocation;
 
   const isDriverInZone = location ? isLocationInMafereZone(location) : true;
@@ -118,9 +116,9 @@ const DriverHome = ({ navigation }) => {
     user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  const { mapMarkers, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
+  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
 
-  let dynamicTopPadding = 140; 
+  let dynamicTopPadding = mapTopPadding || 140; 
   if (isRideActive) {
     dynamicTopPadding = 160;
   }
@@ -166,6 +164,8 @@ const DriverHome = ({ navigation }) => {
       <View style={styles.mapContainer}>
         <MapCard
           ref={mapRef}
+          isDriver={true} 
+          rideStatus={currentRide?.status} 
           location={location}
           driverLocation={location}
           showUserMarker={false} 

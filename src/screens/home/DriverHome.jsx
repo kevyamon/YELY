@@ -161,6 +161,8 @@ const DriverHome = ({ navigation }) => {
       <View style={styles.mapContainer}>
         <MapCard
           ref={mapRef}
+          isDriver={true} 
+          rideStatus={currentRide?.status} 
           location={effectiveLocation}
           driverLocation={effectiveLocation}
           showUserMarker={false} 
