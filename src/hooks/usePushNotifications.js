@@ -27,7 +27,7 @@ const usePushNotifications = () => {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  // 1. GESTION DE L'ENREGISTREMENT (Requiert l'authentification)
+  // 1. GESTION DE L'ENREGISTREMENT
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -56,14 +56,12 @@ const usePushNotifications = () => {
         }
 
         try {
-          // RETOUR AU TOKEN FCM NATIF STRICT
           const tokenData = await Notifications.getDevicePushTokenAsync();
           const fcmToken = tokenData.data;
 
           if (fcmToken) {
             await updateFcmToken({ fcmToken }).unwrap();
           }
-          
         } catch (error) {
           console.warn('[PUSH] Erreur lors de la recuperation/envoi du token:', error);
         }
@@ -73,17 +71,20 @@ const usePushNotifications = () => {
     registerForPushNotificationsAsync();
   }, [isAuthenticated, updateFcmToken]);
 
-  // 2. GESTION DES ECOUTEURS (Independant de l'auth pour le Deep Linking en Cold Start)
+  // 2. GESTION DES ECOUTEURS (Anti-Memory Leak)
   useEffect(() => {
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Optionnel : Invalider des tags RTK Query ici si necessaire
+      // Notification reçue pendant que l'app est ouverte
     });
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      const type = data.type;
+      const type = data?.type;
 
       if (!type) return;
+
+      // On lit le rôle capturé de manière stable
+      const currentRole = user?.role;
 
       switch (type) {
         case 'NEW_REPORT':
@@ -111,9 +112,9 @@ const usePushNotifications = () => {
         case 'DRIVER_ARRIVED':
         case 'RIDE_STARTED':
         case 'RIDE_COMPLETED':
-          if (user?.role === 'driver') {
+          if (currentRole === 'driver') {
             navigate('DriverHome');
-          } else if (user?.role === 'rider') {
+          } else if (currentRole === 'rider') {
             navigate('RiderHome');
           }
           break;
@@ -131,7 +132,7 @@ const usePushNotifications = () => {
         responseListener.current.remove();
       }
     };
-  }, [user]); 
+  }, [user?.role]); // LA CORRECTION EST ICI : On écoute uniquement le changement de rôle, pas le GPS ou le reste
 };
 
 export default usePushNotifications;
