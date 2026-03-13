@@ -27,8 +27,8 @@ const useGeolocation = (options = {}) => {
   const {
     enableHighAccuracy = true,
     watchPosition = true,
-    distanceInterval = 2, // Reduit pour plus de fluidite
-    timeInterval = 2000, // Intervalle strict 
+    distanceInterval = 1, 
+    timeInterval = 1000, 
   } = options;
 
   const [location, setLocation] = useState(null);
@@ -72,7 +72,7 @@ const useGeolocation = (options = {}) => {
       let loc;
       try {
         loc = await getCurrentPositionWithTimeout({
-          accuracy: Location.Accuracy.BestForNavigation,
+          accuracy: Location.Accuracy.Highest,
         });
       } catch (timeoutOrError) {
         loc = await Location.getLastKnownPositionAsync({});
@@ -135,9 +135,7 @@ const useGeolocation = (options = {}) => {
       try {
         const watcher = await Location.watchPositionAsync(
           {
-            // CORRECTION SENIOR : Utilisation de BestForNavigation et retrait des deferredUpdates
-            // pour forcer le hardware GPS et stopper l'effet "snapping" vers les antennes relais.
-            accuracy: Location.Accuracy.BestForNavigation,
+            accuracy: Location.Accuracy.Highest,
             timeInterval,
             distanceInterval,
             showsBackgroundLocationIndicator: true
@@ -158,18 +156,6 @@ const useGeolocation = (options = {}) => {
               setError(null);
             }
 
-            if (lastValidLocationRef.current) {
-              const distance = getDistanceInMeters(
-                lastValidLocationRef.current.latitude,
-                lastValidLocationRef.current.longitude,
-                newLat,
-                newLng
-              );
-              
-              const minDistance = 2; // Distance hyper sensible pour fluidite max
-              if (distance < minDistance) return; 
-            }
-            
             const newCoords = {
               latitude: newLat,
               longitude: newLng,
@@ -197,7 +183,7 @@ const useGeolocation = (options = {}) => {
             const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
             if (!isRegistered) {
               await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-                accuracy: Location.Accuracy.BestForNavigation,
+                accuracy: Location.Accuracy.Highest,
                 timeInterval,
                 distanceInterval,
                 showsBackgroundLocationIndicator: true,
