@@ -1,5 +1,5 @@
 // src/hooks/useGeolocation.js
-// HOOK GEOLOCALISATION - Anti-Crash, Résilient aux Fake GPS & Sans Forçage Spatial
+// HOOK GEOLOCALISATION - Pure GPS Hardware (Anti-Snapping & Haute Precision)
 // CSCSM Level: Bank Grade
 
 import * as Location from 'expo-location';
@@ -27,8 +27,8 @@ const useGeolocation = (options = {}) => {
   const {
     enableHighAccuracy = true,
     watchPosition = true,
-    distanceInterval = 5, 
-    timeInterval = 3000, 
+    distanceInterval = 2, // Reduit pour plus de fluidite
+    timeInterval = 2000, // Intervalle strict 
   } = options;
 
   const [location, setLocation] = useState(null);
@@ -46,7 +46,7 @@ const useGeolocation = (options = {}) => {
     try {
       const { status: foregroundStatus } = await Location.requestForegroundPermissionsAsync();
       if (foregroundStatus !== 'granted') {
-        setError('Permission au premier plan refusée');
+        setError('Permission au premier plan refusee');
         setIsLoading(false);
         return false;
       }
@@ -72,7 +72,7 @@ const useGeolocation = (options = {}) => {
       let loc;
       try {
         loc = await getCurrentPositionWithTimeout({
-          accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+          accuracy: Location.Accuracy.BestForNavigation,
         });
       } catch (timeoutOrError) {
         loc = await Location.getLastKnownPositionAsync({});
@@ -88,10 +88,8 @@ const useGeolocation = (options = {}) => {
         timestamp: Date.now(),
       };
       
-      // LOGIQUE METIER CORRIGEE : On ne bloque plus si Fake GPS ou Hors Zone.
-      // On se contente d'informer, mais on met TOUJOURS à jour la position réelle.
       if (!isLocationInMafereZone(coords)) {
-        setError('Vous êtes hors de la zone de couverture de Yély.');
+        setError('Vous etes hors de la zone de couverture de Yely.');
       } else {
         setError(null);
       }
@@ -106,7 +104,7 @@ const useGeolocation = (options = {}) => {
       setIsLoading(false); 
       return null;
     }
-  }, [enableHighAccuracy]);
+  }, []);
 
   const initTracking = useCallback(async () => {
     let mounted = true;
@@ -118,7 +116,7 @@ const useGeolocation = (options = {}) => {
 
     if (!initialCoords) {
       if (retryCountRef.current >= MAX_RETRIES) {
-        setError('Impossible d obtenir la position GPS. Vérifiez vos paramètres.');
+        setError('Impossible d obtenir la position GPS. Verifiez vos parametres.');
         setIsLoading(false);
         return; 
       }
@@ -137,26 +135,25 @@ const useGeolocation = (options = {}) => {
       try {
         const watcher = await Location.watchPositionAsync(
           {
-            accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+            // CORRECTION SENIOR : Utilisation de BestForNavigation et retrait des deferredUpdates
+            // pour forcer le hardware GPS et stopper l'effet "snapping" vers les antennes relais.
+            accuracy: Location.Accuracy.BestForNavigation,
             timeInterval,
             distanceInterval,
-            showsBackgroundLocationIndicator: true, 
-            deferredUpdatesDistance: distanceInterval,
-            deferredUpdatesInterval: timeInterval
+            showsBackgroundLocationIndicator: true
           },
           (loc) => {
             if (!mounted) return;
 
-            // Retrait de la restriction d'accuracy trop stricte
             const accuracy = loc.coords.accuracy || 100;
-            if (accuracy > 2000) return; // Tolérance très large pour accepter tous les signaux
+            if (accuracy > 2000) return; 
 
             let newLat = loc.coords.latitude;
             let newLng = loc.coords.longitude;
             const now = Date.now();
 
             if (!isLocationInMafereZone({ latitude: newLat, longitude: newLng })) {
-              setError('Vous êtes hors de la zone de couverture.');
+              setError('Vous etes hors de la zone de couverture.');
             } else {
               setError(null);
             }
@@ -169,9 +166,7 @@ const useGeolocation = (options = {}) => {
                 newLng
               );
               
-              // On réduit la distance minimale pour plus de fluidité
-              // Et on SUPPRIME le calcul de vitesse qui bloquait les téléportations Fake GPS
-              const minDistance = 5; 
+              const minDistance = 2; // Distance hyper sensible pour fluidite max
               if (distance < minDistance) return; 
             }
             
@@ -202,7 +197,7 @@ const useGeolocation = (options = {}) => {
             const isRegistered = await TaskManager.isTaskRegisteredAsync(BACKGROUND_LOCATION_TASK);
             if (!isRegistered) {
               await Location.startLocationUpdatesAsync(BACKGROUND_LOCATION_TASK, {
-                accuracy: enableHighAccuracy ? Location.Accuracy.Highest : Location.Accuracy.Balanced,
+                accuracy: Location.Accuracy.BestForNavigation,
                 timeInterval,
                 distanceInterval,
                 showsBackgroundLocationIndicator: true,
@@ -232,7 +227,7 @@ const useGeolocation = (options = {}) => {
     }
     
     return () => { mounted = false; };
-  }, [requestPermission, getCurrentPosition, watchPosition, enableHighAccuracy, timeInterval, distanceInterval]);
+  }, [requestPermission, getCurrentPosition, watchPosition, timeInterval, distanceInterval]);
 
   useEffect(() => {
     const cleanup = initTracking();

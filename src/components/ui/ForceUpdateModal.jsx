@@ -1,19 +1,23 @@
 // src/components/ui/ForceUpdateModal.jsx
-// MODALE DE MISE A JOUR BLOQUANTE - Intelligence PWA / Native
+// MODALE DE MISE A JOUR BLOQUANTE - Intelligence PWA / Native / OTA
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import * as SecureStore from 'expo-secure-store';
+import * as Updates from 'expo-updates';
 import React, { useEffect, useState } from 'react';
 import { Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch } from 'react-redux';
+import { showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const REMINDER_KEY = 'yely_update_reminder_timestamp';
 const REMINDER_DELAY_MS = 2 * 60 * 60 * 1000; 
 
-const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }) => {
+const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, isOta }) => {
   const [showModal, setShowModal] = useState(false);
+  const dispatch = useDispatch();
 
   useEffect(() => {
     const checkReminder = async () => {
@@ -22,7 +26,7 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
         return;
       }
 
-      if (mandatoryUpdate) {
+      if (mandatoryUpdate && !isOta) {
         setShowModal(true); 
         return;
       }
@@ -54,20 +58,40 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
     };
 
     checkReminder();
-  }, [visible, mandatoryUpdate]);
+  }, [visible, mandatoryUpdate, isOta]);
 
   const handleUpdate = async () => {
+    // LOGIQUE OTA SILENCIEUSE
+    if (isOta && Platform.OS !== 'web') {
+      dispatch(showSuccessToast({
+        title: "Mise a jour lancee",
+        message: "Verification en cours en arriere-plan..."
+      }));
+      
+      await SecureStore.setItemAsync(REMINDER_KEY, Date.now().toString());
+      setShowModal(false);
+
+      try {
+        const update = await Updates.checkForUpdateAsync();
+        if (update.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          await Updates.reloadAsync();
+        }
+      } catch (error) {
+        console.warn("[OTA] Echec de la mise a jour:", error);
+      }
+      return;
+    }
+
+    // LOGIQUE CLASSIQUE PWA / REDIRECTION STORE
     if (Platform.OS === 'web') {
       window.location.reload(true);
     } else {
       if (updateUrl) {
         let finalUrl = updateUrl.trim();
-        
-        // AJOUT: Sanitization de l'URL pour eviter le crash de Linking.openURL
         if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
           finalUrl = `https://${finalUrl}`;
         }
-        
         try {
           const supported = await Linking.canOpenURL(finalUrl);
           if (supported) {
@@ -111,16 +135,16 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl }
           <Text style={styles.version}>Version {latestVersion} disponible</Text>
           
           <Text style={styles.message}>
-            Une nouvelle version de Yely est disponible. {Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la'} pour profiter des dernieres fonctionnalites et ameliorations de stabilite par la YelyDev Team.
+            Une nouvelle version de Yely est disponible. {isOta ? "Une installation rapide sans quitter l'app est prete." : (Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la')} pour profiter des dernieres fonctionnalites.
           </Text>
 
           <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
             <Text style={styles.updateButtonText}>
-              {Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant'}
+              {isOta ? 'Verifier la mise a jour (OTA)' : (Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant')}
             </Text>
           </TouchableOpacity>
 
-          {!mandatoryUpdate && (
+          {!mandatoryUpdate && !isOta && (
             <TouchableOpacity style={styles.laterButton} onPress={handleRemindLater}>
               <Text style={styles.laterButtonText}>Me rappeler dans 2h</Text>
             </TouchableOpacity>

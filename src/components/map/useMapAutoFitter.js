@@ -1,5 +1,5 @@
 // src/components/map/useMapAutoFitter.js
-// HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre (3D Fixe & Anti-Renversement)
+// HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
@@ -25,8 +25,8 @@ const useMapAutoFitter = ({
   location,
   driverLocation,
   markers,
-  mapTopPadding = 140,
-  mapBottomPadding = 240,
+  mapTopPadding = 160,    // Augmente pour laisser respirer le SmartHeader
+  mapBottomPadding = 280, // Augmente pour laisser respirer le BottomPanel
   isUserInteracting, 
 }) => {
   const lastUpdateRef = useRef(0);
@@ -35,7 +35,6 @@ const useMapAutoFitter = ({
 
   useEffect(() => {
     if (!isMapReady || !cameraRef.current) return;
-    
     if (isUserInteracting) return;
 
     let coordsToFit = [];
@@ -68,56 +67,75 @@ const useMapAutoFitter = ({
     }
 
     const now = Date.now();
-    const isTrackingActive = coordsToFit.length === 2;
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
+    const isTrackingActive = coordsToFit.length >= 2;
+    const debounceTime = isInitialFitDone.current ? 4000 : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
-      isInitialFitDone.current = true;
-
-      const maxAllowedPadding = SCREEN_HEIGHT * 0.35; 
-      const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
-      const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
-
-      let shouldActivateSuperpower = false;
-
-      if (isTrackingActive && targetMarker && originMarker) {
-        const distance = getDistance(
-          originMarker.latitude, originMarker.longitude,
-          targetMarker.latitude, targetMarker.longitude
-        );
-
-        if (distance > 800) {
-          shouldActivateSuperpower = true;
-        }
-      }
-
-      // Calcul de la Bounding Box pour MapLibre
-      const lats = coordsToFit.map(c => c.latitude);
-      const lngs = coordsToFit.map(c => c.longitude);
-      const sw = [Math.min(...lngs), Math.min(...lats)];
-      const ne = [Math.max(...lngs), Math.max(...lats)];
 
       const delay = Platform.OS === 'ios' ? 100 : 250;
-
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       timeoutRef.current = setTimeout(() => {
         if (!cameraRef.current || isUserInteracting) return;
 
+        // CORRECTION SENIOR : Retrait de la limite stricte de 35% de l'ecran.
+        // On permet un padding genereux (jusqu'a 50%) pour que le trace soit visible entre les panneaux.
+        const maxAllowedPadding = SCREEN_HEIGHT * 0.50; 
+        const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
+        const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
+
+        if (coordsToFit.length === 1) {
+          // MODE SUIVI : Un seul point a suivre. 
+          // Zoom eloigne a 13.5 (au lieu de 15) pour eviter de fatiguer l'utilisateur et montrer le contexte.
+          cameraRef.current.setCamera({
+            centerCoordinate: [coordsToFit[0].longitude, coordsToFit[0].latitude],
+            zoomLevel: 13.5, 
+            padding: {
+              paddingTop: mapTopPadding,
+              paddingBottom: mapBottomPadding,
+              paddingLeft: 0,
+              paddingRight: 0
+            },
+            animationDuration: isInitialFitDone.current ? 1000 : 2000,
+          });
+          isInitialFitDone.current = true;
+          return;
+        }
+
+        // MODE NAVIGATION : Vue englobante des 2 points (Depart / Arrivee)
+        let shouldActivateSuperpower = false;
+
+        if (isTrackingActive && targetMarker && originMarker) {
+          const distance = getDistance(
+            originMarker.latitude, originMarker.longitude,
+            targetMarker.latitude, targetMarker.longitude
+          );
+
+          if (distance < 600 || distance > 800) {
+            shouldActivateSuperpower = true;
+          }
+        }
+
+        const lats = coordsToFit.map(c => c.latitude);
+        const lngs = coordsToFit.map(c => c.longitude);
+        const sw = [Math.min(...lngs), Math.min(...lats)];
+        const ne = [Math.max(...lngs), Math.max(...lats)];
+
         cameraRef.current.setCamera({
           bounds: {
             ne,
             sw,
-            paddingTop: dynamicTop,
-            paddingBottom: dynamicBottom,
-            paddingLeft: SCREEN_WIDTH * 0.12,
-            paddingRight: SCREEN_WIDTH * 0.12,
+            paddingTop: shouldActivateSuperpower ? dynamicTop + 30 : dynamicTop,
+            paddingBottom: shouldActivateSuperpower ? dynamicBottom + 30 : dynamicBottom,
+            paddingLeft: SCREEN_WIDTH * 0.15, // Marge laterale elargie pour ne pas coller aux bords
+            paddingRight: SCREEN_WIDTH * 0.15,
           },
-          pitch: shouldActivateSuperpower ? 45 : 0,
+          pitch: shouldActivateSuperpower ? 35 : 0, // Pitch adouci pour moins deformer la carte
           animationDuration: 1000,
         });
 
+        isInitialFitDone.current = true;
       }, delay);
     }
 
