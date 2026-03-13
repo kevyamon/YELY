@@ -31,6 +31,7 @@ import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
 
 import AppNavigator from './src/navigation/AppNavigator';
+import { navigationRef } from './src/navigation/navigationRef';
 import store from './src/store/store';
 import THEME from './src/theme/theme';
 
@@ -111,7 +112,7 @@ const AppContent = () => {
 
   return (
     <>
-      <NavigationContainer documentTitle={{ formatter: () => 'Yely' }}>
+      <NavigationContainer ref={navigationRef} documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
           <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
           <AppNavigator />

@@ -7,10 +7,10 @@ import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useEffect, useRef } from 'react';
 import { useSelector } from 'react-redux';
 import ENV from '../config/env';
+import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
-import { selectIsAuthenticated } from '../store/slices/authSlice';
+import { selectCurrentUser, selectIsAuthenticated } from '../store/slices/authSlice';
 
-// Initialisation de l'instance Firebase Web (utilise tes variables d'environnement)
 const firebaseConfig = {
   apiKey: ENV.FIREBASE_API_KEY,
   authDomain: ENV.FIREBASE_AUTH_DOMAIN,
@@ -31,6 +31,7 @@ try {
 
 const usePushNotifications = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
   const isRegistered = useRef(false);
 
@@ -39,20 +40,17 @@ const usePushNotifications = () => {
 
     const registerWebPushAsync = async () => {
       try {
-        // 1. Demande l'autorisation native du navigateur
         const permission = await Notification.requestPermission();
         if (permission !== 'granted') {
           console.warn("[PUSH WEB] Permission refusee par l'utilisateur.");
           return;
         }
 
-        // 2. Recuperation du token via le VAPID Key (a ajouter dans ton env)
         const currentToken = await getToken(messaging, {
           vapidKey: ENV.FIREBASE_VAPID_KEY 
         });
 
         if (currentToken) {
-          // 3. Envoi du token au backend via la mutation propre RTK Query
           await updateFcmToken({ fcmToken: currentToken }).unwrap();
           isRegistered.current = true;
         } else {
@@ -68,23 +66,68 @@ const usePushNotifications = () => {
     // ECOUTEUR : L'application web est OUVERTE (Foreground)
     const unsubscribe = onMessage(messaging, (payload) => {
       if (__DEV__) {
-        console.log("[PUSH WEB] Notification recu en premier plan:", payload);
+        console.log("[PUSH WEB] Notification recue en premier plan:", payload);
       }
       
-      // En Web, si la page est ouverte, la notification systeme n'apparait pas automatiquement.
-      // Nous forcons son affichage visuel via l'API native du navigateur :
       if (Notification.permission === 'granted') {
-        new Notification(payload.notification?.title || 'Yely', {
+        const webNotification = new Notification(payload.notification?.title || 'Yely', {
           body: payload.notification?.body,
-          icon: '/favicon.png'
+          icon: '/favicon.png',
+          data: payload.data
         });
+
+        // LE MOTEUR DE DEEP LINKING WEB (Aiguillage au clic)
+        webNotification.onclick = (event) => {
+          event.preventDefault(); 
+          webNotification.close();
+
+          const type = payload.data?.type;
+          if (!type) return;
+
+          switch (type) {
+            case 'NEW_REPORT':
+              navigate('AdminReports');
+              break;
+            case 'REPORT_RESOLVED':
+              navigate('Report');
+              break;
+            case 'NEW_PAYMENT_PROOF':
+              navigate('ValidationCenter');
+              break;
+            case 'SUBSCRIPTION_APPROVED':
+            case 'SUBSCRIPTION_REJECTED':
+            case 'PROMO_UPDATE':
+              navigate('Subscription');
+              break;
+            case 'NEW_RIDE_REQUEST':
+            case 'SEARCH_TIMEOUT':
+            case 'NEGOTIATION_TIMEOUT':
+            case 'RIDE_CANCELLED':
+            case 'DRIVER_FOUND':
+            case 'PRICE_PROPOSAL':
+            case 'PROPOSAL_ACCEPTED':
+            case 'PROPOSAL_REJECTED':
+            case 'DRIVER_ARRIVED':
+            case 'RIDE_STARTED':
+            case 'RIDE_COMPLETED':
+              if (user?.role === 'driver') {
+                navigate('DriverHome');
+              } else if (user?.role === 'rider') {
+                navigate('RiderHome');
+              }
+              break;
+            default:
+              navigate('Notifications');
+              break;
+          }
+        };
       }
     });
 
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isAuthenticated, updateFcmToken]);
+  }, [isAuthenticated, updateFcmToken, user]);
 };
 
 export default usePushNotifications;

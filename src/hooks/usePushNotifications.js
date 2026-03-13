@@ -1,5 +1,5 @@
 // src/hooks/usePushNotifications.js
-// GESTION FCM - Enregistrement et synchronisation du token Push (Avec Listeners Actifs)
+// GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
 // CSCSM Level: Bank Grade
 
 import * as Device from 'expo-device';
@@ -7,8 +7,9 @@ import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
 import { Platform } from 'react-native';
 import { useSelector } from 'react-redux';
+import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
-import { selectIsAuthenticated } from '../store/slices/authSlice';
+import { selectCurrentUser, selectIsAuthenticated } from '../store/slices/authSlice';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,6 +21,7 @@ Notifications.setNotificationHandler({
 
 const usePushNotifications = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
   
   const notificationListener = useRef();
@@ -53,12 +55,10 @@ const usePushNotifications = () => {
         }
 
         try {
-          // Recuperation du token natif Firebase (FCM)
           const tokenData = await Notifications.getDevicePushTokenAsync();
           const fcmToken = tokenData.data;
 
           if (fcmToken) {
-            // Utilisation de l'architecture RTK Query propre
             await updateFcmToken({ fcmToken }).unwrap();
           }
           
@@ -70,27 +70,57 @@ const usePushNotifications = () => {
 
     registerForPushNotificationsAsync();
 
-    // ECOUTEUR 1 : L'application est OUVERTE et recoit une notification
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      const data = notification.request.content.data;
-      // Tu pourras ajouter ici des dispatch Redux pour rafraichir des listes
-      // ex: dispatch(apiSlice.util.invalidateTags(['Ride', 'Report']))
+      // Optionnel : Invalider des tags RTK Query ici si necessaire a l'avenir
     });
 
-    // ECOUTEUR 2 : L'utilisateur CLIQUE sur la notification (App en arriere-plan ou fermee)
+    // LE MOTEUR DE DEEP LINKING (Aiguillage par Type)
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      
-      // Ici, nous pourrons implementer le "Deep Linking" ou la navigation conditionnelle.
-      // Par exemple : if (data.type === 'NEW_RIDE_REQUEST') navigate('DriverHome')
-      if (__DEV__) {
-        console.log('[PUSH] Interaction utilisateur avec la notification. Data:', data);
+      const type = data.type;
+
+      if (!type) return;
+
+      switch (type) {
+        case 'NEW_REPORT':
+          navigate('AdminReports');
+          break;
+        case 'REPORT_RESOLVED':
+          navigate('Report');
+          break;
+        case 'NEW_PAYMENT_PROOF':
+          navigate('ValidationCenter');
+          break;
+        case 'SUBSCRIPTION_APPROVED':
+        case 'SUBSCRIPTION_REJECTED':
+        case 'PROMO_UPDATE':
+          navigate('Subscription');
+          break;
+        case 'NEW_RIDE_REQUEST':
+        case 'SEARCH_TIMEOUT':
+        case 'NEGOTIATION_TIMEOUT':
+        case 'RIDE_CANCELLED':
+        case 'DRIVER_FOUND':
+        case 'PRICE_PROPOSAL':
+        case 'PROPOSAL_ACCEPTED':
+        case 'PROPOSAL_REJECTED':
+        case 'DRIVER_ARRIVED':
+        case 'RIDE_STARTED':
+        case 'RIDE_COMPLETED':
+          // Routage dynamique selon le role pour les actions de course
+          if (user?.role === 'driver') {
+            navigate('DriverHome');
+          } else if (user?.role === 'rider') {
+            navigate('RiderHome');
+          }
+          break;
+        default:
+          navigate('Notifications');
+          break;
       }
     });
 
     return () => {
-      // CORRECTION SENIOR : L'API d'Expo a evolue. 
-      // La destruction de l'ecouteur se fait desormais directement via sa methode .remove()
       if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
         notificationListener.current.remove();
       }
@@ -98,7 +128,7 @@ const usePushNotifications = () => {
         responseListener.current.remove();
       }
     };
-  }, [isAuthenticated, updateFcmToken]);
+  }, [isAuthenticated, updateFcmToken, user]);
 };
 
 export default usePushNotifications;
