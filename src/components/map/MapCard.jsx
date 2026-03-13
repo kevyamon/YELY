@@ -141,17 +141,16 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
+  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
+  const safeRouteCoordinates = routeCoordinates.length > 1 ? routeCoordinates : [];
+
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude;
+
   const handleMapReady = () => {
     setIsMapReady(true);
     if (onMapReady) onMapReady();
   };
-
-  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
-  
-  // ANCRAGE DU TRACE : Forcer le premier point géométrique à coller exactement à la position GPS brute du user
-  if (routeCoordinates.length > 0 && !isDriver && location && location.latitude) {
-    routeCoordinates[0] = [location.longitude, location.latitude];
-  }
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
@@ -190,14 +189,14 @@ const MapCard = forwardRef(({
             />
           </MapLibreGL.RasterSource>
 
-          {routeCoordinates.length > 1 && (
+          {safeRouteCoordinates.length > 1 && (
             <MapLibreGL.ShapeSource
               id="route-source"
               shape={{
                 type: 'Feature',
                 geometry: {
                   type: 'LineString',
-                  coordinates: routeCoordinates,
+                  coordinates: safeRouteCoordinates,
                 },
               }}
             >
@@ -224,7 +223,7 @@ const MapCard = forwardRef(({
             />
           ))}
 
-          {showUserMarker && location && location.latitude && (
+          {displayUserMarker && (
             <UserLocationMarker coordinate={safeLocation} />
           )}
 
@@ -239,6 +238,18 @@ const MapCard = forwardRef(({
             if (!marker.latitude || !marker.longitude) return null;
 
             if (marker.type === 'pickup') {
+              if (!isDriver) {
+                return (
+                  <PoiMarker
+                    key={marker.id || `marker-${index}`}
+                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
+                    name={marker.name || "Point de rencontre"}
+                    icon="location"
+                    color={marker.iconColor || THEME.COLORS.info}
+                    onPress={() => onMarkerPress?.(marker)}
+                  />
+                );
+              }
               return (
                 <TrackedMarker
                   identifier="pickup_loc"
@@ -252,9 +263,7 @@ const MapCard = forwardRef(({
             }
 
             if (marker.type === 'destination') {
-              const showFlag = isDriver && rideStatus === 'ongoing';
-
-              if (showFlag) {
+              if (isOngoingRide) {
                 return (
                   <TrackedMarker
                     identifier="dest_loc"
