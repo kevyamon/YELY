@@ -68,7 +68,10 @@ const useMapAutoFitter = ({
 
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300;
+    
+    // CORRECTION : Activation du Follow Mode. 
+    // Mise à jour de la caméra toutes les 4 secondes, qu'il y ait 1 point (suivi) ou 2 points (navigation).
+    const debounceTime = isInitialFitDone.current ? 4000 : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
@@ -84,6 +87,7 @@ const useMapAutoFitter = ({
         const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
 
         if (coordsToFit.length === 1) {
+          // MODE SUIVI (Caméra centrée sur l'utilisateur)
           cameraRef.current.setCamera({
             centerCoordinate: [coordsToFit[0].longitude, coordsToFit[0].latitude],
             zoomLevel: 15,
@@ -99,6 +103,7 @@ const useMapAutoFitter = ({
           return;
         }
 
+        // MODE NAVIGATION (Vue englobante)
         let shouldActivateSuperpower = false;
 
         if (isTrackingActive && targetMarker && originMarker) {

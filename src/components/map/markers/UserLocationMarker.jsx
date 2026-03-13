@@ -1,5 +1,5 @@
 // src/components/map/markers/UserLocationMarker.jsx
-// COMPOSANT MARQUEUR UTILISATEUR - Localisation Précise et Animée
+// COMPOSANT MARQUEUR UTILISATEUR - Localisation Precise et Animee
 // CSCSM Level: Bank Grade
 
 import MapLibreGL from '@maplibre/maplibre-react-native';
@@ -50,7 +50,7 @@ const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = tru
   });
 
   return (
-    <MapLibreGL.PointAnnotation
+    <MapLibreGL.MarkerView
       id={identifier}
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={{ x: 0.5, y: 0.5 }}
@@ -68,7 +68,7 @@ const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = tru
         />
         <View style={[styles.innerCircle, { backgroundColor: THEME.COLORS.champagneGold }]} />
       </View>
-    </MapLibreGL.PointAnnotation>
+    </MapLibreGL.MarkerView>
   );
 };
 
@@ -99,4 +99,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(UserLocationMarker);  
+export default React.memo(UserLocationMarker);
