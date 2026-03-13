@@ -1,8 +1,7 @@
 // src/hooks/usePushNotifications.js
-// GESTION FCM & EXPO - Enregistrement, Synchronisation et Aiguillage Deep Link
+// GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
 // CSCSM Level: Bank Grade
 
-import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useRef } from 'react';
@@ -57,13 +56,8 @@ const usePushNotifications = () => {
         }
 
         try {
-          // CORRECTION CRITIQUE : Génération d'un token compatible avec les serveurs d'Expo
-          // Le projectId est dynamiquement récupéré depuis ton app.json
-          const projectId = Constants.expoConfig?.extra?.eas?.projectId;
-          const tokenData = await Notifications.getExpoPushTokenAsync({
-            projectId: projectId,
-          });
-          
+          // RETOUR AU TOKEN FCM NATIF STRICT
+          const tokenData = await Notifications.getDevicePushTokenAsync();
           const fcmToken = tokenData.data;
 
           if (fcmToken) {
@@ -79,13 +73,12 @@ const usePushNotifications = () => {
     registerForPushNotificationsAsync();
   }, [isAuthenticated, updateFcmToken]);
 
-  // 2. GESTION DES ÉCOUTEURS (Indépendant de l'auth pour garantir le Deep Linking en Cold Start)
+  // 2. GESTION DES ECOUTEURS (Independant de l'auth pour le Deep Linking en Cold Start)
   useEffect(() => {
     notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Optionnel : Invalider des tags RTK Query ici si necessaire a l'avenir
+      // Optionnel : Invalider des tags RTK Query ici si necessaire
     });
 
-    // LE MOTEUR DE DEEP LINKING (Aiguillage par Type)
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       const type = data.type;
@@ -118,7 +111,6 @@ const usePushNotifications = () => {
         case 'DRIVER_ARRIVED':
         case 'RIDE_STARTED':
         case 'RIDE_COMPLETED':
-          // Routage dynamique selon le role pour les actions de course
           if (user?.role === 'driver') {
             navigate('DriverHome');
           } else if (user?.role === 'rider') {
