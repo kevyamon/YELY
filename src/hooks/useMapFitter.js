@@ -19,7 +19,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * c; 
 };
 
-const useMapAutoFitter = ({
+const useMapFitter = ({
   isMapReady,
   cameraRef, 
   location,
@@ -69,8 +69,6 @@ const useMapAutoFitter = ({
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
     
-    // CORRECTION : Activation du Follow Mode. 
-    // Mise à jour de la caméra toutes les 4 secondes, qu'il y ait 1 point (suivi) ou 2 points (navigation).
     const debounceTime = isInitialFitDone.current ? 4000 : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
@@ -82,18 +80,20 @@ const useMapAutoFitter = ({
       timeoutRef.current = setTimeout(() => {
         if (!cameraRef.current || isUserInteracting) return;
 
-        const maxAllowedPadding = SCREEN_HEIGHT * 0.35; 
-        const dynamicTop = Math.min(mapTopPadding + 40, maxAllowedPadding);
-        const dynamicBottom = Math.min(mapBottomPadding + 40, maxAllowedPadding);
+        // Augmentation de la capacité de padding pour éviter que le tracé soit caché par les panneaux
+        const maxAllowedPaddingTop = SCREEN_HEIGHT * 0.25;
+        const maxAllowedPaddingBottom = SCREEN_HEIGHT * 0.45;
+        
+        const dynamicTop = Math.min(mapTopPadding, maxAllowedPaddingTop);
+        const dynamicBottom = Math.min(mapBottomPadding, maxAllowedPaddingBottom);
 
         if (coordsToFit.length === 1) {
-          // MODE SUIVI (Caméra centrée sur l'utilisateur)
           cameraRef.current.setCamera({
             centerCoordinate: [coordsToFit[0].longitude, coordsToFit[0].latitude],
             zoomLevel: 15,
             padding: {
-              paddingTop: mapTopPadding,
-              paddingBottom: mapBottomPadding,
+              paddingTop: dynamicTop,
+              paddingBottom: dynamicBottom,
               paddingLeft: 0,
               paddingRight: 0
             },
@@ -103,17 +103,22 @@ const useMapAutoFitter = ({
           return;
         }
 
-        // MODE NAVIGATION (Vue englobante)
-        let shouldActivateSuperpower = false;
-
         if (isTrackingActive && targetMarker && originMarker) {
           const distance = getDistance(
             originMarker.latitude, originMarker.longitude,
             targetMarker.latitude, targetMarker.longitude
           );
 
-          if (distance < 600 || distance > 800) {
-            shouldActivateSuperpower = true;
+          // Si les points sont trop proches, l'utilisation de bounds cause un bug de calcul MapLibre. On centre.
+          if (distance < 150) {
+             cameraRef.current.setCamera({
+                centerCoordinate: [originMarker.longitude, originMarker.latitude],
+                zoomLevel: 16,
+                padding: { paddingTop: dynamicTop, paddingBottom: dynamicBottom, paddingLeft: 0, paddingRight: 0 },
+                animationDuration: 1000
+             });
+             isInitialFitDone.current = true;
+             return;
           }
         }
 
@@ -122,16 +127,19 @@ const useMapAutoFitter = ({
         const sw = [Math.min(...lngs), Math.min(...lats)];
         const ne = [Math.max(...lngs), Math.max(...lats)];
 
+        // Sécurité contre le crash Android si les bounds sont identiques
+        if (sw[0] === ne[0] && sw[1] === ne[1]) return;
+
         cameraRef.current.setCamera({
           bounds: {
             ne,
             sw,
-            paddingTop: shouldActivateSuperpower ? dynamicTop + 40 : dynamicTop,
-            paddingBottom: shouldActivateSuperpower ? dynamicBottom + 40 : dynamicBottom,
-            paddingLeft: SCREEN_WIDTH * 0.12,
-            paddingRight: SCREEN_WIDTH * 0.12,
+            paddingTop: dynamicTop + 30,
+            paddingBottom: dynamicBottom + 30,
+            paddingLeft: SCREEN_WIDTH * 0.1,
+            paddingRight: SCREEN_WIDTH * 0.1,
           },
-          pitch: shouldActivateSuperpower ? 45 : 0,
+          pitch: 0, // Désactivation du pitch auto pour conserver une visibilité aérienne du tracé
           animationDuration: 1000,
         });
 
@@ -146,4 +154,4 @@ const useMapAutoFitter = ({
   }, [isMapReady, mapTopPadding, mapBottomPadding, location, driverLocation, markers, isUserInteracting, cameraRef]);
 };
 
-export default useMapAutoFitter;
+export default useMapFitter;

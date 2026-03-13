@@ -21,8 +21,7 @@ import {
   destinationIcon,
   driverIcon,
   pickupIcon,
-  pickupOriginIcon,
-  userIcon,
+  userIcon
 } from './markers/WebMarkers';
 
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
@@ -68,6 +67,7 @@ const MapCard = forwardRef(({
   location,
   driverLocation,
   markers = [],
+  isDriver = false,
   showUserMarker = true,
   showRecenterButton = true,
   darkMode = true,
@@ -134,7 +134,7 @@ const MapCard = forwardRef(({
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
       setIsUserInteracting(false);
-    }, 1000); 
+    }, 8000); 
   };
 
   const handleRecenter = () => {
@@ -160,14 +160,20 @@ const MapCard = forwardRef(({
     location?.longitude || MAFERE_CENTER.longitude,
   ];
 
-  const displayMarkers = markers.filter(marker => {
-    if (!showUserMarker && (marker.type === 'pickup' || marker.type === 'pickup_origin')) {
-      return false;
-    }
-    return true;
-  });
+  // SANITISATION : Élimination des doublons consécutifs
+  const polylinePositions = visibleRoutePoints
+    .map(p => [p.latitude, p.longitude])
+    .filter(p => p && p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]))
+    .reduce((acc, current) => {
+       if (acc.length === 0) return [current];
+       const prev = acc[acc.length - 1];
+       if (prev[0] !== current[0] || prev[1] !== current[1]) {
+           acc.push(current);
+       }
+       return acc;
+    }, []);
 
-  const polylinePositions = visibleRoutePoints.map(p => [p.latitude, p.longitude]);
+  const isRouteValid = polylinePositions.length > 1;
 
   return (
     <View style={[styles.container, style]}>
@@ -191,7 +197,7 @@ const MapCard = forwardRef(({
         <MapAutoFitter 
           location={location} 
           driverLocation={driverLocation} 
-          markers={displayMarkers} 
+          markers={markers} 
           isUserInteracting={isUserInteracting}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
@@ -214,13 +220,26 @@ const MapCard = forwardRef(({
           <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={driverIcon} />
         )}
 
-        {displayMarkers.map((marker, index) => {
+        {markers.map((marker, index) => {
           if (!marker.latitude || !marker.longitude) return null;
 
           let markerIcon = defaultIcon;
-          if (marker.type === 'pickup') markerIcon = pickupIcon;
+          if (marker.type === 'pickup') {
+            if (isDriver) {
+               markerIcon = pickupIcon; // Seulement le chauffeur voit le bonhomme bleu
+            } else {
+               // Le client voit une icone standard à sa propre position s'il n'est pas caché
+               const clientPickupIcon = L.divIcon({
+                  className: 'yely-client-pickup',
+                  html: `<div style="width: 26px; height: 26px; border-radius: 13px; background: ${THEME.COLORS.primary}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">${POI_SVG}</div>`,
+                  iconSize: [26, 26],
+                  iconAnchor: [13, 26],
+                });
+               markerIcon = clientPickupIcon;
+            }
+          }
           else if (marker.type === 'destination') markerIcon = destinationIcon;
-          else if (marker.type === 'pickup_origin') markerIcon = pickupOriginIcon;
+          else if (marker.type === 'pickup_origin') return null; // Invisible comme sur mobile
 
           return (
             <Marker
@@ -232,7 +251,7 @@ const MapCard = forwardRef(({
           );
         })}
 
-        {polylinePositions.length > 1 && (
+        {isRouteValid && (
           <Polyline
             positions={polylinePositions}
             pathOptions={{
@@ -301,7 +320,8 @@ const arePropsEqual = (prevProps, nextProps) => {
     isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
     prevProps.markers?.length === nextProps.markers?.length &&
     prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
-    prevProps.showUserMarker === nextProps.showUserMarker
+    prevProps.showUserMarker === nextProps.showUserMarker &&
+    prevProps.isDriver === nextProps.isDriver
   );
 };
 

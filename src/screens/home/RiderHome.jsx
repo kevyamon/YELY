@@ -111,11 +111,9 @@ const RiderHome = ({ navigation }) => {
   let activeDriverLocation = null;
 
   if (isRideActive) {
-    if (currentRide?.status === 'in_progress') {
-      activeDriverLocation = __DEV__ ? (driverLatLng || effectiveOrigin) : (effectiveOrigin || driverLatLng);
-    } else {
-      activeDriverLocation = driverLatLng;
-    }
+    // CORRECTION MAJEURE: Le GPS du chauffeur prime toujours lorsque la course est active,
+    // garantissant que le tracé part toujours de la voiture, même quand le client est à bord.
+    activeDriverLocation = driverLatLng;
   }
 
   const handlePoiSelection = (poi) => {
@@ -133,6 +131,7 @@ const RiderHome = ({ navigation }) => {
       <View style={styles.mapContainer}>
         <MapCard 
           ref={mapRef}
+          isDriver={false}
           location={location} 
           driverLocation={activeDriverLocation}
           showUserMarker={currentRide?.status !== 'in_progress' && !!location}

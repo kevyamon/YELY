@@ -86,16 +86,18 @@ const MapCard = forwardRef(({
   const mapPOIs = poiResponse?.data || [];
 
   const handleMapInteraction = (e) => {
-    const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction;
+    // Amélioration de la détection de l'intention utilisateur
+    const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
     
     if (isHumanInteraction) {
       wakeUpButton();
       setIsUserInteracting(true);
       clearTimeout(interactionTimeout.current);
       
+      // On donne 8 secondes de répit au lieu de 4 pour examiner la carte
       interactionTimeout.current = setTimeout(() => {
         setIsUserInteracting(false);
-      }, 4000);
+      }, 8000);
     }
   };
 
@@ -142,7 +144,20 @@ const MapCard = forwardRef(({
   }));
 
   const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
-  const safeRouteCoordinates = routeCoordinates.length > 1 ? routeCoordinates : [];
+  
+  // SANITISATION : Élimination des doublons consécutifs qui crashent LineLayer sur Android 9
+  const safeRouteCoordinates = routeCoordinates
+    .filter(p => p && p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]))
+    .reduce((acc, current) => {
+       if (acc.length === 0) return [current];
+       const prev = acc[acc.length - 1];
+       if (prev[0] !== current[0] || prev[1] !== current[1]) {
+           acc.push(current);
+       }
+       return acc;
+    }, []);
+
+  const isRouteValid = safeRouteCoordinates.length > 1;
 
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
   const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude;
@@ -189,7 +204,7 @@ const MapCard = forwardRef(({
             />
           </MapLibreGL.RasterSource>
 
-          {safeRouteCoordinates.length > 1 && (
+          {isRouteValid && (
             <MapLibreGL.ShapeSource
               id="route-source"
               shape={{
@@ -238,27 +253,29 @@ const MapCard = forwardRef(({
             if (!marker.latitude || !marker.longitude) return null;
 
             if (marker.type === 'pickup') {
-              if (!isDriver) {
+              if (isDriver) {
+                // Seulement le chauffeur a le droit de voir le bonhomme bleu animé.
                 return (
-                  <PoiMarker
+                  <TrackedMarker
+                    identifier="pickup_loc"
                     key={marker.id || `marker-${index}`}
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                    name={marker.name || "Point de rencontre"}
-                    icon="location"
-                    color={marker.iconColor || THEME.COLORS.info}
-                    onPress={() => onMarkerPress?.(marker)}
-                  />
+                    zIndex={120}
+                  >
+                    <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
+                  </TrackedMarker>
                 );
               }
+              // Si c'est le client, il ne voit jamais l'icone de bonhomme à son propre emplacement de pickup.
               return (
-                <TrackedMarker
-                  identifier="pickup_loc"
+                <PoiMarker
                   key={marker.id || `marker-${index}`}
                   coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  zIndex={120}
-                >
-                  <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
-                </TrackedMarker>
+                  name={marker.name || "Point de rencontre"}
+                  icon="walk"
+                  color={THEME.COLORS.primary}
+                  onPress={() => onMarkerPress?.(marker)}
+                />
               );
             }
 

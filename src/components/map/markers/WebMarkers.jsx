@@ -116,7 +116,7 @@ export const MapAutoFitter = ({
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
-      // 🧠 2. DÉCISION DU NIVEAU DE ZOOM SÉCURISÉ (Le Superpouvoir Web)
+      // 🧠 2. DÉCISION DU NIVEAU DE ZOOM SÉCURISÉ
       let dynamicMaxZoom = 16; 
 
       if (isTrackingActive && targetMarker && originMarker) {
@@ -125,28 +125,39 @@ export const MapAutoFitter = ({
           targetMarker.latitude, targetMarker.longitude
         );
 
-        // Si la distance est courte (< 800m), on autorise un zoom plus profond pour voir les détails
-        // Sinon, on limite le zoom pour forcer Leaflet à prendre de la hauteur et dégager la vue
         if (distance < 800) {
           dynamicMaxZoom = 17;
         } else {
           dynamicMaxZoom = 15;
         }
+
+        // Sur le web, si les points sont trop proches, l'animation flyToBounds bugge. On recentre doucement.
+        if (distance < 150) {
+            map.flyTo([originMarker.latitude, originMarker.longitude], 17, { duration: 1 });
+            return;
+        }
       }
 
       // 🛡️ 3. LE BOUCLIER D'ÉVASION WEB (Anti-Implosion)
-      // Sur le web, la hauteur dépend du navigateur. On estime une hauteur moyenne sécurisée.
-      const safeTopPadding = Math.min(mapTopPadding + 40, 300); // Plafond arbitraire sécurisé pour éviter l'étouffement
-      const safeBottomPadding = Math.min(mapBottomPadding + 60, 400);
+      // Leaflet crashe si on lui donne un padding supérieur à la taille réelle de sa div conteneur.
+      // On récupère dynamiquement la taille du conteneur de la carte pour limiter le padding.
+      const mapContainer = map.getContainer();
+      const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
+      
+      // On ne dépasse jamais 35% de la hauteur dispo pour le Top, et 45% pour le Bottom
+      const maxAllowedTop = Math.floor(mapHeight * 0.35);
+      const maxAllowedBottom = Math.floor(mapHeight * 0.45);
+
+      const safeTopPadding = Math.min(mapTopPadding, maxAllowedTop); 
+      const safeBottomPadding = Math.min(mapBottomPadding, maxAllowedBottom);
 
       setTimeout(() => {
         const bounds = L.latLngBounds(coordsToFit);
-        // Effet Cinematic Drone avec Leaflet
         map.flyToBounds(bounds, {
-          paddingTopLeft: [50, safeTopPadding],
-          paddingBottomRight: [50, safeBottomPadding],
+          paddingTopLeft: [0, safeTopPadding],
+          paddingBottomRight: [0, safeBottomPadding],
           duration: 1.5,
-          maxZoom: dynamicMaxZoom, // Utilisation de l'intelligence de zoom
+          maxZoom: dynamicMaxZoom,
         });
       }, 100);
     }

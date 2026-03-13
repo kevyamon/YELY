@@ -109,6 +109,19 @@ const RiderHome = ({ navigation }) => {
     location: effectiveOrigin 
   });
 
+  let activeDriverLocation = null;
+  let currentMapOrigin = mapTraceOrigin;
+
+  if (isRideActive) {
+    // CORRECTION MAJEURE: Le GPS du chauffeur prime toujours lorsque la course est active,
+    // garantissant que le tracé part toujours de la voiture, même quand le client est à bord.
+    activeDriverLocation = driverLatLng;
+    // Si la course est en cours, on cache la position d'origine du client pour ne pas perturber Leaflet
+    if (currentRide?.status === 'in_progress') {
+       currentMapOrigin = null; 
+    }
+  }
+
   const handlePoiSelection = (poi) => {
     setSelectedPoi(null);
     handlePlaceSelect({
@@ -136,8 +149,9 @@ const RiderHome = ({ navigation }) => {
       <View style={styles.mapContainer}>
         <MapCard 
           ref={mapRef}
-          location={mapTraceOrigin}
-          driverLocation={isRideActive ? driverLatLng : null}
+          isDriver={false}
+          location={currentMapOrigin}
+          driverLocation={activeDriverLocation}
           showUserMarker={currentRide?.status !== 'in_progress' && !!effectiveOrigin}
           showRecenterButton={true}
           floating={false}
