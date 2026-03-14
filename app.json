@@ -94,7 +94,8 @@
           "icon": "./assets/images/android-icon-monochrome.png",
           "color": "#D4AF37"
         }
-      ]
+      ],
+      "@sentry/react-native/expo"
     ],
     "extra": {
       "eas": {

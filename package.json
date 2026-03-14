@@ -25,6 +25,7 @@
     "@react-navigation/native-stack": "^7.14.4",
     "@react-navigation/stack": "^7.7.1",
     "@reduxjs/toolkit": "^2.11.2",
+    "@sentry/react-native": "~7.2.0",
     "async-mutex": "^0.5.0",
     "expo": "~54.0.33",
     "expo-av": "~16.0.8",
@@ -72,7 +73,6 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
-    "@sentry/react-native": "~7.2.0",
     "@types/react": "~19.1.0",
     "babel-plugin-transform-remove-console": "^6.9.4",
     "eslint": "^9.25.0",
