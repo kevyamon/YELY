@@ -27,7 +27,15 @@ const usePushNotifications = () => {
   const notificationListener = useRef();
   const responseListener = useRef();
 
-  // 1. GESTION DE L'ENREGISTREMENT
+  // CORRECTION SENIOR : On stocke le rôle dans une Ref.
+  // Cela permet de le lire dans l'écouteur de clic SANS avoir besoin de relancer 
+  // le moteur de notification à chaque fois que le GPS de l'utilisateur change.
+  const userRoleRef = useRef(user?.role);
+  useEffect(() => {
+    userRoleRef.current = user?.role;
+  }, [user?.role]);
+
+  // ON REVIENT EXACTEMENT AU TABLEAU DE DÉPENDANCES QUI MARCHAIT
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -62,6 +70,7 @@ const usePushNotifications = () => {
           if (fcmToken) {
             await updateFcmToken({ fcmToken }).unwrap();
           }
+          
         } catch (error) {
           console.warn('[PUSH] Erreur lors de la recuperation/envoi du token:', error);
         }
@@ -69,22 +78,17 @@ const usePushNotifications = () => {
     };
 
     registerForPushNotificationsAsync();
-  }, [isAuthenticated, updateFcmToken]);
 
-  // 2. GESTION DES ECOUTEURS (Anti-Memory Leak)
-  useEffect(() => {
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      // Notification reçue pendant que l'app est ouverte
-    });
+    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {});
 
     responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      const type = data?.type;
+      const type = data.type;
 
       if (!type) return;
 
-      // On lit le rôle capturé de manière stable
-      const currentRole = user?.role;
+      // On lit le rôle silencieusement
+      const currentRole = userRoleRef.current;
 
       switch (type) {
         case 'NEW_REPORT':
@@ -132,7 +136,7 @@ const usePushNotifications = () => {
         responseListener.current.remove();
       }
     };
-  }, [user?.role]); // LA CORRECTION EST ICI : On écoute uniquement le changement de rôle, pas le GPS ou le reste
+  }, [isAuthenticated, updateFcmToken]); // FIN DE LA FUITE MÉMOIRE. On est revenu à l'état stable !
 };
 
 export default usePushNotifications;
