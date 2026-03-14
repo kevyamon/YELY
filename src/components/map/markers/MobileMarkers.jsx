@@ -20,10 +20,10 @@ export const TrackedMarker = ({
   return (
     <MapLibreGL.MarkerView
       id={identifier || `marker-${coordinate.latitude}-${coordinate.longitude}`}
-      coordinate={[coordinate.longitude, coordinate.latitude]}
+      coordinate={[parseFloat(coordinate.longitude), parseFloat(coordinate.latitude)]}
       anchor={{ x: 0.5, y: 0.5 }}
     >
-      <View style={{ zIndex }}>
+      <View style={[styles.staticWrapper, { zIndex }]}>
         {children}
       </View>
     </MapLibreGL.MarkerView>
@@ -42,10 +42,10 @@ export const AnimatedTrackedMarker = ({
   return (
     <MapLibreGL.MarkerView
       id={identifier || 'animated-tracked-marker'}
-      coordinate={[coordinate.longitude, coordinate.latitude]}
+      coordinate={[parseFloat(coordinate.longitude), parseFloat(coordinate.latitude)]}
       anchor={{ x: 0.5, y: 0.5 }}
     >
-      <View style={{ zIndex }}>
+      <View style={[styles.staticWrapper, { zIndex }]}>
         {children}
       </View>
     </MapLibreGL.MarkerView>
@@ -138,23 +138,26 @@ export const AnimatedDestinationMarker = ({ color }) => {
   );
 };
 
-export const SmoothDriverMarker = ({ coordinate, heading }) => {
+// Refonte complète : Remplacement de la rotation par un design premium ultra-stable
+export const SmoothDriverMarker = ({ coordinate }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
     <MapLibreGL.MarkerView
       id="driver-marker"
-      coordinate={[coordinate.longitude, coordinate.latitude]}
+      coordinate={[parseFloat(coordinate.longitude), parseFloat(coordinate.latitude)]}
       anchor={{ x: 0.5, y: 0.5 }}
     >
-      <View style={{ transform: [{ rotate: `${heading || 0}deg` }], zIndex: 200 }}>
-        <Animated.View style={styles.carMarkerBg}>
-          <Ionicons
-            name="car-sport"
-            size={20}
-            color={THEME.COLORS.champagneGold}
-          />
-        </Animated.View>
+      <View style={[styles.staticWrapper, { zIndex: 200 }]}>
+        <View style={styles.premiumDriverAura}>
+          <View style={styles.premiumDriverCore}>
+            <Ionicons
+              name="car-sport"
+              size={18}
+              color={THEME.COLORS.champagneGold}
+            />
+          </View>
+        </View>
       </View>
     </MapLibreGL.MarkerView>
   );
@@ -175,31 +178,68 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   return (
     <MapLibreGL.MarkerView
       id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
-      coordinate={[coordinate.longitude, coordinate.latitude]}
+      coordinate={[parseFloat(coordinate.longitude), parseFloat(coordinate.latitude)]}
       anchor={{ x: 0.5, y: 0.5 }}
     >
-      <TouchableOpacity 
-        activeOpacity={0.8} 
-        style={styles.poiWrapper} 
-        onPress={onPress}
-      >
-        <View style={styles.poiBottom}>
-          <View style={[styles.poiDot, { backgroundColor: color }]}>
-            <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
+      <View style={styles.staticPoiWrapper}>
+        <TouchableOpacity 
+          activeOpacity={0.8} 
+          style={styles.poiWrapper} 
+          onPress={onPress}
+        >
+          <View style={styles.poiBottom}>
+            <View style={[styles.poiDot, { backgroundColor: color }]}>
+              <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
+            </View>
+            <Text
+              style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
+              numberOfLines={1}
+            >
+              {shortName}
+            </Text>
           </View>
-          <Text
-            style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
-            numberOfLines={1}
-          >
-            {shortName}
-          </Text>
-        </View>
-      </TouchableOpacity>
+        </TouchableOpacity>
+      </View>
     </MapLibreGL.MarkerView>
   );
 };
 
 const styles = StyleSheet.create({
+  staticWrapper: {
+    width: 60,
+    height: 60,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  staticPoiWrapper: {
+    width: 80,
+    height: 80,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumDriverAura: {
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)', // Aura champagne légère
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  premiumDriverCore: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 2,
+    borderColor: THEME.COLORS.champagneGold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
   humanMarkerBg: {
     width: 35,
     height: 35,
@@ -227,21 +267,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.4,
     shadowRadius: 3,
     elevation: 5,
-  },
-  carMarkerBg: {
-    width: 35,
-    height: 35,
-    borderRadius: 19,
-    backgroundColor: '#1E1E1E',
-    borderWidth: 2.5,
-    borderColor: THEME.COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 6,
   },
   poiWrapper: {
     alignItems: 'center',
