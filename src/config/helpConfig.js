@@ -1,5 +1,5 @@
 // src/config/helpConfig.js
-// CONFIGURATION MODULAIRE - Catalogue des vidéos d'aide
+// CONFIGURATION MODULAIRE - Catalogue des vidéos d'aide (Streaming distant)
 // CSCSM Level: Bank Grade
 
 export const HELP_CATALOG = {
@@ -8,14 +8,13 @@ export const HELP_CATALOG = {
       id: 'rider-1',
       title: 'Comment commander une course ?',
       description: 'Apprenez à définir votre destination et trouver un chauffeur rapidement.',
-      // Remplacer require par une URL ('https://...') en production pour alléger l'application
-      videoSource: require('../../assets/videos/rider_commande.mp4'), 
+      videoSource: 'https://res.cloudinary.com/dcrdkr4nw/video/upload/v1773498630/commander_taxi_owrjsf.mp4', 
     },
     {
       id: 'rider-2',
       title: 'Gérer mon profil et mes trajets',
       description: 'Configurez votre compte et consultez votre historique en toute sécurité.',
-      videoSource: require('../../assets/videos/rider_profil.mp4'),
+      videoSource: 'https://res.cloudinary.com/dcrdkr4nw/video/upload/v1773498726/gestion_mkwu4r.mp4',
     }
   ],
   driver: [
@@ -23,13 +22,13 @@ export const HELP_CATALOG = {
       id: 'driver-1',
       title: 'Comment accepter une course ?',
       description: 'Découvrez l\'interface de réception de commandes et de navigation.',
-      videoSource: require('../../assets/videos/driver_accepter.mp4'),
+      videoSource: 'https://res.cloudinary.com/dcrdkr4nw/video/upload/v1773498962/accepter_course_pcnk1r.mp4',
     },
     {
       id: 'driver-2',
       title: 'Gérer mon véhicule et mes gains',
       description: 'Suivez vos revenus quotidiens et modifiez les informations de votre véhicule.',
-      videoSource: require('../../assets/videos/driver_vehicule.mp4'),
+      videoSource: 'https://res.cloudinary.com/dcrdkr4nw/video/upload/v1773498911/gestion_Client_papwf6.mp4',
     }
   ]
 };

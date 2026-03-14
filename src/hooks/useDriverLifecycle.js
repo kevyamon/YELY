@@ -21,7 +21,6 @@ const AUTO_COMPLETE_RADIUS_METERS = 30;
 const AUTO_COMPLETE_SPEED_MS = 1.38; 
 const SNOOZE_DELAY_MS = 120000;
 
-// UTILITAIRE INTERNE : Formule de Haversine pour le filtre de distance
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
   const p1 = lat1 * (Math.PI / 180);
@@ -153,7 +152,6 @@ const useDriverLifecycle = ({
     }
   }, [location, isAvailable, isRideActive]);
 
-  // LOGIQUE ADRESSE : Securite Anti-Race Condition et Bouclier Spatial Chauffeur
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
@@ -170,7 +168,6 @@ const useDriverLifecycle = ({
           location.latitude, location.longitude,
           lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
         );
-        // Filtre de 50 metres pour eviter le spam API en conduisant
         if (distance > 50) {
           shouldFetch = true;
         }
@@ -378,8 +375,10 @@ const useDriverLifecycle = ({
     }
   }, [location, currentRide, dispatch, markAsArrived, startRide]); 
 
-  const handleToggleAvailability = async () => {
-    const newStatus = !isAvailable;
+  // CORRECTION CRITIQUE: Capture explicite de la valeur du bouton (switchValue)
+  // pour eviter que le telephone ne se base sur une ancienne memoire de isAvailable.
+  const handleToggleAvailability = async (switchValue) => {
+    const newStatus = typeof switchValue === 'boolean' ? switchValue : !isAvailable;
 
     if (newStatus && !isDriverInZone) {
       dispatch(showErrorToast({
@@ -391,18 +390,22 @@ const useDriverLifecycle = ({
 
     try {
       const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-      const actualStatus = res.data ? res.data.isAvailable : newStatus;
+      
+      // Extraction ultra securisee pour parer a toute difference de format API
+      const returnedStatus = res?.data?.isAvailable !== undefined 
+        ? res.data.isAvailable 
+        : (res?.isAvailable !== undefined ? res.isAvailable : newStatus);
 
-      setIsAvailable(actualStatus);
-      dispatch(updateUserInfo({ isAvailable: actualStatus }));
+      setIsAvailable(returnedStatus);
+      dispatch(updateUserInfo({ isAvailable: returnedStatus }));
 
-      if (actualStatus && location) {
+      if (returnedStatus && location) {
         socketService.emitLocation(location);
       }
 
       dispatch(showSuccessToast({
-        title: actualStatus ? 'En service' : 'Hors ligne',
-        message: actualStatus ? 'Connexion au reseau de distribution active.' : 'Mode pause active.',
+        title: returnedStatus ? 'En service' : 'Hors ligne',
+        message: returnedStatus ? 'Connexion au reseau de distribution active.' : 'Mode pause active.',
       }));
     } catch (err) {
       dispatch(showErrorToast({

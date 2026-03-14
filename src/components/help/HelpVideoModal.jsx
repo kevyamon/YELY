@@ -1,5 +1,5 @@
 // src/components/help/HelpVideoModal.jsx
-// COMPOSANT MODULAIRE - Modale d'aide interactive avec lecteur vidéo (expo-video)
+// COMPOSANT MODULAIRE - Modale d'aide interactive avec lecteur vidéo en streaming distant
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -17,30 +17,26 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
 
   const catalog = HELP_CATALOG[role === 'driver' ? 'driver' : 'rider'] || [];
 
-  // Configuration du nouveau lecteur Video
-  const player = useVideoPlayer(selectedVideo ? selectedVideo.videoSource : null, (player) => {
-    player.loop = false;
-    player.play();
+  const player = useVideoPlayer(selectedVideo ? selectedVideo.videoSource : null, (playerInstance) => {
+    playerInstance.loop = false;
+    playerInstance.play();
   });
 
-  // Écouteur d'état pour savoir quand la vidéo se termine
   useEffect(() => {
     if (!player) return;
 
-    const subscription = player.addListener('statusChange', (status) => {
-      // Dans la nouvelle API, le statut passe souvent à 'idle' ou la position atteint la durée totale
+    const statusSubscription = player.addListener('statusChange', (status) => {
       if (status === 'readyToPlay' && player.currentTime > 0 && player.currentTime >= player.duration) {
          setIsVideoFinished(true);
       }
     });
 
-    // Option alternative : écouter la fin de lecture spécifiquement
     const playToEndSubscription = player.addListener('playToEnd', () => {
       setIsVideoFinished(true);
     });
 
     return () => {
-      subscription.remove();
+      statusSubscription.remove();
       playToEndSubscription.remove();
     };
   }, [player]);
@@ -51,12 +47,12 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
       setIsVideoFinished(false);
       if (player) player.pause();
     }
-  }, [visible]);
+  }, [visible, player]);
 
   const handleReplay = () => {
     if (player) {
       setIsVideoFinished(false);
-      player.seekBy(-player.currentTime); // Retour à 0
+      player.seekBy(-player.currentTime);
       player.play();
     }
   };
@@ -77,7 +73,6 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
       <View style={styles.overlay}>
         <View style={styles.container}>
           
-          {/* En-tete de la modale */}
           <View style={styles.header}>
             <Text style={styles.headerTitle}>
               {selectedVideo ? selectedVideo.title : 'Centre d\'aide Yély'}
@@ -87,7 +82,6 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
             </TouchableOpacity>
           </View>
 
-          {/* Zone de contenu : Lecteur Video OU Liste des cartes */}
           {selectedVideo ? (
             <View style={styles.videoContainer}>
               <VideoView
@@ -98,7 +92,6 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
                 contentFit="contain"
               />
               
-              {/* Surcouche d'ecran de fin avec le bouton de repetition */}
               {isVideoFinished && (
                 <View style={styles.replayOverlay}>
                   <Text style={styles.finishedText}>Vidéo terminée</Text>
@@ -230,7 +223,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
-    zIndex: 10, // Assure que l'overlay est au dessus de la vidéo
+    zIndex: 10,
   },
   finishedText: {
     color: THEME.COLORS.pureWhite,
