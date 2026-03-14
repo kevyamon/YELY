@@ -18,7 +18,7 @@ export const TrackedMarker = ({
   if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <MapLibreGL.MarkerView
+    <MapLibreGL.PointAnnotation
       id={identifier || `marker-${coordinate.latitude}-${coordinate.longitude}`}
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={{ x: 0.5, y: 0.5 }}
@@ -26,7 +26,7 @@ export const TrackedMarker = ({
       <View style={{ zIndex }}>
         {children}
       </View>
-    </MapLibreGL.MarkerView>
+    </MapLibreGL.PointAnnotation>
   );
 };
 
@@ -40,7 +40,7 @@ export const AnimatedTrackedMarker = ({
   if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <MapLibreGL.MarkerView
+    <MapLibreGL.PointAnnotation
       id={identifier || 'animated-tracked-marker'}
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={{ x: 0.5, y: 0.5 }}
@@ -48,7 +48,7 @@ export const AnimatedTrackedMarker = ({
       <View style={{ zIndex }}>
         {children}
       </View>
-    </MapLibreGL.MarkerView>
+    </MapLibreGL.PointAnnotation>
   );
 };
 
@@ -142,7 +142,7 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <MapLibreGL.MarkerView
+    <MapLibreGL.PointAnnotation
       id="driver-marker"
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={{ x: 0.5, y: 0.5 }}
@@ -156,7 +156,7 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
           />
         </Animated.View>
       </View>
-    </MapLibreGL.MarkerView>
+    </MapLibreGL.PointAnnotation>
   );
 };
 
@@ -173,7 +173,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   const shortName = getShortName(name);
 
   return (
-    <MapLibreGL.MarkerView
+    <MapLibreGL.PointAnnotation
       id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
       coordinate={[coordinate.longitude, coordinate.latitude]}
       anchor={{ x: 0.5, y: 0.5 }}
@@ -195,7 +195,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
           </Text>
         </View>
       </TouchableOpacity>
-    </MapLibreGL.MarkerView>
+    </MapLibreGL.PointAnnotation>
   );
 };
 
