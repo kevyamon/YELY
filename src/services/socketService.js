@@ -12,7 +12,7 @@ class SocketService {
     this.socket = null;
     this.isConnected = false;
     this.reconnectAttempts = 0;
-    this._listeners = []; // Memoire persistante des ecouteurs
+    this._listeners = []; 
   }
 
   connect(token) {
@@ -47,7 +47,6 @@ class SocketService {
       randomizationFactor: 0.5
     });
 
-    // REBRANCHEMENT AUTOMATIQUE : On reconnecte tous les ecouteurs en attente
     this._listeners.forEach(({ event, callback }) => {
       this.socket.on(event, callback);
     });
@@ -63,8 +62,6 @@ class SocketService {
       return;
     }
 
-    // NOUVELLE SECURITE : On verifie si le token est strictement identique a l'ancien
-    // Si oui, on arrete tout ici, on ne coupe pas la connexion pour rien.
     if (this.socket.auth.token === newToken) {
       return; 
     }
@@ -113,7 +110,6 @@ class SocketService {
   }
 
   on(event, callback) {
-    // SECURITE ABSOLUE : On memorise l'ecouteur meme si le socket n'est pas pret
     const exists = this._listeners.some(l => l.event === event && l.callback === callback);
     if (!exists) {
       this._listeners.push({ event, callback });
@@ -168,7 +164,6 @@ class SocketService {
     this._listeners.forEach(({ event, callback }) => {
       this.socket?.off(event, callback);
     });
-    this._listeners = [];
 
     if (this.socket) {
       this.socket.disconnect();

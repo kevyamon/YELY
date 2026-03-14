@@ -25,10 +25,6 @@ const baseQuery = fetchBaseQuery({
     headers.set('X-Content-Type-Options', 'nosniff');
     headers.set('Accept', 'application/json');
     
-    // SECURITE: Ne JAMAIS forcer le Content-Type ici.
-    // Si la requete contient un fichier (FormData), le systeme natif s'en chargera
-    // avec le bon format et les bonnes limites (boundary).
-    
     return headers;
   },
 });
@@ -41,6 +37,8 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 
   if (result.error) {
     const errorStatus = result.error.status;
+    const originalStatus = result.error.originalStatus;
+    const actualStatus = errorStatus === 'PARSING_ERROR' ? originalStatus : errorStatus;
     
     let requestUrl = '';
     if (typeof args === 'string') {
@@ -52,7 +50,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit');
     const isSystemRefreshing = mutex.isLocked() || api.getState().auth.isRefreshing;
 
-    if (errorStatus !== 401 && errorStatus !== 400 && errorStatus !== 404 && errorStatus !== 409) {
+    if (actualStatus !== 401 && actualStatus !== 400 && actualStatus !== 404 && actualStatus !== 409) {
       
       if (isSystemRefreshing && (errorStatus === 'FETCH_ERROR' || errorStatus === 'TIMEOUT_ERROR')) {
         console.info(`[API] Toast etouffe: Erreur transitoire (${errorStatus}) masquee pendant le refresh token.`);
@@ -61,7 +59,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         
         if (errorStatus === 'FETCH_ERROR') {
           toastMessage = "Impossible de joindre le serveur. Verifiez votre connexion.";
-        } else if (errorStatus >= 500) {
+        } else if (actualStatus >= 500) {
           toastMessage = "Nos serveurs rencontrent un probleme technique. Nous y travaillons.";
         } else if (errorStatus === 'TIMEOUT_ERROR') {
           toastMessage = "La requete a pris trop de temps.";
@@ -73,9 +71,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         }));
 
         if (!__DEV__) {
-          Sentry.captureException(new Error(`API Error [${errorStatus}] on ${requestUrl}`), {
+          Sentry.captureException(new Error(`API Error [${actualStatus}] on ${requestUrl}`), {
             extra: {
-               status: errorStatus,
+               status: actualStatus,
                url: requestUrl,
                response: result.error.data || result.error.error
             }
@@ -87,7 +85,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     }
   }
 
-  if (result.error && result.error.status === 401) {
+  const errorStatus = result.error ? result.error.status : null;
+  const originalStatus = result.error ? result.error.originalStatus : null;
+  const actualStatus = errorStatus === 'PARSING_ERROR' ? originalStatus : errorStatus;
+
+  if (result.error && actualStatus === 401) {
     if (!mutex.isLocked() && !api.getState().auth.isRefreshing) {
       const release = await mutex.acquire();
       try {

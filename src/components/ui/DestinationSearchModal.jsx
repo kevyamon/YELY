@@ -1,16 +1,15 @@
 // src/components/ui/DestinationSearchModal.jsx
-// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Mode Départ/Arrivée
+// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Mode Depart/Arrivee
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
+import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
-
-import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 
 const normalizeSearchText = (text) => {
   if (!text) return '';
@@ -64,15 +63,14 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
       </View>
       <View style={styles.suggestionTextContainer}>
         <Text style={styles.mainText} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.secondaryText} numberOfLines={1}>Maféré, Côte d'Ivoire</Text>
+        <Text style={styles.secondaryText} numberOfLines={1}>Mafere, Cote d'Ivoire</Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
     </TouchableOpacity>
   ), [handleSelectPlace]);
 
-  // Textes dynamiques selon le mode (Départ ou Arrivée)
-  const title = mode === 'origin' ? "D'où partez-vous ?" : "Où allons-nous ?";
-  const placeholder = mode === 'origin' ? "Ex: Gare routière..." : "Ex: Marché de Maféré...";
+  const title = mode === 'origin' ? "D'ou partez-vous ?" : "Ou allons-nous ?";
+  const placeholder = mode === 'origin' ? "Ex: Gare routiere..." : "Ex: Marche de Mafere...";
 
   return (
     <GlassModal
@@ -100,7 +98,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
       </View>
 
       <Text style={styles.sectionTitle}>
-        {searchQuery ? "Résultats" : "Lieux suggérés"}
+        {searchQuery ? "Resultats" : "Lieux suggeres"}
       </Text>
 
       {isLoading ? (
@@ -122,7 +120,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
           style={styles.listContainer}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
-            <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchQuery}"</Text>
+            <Text style={styles.emptyText}>Aucun lieu trouve pour "{searchQuery}"</Text>
           )}
         />
       )}
@@ -133,8 +131,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
 const styles = StyleSheet.create({
   modalStyle: {
     padding: THEME.SPACING.md,
-    maxHeight: '85%',
-    marginTop: 60,
+    maxHeight: '100%', 
     backgroundColor: THEME.COLORS.glassDark,
   },
   header: {

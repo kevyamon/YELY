@@ -1,6 +1,6 @@
 // src/components/ui/GlassModal.jsx
 // Modale avec effet Glassmorphism et animations premium
-// FIX: pointerEvents moving to style prop
+// FIX: Ajustement automatique de la hauteur pour eviter les debordements sur petits ecrans
 
 import { BlurView } from 'expo-blur';
 import { useEffect } from 'react';
@@ -100,7 +100,6 @@ const GlassModal = ({
         </Animated.View>
       </TouchableWithoutFeedback>
 
-      {/* FIX: pointerEvents moved to style object */}
       <View style={[styles.modalPositioner, getPositionStyle(), { pointerEvents: 'box-none' }]}>
         <Animated.View
           style={[
@@ -147,16 +146,17 @@ const styles = StyleSheet.create({
   positionTop: {
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: 100,
+    paddingTop: Platform.OS === 'ios' ? 60 : 25, 
   },
   modalContainer: {
     backgroundColor: COLORS.glassDark,
     borderRadius: BORDERS.radius.xxl,
     borderWidth: BORDERS.width.thin,
     borderColor: COLORS.glassBorder,
-    padding: SPACING.xxl,
+    padding: SPACING.xl, 
     width: '100%',
     maxWidth: 400,
+    maxHeight: SCREEN_HEIGHT * 0.85, 
     ...SHADOWS.strong,
   },
   bottomModalContainer: {
@@ -164,7 +164,8 @@ const styles = StyleSheet.create({
     borderBottomRightRadius: 0,
     borderTopLeftRadius: BORDERS.radius.xxl,
     borderTopRightRadius: BORDERS.radius.xxl,
-    paddingBottom: SPACING.massive,
+    paddingBottom: Platform.OS === 'ios' ? SPACING.massive : SPACING.xl,
+    maxHeight: SCREEN_HEIGHT * 0.90,
     maxWidth: '100%',
   },
   fullWidthModal: {

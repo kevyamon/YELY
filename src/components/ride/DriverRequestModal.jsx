@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLockRideMutation, useSubmitPriceMutation } from '../../store/api/ridesApiSlice';
@@ -67,11 +67,9 @@ const DriverRequestModal = () => {
 
   const priceOptions = incomingRide.priceOptions || [];
   
-  // Extraction robuste du nombre de passagers
   const passengersCount = incomingRide.passengersCount || incomingRide.passengers || incomingRide.seats || incomingRide.passengerCount || 1;
   const isGroupRide = passengersCount > 1;
 
-  // Dictionnaire de traduction pour remplacer le jargon par des termes locaux
   const getLocalLabel = (backendLabel) => {
     switch (backendLabel?.toUpperCase()) {
       case 'ECO': return 'Tarif Normal';
@@ -82,117 +80,130 @@ const DriverRequestModal = () => {
   };
 
   return (
-    <GlassModal visible={!!incomingRide} onDismiss={handleIgnore} dismissable={!loadingStep}>
-      
-      <View style={styles.header}>
-        <View style={styles.headerTitles}>
-          <Text style={styles.title}>Nouvelle Demande</Text>
+    <GlassModal 
+      visible={!!incomingRide} 
+      onClose={handleIgnore} 
+      closeOnBackdrop={!loadingStep}
+    >
+      <ScrollView 
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+        bounces={false}
+      >
+        <View style={styles.header}>
+          <View style={styles.headerTitles}>
+            <Text style={styles.title}>Nouvelle Demande</Text>
+          </View>
+          <Text style={styles.distance}>{incomingRide.distance} km</Text>
         </View>
-        <Text style={styles.distance}>{incomingRide.distance} km</Text>
-      </View>
 
-      <View style={[
-        styles.passengerAlertContainer, 
-        isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle
-      ]}>
-        <Ionicons 
-          name={isGroupRide ? 'people' : 'person'} 
-          size={32} 
-          color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
-        />
-        <View style={styles.passengerAlertTextContainer}>
-          <Text style={[
-            styles.passengerAlertTitle,
-            isGroupRide && { color: THEME.COLORS.danger }
-          ]}>
-            {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
-          </Text>
-          <Text style={[
-            styles.passengerAlertSubtitle,
-            isGroupRide && { color: THEME.COLORS.danger }
-          ]}>
-            {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
-          </Text>
-        </View>
-      </View>
-
-      <View style={styles.routeTimelineContainer}>
-        <View style={styles.timelineIndicators}>
-          <View style={styles.dotStart} />
-          <View style={styles.lineDashed} />
-          <Ionicons name="location-sharp" size={20} color={THEME.COLORS.danger} style={styles.iconEnd} />
-        </View>
-        
-        <View style={styles.addressTextContainer}>
-          <View style={styles.addressBlock}>
-            <Text style={styles.addressLabel}>Prise en charge</Text>
-            <Text style={styles.addressValue} numberOfLines={2}>
-              {incomingRide.origin?.address || 'Position inconnue'}
+        <View style={[
+          styles.passengerAlertContainer, 
+          isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle
+        ]}>
+          <Ionicons 
+            name={isGroupRide ? 'people' : 'person'} 
+            size={32} 
+            color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
+          />
+          <View style={styles.passengerAlertTextContainer}>
+            <Text style={[
+              styles.passengerAlertTitle,
+              isGroupRide && { color: THEME.COLORS.danger }
+            ]}>
+              {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
             </Text>
+            <Text style={[
+              styles.passengerAlertSubtitle,
+              isGroupRide && { color: THEME.COLORS.danger }
+            ]}>
+              {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.routeTimelineContainer}>
+          <View style={styles.timelineIndicators}>
+            <View style={styles.dotStart} />
+            <View style={styles.lineDashed} />
+            <Ionicons name="location-sharp" size={20} color={THEME.COLORS.danger} style={styles.iconEnd} />
           </View>
           
-          <View style={[styles.addressBlock, styles.destinationBlock]}>
-            <Text style={styles.addressLabel}>Destination finale</Text>
-            <Text style={styles.addressValue} numberOfLines={2}>
-              {incomingRide.destination?.address || 'Destination inconnue'}
-            </Text>
+          <View style={styles.addressTextContainer}>
+            <View style={styles.addressBlock}>
+              <Text style={styles.addressLabel}>Prise en charge</Text>
+              <Text style={styles.addressValue} numberOfLines={2}>
+                {incomingRide.origin?.address || 'Position inconnue'}
+              </Text>
+            </View>
+            
+            <View style={[styles.addressBlock, styles.destinationBlock]}>
+              <Text style={styles.addressLabel}>Destination finale</Text>
+              <Text style={styles.addressValue} numberOfLines={2}>
+                {incomingRide.destination?.address || 'Destination inconnue'}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <Text style={styles.subtitle}>Selectionnez votre tarif :</Text>
-      
-      <View style={styles.optionsContainer}>
-        {priceOptions.length > 0 ? (
-          priceOptions.map((option, index) => {
-            const isSelected = selectedAmount === option.amount;
-            return (
-              <TouchableOpacity
-                key={index}
-                style={[styles.optionCard, isSelected && styles.optionCardSelected]}
-                onPress={() => setSelectedAmount(option.amount)}
-                activeOpacity={0.7}
-                disabled={!!loadingStep}
-              >
-                <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
-                  {getLocalLabel(option.label)}
-                </Text>
-                <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
-                  {option.amount} F
-                </Text>
-              </TouchableOpacity>
-            );
-          })
-        ) : (
-          <Text style={styles.noPriceText}>Calcul du prix en cours ou indisponible.</Text>
-        )}
-      </View>
-
-      <View style={styles.actionsContainer}>
-        <TouchableOpacity 
-          style={styles.ignoreButton} 
-          onPress={handleIgnore}
-          disabled={!!loadingStep}
-        >
-          <Text style={styles.ignoreText}>Ignorer</Text>
-        </TouchableOpacity>
+        <Text style={styles.subtitle}>Selectionnez votre tarif :</Text>
         
-        <GoldButton
-          title={
-            loadingStep === 'locking' ? "Reservation..." : 
-            loadingStep === 'submitting' ? "Envoi..." : 
-            "Proposer ce prix"
-          }
-          onPress={handleAcceptAndPropose}
-          style={styles.acceptButton}
-          disabled={!!loadingStep || !selectedAmount}
-        />
-      </View>
+        <View style={styles.optionsContainer}>
+          {priceOptions.length > 0 ? (
+            priceOptions.map((option, index) => {
+              const isSelected = selectedAmount === option.amount;
+              return (
+                <TouchableOpacity
+                  key={index}
+                  style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                  onPress={() => setSelectedAmount(option.amount)}
+                  activeOpacity={0.7}
+                  disabled={!!loadingStep}
+                >
+                  <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
+                    {getLocalLabel(option.label)}
+                  </Text>
+                  <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
+                    {option.amount} F
+                  </Text>
+                </TouchableOpacity>
+              );
+            })
+          ) : (
+            <Text style={styles.noPriceText}>Calcul du prix en cours ou indisponible.</Text>
+          )}
+        </View>
+
+        <View style={styles.actionsContainer}>
+          <TouchableOpacity 
+            style={styles.ignoreButton} 
+            onPress={handleIgnore}
+            disabled={!!loadingStep}
+          >
+            <Text style={styles.ignoreText}>Ignorer</Text>
+          </TouchableOpacity>
+          
+          <GoldButton
+            title={
+              loadingStep === 'locking' ? "Reservation..." : 
+              loadingStep === 'submitting' ? "Envoi..." : 
+              "Proposer ce prix"
+            }
+            onPress={handleAcceptAndPropose}
+            style={styles.acceptButton}
+            disabled={!!loadingStep || !selectedAmount}
+          />
+        </View>
+      </ScrollView>
     </GlassModal>
   );
 };
 
 const styles = StyleSheet.create({
+  scrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+  },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

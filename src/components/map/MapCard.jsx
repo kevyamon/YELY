@@ -144,7 +144,8 @@ const MapCard = forwardRef(({
   const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
   
   const safeRouteCoordinates = routeCoordinates
-    .filter(p => p && p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]))
+    .filter(p => p && p.length === 2 && !isNaN(parseFloat(p[0])) && !isNaN(parseFloat(p[1])))
+    .map(p => [parseFloat(p[0]), parseFloat(p[1])])
     .reduce((acc, current) => {
        if (acc.length === 0) return [current];
        const prev = acc[acc.length - 1];
@@ -157,7 +158,9 @@ const MapCard = forwardRef(({
   const isRouteValid = safeRouteCoordinates.length > 1;
 
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
-  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude;
+  
+  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
+  const actualDriverLocation = isDriver ? safeLocation : driverLocation;
 
   const handleMapReady = () => {
     setIsMapReady(true);
@@ -205,11 +208,15 @@ const MapCard = forwardRef(({
             <MapLibreGL.ShapeSource
               id="route-source"
               shape={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: safeRouteCoordinates,
-                },
+                type: 'FeatureCollection',
+                features: [{
+                  type: 'Feature',
+                  properties: {},
+                  geometry: {
+                    type: 'LineString',
+                    coordinates: safeRouteCoordinates,
+                  },
+                }],
               }}
             >
               <MapLibreGL.LineLayer
@@ -239,10 +246,10 @@ const MapCard = forwardRef(({
             <UserLocationMarker coordinate={safeLocation} />
           )}
 
-          {driverLocation && driverLocation.latitude && driverLocation.longitude && (
+          {actualDriverLocation && actualDriverLocation.latitude && actualDriverLocation.longitude && (
             <SmoothDriverMarker
-              coordinate={driverLocation}
-              heading={driverLocation.heading}
+              coordinate={actualDriverLocation}
+              heading={actualDriverLocation.heading}
             />
           )}
 
