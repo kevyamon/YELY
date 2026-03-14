@@ -21,6 +21,7 @@ export const TrackedMarker = ({
     <MapLibreGL.MarkerView
       id={identifier || `marker-${coordinate.latitude}-${coordinate.longitude}`}
       coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={{ zIndex }}>
         {children}
@@ -42,6 +43,7 @@ export const AnimatedTrackedMarker = ({
     <MapLibreGL.MarkerView
       id={identifier || 'animated-tracked-marker'}
       coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={{ zIndex }}>
         {children}
@@ -143,6 +145,7 @@ export const SmoothDriverMarker = ({ coordinate, heading }) => {
     <MapLibreGL.MarkerView
       id="driver-marker"
       coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <View style={{ transform: [{ rotate: `${heading || 0}deg` }], zIndex: 200 }}>
         <Animated.View style={styles.carMarkerBg}>
@@ -173,6 +176,7 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
     <MapLibreGL.MarkerView
       id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
       coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
     >
       <TouchableOpacity 
         activeOpacity={0.8} 

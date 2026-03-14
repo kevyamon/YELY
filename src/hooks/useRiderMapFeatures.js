@@ -35,16 +35,6 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
       if (isOngoing) {
         const markers = [];
 
-        if (originLat && originLng) {
-          markers.push({
-            id: 'pickup_origin',
-            type: 'pickup_origin',
-            latitude: Number(originLat),
-            longitude: Number(originLng),
-            title: currentRide?.origin?.address || 'Point de rencontre',
-          });
-        }
-
         if (destLat && destLng) {
           markers.push({
             id: 'destination',

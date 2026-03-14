@@ -1,390 +1,275 @@
-// src/components/map/MapCard.jsx
-// COMPOSANT ORCHESTRATEUR CARTE MOBILE - MAPLIBRE NATIVE
+// src/components/map/markers/MobileMarkers.jsx
+// COMPOSANTS VISUELS CARTE MOBILE (MAPLIBRE)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
-import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import THEME from '../../../theme/theme';
 
-import useMapFitter from '../../hooks/useMapFitter';
-import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
-import useRouteManager from '../../hooks/useRouteManager';
-import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
-import THEME from '../../theme/theme';
-import { MAFERE_CENTER } from '../../utils/mafereZone';
-import {
-  AnimatedDestinationMarker,
-  AnimatedPickupMarker,
-  PoiMarker,
-  SmoothDriverMarker,
-  TrackedMarker,
-} from './markers/MobileMarkers';
-import UserLocationMarker from './markers/UserLocationMarker';
-
-const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-
-const MapCard = forwardRef(({
-  location,
-  driverLocation,
-  markers = [],
-  isDriver = false,
-  rideStatus = null,
-  showUserMarker = true,
-  showRecenterButton = true,
-  floating = false,
-  mapTopPadding = 140,
-  mapBottomPadding = 240,
-  onMapReady,
-  onPress,
-  onMarkerPress,
-  style,
+export const TrackedMarker = ({
+  coordinate,
   children,
-}, ref) => {
-  const cameraRef = useRef(null);
-  const [isMapReady, setIsMapReady] = useState(false);
-
-  const [isUserInteracting, setIsUserInteracting] = useState(false);
-  const interactionTimeout = useRef(null);
-
-  const buttonOpacity = useRef(new Animated.Value(1)).current;
-  const [isButtonActive, setIsButtonActive] = useState(true);
-  const buttonSleepTimeout = useRef(null);
-
-  const wakeUpButton = () => {
-    setIsButtonActive(true);
-    Animated.timing(buttonOpacity, {
-      toValue: 1,
-      duration: 200,
-      useNativeDriver: true,
-    }).start();
-
-    clearTimeout(buttonSleepTimeout.current);
-    buttonSleepTimeout.current = setTimeout(() => {
-      Animated.timing(buttonOpacity, {
-        toValue: 0,
-        duration: 500,
-        useNativeDriver: true,
-      }).start(() => setIsButtonActive(false));
-    }, 10000); 
-  };
-
-  useEffect(() => {
-    wakeUpButton();
-    return () => clearTimeout(buttonSleepTimeout.current);
-  }, []);
-
-  const isMapDark = false; 
-  const mapBackgroundColor = '#FAFAFA';
-
-  const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
-  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
-
-  usePoiSocketEvents();
-  const { data: poiResponse } = useGetAllPOIsQuery();
-  const mapPOIs = poiResponse?.data || [];
-
-  const handleMapInteraction = (e) => {
-    // Amélioration de la détection de l'intention utilisateur
-    const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
-    
-    if (isHumanInteraction) {
-      wakeUpButton();
-      setIsUserInteracting(true);
-      clearTimeout(interactionTimeout.current);
-      
-      // On donne 8 secondes de répit au lieu de 4 pour examiner la carte
-      interactionTimeout.current = setTimeout(() => {
-        setIsUserInteracting(false);
-      }, 8000);
-    }
-  };
-
-  useMapFitter({
-    isMapReady,
-    cameraRef,
-    location,
-    driverLocation,
-    markers,
-    mapTopPadding,
-    mapBottomPadding,
-    isUserInteracting
-  });
-
-  const handleRecenter = () => {
-    wakeUpButton();
-    setIsUserInteracting(false);
-    if (isMapReady && location && location.latitude) {
-      cameraRef.current?.setCamera({
-        centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
-        zoomLevel: 15,
-        padding: {
-          paddingTop: mapTopPadding,
-          paddingBottom: mapBottomPadding,
-          paddingLeft: 0,
-          paddingRight: 0
-        },
-        animationDuration: 800
-      });
-    }
-  };
-
-  useImperativeHandle(ref, () => ({
-    animateToRegion: (region, duration = 800) => {
-      if (isMapReady && cameraRef.current) {
-        cameraRef.current.setCamera({
-          centerCoordinate: [region.longitude, region.latitude],
-          animationDuration: duration
-        });
-      }
-    },
-    fitToCoordinates: () => {},
-    centerOnUser: handleRecenter,
-  }));
-
-  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
-  
-  // SANITISATION : Élimination des doublons consécutifs qui crashent LineLayer sur Android 9
-  const safeRouteCoordinates = routeCoordinates
-    .filter(p => p && p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]))
-    .reduce((acc, current) => {
-       if (acc.length === 0) return [current];
-       const prev = acc[acc.length - 1];
-       if (prev[0] !== current[0] || prev[1] !== current[1]) {
-           acc.push(current);
-       }
-       return acc;
-    }, []);
-
-  const isRouteValid = safeRouteCoordinates.length > 1;
-
-  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
-  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude;
-
-  const handleMapReady = () => {
-    setIsMapReady(true);
-    if (onMapReady) onMapReady();
-  };
+  zIndex,
+  identifier,
+  visible = true,
+}) => {
+  if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
 
   return (
-    <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
-      <View style={[styles.mapClip, !floating && styles.mapClipEdge, { backgroundColor: mapBackgroundColor }]}>
-        
-        <MapLibreGL.MapView
-          style={styles.map}
-          compassEnabled={false}
-          logoEnabled={false}
-          attributionEnabled={false}
-          pitchEnabled={true}
-          rotateEnabled={true}
-          scrollEnabled={true}
-          zoomEnabled={true}
-          onDidFinishLoadingMap={handleMapReady}
-          onRegionWillChange={handleMapInteraction}
-          onPress={onPress}
-          styleJSON={JSON.stringify({ version: 8, sources: {}, layers: [] })}
-        >
-          <MapLibreGL.Camera
-            ref={cameraRef}
-            defaultSettings={{
-              centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
-              zoomLevel: 14,
-            }}
-          />
-
-          <MapLibreGL.RasterSource
-            id="cartodb-source"
-            tileUrlTemplates={[isMapDark ? DARK_TILE_URL : LIGHT_TILE_URL]}
-            tileSize={256}
-          >
-            <MapLibreGL.RasterLayer
-              id="cartodb-layer"
-              sourceID="cartodb-source"
-            />
-          </MapLibreGL.RasterSource>
-
-          {isRouteValid && (
-            <MapLibreGL.ShapeSource
-              id="route-source"
-              shape={{
-                type: 'Feature',
-                geometry: {
-                  type: 'LineString',
-                  coordinates: safeRouteCoordinates,
-                },
-              }}
-            >
-              <MapLibreGL.LineLayer
-                id="route-layer"
-                style={{
-                  lineColor: THEME.COLORS.champagneGold,
-                  lineWidth: 4,
-                  lineJoin: 'round',
-                  lineCap: 'round',
-                }}
-              />
-            </MapLibreGL.ShapeSource>
-          )}
-
-          {mapPOIs.map((poi) => (
-            <PoiMarker
-              key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.latitude}-${poi.longitude}`}
-              coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
-              name={poi.name}
-              icon={poi.icon}
-              color={poi.iconColor}
-              onPress={() => onMarkerPress?.(poi)}
-            />
-          ))}
-
-          {displayUserMarker && (
-            <UserLocationMarker coordinate={safeLocation} />
-          )}
-
-          {driverLocation && driverLocation.latitude && driverLocation.longitude && (
-            <SmoothDriverMarker
-              coordinate={driverLocation}
-              heading={driverLocation.heading}
-            />
-          )}
-
-          {markers.map((marker, index) => {
-            if (!marker.latitude || !marker.longitude) return null;
-
-            if (marker.type === 'pickup') {
-              if (isDriver) {
-                // Seulement le chauffeur a le droit de voir le bonhomme bleu animé.
-                return (
-                  <TrackedMarker
-                    identifier="pickup_loc"
-                    key={marker.id || `marker-${index}`}
-                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                    zIndex={120}
-                  >
-                    <AnimatedPickupMarker color={marker.iconColor || THEME.COLORS.info || '#2196F3'} />
-                  </TrackedMarker>
-                );
-              }
-              // Si c'est le client, il ne voit jamais l'icone de bonhomme à son propre emplacement de pickup.
-              return (
-                <PoiMarker
-                  key={marker.id || `marker-${index}`}
-                  coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                  name={marker.name || "Point de rencontre"}
-                  icon="walk"
-                  color={THEME.COLORS.primary}
-                  onPress={() => onMarkerPress?.(marker)}
-                />
-              );
-            }
-
-            if (marker.type === 'destination') {
-              if (isOngoingRide) {
-                return (
-                  <TrackedMarker
-                    identifier="dest_loc"
-                    key={marker.id || `marker-${index}`}
-                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                    zIndex={110}
-                  >
-                    <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
-                  </TrackedMarker>
-                );
-              } else {
-                return (
-                  <PoiMarker
-                    key={marker.id || `marker-${index}`}
-                    coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                    name={marker.name || "Destination"}
-                    icon="location"
-                    color={THEME.COLORS.danger}
-                    onPress={() => onMarkerPress?.(marker)}
-                  />
-                );
-              }
-            }
-
-            if (marker.type === 'pickup_origin') return null;
-
-            return (
-              <TrackedMarker
-                key={marker.id || `marker-${index}`}
-                coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
-                zIndex={90}
-              >
-                <TouchableOpacity activeOpacity={0.8} onPress={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
-                  {marker.customView || (
-                    <View style={[styles.defaultMarker, marker.style]}>
-                      <Ionicons
-                        name={marker.icon || 'location'}
-                        size={marker.iconSize || 20}
-                        color={marker.iconColor || THEME.COLORS.champagneGold}
-                      />
-                    </View>
-                  )}
-                  {marker.name && (
-                    <Text style={styles.markerLabel}>{marker.name}</Text>
-                  )}
-                </TouchableOpacity>
-              </TrackedMarker>
-            );
-          })}
-
-          {children}
-        </MapLibreGL.MapView>
+    <MapLibreGL.MarkerView
+      id={identifier || `marker-${coordinate.latitude}-${coordinate.longitude}`}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <View style={{ zIndex }}>
+        {children}
       </View>
-
-      {showRecenterButton && (
-        <Animated.View 
-          style={[styles.recenterButtonWrapper, { bottom: mapBottomPadding + 16, opacity: buttonOpacity }]}
-          pointerEvents={isButtonActive ? 'auto' : 'none'}
-        >
-          <TouchableOpacity
-            style={styles.recenterButton}
-            activeOpacity={0.8}
-            onPress={handleRecenter}
-          >
-            <Ionicons name="locate-outline" size={24} color={THEME.COLORS.champagneGold} />
-          </TouchableOpacity>
-        </Animated.View>
-      )}
-    </View>
-  );
-});
-
-MapCard.displayName = 'MapCard';
-
-const styles = StyleSheet.create({
-  container: { flex: 1, position: 'relative' },
-  floating: { marginHorizontal: THEME.SPACING.md, marginVertical: THEME.SPACING.sm, borderRadius: THEME.BORDERS.radius.xxl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder, overflow: 'hidden', ...THEME.SHADOWS.medium },
-  mapClip: { ...StyleSheet.absoluteFillObject, borderRadius: THEME.BORDERS.radius.xxl, overflow: 'hidden', zIndex: 1 },
-  mapClipEdge: { borderRadius: 0 },
-  map: { flex: 1 },
-  customMarkerWrapper: { alignItems: 'center', justifyContent: 'center' },
-  defaultMarker: { width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.glassBorder },
-  markerLabel: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 11, backgroundColor: 'rgba(18, 20, 24, 0.75)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6, overflow: 'hidden', marginTop: 4, textAlign: 'center' },
-  recenterButtonWrapper: { position: 'absolute', right: THEME.SPACING.lg, zIndex: 999, elevation: 999 },
-  recenterButton: { width: 52, height: 52, borderRadius: 26, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold },
-});
-
-const arePropsEqual = (prevProps, nextProps) => {
-  const isSameLocation = (loc1, loc2) => {
-    if (!loc1 && !loc2) return true;
-    if (!loc1 || !loc2) return false;
-    return loc1.latitude.toFixed(4) === loc2.latitude.toFixed(4) && 
-           loc1.longitude.toFixed(4) === loc2.longitude.toFixed(4);
-  };
-
-  return (
-    isSameLocation(prevProps.location, nextProps.location) &&
-    isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
-    prevProps.markers?.length === nextProps.markers?.length &&
-    prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
-    prevProps.showUserMarker === nextProps.showUserMarker &&
-    prevProps.isDriver === nextProps.isDriver &&
-    prevProps.rideStatus === nextProps.rideStatus
+    </MapLibreGL.MarkerView>
   );
 };
 
-export default React.memo(MapCard, arePropsEqual);
+export const AnimatedTrackedMarker = ({
+  coordinate,
+  children,
+  zIndex,
+  identifier,
+  visible = true,
+}) => {
+  if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
+
+  return (
+    <MapLibreGL.MarkerView
+      id={identifier || 'animated-tracked-marker'}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <View style={{ zIndex }}>
+        {children}
+      </View>
+    </MapLibreGL.MarkerView>
+  );
+};
+
+export const AnimatedPickupMarker = ({ color }) => {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1, duration: 1200,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0, duration: 1200,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseAnim]);
+
+  const scale = pulseAnim.interpolate({
+    inputRange: [0, 1], outputRange: [0.85, 1.15],
+  });
+  const opacity = pulseAnim.interpolate({
+    inputRange: [0, 0.5, 1], outputRange: [0.4, 0.8, 0.4],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.humanMarkerBg,
+        {
+          backgroundColor: color,
+          transform: [{ scale }],
+          opacity: opacity.interpolate({
+            inputRange: [0.4, 0.8],
+            outputRange: [0.85, 1],
+            extrapolate: 'clamp',
+          }),
+        },
+      ]}
+    >
+      <Ionicons name="accessibility" size={24} color="#FFFFFF" />
+    </Animated.View>
+  );
+};
+
+export const AnimatedDestinationMarker = ({ color }) => {
+  const pulseAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const animation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 0.5, duration: 1500,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 0, duration: 1500,
+          easing: Easing.inOut(Easing.ease), useNativeDriver: true,
+        }),
+      ])
+    );
+    animation.start();
+    return () => animation.stop();
+  }, [pulseAnim]);
+
+  const scale = pulseAnim.interpolate({
+    inputRange: [0, 1], outputRange: [0.9, 1.1],
+  });
+
+  return (
+    <Animated.View
+      style={[
+        styles.flagMarkerBg,
+        {
+          backgroundColor: color,
+          transform: [{ scale }],
+        },
+      ]}
+    >
+      <Ionicons name="flag" size={22} color="#FFFFFF" />
+    </Animated.View>
+  );
+};
+
+export const SmoothDriverMarker = ({ coordinate, heading }) => {
+  if (!coordinate?.latitude || !coordinate?.longitude) return null;
+
+  return (
+    <MapLibreGL.MarkerView
+      id="driver-marker"
+      coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <View style={{ transform: [{ rotate: `${heading || 0}deg` }], zIndex: 200 }}>
+        <Animated.View style={styles.carMarkerBg}>
+          <Ionicons
+            name="car-sport"
+            size={20}
+            color={THEME.COLORS.champagneGold}
+          />
+        </Animated.View>
+      </View>
+    </MapLibreGL.MarkerView>
+  );
+};
+
+const getShortName = (text) => {
+  if (!text) return '';
+  const words = text.trim().split(/\s+/);
+  if (words.length <= 1) return words[0] || '';
+  return `${words[0]}...`;
+};
+
+export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
+  if (!coordinate?.latitude || !coordinate?.longitude) return null;
+
+  const shortName = getShortName(name);
+
+  return (
+    <MapLibreGL.MarkerView
+      id={`poi-${coordinate.latitude}-${coordinate.longitude}`}
+      coordinate={[coordinate.longitude, coordinate.latitude]}
+      anchor={{ x: 0.5, y: 0.5 }}
+    >
+      <TouchableOpacity 
+        activeOpacity={0.8} 
+        style={styles.poiWrapper} 
+        onPress={onPress}
+      >
+        <View style={styles.poiBottom}>
+          <View style={[styles.poiDot, { backgroundColor: color }]}>
+            <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
+          </View>
+          <Text
+            style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
+            numberOfLines={1}
+          >
+            {shortName}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    </MapLibreGL.MarkerView>
+  );
+};
+
+const styles = StyleSheet.create({
+  humanMarkerBg: {
+    width: 35,
+    height: 35,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  flagMarkerBg: {
+    width: 35,
+    height: 35,
+    borderRadius: 19,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2.5,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.4,
+    shadowRadius: 3,
+    elevation: 5,
+  },
+  carMarkerBg: {
+    width: 35,
+    height: 35,
+    borderRadius: 19,
+    backgroundColor: '#1E1E1E',
+    borderWidth: 2.5,
+    borderColor: THEME.COLORS.champagneGold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 4,
+    elevation: 6,
+  },
+  poiWrapper: {
+    alignItems: 'center',
+  },
+  poiBottom: {
+    alignItems: 'center',
+  },
+  poiDot: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: '#FFFFFF',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3,
+    shadowRadius: 2,
+    elevation: 3,
+  },
+  poiShortText: {
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 2,
+    textAlign: 'center',
+    textShadowColor: 'rgba(12, 1, 1, 0.9)',
+    textShadowOffset: { width: 0, height: 0 },
+    textShadowRadius: 3,
+  },
+});

@@ -1,9 +1,6 @@
 // src/hooks/useDriverMapFeatures.js
 // HOOK METIER - Gestion dynamique des marqueurs et de l'UI de la carte Chauffeur
 // CSCSM Level: Bank Grade
-// src/hooks/useDriverMapFeatures.js
-// HOOK METIER - Gestion dynamique des marqueurs et de l'UI de la carte Chauffeur
-// CSCSM Level: Bank Grade
 
 import { useMemo } from 'react';
 import THEME from '../theme/theme';
@@ -21,16 +18,6 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
 
     if (isOngoing) {
       const markers = [];
-
-      if (originLat && originLng) {
-        markers.push({
-          id: 'pickup_origin',
-          type: 'pickup_origin',
-          latitude: Number(originLat),
-          longitude: Number(originLng),
-          title: currentRide.origin?.address || 'Point de depart',
-        });
-      }
 
       if (destLat && destLng) {
         markers.push({

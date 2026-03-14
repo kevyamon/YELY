@@ -224,18 +224,13 @@ const MapCard = forwardRef(({
           if (!marker.latitude || !marker.longitude) return null;
 
           let markerIcon = defaultIcon;
+          
           if (marker.type === 'pickup') {
             if (isDriver) {
                markerIcon = pickupIcon; // Seulement le chauffeur voit le bonhomme bleu
             } else {
-               // Le client voit une icone standard à sa propre position s'il n'est pas caché
-               const clientPickupIcon = L.divIcon({
-                  className: 'yely-client-pickup',
-                  html: `<div style="width: 26px; height: 26px; border-radius: 13px; background: ${THEME.COLORS.primary}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">${POI_SVG}</div>`,
-                  iconSize: [26, 26],
-                  iconAnchor: [13, 26],
-                });
-               markerIcon = clientPickupIcon;
+               // Suppression de l'icône redondante pour le passager (le client a déjà son propre point)
+               return null;
             }
           }
           else if (marker.type === 'destination') markerIcon = destinationIcon;
