@@ -1,10 +1,10 @@
 // src/components/ui/DestinationSearchModal.jsx
-// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Mode Depart/Arrivee
+// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Hyper-Responsive
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
@@ -18,6 +18,10 @@ const normalizeSearchText = (text) => {
 
 const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'destination' }) => {
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Intelligence adaptative de l'espace
+  const { height: screenHeight } = useWindowDimensions();
+  const isSmallScreen = screenHeight < 700;
 
   const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
     skip: !visible, 
@@ -55,22 +59,26 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity 
-      style={styles.suggestionItem} 
+      style={[styles.suggestionItem, isSmallScreen && { paddingVertical: 10 }]} 
       onPress={() => handleSelectPlace(item)}
     >
       <View style={[styles.suggestionIcon, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
-        <Ionicons name={item.icon || "location"} size={20} color={item.iconColor || THEME.COLORS.champagneGold} />
+        <Ionicons name={item.icon || "location"} size={isSmallScreen ? 18 : 20} color={item.iconColor || THEME.COLORS.champagneGold} />
       </View>
       <View style={styles.suggestionTextContainer}>
-        <Text style={styles.mainText} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.secondaryText} numberOfLines={1}>Mafere, Cote d'Ivoire</Text>
+        <Text style={[styles.mainText, isSmallScreen && { fontSize: 14 }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.secondaryText, isSmallScreen && { fontSize: 12 }]} numberOfLines={1}>Mafere, Cote d'Ivoire</Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
     </TouchableOpacity>
-  ), [handleSelectPlace]);
+  ), [handleSelectPlace, isSmallScreen]);
 
   const title = mode === 'origin' ? "D'ou partez-vous ?" : "Ou allons-nous ?";
   const placeholder = mode === 'origin' ? "Ex: Gare routiere..." : "Ex: Marche de Mafere...";
+
+  // On calcule une hauteur maximale dynamique pour que la liste ne passe pas sous le clavier
+  // Sur un petit ecran avec clavier ouvert, on limite a 35% de l'ecran pour garantir la visibilite
+  const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.35 : 0.50);
 
   return (
     <GlassModal
@@ -80,14 +88,14 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
       fullWidth={true}
       style={styles.modalStyle}
     >
-      <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+      <View style={[styles.header, isSmallScreen && { marginBottom: 8 }]}>
+        <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>{title}</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close-circle" size={28} color={THEME.COLORS.textSecondary} />
+          <Ionicons name="close-circle" size={isSmallScreen ? 24 : 28} color={THEME.COLORS.textSecondary} />
         </TouchableOpacity>
       </View>
 
-      <View style={styles.inputWrapper}>
+      <View style={[styles.inputWrapper, isSmallScreen && { marginBottom: 8 }]}>
         <GlassInput
           placeholder={placeholder}
           value={searchQuery}
@@ -97,7 +105,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
         />
       </View>
 
-      <Text style={styles.sectionTitle}>
+      <Text style={[styles.sectionTitle, isSmallScreen && { marginBottom: 4 }]}>
         {searchQuery ? "Resultats" : "Lieux suggeres"}
       </Text>
 
@@ -117,7 +125,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
           renderItem={renderSuggestionItem}
           contentContainerStyle={styles.listContent}
           keyboardShouldPersistTaps="handled" 
-          style={styles.listContainer}
+          style={[styles.listContainer, { maxHeight: dynamicMaxHeight }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
             <Text style={styles.emptyText}>Aucun lieu trouve pour "{searchQuery}"</Text>
@@ -161,7 +169,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4
   },
   listContainer: {
-    maxHeight: 400, 
+    // maxHeight est maintenant gere dynamiquement dans le JSX
   },
   listContent: {
     paddingBottom: 20,

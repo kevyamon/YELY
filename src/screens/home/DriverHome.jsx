@@ -44,6 +44,10 @@ const DriverHome = ({ navigation }) => {
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
+  // Nouveaux états pour la hauteur dynamique
+  const [headerHeight, setHeaderHeight] = useState(140);
+  const [footerHeight, setFooterHeight] = useState(280);
+
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
@@ -108,7 +112,23 @@ const DriverHome = ({ navigation }) => {
     user, currentRide, location: effectiveLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
+  // Injection des hauteurs dynamiques dans le hook
+  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(
+    currentRide, 
+    isRideActive,
+    headerHeight,
+    footerHeight
+  );
+
+  const handleHeaderLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setHeaderHeight(height);
+  };
+
+  const handleFooterLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setFooterHeight(height);
+  };
 
   const renderSubscriptionBlocker = () => {
     if (isActive || promoMode?.isActive) return null; 
@@ -186,28 +206,31 @@ const DriverHome = ({ navigation }) => {
         )}
       </View>
 
-      <SmartHeader
-        scrollY={scrollY}
-        address={currentAddress || "Recherche..."}
-        userName={user?.name?.split(' ')[0] || 'Chauffeur'}
-        onMenuPress={() => navigation.navigate('Menu')}
-        onNotificationPress={() => navigation.navigate('Notifications')}
-      />
+      <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={handleHeaderLayout}>
+        <SmartHeader
+          scrollY={scrollY}
+          address={currentAddress || "Recherche..."}
+          userName={user?.name?.split(' ')[0] || 'Chauffeur'}
+          onMenuPress={() => navigation.navigate('Menu')}
+          onNotificationPress={() => navigation.navigate('Notifications')}
+        />
+      </View>
 
       {renderSubscriptionBlocker()}
 
       {!isBlocked && (
         <>
-          {isRideActive ? (
-            <DriverRideOverlay />
-          ) : (
-            <SmartFooter
-              isAvailable={isAvailable}
-              onToggle={handleToggleAvailability}
-              isToggling={isToggling}
-            />
-          )}
-
+          <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+            {isRideActive ? (
+              <DriverRideOverlay />
+            ) : (
+              <SmartFooter
+                isAvailable={isAvailable}
+                onToggle={handleToggleAvailability}
+                isToggling={isToggling}
+              />
+            )}
+          </View>
           <DriverRequestModal />
         </>
       )}
@@ -232,6 +255,8 @@ const DriverHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
+  headerWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  footerWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
   floatingLoader: {
     position: 'absolute',
     top: 140,

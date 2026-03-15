@@ -37,6 +37,9 @@ const RiderHome = ({ navigation }) => {
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
+  const [headerHeight, setHeaderHeight] = useState(140);
+  const [footerHeight, setFooterHeight] = useState(240);
+
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
@@ -105,14 +108,14 @@ const RiderHome = ({ navigation }) => {
     destination,
     isRideActive,
     currentRide,
-    location: effectiveOrigin 
+    location: effectiveOrigin,
+    dynamicHeaderHeight: headerHeight,
+    dynamicFooterHeight: footerHeight
   });
 
   let activeDriverLocation = null;
 
   if (isRideActive) {
-    // CORRECTION MAJEURE: Le GPS du chauffeur prime toujours lorsque la course est active,
-    // garantissant que le tracé part toujours de la voiture, même quand le client est à bord.
     activeDriverLocation = driverLatLng;
   }
 
@@ -125,6 +128,16 @@ const RiderHome = ({ navigation }) => {
     }, 'destination');
   };
 
+  const handleHeaderLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setHeaderHeight(height);
+  };
+
+  const handleFooterLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setFooterHeight(height);
+  };
+
   return (
     <View style={styles.screenWrapper}>
       
@@ -134,6 +147,7 @@ const RiderHome = ({ navigation }) => {
           isDriver={false}
           location={location} 
           driverLocation={activeDriverLocation}
+          rideStatus={currentRide?.status}
           showUserMarker={currentRide?.status !== 'in_progress' && !!location}
           showRecenterButton={true}
           floating={false}
@@ -155,35 +169,39 @@ const RiderHome = ({ navigation }) => {
         )}
       </View>
 
-      <SmartHeader 
-        scrollY={scrollY}
-        address={currentAddress || "Recherche..."}
-        userName={user?.name?.split(' ')[0] || "Passager"}
-        onMenuPress={() => navigation.navigate('Menu')}
-        onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={() => openSearchModal('destination')}
-        onOriginPress={() => openSearchModal('origin')}
-        hasDestination={!!destination && !isRideActive} 
-        onCancelDestination={handleCancelDestination}
-        isManualOrigin={!!manualOrigin}
-        onCancelOrigin={handleCancelManualOrigin}
-      />
-
-      {isRideActive ? (
-        <RiderRideOverlay />
-      ) : (
-        <SmartFooter 
-          destination={destination}
-          displayVehicles={displayVehicles}
-          selectedVehicle={selectedVehicle}
-          onSelectVehicle={setSelectedVehicle}
-          isEstimating={isEstimating || isOrdering} 
-          estimationData={estimationData}
-          estimateError={estimateError}
-          onConfirmRide={handleConfirmRide}
-          isUserInZone={isUserInZone} 
+      <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={handleHeaderLayout}>
+        <SmartHeader 
+          scrollY={scrollY}
+          address={currentAddress || "Recherche..."}
+          userName={user?.name?.split(' ')[0] || "Passager"}
+          onMenuPress={() => navigation.navigate('Menu')}
+          onNotificationPress={() => navigation.navigate('Notifications')}
+          onSearchPress={() => openSearchModal('destination')}
+          onOriginPress={() => openSearchModal('origin')}
+          hasDestination={!!destination && !isRideActive} 
+          onCancelDestination={handleCancelDestination}
+          isManualOrigin={!!manualOrigin}
+          onCancelOrigin={handleCancelManualOrigin}
         />
-      )}
+      </View>
+
+      <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+        {isRideActive ? (
+          <RiderRideOverlay />
+        ) : (
+          <SmartFooter 
+            destination={destination}
+            displayVehicles={displayVehicles}
+            selectedVehicle={selectedVehicle}
+            onSelectVehicle={setSelectedVehicle}
+            isEstimating={isEstimating || isOrdering} 
+            estimationData={estimationData}
+            estimateError={estimateError}
+            onConfirmRide={handleConfirmRide}
+            isUserInZone={isUserInZone} 
+          />
+        )}
+      </View>
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
@@ -215,6 +233,8 @@ const RiderHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, zIndex: 1 },
+  headerWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  footerWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
   floatingLoader: {
     position: 'absolute',
     top: 140,

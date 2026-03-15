@@ -107,7 +107,8 @@ const MapCard = forwardRef(({
     markers,
     mapTopPadding,
     mapBottomPadding,
-    isUserInteracting
+    isUserInteracting,
+    rideStatus 
   });
 
   const handleRecenter = () => {
@@ -118,8 +119,8 @@ const MapCard = forwardRef(({
         centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
         zoomLevel: 15,
         padding: {
-          paddingTop: mapTopPadding,
-          paddingBottom: mapBottomPadding,
+          paddingTop: mapTopPadding + 40,
+          paddingBottom: mapBottomPadding + 40,
           paddingLeft: 0,
           paddingRight: 0
         },
@@ -374,6 +375,7 @@ const arePropsEqual = (prevProps, nextProps) => {
     isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
     prevProps.markers?.length === nextProps.markers?.length &&
     prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
+    prevProps.mapTopPadding === nextProps.mapTopPadding &&
     prevProps.showUserMarker === nextProps.showUserMarker &&
     prevProps.isDriver === nextProps.isDriver &&
     prevProps.rideStatus === nextProps.rideStatus

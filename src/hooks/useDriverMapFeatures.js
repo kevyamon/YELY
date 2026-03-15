@@ -5,7 +5,7 @@
 import { useMemo } from 'react';
 import THEME from '../theme/theme';
 
-const useDriverMapFeatures = (currentRide, isRideActive) => {
+const useDriverMapFeatures = (currentRide, isRideActive, dynamicHeaderHeight = 140, dynamicFooterHeight = 280) => {
   const mapMarkers = useMemo(() => {
     if (!isRideActive || !currentRide) return [];
 
@@ -47,8 +47,9 @@ const useDriverMapFeatures = (currentRide, isRideActive) => {
     return [];
   }, [isRideActive, currentRide]);
 
-  const mapTopPadding = isRideActive ? 160 : 140;
-  const mapBottomPadding = isRideActive ? 380 : 280;
+  // On utilise les hauteurs dynamiques + une marge de respiration de 20px
+  const mapTopPadding = dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : (isRideActive ? 160 : 140);
+  const mapBottomPadding = dynamicFooterHeight > 0 ? dynamicFooterHeight + 20 : (isRideActive ? 380 : 280);
 
   return {
     mapMarkers,

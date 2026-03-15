@@ -45,6 +45,10 @@ const DriverHome = ({ navigation }) => {
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
+  // Etats pour la hauteur dynamique
+  const [headerHeight, setHeaderHeight] = useState(140);
+  const [footerHeight, setFooterHeight] = useState(280);
+
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
@@ -116,12 +120,22 @@ const DriverHome = ({ navigation }) => {
     user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(currentRide, isRideActive);
+  const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(
+    currentRide, 
+    isRideActive,
+    headerHeight,
+    footerHeight
+  );
 
-  let dynamicTopPadding = mapTopPadding || 140; 
-  if (isRideActive) {
-    dynamicTopPadding = 160;
-  }
+  const handleHeaderLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setHeaderHeight(height);
+  };
+
+  const handleFooterLayout = (event) => {
+    const height = event.nativeEvent.layout.height;
+    if (height > 0) setFooterHeight(height);
+  };
 
   const renderSubscriptionBlocker = () => {
     if (isActive || promoMode?.isActive) return null;
@@ -172,7 +186,7 @@ const DriverHome = ({ navigation }) => {
           showRecenterButton={true}
           floating={false}
           markers={mapMarkers}
-          mapTopPadding={dynamicTopPadding}       
+          mapTopPadding={mapTopPadding}       
           mapBottomPadding={mapBottomPadding} 
           onMarkerPress={(poi) => {
             if (!isRideActive) {
@@ -189,13 +203,15 @@ const DriverHome = ({ navigation }) => {
         )}
       </View>
 
-      <SmartHeader
-        scrollY={scrollY}
-        address={currentAddress || (isPermissionDenied ? "GPS Desactive" : "Recherche...")}
-        userName={user?.name?.split(' ')[0] || 'Chauffeur'}
-        onMenuPress={() => navigation.navigate('Menu')}
-        onNotificationPress={() => navigation.navigate('Notifications')}
-      />
+      <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={handleHeaderLayout}>
+        <SmartHeader
+          scrollY={scrollY}
+          address={currentAddress || (isPermissionDenied ? "GPS Desactive" : "Recherche...")}
+          userName={user?.name?.split(' ')[0] || 'Chauffeur'}
+          onMenuPress={() => navigation.navigate('Menu')}
+          onNotificationPress={() => navigation.navigate('Notifications')}
+        />
+      </View>
 
       {renderSubscriptionBlocker()}
 
@@ -208,15 +224,17 @@ const DriverHome = ({ navigation }) => {
             setSimulatedLocation={setSimulatedLocation}
           />
 
-          {isRideActive ? (
-            <DriverRideOverlay />
-          ) : (
-            <SmartFooter
-              isAvailable={isAvailable}
-              onToggle={handleToggleAvailability}
-              isToggling={isToggling}
-            />
-          )}
+          <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+            {isRideActive ? (
+              <DriverRideOverlay />
+            ) : (
+              <SmartFooter
+                isAvailable={isAvailable}
+                onToggle={handleToggleAvailability}
+                isToggling={isToggling}
+              />
+            )}
+          </View>
 
           <DriverRequestModal />
 
@@ -252,6 +270,8 @@ const DriverHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   mapContainer: { ...StyleSheet.absoluteFillObject, flex: 1, zIndex: 1 },
+  headerWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
+  footerWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
   floatingLoader: {
     position: 'absolute',
     top: 140,

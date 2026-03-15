@@ -5,7 +5,14 @@
 import { useMemo } from 'react';
 import THEME from '../theme/theme';
 
-const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location }) => {
+const useRiderMapFeatures = ({ 
+  destination, 
+  isRideActive, 
+  currentRide, 
+  location,
+  dynamicHeaderHeight = 140,
+  dynamicFooterHeight = 240
+}) => {
 
   const rideStatus = currentRide?.status;
 
@@ -73,8 +80,8 @@ const useRiderMapFeatures = ({ destination, isRideActive, currentRide, location 
     }];
   }, [destination, isRideActive, rideStatus, originLat, originLng, destLat, destLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
-  const mapTopPadding = 140; 
-  const mapBottomPadding = isRideActive ? 320 : (destination ? 380 : 240);
+  const mapTopPadding = dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : 140; 
+  const mapBottomPadding = dynamicFooterHeight > 0 ? dynamicFooterHeight + 20 : (isRideActive ? 320 : (destination ? 380 : 240));
 
   const mapTraceOrigin = location;
 

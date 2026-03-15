@@ -1,10 +1,10 @@
 // src/components/ride/DriverRequestModal.jsx
-// MODAL CHAUFFEUR - Glow Up UI, Sequencage & Affichage Passagers
+// MODAL CHAUFFEUR - Glow Up UI, Sequencage, Affichage Passagers & Hyper-Responsive (S8/SE)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ScrollView, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ScrollView, StyleSheet, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 import { useLockRideMutation, useSubmitPriceMutation } from '../../store/api/ridesApiSlice';
@@ -23,6 +23,11 @@ const DriverRequestModal = () => {
   
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [loadingStep, setLoadingStep] = useState(null);
+
+  // Intelligence Adaptative pour les petits ecrans (ex: Galaxy S8, iPhone SE)
+  const { height: screenHeight, width: screenWidth } = useWindowDimensions();
+  const isSmallScreen = screenHeight < 700;
+  const isNarrowScreen = screenWidth < 360;
 
   if (!incomingRide) return null;
 
@@ -90,31 +95,36 @@ const DriverRequestModal = () => {
         showsVerticalScrollIndicator={false}
         bounces={false}
       >
-        <View style={styles.header}>
+        <View style={[styles.header, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>
           <View style={styles.headerTitles}>
-            <Text style={styles.title}>Nouvelle Demande</Text>
+            <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>Nouvelle Demande</Text>
           </View>
-          <Text style={styles.distance}>{incomingRide.distance} km</Text>
+          <Text style={[styles.distance, isSmallScreen && { fontSize: 14, paddingHorizontal: 10, paddingVertical: 4 }]}>
+            {incomingRide.distance} km
+          </Text>
         </View>
 
         <View style={[
           styles.passengerAlertContainer, 
-          isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle
+          isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle,
+          isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }
         ]}>
           <Ionicons 
             name={isGroupRide ? 'people' : 'person'} 
-            size={32} 
+            size={isSmallScreen ? 24 : 32} 
             color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
           />
           <View style={styles.passengerAlertTextContainer}>
             <Text style={[
               styles.passengerAlertTitle,
+              isSmallScreen && { fontSize: 12 },
               isGroupRide && { color: THEME.COLORS.danger }
             ]}>
               {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
             </Text>
             <Text style={[
               styles.passengerAlertSubtitle,
+              isSmallScreen && { fontSize: 14 },
               isGroupRide && { color: THEME.COLORS.danger }
             ]}>
               {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
@@ -122,48 +132,60 @@ const DriverRequestModal = () => {
           </View>
         </View>
 
-        <View style={styles.routeTimelineContainer}>
+        <View style={[styles.routeTimelineContainer, isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }]}>
           <View style={styles.timelineIndicators}>
             <View style={styles.dotStart} />
             <View style={styles.lineDashed} />
-            <Ionicons name="location-sharp" size={20} color={THEME.COLORS.danger} style={styles.iconEnd} />
+            <Ionicons name="location-sharp" size={isSmallScreen ? 18 : 20} color={THEME.COLORS.danger} style={styles.iconEnd} />
           </View>
           
           <View style={styles.addressTextContainer}>
             <View style={styles.addressBlock}>
               <Text style={styles.addressLabel}>Prise en charge</Text>
-              <Text style={styles.addressValue} numberOfLines={2}>
+              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
                 {incomingRide.origin?.address || 'Position inconnue'}
               </Text>
             </View>
             
-            <View style={[styles.addressBlock, styles.destinationBlock]}>
+            <View style={[styles.addressBlock, styles.destinationBlock, isSmallScreen && { marginTop: 10 }]}>
               <Text style={styles.addressLabel}>Destination finale</Text>
-              <Text style={styles.addressValue} numberOfLines={2}>
+              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
                 {incomingRide.destination?.address || 'Destination inconnue'}
               </Text>
             </View>
           </View>
         </View>
 
-        <Text style={styles.subtitle}>Selectionnez votre tarif :</Text>
+        <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>Selectionnez votre tarif :</Text>
         
-        <View style={styles.optionsContainer}>
+        <View style={[styles.optionsContainer, isSmallScreen && { marginBottom: THEME.SPACING.md, gap: 6 }]}>
           {priceOptions.length > 0 ? (
             priceOptions.map((option, index) => {
               const isSelected = selectedAmount === option.amount;
               return (
                 <TouchableOpacity
                   key={index}
-                  style={[styles.optionCard, isSelected && styles.optionCardSelected]}
+                  style={[
+                    styles.optionCard, 
+                    isSelected && styles.optionCardSelected,
+                    isSmallScreen && { paddingVertical: THEME.SPACING.sm }
+                  ]}
                   onPress={() => setSelectedAmount(option.amount)}
                   activeOpacity={0.7}
                   disabled={!!loadingStep}
                 >
-                  <Text style={[styles.optionLabel, isSelected && styles.textSelected]}>
+                  <Text style={[
+                    styles.optionLabel, 
+                    isSelected && styles.textSelected,
+                    (isSmallScreen || isNarrowScreen) && { fontSize: 9 }
+                  ]}>
                     {getLocalLabel(option.label)}
                   </Text>
-                  <Text style={[styles.optionAmount, isSelected && styles.textSelected]}>
+                  <Text style={[
+                    styles.optionAmount, 
+                    isSelected && styles.textSelected,
+                    isSmallScreen ? { fontSize: 14 } : (isNarrowScreen ? { fontSize: 15 } : { fontSize: 17 })
+                  ]}>
                     {option.amount} F
                   </Text>
                 </TouchableOpacity>
@@ -174,13 +196,13 @@ const DriverRequestModal = () => {
           )}
         </View>
 
-        <View style={styles.actionsContainer}>
+        <View style={[styles.actionsContainer, isSmallScreen && { gap: 8 }]}>
           <TouchableOpacity 
-            style={styles.ignoreButton} 
+            style={[styles.ignoreButton, isSmallScreen && { paddingVertical: 12 }]} 
             onPress={handleIgnore}
             disabled={!!loadingStep}
           >
-            <Text style={styles.ignoreText}>Ignorer</Text>
+            <Text style={[styles.ignoreText, isSmallScreen && { fontSize: 14 }]}>Ignorer</Text>
           </TouchableOpacity>
           
           <GoldButton
