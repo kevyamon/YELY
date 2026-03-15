@@ -9,9 +9,9 @@
     "userInterfaceStyle": "automatic",
     "owner": "kevyllc",
     "splash": {
-      "image": "./assets/images/splash-icon.png",
+      "image": "./assets/images/splash-center.png",
       "resizeMode": "contain",
-      "backgroundColor": "#000000"
+      "backgroundColor": "#D4AF37"
     },
     "updates": {
       "url": "https://u.expo.dev/be0e185d-b91e-41bf-9e18-91923cf7deb5"
@@ -57,23 +57,23 @@
       "display": "standalone",
       "scope": "/",
       "startUrl": "/",
-      "backgroundColor": "#000000",
+      "backgroundColor": "#D4AF37",
       "themeColor": "#D4AF37",
       "orientation": "portrait",
       "bundler": "metro",
       "splash": {
-        "image": "./assets/images/splash-icon.png",
+        "image": "./assets/images/splash-center.png",
         "resizeMode": "contain",
-        "backgroundColor": "#000000"
+        "backgroundColor": "#D4AF37"
       }
     },
     "plugins": [
       [
         "expo-splash-screen",
         {
-          "image": "./assets/images/splash-icon.png",
+          "image": "./assets/images/splash-center.png",
           "resizeMode": "contain",
-          "backgroundColor": "#000000"
+          "backgroundColor": "#D4AF37"
         }
       ],
       "expo-secure-store",

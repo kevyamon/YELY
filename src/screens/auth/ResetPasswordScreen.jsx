@@ -1,9 +1,10 @@
 // src/screens/auth/ResetPasswordScreen.jsx
-// CSCSM Level: Bank Grade
+// CSCSM Level: Bank Grade (Securite Cryptographique & Z-Index Fix)
 
 import React, { useState } from 'react';
 import { KeyboardAvoidingView, Platform, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useDispatch } from 'react-redux';
+import PasswordStrengthInput from '../../components/auth/PasswordStrengthInput';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import { useResetPasswordMutation } from '../../store/api/usersApiSlice';
@@ -16,16 +17,17 @@ const ResetPasswordScreen = ({ route, navigation }) => {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordScore, setPasswordScore] = useState(0);
   
   const [resetPassword, { isLoading }] = useResetPasswordMutation();
 
   const handleReset = async () => {
     if (otp.length !== 6) {
-      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code de sécurité doit contenir exactement 6 chiffres." }));
+      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code de securite doit contenir exactement 6 chiffres." }));
       return;
     }
-    if (newPassword.length < 8) {
-      dispatch(showErrorToast({ title: "Mot de passe faible", message: "Votre mot de passe doit faire au moins 8 caractères." }));
+    if (passwordScore < 1) {
+      dispatch(showErrorToast({ title: "Mot de passe faible", message: "Le nouveau mot de passe doit respecter tous les criteres de securite (12 caracteres minimum, majuscule, chiffre, symbole)." }));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -36,57 +38,66 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     try {
       await resetPassword({ email, otp, newPassword }).unwrap();
       dispatch(showSuccessToast({ 
-        title: "Succès", 
-        message: "Votre mot de passe a été mis à jour. Vous pouvez vous connecter." 
+        title: "Succes", 
+        message: "Votre mot de passe a ete mis a jour. Vous pouvez vous connecter." 
       }));
       navigation.navigate('Login');
     } catch (err) {
       dispatch(showErrorToast({ 
-        title: "Échec", 
-        message: err?.data?.message || "Ce code de sécurité est incorrect ou a expiré." 
+        title: "Echec", 
+        message: err?.data?.message || "Ce code de securite est incorrect ou a expire." 
       }));
     }
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.headerSpacer} />
         <Text style={styles.title}>Nouveau mot de passe</Text>
-        <Text style={styles.subtitle}>Saisissez le code reçu par mail.</Text>
+        <Text style={styles.subtitle}>Saisissez le code recu par mail.</Text>
 
         <View style={styles.form}>
-          <GlassInput
-            label="Code de sécurité"
-            placeholder="000000"
-            value={otp}
-            onChangeText={setOtp}
-            keyboardType="number-pad"
-            maxLength={6}
-            icon="key-outline"
-          />
-          <GlassInput
-            label="Nouveau mot de passe"
-            placeholder="••••••••"
-            value={newPassword}
-            onChangeText={setNewPassword}
-            secureTextEntry
-            icon="lock-closed-outline"
-          />
-          <GlassInput
-            label="Confirmer"
-            placeholder="••••••••"
-            value={confirmPassword}
-            onChangeText={setConfirmPassword}
-            secureTextEntry
-            icon="checkmark-circle-outline"
-          />
-          <GoldButton
-            title="CONFIRMER"
-            onPress={handleReset}
-            loading={isLoading}
-            style={styles.button}
-          />
+          
+          {/* Zone Superieure (Arriere-plan relatif) */}
+          <View style={styles.upperFields}>
+            <GlassInput
+              placeholder="000000"
+              value={otp}
+              onChangeText={setOtp}
+              keyboardType="number-pad"
+              maxLength={6}
+              icon="key-outline"
+            />
+          </View>
+
+          {/* Zone Centrale (Premier plan absolu pour la modale de suggestion) */}
+          <View style={styles.passwordWrapper}>
+            <PasswordStrengthInput
+              password={newPassword}
+              setPassword={setNewPassword}
+              onStrengthChange={setPasswordScore}
+            />
+          </View>
+
+          {/* Zone Inferieure (Passe sous la modale de suggestion) */}
+          <View style={styles.lowerSection}>
+            <GlassInput
+              placeholder="Confirmer le mot de passe"
+              value={confirmPassword}
+              onChangeText={setConfirmPassword}
+              secureTextEntry
+              icon="checkmark-circle-outline"
+            />
+            
+            <GoldButton
+              title="CONFIRMER"
+              onPress={handleReset}
+              loading={isLoading}
+              style={styles.button}
+            />
+          </View>
+
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
@@ -94,13 +105,48 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.COLORS.background },
-  scrollContent: { padding: 25, alignItems: 'center' },
-  headerSpacer: { height: 60 },
-  title: { fontSize: 26, fontWeight: 'bold', color: THEME.COLORS.champagneGold },
-  subtitle: { fontSize: 15, color: THEME.COLORS.textSecondary, marginTop: 10 },
-  form: { width: '100%', marginTop: 30 },
-  button: { marginTop: 20 },
+  container: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.background 
+  },
+  scrollContent: { 
+    padding: THEME.SPACING.xxl, 
+    alignItems: 'center' 
+  },
+  headerSpacer: { 
+    height: 60 
+  },
+  title: { 
+    fontSize: THEME.FONTS.sizes.h2, 
+    fontWeight: THEME.FONTS.weights.bold, 
+    color: THEME.COLORS.champagneGold 
+  },
+  subtitle: { 
+    fontSize: THEME.FONTS.sizes.body, 
+    color: THEME.COLORS.textSecondary, 
+    marginTop: THEME.SPACING.sm 
+  },
+  form: { 
+    width: '100%', 
+    marginTop: THEME.SPACING.xxl 
+  },
+  upperFields: { 
+    zIndex: 1 
+  },
+  passwordWrapper: {
+    minHeight: 110,
+    justifyContent: 'flex-start',
+    zIndex: 999,
+    elevation: 10,
+    position: 'relative'
+  },
+  lowerSection: { 
+    zIndex: 1, 
+    elevation: 1 
+  },
+  button: { 
+    marginTop: THEME.SPACING.xl 
+  },
 });
 
 export default ResetPasswordScreen;

@@ -1,5 +1,5 @@
 // src/utils/validators.js
-// VALIDATIONS METIER CENTRALISEES - Humaines & Précises
+// VALIDATIONS METIER CENTRALISEES - Humaines & Precises
 // CSCSM Level: Bank Grade
 
 export const VALIDATORS = {
@@ -23,14 +23,15 @@ export const VALIDATORS = {
   },
 
   password: (password) => {
-    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{8,}$/;
+    // STANDARD INDUSTRIEL : 12 caracteres minimum exigés par le backend
+    const strongPasswordRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]).{12,}$/;
     return strongPasswordRegex.test(password);
   }
 };
 
 export const ERROR_MESSAGES = {
-  name: "Votre nom ne doit contenir ni chiffres ni caractères spéciaux.",
+  name: "Votre nom ne doit contenir ni chiffres ni caracteres speciaux.",
   email: "Veuillez fournir une adresse e-mail valide.",
-  phone: "Veuillez vérifier votre numéro de téléphone.",
-  password: "Votre mot de passe doit inclure au moins 8 caractères, une majuscule, un chiffre et un symbole."
+  phone: "Veuillez verifier votre numero de telephone.",
+  password: "Votre mot de passe doit inclure au moins 12 caracteres, une majuscule, un chiffre et un symbole."
 };

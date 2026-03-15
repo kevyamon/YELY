@@ -1,5 +1,5 @@
 // src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee
+// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Z-Index Fix)
 // STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -40,7 +40,6 @@ const RegisterPage = ({ navigation, route }) => {
   const [passwordScore, setPasswordScore] = useState(0);
   const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
   
-  // Securite: State pour la modale de blocage iOS/PWA pour les chauffeurs
   const [showDriverRestrictionModal, setShowDriverRestrictionModal] = useState(false);
 
   const [formData, setFormData] = useState({
@@ -50,7 +49,6 @@ const RegisterPage = ({ navigation, route }) => {
     phone: ''
   });
 
-  // Logique de sélection du rôle avec bouclier
   const handleRoleSelection = (selectedRole) => {
     if (selectedRole === 'driver') {
       if (Platform.OS !== 'android') {
@@ -130,7 +128,11 @@ const RegisterPage = ({ navigation, route }) => {
                 style={[styles.roleBtn, role === 'rider' && styles.roleBtnActive]} 
                 onPress={() => handleRoleSelection('rider')}
               >
-                <Ionicons name="person" size={20} color={role === 'rider' ? '#FFF' : THEME.COLORS.textSecondary} />
+                <Ionicons 
+                  name="person" 
+                  size={20} 
+                  color={role === 'rider' ? THEME.COLORS.textInverse : THEME.COLORS.textSecondary} 
+                />
                 <Text style={[styles.roleText, role === 'rider' && styles.roleTextActive]}>Passager</Text>
               </TouchableOpacity>
 
@@ -138,37 +140,44 @@ const RegisterPage = ({ navigation, route }) => {
                 style={[styles.roleBtn, role === 'driver' && styles.roleBtnActive]} 
                 onPress={() => handleRoleSelection('driver')}
               >
-                <Ionicons name="car" size={20} color={role === 'driver' ? '#FFF' : THEME.COLORS.textSecondary} />
+                <Ionicons 
+                  name="car" 
+                  size={20} 
+                  color={role === 'driver' ? THEME.COLORS.textInverse : THEME.COLORS.textSecondary} 
+                />
                 <Text style={[styles.roleText, role === 'driver' && styles.roleTextActive]}>Chauffeur</Text>
               </TouchableOpacity>
             </View>
 
-            <GlassInput
-              icon="person-outline"
-              placeholder="Nom complet"
-              value={formData.name}
-              onChangeText={(t) => setFormData({ ...formData, name: t })}
-            />
+            {/* Isoler les champs superieurs pour gerer le plan de rendu */}
+            <View style={styles.upperFields}>
+              <GlassInput
+                icon="person-outline"
+                placeholder="Nom complet"
+                value={formData.name}
+                onChangeText={(t) => setFormData({ ...formData, name: t })}
+              />
 
-            <PhoneInputGroup 
-              phone={formData.phone}
-              setPhone={(t) => setFormData({ ...formData, phone: t })}
-              countryCode={countryCode}
-              setCountryCode={setCountryCode}
-              callingCode={callingCode}
-              setCallingCode={setCallingCode}
-            />
+              <PhoneInputGroup 
+                phone={formData.phone}
+                setPhone={(t) => setFormData({ ...formData, phone: t })}
+                countryCode={countryCode}
+                setCountryCode={setCountryCode}
+                callingCode={callingCode}
+                setCallingCode={setCallingCode}
+              />
 
-            <GlassInput
-              icon="mail-outline"
-              placeholder="Email"
-              keyboardType="email-address"
-              autoCapitalize="none"
-              value={formData.email}
-              onChangeText={(t) => setFormData({ ...formData, email: t })}
-            />
+              <GlassInput
+                icon="mail-outline"
+                placeholder="Email"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                value={formData.email}
+                onChangeText={(t) => setFormData({ ...formData, email: t })}
+              />
+            </View>
 
-            {/* Conteneur fixe pour bloquer le saut visuel */}
+            {/* Le wrapper du mot de passe prend le pas sur TOUT le reste de l'ecran */}
             <View style={styles.passwordWrapper}>
               <PasswordStrengthInput 
                 password={formData.password}
@@ -177,26 +186,29 @@ const RegisterPage = ({ navigation, route }) => {
               />
             </View>
 
-            <View style={styles.legalContainer}>
-              <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
-                <Ionicons 
-                  name={hasAcceptedLegal ? "checkbox" : "square-outline"} 
-                  size={24} 
-                  color={hasAcceptedLegal ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
-                />
-              </TouchableOpacity>
-              <Text style={styles.legalText}>
-                J'ai lu et j'accepte les <Text style={styles.linkText} onPress={() => navigation.navigate('TermsOfService')}>Conditions d'utilisation</Text> et la <Text style={styles.linkText} onPress={() => navigation.navigate('PrivacyPolicy')}>Politique de confidentialite</Text>.
-              </Text>
-            </View>
+            {/* La section inferieure passe au second plan pour laisser la modale s'afficher par-dessus */}
+            <View style={styles.lowerSection}>
+              <View style={styles.legalContainer}>
+                <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
+                  <Ionicons 
+                    name={hasAcceptedLegal ? "checkbox" : "square-outline"} 
+                    size={24} 
+                    color={hasAcceptedLegal ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
+                  />
+                </TouchableOpacity>
+                <Text style={styles.legalText}>
+                  J'ai lu et j'accepte les <Text style={styles.linkText} onPress={() => navigation.navigate('TermsOfService')}>Conditions d'utilisation</Text> et la <Text style={styles.linkText} onPress={() => navigation.navigate('PrivacyPolicy')}>Politique de confidentialite</Text>.
+                </Text>
+              </View>
 
-            <GoldButton
-              title="CREER MON COMPTE"
-              onPress={handleRegister}
-              loading={isLoading}
-              style={styles.registerButton}
-              icon="person-add-outline"
-            />
+              <GoldButton
+                title="CREER MON COMPTE"
+                onPress={handleRegister}
+                loading={isLoading}
+                style={styles.registerButton}
+                icon="person-add-outline"
+              />
+            </View>
           </GlassCard>
 
           <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.footer}>
@@ -232,18 +244,26 @@ const RegisterPage = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: THEME.COLORS.deepAsphalt },
+  safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
   scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
   backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, alignSelf: 'flex-start' },
   backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
   mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
-  card: { padding: THEME.SPACING.lg },
-  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg },
-  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, backgroundColor: THEME.COLORS.glassLight },
-  roleBtnActive: { backgroundColor: "#10B981", borderColor: "#10B981" },
+  card: { padding: THEME.SPACING.lg, overflow: 'visible' },
+  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg, zIndex: 1 },
+  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.glassSurface },
+  roleBtnActive: { backgroundColor: THEME.COLORS.success, borderColor: THEME.COLORS.success },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
-  roleTextActive: { color: '#FFF' },
-  passwordWrapper: { minHeight: 110, justifyContent: 'flex-start' }, // C'est ici que la magie de la stabilité opère
+  roleTextActive: { color: THEME.COLORS.textInverse },
+  upperFields: { zIndex: 1 },
+  passwordWrapper: { 
+    minHeight: 110, 
+    justifyContent: 'flex-start',
+    zIndex: 999, 
+    elevation: 10, 
+    position: 'relative' 
+  },
+  lowerSection: { zIndex: 1, elevation: 1 },
   legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
   checkbox: { marginRight: THEME.SPACING.sm },
   legalText: { color: THEME.COLORS.textSecondary, fontSize: 12, lineHeight: 18, flexShrink: 1 },
