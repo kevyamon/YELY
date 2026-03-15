@@ -1,5 +1,5 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready
+// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready (Force Light Theme)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -24,9 +24,9 @@ import {
   userIcon
 } from './markers/WebMarkers';
 
-const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const LIGHT_TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
-const ATTRIBUTION = '&copy; OSM';
+// ON FORCE LA CARTE CLAIRE (CartoDB Positron pour matcher avec le style epure)
+const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
 const POI_SVG = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 
@@ -70,7 +70,6 @@ const MapCard = forwardRef(({
   isDriver = false,
   showUserMarker = true,
   showRecenterButton = true,
-  darkMode = true,
   mapTopPadding = 140,
   mapBottomPadding = 240,
   onMapReady,
@@ -180,7 +179,7 @@ const MapCard = forwardRef(({
       <MapContainer
         center={center}
         zoom={15}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: '100%', height: '100%', backgroundColor: '#FAFAFA' }}
         zoomControl={false}
         attributionControl={false}
         ref={(mapInstance) => { if (mapInstance) mapInstanceRef.current = mapInstance; }}
@@ -188,8 +187,9 @@ const MapCard = forwardRef(({
       >
         <MapInteractionTracker onInteract={handleMapInteraction} />
 
+        {/* FORCAGE CARTE CLAIRE */}
         <TileLayer
-          url={darkMode ? DARK_TILE_URL : LIGHT_TILE_URL}
+          url={LIGHT_TILE_URL}
           attribution={ATTRIBUTION}
           maxZoom={19}
         />
@@ -284,6 +284,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderBottomWidth: THEME.BORDERS.width.thin,
     borderBottomColor: THEME.COLORS.glassBorder,
+    backgroundColor: '#FAFAFA'
   },
   recenterButtonWrapper: { 
     position: 'absolute', 

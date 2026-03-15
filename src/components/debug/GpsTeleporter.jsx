@@ -1,5 +1,5 @@
 // src/components/debug/GpsTeleporter.jsx
-// OUTIL DE DEBUG - Teleportation et Simulation de mouvement (FORCE EN PROD - A RETIRER !!!)
+// OUTIL DE DEBUG - Teleportation et Simulation de mouvement (DESACTIVE EN PROD)
 // CSCSM Level: Bank Grade
 
 import React from 'react';
@@ -14,9 +14,8 @@ import THEME from '../../theme/theme';
 const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation }) => {
   const dispatch = useDispatch();
 
-  // ATTENTION: Verrou __DEV__ retire pour test en production. 
-  // Ne pas oublier de remettre: if (!__DEV__ || !currentRide) return null;
-  if (!currentRide) return null;
+  // SECURITE DE PRODUCTION : Ce composant ne s'affiche qu'en mode developpement
+  if (!__DEV__ || !currentRide) return null;
 
   const getTargetCoordinates = () => {
     // REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
@@ -103,7 +102,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
 
   return (
     <View style={styles.debugPanel}>
-      <Text style={styles.debugTitle}>TEST GPS (ACTIF EN PROD)</Text>
+      <Text style={styles.debugTitle}>TEST GPS (MODE DEV)</Text>
       <View style={styles.debugButtons}>
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
           <Text style={styles.debugBtnText}>SAUT CLIENT</Text>

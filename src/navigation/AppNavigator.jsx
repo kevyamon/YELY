@@ -53,7 +53,7 @@ import AdminJournal from '../screens/admin/AdminJournal';
 import AdminReports from '../screens/admin/AdminReports';
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import MapManagement from '../screens/admin/MapManagement';
-import SystemConfig from '../screens/admin/SystemConfig'; // NOUVEL ECRAN
+import SystemConfig from '../screens/admin/SystemConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
@@ -84,7 +84,7 @@ const AppNavigator = () => {
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode); 
   
-  const { isServerReady, isWakingUp } = useServerWakeup();
+  const { isServerReady } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
   
   const [showSplash, setShowSplash] = useState(true);

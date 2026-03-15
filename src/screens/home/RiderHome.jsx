@@ -46,7 +46,6 @@ const RiderHome = ({ navigation }) => {
   
   const { location, errorMsg } = useGeolocation(); 
   
-  const isUserInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   useEffect(() => {
@@ -92,11 +91,13 @@ const RiderHome = ({ navigation }) => {
   } = useRiderLifecycle({
     location,
     errorMsg,
-    isUserInZone,
     mapRef,
     currentRide,
     rideToRate
   });
+
+  // CORRECTION MAJEURE : La couverture de zone dépend désormais de l'origine finale (GPS ou Manuelle)
+  const isEffectiveOriginInZone = effectiveOrigin ? isLocationInMafereZone(effectiveOrigin) : true;
 
   const {
     mapMarkers,
@@ -198,7 +199,7 @@ const RiderHome = ({ navigation }) => {
             estimationData={estimationData}
             estimateError={estimateError}
             onConfirmRide={handleConfirmRide}
-            isUserInZone={isUserInZone} 
+            isUserInZone={isEffectiveOriginInZone} 
           />
         )}
       </View>

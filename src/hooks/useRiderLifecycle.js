@@ -29,7 +29,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * c;
 };
 
-const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRide, rideToRate }) => {
+const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined); 
@@ -86,11 +86,12 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
+  // GESTION CORRIGEE DE L'AFFICHAGE DE L'ADRESSE
   useEffect(() => {
     let isMounted = true;
 
     if (manualOrigin) {
-      setCurrentAddress(manualOrigin.address);
+      setCurrentAddress(manualOrigin.address || manualOrigin.name || 'Depart selectionne');
     } else if (location) {
       let shouldFetch = false;
       
@@ -153,8 +154,19 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
   }, [rideToRate, currentRide, mapRef]);
 
+  // NORMALISATION STRICTE DES COORDONNEES POUR EVITER LES SILENT CRASHS
   const handlePlaceSelect = async (selectedPlace, mode) => {
-    if (!isLocationInMafereZone(selectedPlace)) {
+    const pLat = selectedPlace.latitude || selectedPlace.lat;
+    const pLng = selectedPlace.longitude || selectedPlace.lng;
+
+    const normalizedPlace = {
+      ...selectedPlace,
+      latitude: pLat,
+      longitude: pLng,
+      address: selectedPlace.address || selectedPlace.name || 'Lieu selectionne'
+    };
+
+    if (!isLocationInMafereZone(normalizedPlace)) {
       dispatch(showErrorToast({ 
         title: 'Hors Zone', 
         message: 'Le service ne dessert que la zone autorisee pour le moment.' 
@@ -164,24 +176,28 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
 
     if (mode === 'origin') {
-      setManualOrigin(selectedPlace);
+      setManualOrigin(normalizedPlace);
       if (destination) {
         estimateRide({
-          pickupLat: selectedPlace.latitude, pickupLng: selectedPlace.longitude,
+          pickupLat: normalizedPlace.latitude, pickupLng: normalizedPlace.longitude,
           dropoffLat: destination.latitude, dropoffLng: destination.longitude
         });
       }
     } else {
-      setDestination(selectedPlace);
+      setDestination(normalizedPlace);
       setSelectedVehicle(null);
       
       if (effectiveOrigin && mapRef.current) {
+        const oLat = effectiveOrigin.latitude || effectiveOrigin.lat;
+        const oLng = effectiveOrigin.longitude || effectiveOrigin.lng;
         estimateRide({
-          pickupLat: effectiveOrigin.latitude, pickupLng: effectiveOrigin.longitude,
-          dropoffLat: selectedPlace.latitude, dropoffLng: selectedPlace.longitude
+          pickupLat: oLat, pickupLng: oLng,
+          dropoffLat: normalizedPlace.latitude, dropoffLng: normalizedPlace.longitude
         });
       }
     }
+    
+    setIsSearchModalVisible(false);
   };
 
   const handleCancelDestination = () => {
@@ -197,7 +213,8 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     if (destination && location) {
       estimateRide({
         pickupLat: location.latitude, pickupLng: location.longitude,
-        dropoffLat: destination.latitude, dropoffLng: destination.longitude
+        dropoffLat: destination.latitude || destination.lat, 
+        dropoffLng: destination.longitude || destination.lng
       });
     }
   };
@@ -225,17 +242,17 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
       return;
     }
 
-    // AJOUT : Blocage Trajet Absurde (A vers A)
-    const distanceOriginDest = getDistance(
-      effectiveOrigin.latitude, effectiveOrigin.longitude,
-      destination.latitude, destination.longitude
-    );
+    const origLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
+    const origLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
+    const destLat = Number(destination.latitude || destination.lat || 0);
+    const destLng = Number(destination.longitude || destination.lng || 0);
 
-    // On bloque si la distance est inférieure à 10 mètres pour éviter les commandes sur place
+    const distanceOriginDest = getDistance(origLat, origLng, destLat, destLng);
+
     if (distanceOriginDest < 10) {
       dispatch(showErrorToast({ 
         title: 'Trajet non valide', 
-        message: 'Votre point de départ et votre destination sont identiques.' 
+        message: 'Votre point de depart et votre destination sont identiques.' 
       }));
       return;
     }
@@ -246,12 +263,7 @@ const useRiderLifecycle = ({ location, errorMsg, isUserInZone, mapRef, currentRi
     }
     
     try {
-      const origLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
-      const origLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
-      const destLng = Number(destination.longitude || destination.lng || 0);
-      const destLat = Number(destination.latitude || destination.lat || 0);
-
-      let safeOriginAddress = String(currentAddress || effectiveOrigin.address || "Position actuelle").trim();
+      let safeOriginAddress = String(currentAddress || manualOrigin?.address || manualOrigin?.name || "Position actuelle").trim();
       if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
 
