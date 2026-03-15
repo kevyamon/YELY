@@ -1,5 +1,5 @@
 // src/components/debug/GpsTeleporter.jsx
-// OUTIL DE DEBUG - Teleportation et Simulation de mouvement (DEV ONLY)
+// OUTIL DE DEBUG - Teleportation et Simulation de mouvement (FORCE EN PROD - A RETIRER !!!)
 // CSCSM Level: Bank Grade
 
 import React from 'react';
@@ -14,10 +14,12 @@ import THEME from '../../theme/theme';
 const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation }) => {
   const dispatch = useDispatch();
 
-  if (!__DEV__ || !currentRide) return null;
+  // ATTENTION: Verrou __DEV__ retire pour test en production. 
+  // Ne pas oublier de remettre: if (!__DEV__ || !currentRide) return null;
+  if (!currentRide) return null;
 
   const getTargetCoordinates = () => {
-    // 🛡️ REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
+    // REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
     const targetType = currentRide.status === 'in_progress' ? 'destination' : 'pickup';
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
@@ -101,7 +103,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
 
   return (
     <View style={styles.debugPanel}>
-      <Text style={styles.debugTitle}>TEST GPS (MODE DEVELOPPEUR)</Text>
+      <Text style={styles.debugTitle}>TEST GPS (ACTIF EN PROD)</Text>
       <View style={styles.debugButtons}>
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
           <Text style={styles.debugBtnText}>SAUT CLIENT</Text>
@@ -128,7 +130,7 @@ const styles = StyleSheet.create({
     top: 100,
     left: 10,
     right: 10,
-    backgroundColor: 'rgba(10, 10, 10, 0.9)',
+    backgroundColor: THEME.COLORS.glassDark || THEME.COLORS.background,
     padding: 12,
     borderRadius: 12,
     zIndex: 999,
@@ -156,7 +158,7 @@ const styles = StyleSheet.create({
   },
   debugBtn: {
     flex: 1,
-    backgroundColor: THEME.COLORS.glassLight,
+    backgroundColor: THEME.COLORS.glassLight || THEME.COLORS.surface,
     paddingVertical: 10,
     borderRadius: 6,
     alignItems: 'center',
@@ -164,15 +166,15 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
   },
   debugBtnAdvance: {
-    backgroundColor: 'rgba(46, 204, 113, 0.2)',
+    backgroundColor: THEME.COLORS.glassSurface || THEME.COLORS.surface,
     borderColor: THEME.COLORS.success,
   },
   debugBtnReset: {
-    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+    backgroundColor: THEME.COLORS.glassSurface || THEME.COLORS.surface,
     borderColor: THEME.COLORS.danger,
   },
   debugBtnText: {
-    color: '#FFFFFF',
+    color: THEME.COLORS.textPrimary || THEME.COLORS.textInverse,
     fontSize: 10,
     fontWeight: 'bold',
     textTransform: 'uppercase',
