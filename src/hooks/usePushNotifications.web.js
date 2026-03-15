@@ -4,7 +4,7 @@
 
 import { initializeApp } from 'firebase/app';
 import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useSelector } from 'react-redux';
 import ENV from '../config/env';
 import { navigate } from '../navigation/navigationRef';
@@ -35,40 +35,41 @@ const usePushNotifications = () => {
   const [updateFcmToken] = useUpdateFcmTokenMutation();
   const isRegistered = useRef(false);
 
+  // ETAT TAMPON : Capture le clic avant que le routeur ne soit forcement pret
+  const [pendingRouting, setPendingRouting] = useState(null);
+
+  // 1. GESTION DU TOKEN ET ÉCOUTEUR FOREGROUND
   useEffect(() => {
-    if (!isAuthenticated || !messaging || isRegistered.current) return;
+    // Si non authentifié ou messaging inaccessible, on s'arrête
+    if (!isAuthenticated || !messaging) return;
 
-    const registerWebPushAsync = async () => {
-      try {
-        const permission = await Notification.requestPermission();
-        if (permission !== 'granted') {
-          console.warn("[PUSH WEB] Permission refusee par l'utilisateur.");
-          return;
+    // Évite l'enregistrement multiple si déjà fait dans cette session
+    if (!isRegistered.current) {
+      const registerWebPushAsync = async () => {
+        try {
+          const permission = await Notification.requestPermission();
+          if (permission !== 'granted') {
+            console.warn("[PUSH WEB] Permission refusee par l'utilisateur.");
+            return;
+          }
+
+          const currentToken = await getToken(messaging, {
+            vapidKey: ENV.FIREBASE_VAPID_KEY 
+          });
+
+          if (currentToken) {
+            await updateFcmToken({ fcmToken: currentToken }).unwrap();
+            isRegistered.current = true;
+          }
+        } catch (error) {
+          console.warn("[PUSH WEB] Erreur lors de l'enregistrement Web Push:", error);
         }
+      };
+      registerWebPushAsync();
+    }
 
-        const currentToken = await getToken(messaging, {
-          vapidKey: ENV.FIREBASE_VAPID_KEY 
-        });
-
-        if (currentToken) {
-          await updateFcmToken({ fcmToken: currentToken }).unwrap();
-          isRegistered.current = true;
-        } else {
-          console.warn("[PUSH WEB] Aucun token d'enregistrement disponible. Autorisez les notifications.");
-        }
-      } catch (error) {
-        console.warn("[PUSH WEB] Erreur lors de l'enregistrement Web Push:", error);
-      }
-    };
-
-    registerWebPushAsync();
-
-    // ECOUTEUR : L'application web est OUVERTE (Foreground)
+    // ÉCOUTEUR : L'application web est OUVERTE (Foreground)
     const unsubscribe = onMessage(messaging, (payload) => {
-      if (__DEV__) {
-        console.log("[PUSH WEB] Notification recue en premier plan:", payload);
-      }
-      
       if (Notification.permission === 'granted') {
         const webNotification = new Notification(payload.notification?.title || 'Yely', {
           body: payload.notification?.body,
@@ -76,49 +77,15 @@ const usePushNotifications = () => {
           data: payload.data
         });
 
-        // LE MOTEUR DE DEEP LINKING WEB (Aiguillage au clic)
+        // Capture du clic
         webNotification.onclick = (event) => {
           event.preventDefault(); 
           webNotification.close();
 
-          const type = payload.data?.type;
-          if (!type) return;
-
-          switch (type) {
-            case 'NEW_REPORT':
-              navigate('AdminReports');
-              break;
-            case 'REPORT_RESOLVED':
-              navigate('Report');
-              break;
-            case 'NEW_PAYMENT_PROOF':
-              navigate('ValidationCenter');
-              break;
-            case 'SUBSCRIPTION_APPROVED':
-            case 'SUBSCRIPTION_REJECTED':
-            case 'PROMO_UPDATE':
-              navigate('Subscription');
-              break;
-            case 'NEW_RIDE_REQUEST':
-            case 'SEARCH_TIMEOUT':
-            case 'NEGOTIATION_TIMEOUT':
-            case 'RIDE_CANCELLED':
-            case 'DRIVER_FOUND':
-            case 'PRICE_PROPOSAL':
-            case 'PROPOSAL_ACCEPTED':
-            case 'PROPOSAL_REJECTED':
-            case 'DRIVER_ARRIVED':
-            case 'RIDE_STARTED':
-            case 'RIDE_COMPLETED':
-              if (user?.role === 'driver') {
-                navigate('DriverHome');
-              } else if (user?.role === 'rider') {
-                navigate('RiderHome');
-              }
-              break;
-            default:
-              navigate('Notifications');
-              break;
+          const data = payload.data;
+          if (data && data.type) {
+            // Placement dans l'état tampon plutôt que tentative immédiate de navigation
+            setPendingRouting(data);
           }
         };
       }
@@ -127,7 +94,62 @@ const usePushNotifications = () => {
     return () => {
       if (unsubscribe) unsubscribe();
     };
-  }, [isAuthenticated, updateFcmToken, user]);
+  }, [isAuthenticated, updateFcmToken]); // On a retire 'user' pour eviter de relancer le hook a chaque modif du profil
+
+  // 2. MOTEUR DE ROUTAGE DIFFÉRÉ (S'exécute uniquement quand Redux et le routeur sont prêts)
+  useEffect(() => {
+    if (isAuthenticated && user?.role && pendingRouting) {
+      
+      const timer = setTimeout(() => {
+        const { type, rideId } = pendingRouting;
+        const currentRole = user.role;
+
+        switch (type) {
+          case 'NEW_REPORT':
+            navigate('AdminReports');
+            break;
+          case 'REPORT_RESOLVED':
+            navigate('Report');
+            break;
+          case 'NEW_PAYMENT_PROOF':
+            navigate('ValidationCenter');
+            break;
+          case 'SUBSCRIPTION_APPROVED':
+          case 'SUBSCRIPTION_REJECTED':
+          case 'PROMO_UPDATE':
+            navigate('Subscription');
+            break;
+          case 'NEW_RIDE_REQUEST':
+          case 'SEARCH_TIMEOUT':
+          case 'NEGOTIATION_TIMEOUT':
+          case 'RIDE_CANCELLED':
+          case 'DRIVER_FOUND':
+          case 'PRICE_PROPOSAL':
+          case 'PROPOSAL_ACCEPTED':
+          case 'PROPOSAL_REJECTED':
+          case 'DRIVER_ARRIVED':
+          case 'RIDE_STARTED':
+          case 'RIDE_COMPLETED':
+            // REDIRECTION CORRIGÉE : Transmission du paramètre rideId
+            if (currentRole === 'driver') {
+              navigate('DriverHome', { rideId });
+            } else if (currentRole === 'rider') {
+              navigate('RiderHome', { rideId });
+            }
+            break;
+          default:
+            navigate('Notifications');
+            break;
+        }
+
+        // On vide l'état tampon
+        setPendingRouting(null);
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user?.role, pendingRouting]);
+
 };
 
 export default usePushNotifications;

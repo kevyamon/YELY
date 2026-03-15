@@ -4,7 +4,7 @@
 
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
-import { useEffect, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 import { useSelector } from 'react-redux';
 import { navigate } from '../navigation/navigationRef';
@@ -23,19 +23,11 @@ const usePushNotifications = () => {
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
-  
-  const notificationListener = useRef();
-  const responseListener = useRef();
 
-  // CORRECTION SENIOR : On stocke le rôle dans une Ref.
-  // Cela permet de le lire dans l'écouteur de clic SANS avoir besoin de relancer 
-  // le moteur de notification à chaque fois que le GPS de l'utilisateur change.
-  const userRoleRef = useRef(user?.role);
-  useEffect(() => {
-    userRoleRef.current = user?.role;
-  }, [user?.role]);
+  // ETAT TAMPON : Sauvegarde la destination cliquée le temps que l'app s'initialise
+  const [pendingRouting, setPendingRouting] = useState(null);
 
-  // ON REVIENT EXACTEMENT AU TABLEAU DE DÉPENDANCES QUI MARCHAIT
+  // 1. GESTION DU TOKEN (Bloquée si non authentifié)
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -65,78 +57,92 @@ const usePushNotifications = () => {
 
         try {
           const tokenData = await Notifications.getDevicePushTokenAsync();
-          const fcmToken = tokenData.data;
-
-          if (fcmToken) {
-            await updateFcmToken({ fcmToken }).unwrap();
+          if (tokenData && tokenData.data) {
+            await updateFcmToken({ fcmToken: tokenData.data }).unwrap();
           }
-          
         } catch (error) {
-          console.warn('[PUSH] Erreur lors de la recuperation/envoi du token:', error);
+          console.warn('[PUSH] Erreur Token:', error);
         }
       }
     };
 
     registerForPushNotificationsAsync();
+  }, [isAuthenticated, updateFcmToken]);
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {});
+  // 2. INTERCEPTEUR DE CLIC GLOBAL (Ne doit JAMAIS être conditionné par l'authentification)
+  useEffect(() => {
+    const notificationListener = Notifications.addNotificationReceivedListener(() => {});
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
-      const type = data.type;
-
-      if (!type) return;
-
-      // On lit le rôle silencieusement
-      const currentRole = userRoleRef.current;
-
-      switch (type) {
-        case 'NEW_REPORT':
-          navigate('AdminReports');
-          break;
-        case 'REPORT_RESOLVED':
-          navigate('Report');
-          break;
-        case 'NEW_PAYMENT_PROOF':
-          navigate('ValidationCenter');
-          break;
-        case 'SUBSCRIPTION_APPROVED':
-        case 'SUBSCRIPTION_REJECTED':
-        case 'PROMO_UPDATE':
-          navigate('Subscription');
-          break;
-        case 'NEW_RIDE_REQUEST':
-        case 'SEARCH_TIMEOUT':
-        case 'NEGOTIATION_TIMEOUT':
-        case 'RIDE_CANCELLED':
-        case 'DRIVER_FOUND':
-        case 'PRICE_PROPOSAL':
-        case 'PROPOSAL_ACCEPTED':
-        case 'PROPOSAL_REJECTED':
-        case 'DRIVER_ARRIVED':
-        case 'RIDE_STARTED':
-        case 'RIDE_COMPLETED':
-          if (currentRole === 'driver') {
-            navigate('DriverHome');
-          } else if (currentRole === 'rider') {
-            navigate('RiderHome');
-          }
-          break;
-        default:
-          navigate('Notifications');
-          break;
+      if (data && data.type) {
+        // On capture l'événement immédiatement et on le met en attente
+        setPendingRouting(data);
       }
     });
 
     return () => {
-      if (notificationListener.current && typeof notificationListener.current.remove === 'function') {
-        notificationListener.current.remove();
-      }
-      if (responseListener.current && typeof responseListener.current.remove === 'function') {
-        responseListener.current.remove();
-      }
+      notificationListener.remove();
+      responseListener.remove();
     };
-  }, [isAuthenticated, updateFcmToken]); // FIN DE LA FUITE MÉMOIRE. On est revenu à l'état stable !
+  }, []);
+
+  // 3. MOTEUR DE ROUTAGE DIFFÉRÉ (S'exécute uniquement quand le routeur est prêt)
+  useEffect(() => {
+    // On attend que le Redux soit peuplé et qu'il y ait une route en attente
+    if (isAuthenticated && user?.role && pendingRouting) {
+      
+      // On introduit un micro-délai (500ms) pour laisser AppNavigator 
+      // détruire le SplashScreen et monter physiquement l'écran DriverHome
+      const timer = setTimeout(() => {
+        const { type, rideId } = pendingRouting;
+        const currentRole = user.role;
+
+        switch (type) {
+          case 'NEW_REPORT':
+            navigate('AdminReports');
+            break;
+          case 'REPORT_RESOLVED':
+            navigate('Report');
+            break;
+          case 'NEW_PAYMENT_PROOF':
+            navigate('ValidationCenter');
+            break;
+          case 'SUBSCRIPTION_APPROVED':
+          case 'SUBSCRIPTION_REJECTED':
+          case 'PROMO_UPDATE':
+            navigate('Subscription');
+            break;
+          case 'NEW_RIDE_REQUEST':
+          case 'SEARCH_TIMEOUT':
+          case 'NEGOTIATION_TIMEOUT':
+          case 'RIDE_CANCELLED':
+          case 'DRIVER_FOUND':
+          case 'PRICE_PROPOSAL':
+          case 'PROPOSAL_ACCEPTED':
+          case 'PROPOSAL_REJECTED':
+          case 'DRIVER_ARRIVED':
+          case 'RIDE_STARTED':
+          case 'RIDE_COMPLETED':
+            // REDIRECTION CORRIGÉE : Transmission du paramètre rideId
+            if (currentRole === 'driver') {
+              navigate('DriverHome', { rideId }); 
+            } else if (currentRole === 'rider') {
+              navigate('RiderHome', { rideId });
+            }
+            break;
+          default:
+            navigate('Notifications');
+            break;
+        }
+
+        // On vide l'état tampon pour ne pas boucler indéfiniment
+        setPendingRouting(null); 
+      }, 500);
+
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user?.role, pendingRouting]);
 };
 
 export default usePushNotifications;
