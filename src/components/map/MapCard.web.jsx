@@ -159,10 +159,10 @@ const MapCard = forwardRef(({
     location?.longitude || MAFERE_CENTER.longitude,
   ];
 
-  // SANITISATION : Élimination des doublons consécutifs
-  const polylinePositions = visibleRoutePoints
-    .map(p => [p.latitude, p.longitude])
-    .filter(p => p && p.length === 2 && !isNaN(p[0]) && !isNaN(p[1]))
+  // SANITISATION : Élimination des doublons consécutifs et securite anti-crash
+  const polylinePositions = (visibleRoutePoints || [])
+    .map(p => [p?.latitude, p?.longitude])
+    .filter(p => p && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number' && !isNaN(p[0]) && !isNaN(p[1]))
     .reduce((acc, current) => {
        if (acc.length === 0) return [current];
        const prev = acc[acc.length - 1];
@@ -307,6 +307,10 @@ const arePropsEqual = (prevProps, nextProps) => {
   const isSameLocation = (loc1, loc2) => {
     if (!loc1 && !loc2) return true;
     if (!loc1 || !loc2) return false;
+    // Securite: on verifie que les coordonnees sont bien des nombres avant de couper les decimales
+    if (typeof loc1.latitude !== 'number' || typeof loc2.latitude !== 'number') return false;
+    if (typeof loc1.longitude !== 'number' || typeof loc2.longitude !== 'number') return false;
+    
     return loc1.latitude.toFixed(4) === loc2.latitude.toFixed(4) && 
            loc1.longitude.toFixed(4) === loc2.longitude.toFixed(4);
   };

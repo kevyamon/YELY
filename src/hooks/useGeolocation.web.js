@@ -46,15 +46,21 @@ const useGeolocation = (options = {}) => {
       );
       if (response.ok) {
         const data = await response.json();
-        const addr = data.address;
+        const addr = data.address || {}; // Securite anti-crash si l'adresse est absente
         const components = [
           addr.road || addr.pedestrian || addr.suburb,
           addr.city || addr.town || addr.village || addr.county
         ].filter(Boolean);
-        setAddress(components.join(', ') || data.display_name);
+        
+        // On s'assure de toujours retourner une chaine de caracteres pour stopper la boucle
+        setAddress(components.join(', ') || data.display_name || "Position detectee");
+      } else {
+        setAddress("Position detectee");
       }
     } catch (e) {
       console.warn("[GEOLOCATION WEB] Erreur Geocoding silencieuse");
+      // En cas d'erreur de connexion, on stoppe la recherche infinie
+      setAddress("Position detectee");
     }
   };
 
@@ -94,7 +100,8 @@ const useGeolocation = (options = {}) => {
         setError(null);
         
         const accuracy = position.coords.accuracy || 100;
-        const maxAccuracy = isMobile ? 150 : 2500;
+        // On augmente la tolerance sur PC (10000m) car le GPS par IP est tres imprecis
+        const maxAccuracy = isMobile ? 150 : 10000;
 
         if (accuracy > maxAccuracy) return;
 

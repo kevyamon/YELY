@@ -48,7 +48,8 @@ const SmartHeader = ({
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
-  const isFetchingAddress = address.toLowerCase().includes('recherche');
+  // Securite: on garantit que l'adresse est toujours du texte avant de chercher un mot dedans
+  const isFetchingAddress = (address || "").toLowerCase().includes('recherche');
 
   const defaultScrollY = useSharedValue(0);
   const activeScrollY = scrollY || defaultScrollY;
