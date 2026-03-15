@@ -1,5 +1,5 @@
 // src/hooks/useDriverLifecycle.js
-// HOOK METIER - Cycle de vie du chauffeur, Persistance & Destruction Robuste Anti-Zombie
+// HOOK METIER - Cycle de vie du chauffeur (Always Online Enforcement)
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef, useState } from 'react';
@@ -45,7 +45,6 @@ const useDriverLifecycle = ({
   isDisabled
 }) => {
   const dispatch = useDispatch();
-  const hasAutoConnected = useRef(false);
   const isProcessingPickupRef = useRef(false);
   const isProcessingStartRef = useRef(false); 
   const snoozeTimerRef = useRef(null);
@@ -53,12 +52,10 @@ const useDriverLifecycle = ({
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined);
 
-  const [isAvailable, setIsAvailable] = useState(user?.isAvailable || false);
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
-  
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
-  const [updateAvailability, { isLoading: isToggling }] = useUpdateAvailabilityMutation();
+  const [updateAvailability] = useUpdateAvailabilityMutation();
   const [markAsArrived] = useMarkAsArrivedMutation();
   const [startRide] = useStartRideMutation();
   const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
@@ -102,12 +99,6 @@ const useDriverLifecycle = ({
   }, [refetchCurrentRide]);
 
   useEffect(() => {
-    if (user?.isAvailable !== undefined) {
-      setIsAvailable(user.isAvailable);
-    }
-  }, [user?.isAvailable]);
-
-  useEffect(() => {
     if (location) {
       dispatch(setEffectiveLocation({
         latitude: location.latitude,
@@ -118,39 +109,27 @@ const useDriverLifecycle = ({
     }
   }, [location, dispatch]);
 
+  // LOGIQUE ALWAYS ONLINE ENFORCEMENT
   useEffect(() => {
-    const processAutoConnect = async () => {
-      if (!hasAutoConnected.current && location && !isAvailable && !isDisabled) {
-        hasAutoConnected.current = true;
-
-        if (isDriverInZone) {
-          try {
-            const res = await updateAvailability({ isAvailable: true }).unwrap();
-            const actualStatus = res.data ? res.data.isAvailable : true;
-
-            setIsAvailable(actualStatus);
-            dispatch(updateUserInfo({ isAvailable: actualStatus }));
-            socketService.emitLocation(location);
-
-            dispatch(showSuccessToast({
-              title: 'En service (Automatique)',
-              message: 'Pret a recevoir des courses.',
-            }));
-          } catch (err) {
-            console.warn('[DriverLifecycle] Erreur de connexion systeme automatique');
+    const enforceOnlineStatus = async () => {
+      // Si on a un GPS, qu'il n'est pas bloqué par l'abonnement, on force le mode En Ligne sans rien lui demander
+      if (location && !isDisabled && isDriverInZone) {
+        try {
+          // On prévient le back que le chauffeur est en ligne
+          if (!user?.isAvailable) {
+             await updateAvailability({ isAvailable: true }).unwrap();
+             dispatch(updateUserInfo({ isAvailable: true }));
           }
+          // On émet sa position en continu
+          socketService.emitLocation(location);
+        } catch (err) {
+          console.warn('[DriverLifecycle] Tentative de reconnexion auto échouée');
         }
       }
     };
 
-    processAutoConnect();
-  }, [location, isAvailable, isDriverInZone, updateAvailability, dispatch, isDisabled]);
-
-  useEffect(() => {
-    if (location && (isAvailable || isRideActive)) {
-      socketService.emitLocation(location);
-    }
-  }, [location, isAvailable, isRideActive]);
+    enforceOnlineStatus();
+  }, [location, isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch]);
 
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
@@ -314,7 +293,6 @@ const useDriverLifecycle = ({
           const rideId = currentRide._id || currentRide.id || currentRide.rideId;
           if (rideId) {
             markAsArrived({ rideId }).unwrap().catch(err => {
-              console.warn('[DriverLifecycle] Echec notification arrivee distante');
               isProcessingPickupRef.current = false; 
             });
           }
@@ -348,7 +326,6 @@ const useDriverLifecycle = ({
                 }));
               })
               .catch(err => {
-                console.warn('[DriverLifecycle] Echec auto-start', err);
                 isProcessingStartRef.current = false;
               });
           }
@@ -375,46 +352,6 @@ const useDriverLifecycle = ({
     }
   }, [location, currentRide, dispatch, markAsArrived, startRide]); 
 
-  // CORRECTION CRITIQUE: Capture explicite de la valeur du bouton (switchValue)
-  // pour eviter que le telephone ne se base sur une ancienne memoire de isAvailable.
-  const handleToggleAvailability = async (switchValue) => {
-    const newStatus = typeof switchValue === 'boolean' ? switchValue : !isAvailable;
-
-    if (newStatus && !isDriverInZone) {
-      dispatch(showErrorToast({
-        title: 'Acces Refuse',
-        message: 'Positionnement hors de la zone de service autorisee.',
-      }));
-      return;
-    }
-
-    try {
-      const res = await updateAvailability({ isAvailable: newStatus }).unwrap();
-      
-      // Extraction ultra securisee pour parer a toute difference de format API
-      const returnedStatus = res?.data?.isAvailable !== undefined 
-        ? res.data.isAvailable 
-        : (res?.isAvailable !== undefined ? res.isAvailable : newStatus);
-
-      setIsAvailable(returnedStatus);
-      dispatch(updateUserInfo({ isAvailable: returnedStatus }));
-
-      if (returnedStatus && location) {
-        socketService.emitLocation(location);
-      }
-
-      dispatch(showSuccessToast({
-        title: returnedStatus ? 'En service' : 'Hors ligne',
-        message: returnedStatus ? 'Connexion au reseau de distribution active.' : 'Mode pause active.',
-      }));
-    } catch (err) {
-      dispatch(showErrorToast({
-        title: 'Erreur systeme',
-        message: 'Impossible de modifier le statut de service.',
-      }));
-    }
-  };
-
   const handleSnoozeArrival = () => {
     setIsArrivalModalVisible(false);
     snoozeTimerRef.current = setTimeout(() => {
@@ -426,10 +363,10 @@ const useDriverLifecycle = ({
   };
 
   return {
-    isAvailable,
+    isAvailable: true, // Toujours vrai pour l'UI, le blocage se fait par abonnement
     currentAddress,
-    isToggling,
-    handleToggleAvailability,
+    isToggling: false, // Plus de bouton de toggle
+    handleToggleAvailability: () => {}, 
     isArrivalModalVisible,
     isCompletingRide,
     handleConfirmArrival,

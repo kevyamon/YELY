@@ -1,5 +1,5 @@
 // src/hooks/useMapFitter.js
-// HOOK CARTE NATIF - Camera Intelligente Conditionnelle MapLibre (3D Fixe & Anti-Renversement)
+// HOOK CARTE NATIF - Camera Intelligente Hyper-Réactive
 // CSCSM Level: Bank Grade
 
 import { useEffect, useRef } from 'react';
@@ -42,7 +42,6 @@ const useMapFitter = ({
 
     const hasDriver = driverLocation?.latitude && driverLocation?.longitude;
     const originMarker = hasDriver ? driverLocation : location;
-
     const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
     
     let targetMarker = null;
@@ -83,12 +82,13 @@ const useMapFitter = ({
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
     
-    const debounceTime = isInitialFitDone.current ? 4000 : 300;
+    // REDUCTION MASSIVE DU DEBOUNCE: De 4000ms à 1500ms pour réagir aux micro-coupures réseau
+    const debounceTime = isInitialFitDone.current ? 1500 : 300;
 
     if (now - lastUpdateRef.current > debounceTime) {
       lastUpdateRef.current = now;
 
-      const delay = Platform.OS === 'ios' ? 100 : 250;
+      const delay = Platform.OS === 'ios' ? 50 : 150; // Lancement plus rapide de l'animation
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
 
       timeoutRef.current = setTimeout(() => {
@@ -107,7 +107,7 @@ const useMapFitter = ({
               paddingLeft: 0,
               paddingRight: 0
             },
-            animationDuration: isInitialFitDone.current ? 1000 : 2000,
+            animationDuration: isInitialFitDone.current ? 1200 : 2000,
           });
           isInitialFitDone.current = true;
           return;
@@ -141,7 +141,7 @@ const useMapFitter = ({
             paddingRight: SCREEN_WIDTH * 0.12,
           },
           pitch: shouldActivateSuperpower ? 45 : 0,
-          animationDuration: 1000,
+          animationDuration: 1200, // Lissage de l'animation (1.2s)
         });
 
         isInitialFitDone.current = true;

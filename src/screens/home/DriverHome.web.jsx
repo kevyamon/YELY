@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.web.jsx
-// HOME DRIVER WEB - Orchestrateur (Aide liee au compte + Synchro Marges)
+// HOME DRIVER WEB - Orchestrateur (Always Online Force & Secours Manuels)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -45,7 +45,6 @@ const DriverHome = ({ navigation }) => {
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
-  // Etats pour la hauteur dynamique
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(280);
 
@@ -107,11 +106,10 @@ const DriverHome = ({ navigation }) => {
   const isDriverInZone = location ? isLocationInMafereZone(location) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
+  // NETTOYAGE STRICT : Suppression des fonctions liées au bouton
   const {
     isAvailable,
     currentAddress,
-    isToggling,
-    handleToggleAvailability,
     isArrivalModalVisible,
     isCompletingRide,
     handleConfirmArrival,
@@ -228,11 +226,7 @@ const DriverHome = ({ navigation }) => {
             {isRideActive ? (
               <DriverRideOverlay />
             ) : (
-              <SmartFooter
-                isAvailable={isAvailable}
-                onToggle={handleToggleAvailability}
-                isToggling={isToggling}
-              />
+              <SmartFooter isAvailable={isAvailable} />
             )}
           </View>
 
@@ -278,7 +272,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
+    backgroundColor: THEME.COLORS.glassSurface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -293,11 +287,11 @@ const styles = StyleSheet.create({
   },
   floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
   
-  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: THEME.COLORS.glassDark, zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
   blockerCard: { width: '100%', alignItems: 'center' },
   blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
   blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
-  blockerText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
+  blockerText: { color: '#FFFFFF', marginTop: 15, fontSize: 16 },
   loaderSpacing: { marginTop: 10, marginBottom: 25 },
   fullWidthButton: { width: '100%' }
 });

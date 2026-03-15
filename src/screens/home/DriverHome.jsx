@@ -1,5 +1,5 @@
 // src/screens/home/DriverHome.jsx
-// HOME DRIVER NATIF - Orchestrateur Principal (Smart Drive 2.0)
+// HOME DRIVER NATIF - Orchestrateur Principal (Smart Drive 2.0 & Always Online Force)
 // CSCSM Level: Bank Grade
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -13,6 +13,7 @@ import GpsTeleporter from '../../components/debug/GpsTeleporter';
 import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
+import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
 import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
@@ -44,7 +45,6 @@ const DriverHome = ({ navigation }) => {
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   const [isHelpVisible, setIsHelpVisible] = useState(false);
 
-  // Nouveaux états pour la hauteur dynamique
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(280);
 
@@ -97,22 +97,23 @@ const DriverHome = ({ navigation }) => {
   }, [isFocused, refetchSubscription]);
 
   const { location, errorMsg } = useGeolocation();
-
   const effectiveLocation = simulatedLocation || location;
 
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
+  // NETTOYAGE STRICT : Suppression de isToggling et handleToggleAvailability
   const {
     isAvailable,
     currentAddress,
-    isToggling,
-    handleToggleAvailability
+    isArrivalModalVisible,
+    isCompletingRide,
+    handleConfirmArrival,
+    handleSnoozeArrival
   } = useDriverLifecycle({
     user, currentRide, location: effectiveLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
   });
 
-  // Injection des hauteurs dynamiques dans le hook
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(
     currentRide, 
     isRideActive,
@@ -221,17 +222,21 @@ const DriverHome = ({ navigation }) => {
       {!isBlocked && (
         <>
           <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+            {/* Le composant n'attend plus de logique de bouton, uniquement la variable isAvailable (toujours true) */}
             {isRideActive ? (
               <DriverRideOverlay />
             ) : (
-              <SmartFooter
-                isAvailable={isAvailable}
-                onToggle={handleToggleAvailability}
-                isToggling={isToggling}
-              />
+              <SmartFooter isAvailable={isAvailable} />
             )}
           </View>
           <DriverRequestModal />
+          
+          <ArrivalConfirmModal 
+            visible={isArrivalModalVisible}
+            onConfirm={handleConfirmArrival}
+            onSnooze={handleSnoozeArrival}
+            isLoading={isCompletingRide}
+          />
         </>
       )}
 
@@ -263,7 +268,7 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
+    backgroundColor: THEME.COLORS.glassSurface,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 20,
@@ -278,11 +283,11 @@ const styles = StyleSheet.create({
   },
   floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
   
-  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: THEME.COLORS.glassDark, zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
+  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
   blockerCard: { width: '100%', alignItems: 'center' },
   blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
   blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
-  blockerText: { color: THEME.COLORS.textPrimary || '#FFFFFF', marginTop: 15, fontSize: 16 },
+  blockerText: { color: '#FFFFFF', marginTop: 15, fontSize: 16 },
   loaderSpacing: { marginTop: 10, marginBottom: 25, width: '100%', alignItems: 'center' },
   fullWidthButton: { width: '100%' }
 });

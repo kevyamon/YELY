@@ -1,13 +1,13 @@
 // src/components/ride/DriverBottomPanel.jsx
-// COMPOSANT CHAUFFEUR - Panneau de controle fixe
+// COMPOSANT CHAUFFEUR - Panneau de controle fixe (Always Online)
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Switch, Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import THEME from '../../theme/theme';
 
-const DriverBottomPanel = ({ isAvailable, onToggle, isToggling }) => {
+const DriverBottomPanel = () => {
   const insets = useSafeAreaInsets();
 
   return (
@@ -16,31 +16,20 @@ const DriverBottomPanel = ({ isAvailable, onToggle, isToggling }) => {
       { paddingBottom: Math.max(insets.bottom + 20, THEME.SPACING.xl) }
     ]}>
       
-      <View style={[styles.availabilityCard, isAvailable && styles.availabilityCardOnline]}>
+      <View style={styles.availabilityCardOnline}>
         <View style={styles.availabilityRow}>
           <View style={styles.statusInfo}>
             <View style={styles.statusHeader}>
-              <Ionicons 
-                name={isAvailable ? "radio-button-on" : "radio-button-off"} 
-                size={18} 
-                color={isAvailable ? THEME.COLORS.success : THEME.COLORS.textTertiary} 
-              />
-              <Text style={[styles.statusTitle, isAvailable && { color: THEME.COLORS.success }]}>
-                {isAvailable ? 'EN SERVICE' : 'HORS LIGNE'}
-              </Text>
+              <Ionicons name="radio-button-on" size={18} color={THEME.COLORS.success} />
+              <Text style={styles.statusTitle}>EN SERVICE</Text>
             </View>
             <Text style={styles.statusSubtitle}>
-              {isAvailable ? 'En attente de courses...' : 'Passez en ligne pour travailler'}
+              Recherche active de passagers a proximite...
             </Text>
           </View>
-
-          <Switch
-            value={isAvailable}
-            onValueChange={onToggle}
-            disabled={isToggling}
-            trackColor={{ false: 'rgba(128,128,128,0.3)', true: 'rgba(46, 204, 113, 0.3)' }}
-            thumbColor={isAvailable ? THEME.COLORS.success : '#f4f3f4'}
-          />
+          
+          {/* Un petit radar visuel statique pour remplacer le vieux bouton */}
+          <Ionicons name="wifi" size={24} color={THEME.COLORS.success} style={{ opacity: 0.8 }} />
         </View>
       </View>
 
@@ -80,17 +69,13 @@ const styles = StyleSheet.create({
     shadowRadius: 10,
     elevation: 10,
   },
-  availabilityCard: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderColor: THEME.COLORS.border,
+  availabilityCardOnline: {
+    backgroundColor: 'rgba(46, 204, 113, 0.08)',
+    borderColor: 'rgba(46, 204, 113, 0.3)',
     borderRadius: 16,
     padding: 16,
     marginBottom: 20,
     borderWidth: 1,
-  },
-  availabilityCardOnline: {
-    backgroundColor: 'rgba(46, 204, 113, 0.08)',
-    borderColor: 'rgba(46, 204, 113, 0.3)',
   },
   availabilityRow: {
     flexDirection: 'row',
@@ -107,14 +92,14 @@ const styles = StyleSheet.create({
     gap: 8,
   },
   statusTitle: {
-    color: THEME.COLORS.textPrimary,
+    color: THEME.COLORS.success,
     fontWeight: '900',
     fontSize: 14,
     letterSpacing: 1,
   },
   statusSubtitle: {
     color: THEME.COLORS.textSecondary,
-    fontSize: 11,
+    fontSize: 12,
   },
   statsContainer: {
     flexDirection: 'row',
