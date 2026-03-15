@@ -51,6 +51,7 @@ const useDriverLifecycle = ({
   const isSubmittingRef = useRef(false); 
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined);
+  const hasForcedOnlineRef = useRef(false);
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
@@ -109,21 +110,21 @@ const useDriverLifecycle = ({
     }
   }, [location, dispatch]);
 
-  // LOGIQUE ALWAYS ONLINE ENFORCEMENT
+  // LOGIQUE ALWAYS ONLINE ENFORCEMENT CORRIGEE
   useEffect(() => {
     const enforceOnlineStatus = async () => {
-      // Si on a un GPS, qu'il n'est pas bloqué par l'abonnement, on force le mode En Ligne sans rien lui demander
       if (location && !isDisabled && isDriverInZone) {
         try {
-          // On prévient le back que le chauffeur est en ligne
-          if (!user?.isAvailable) {
+          // On force l'appel API au moins une fois par session (hasForcedOnlineRef)
+          // meme si le cache Redux pense que l'utilisateur est deja en ligne.
+          if (!hasForcedOnlineRef.current || !user?.isAvailable) {
              await updateAvailability({ isAvailable: true }).unwrap();
              dispatch(updateUserInfo({ isAvailable: true }));
+             hasForcedOnlineRef.current = true;
           }
-          // On émet sa position en continu
           socketService.emitLocation(location);
         } catch (err) {
-          console.warn('[DriverLifecycle] Tentative de reconnexion auto échouée');
+          console.warn('[DriverLifecycle] Tentative de reconnexion auto echouee');
         }
       }
     };
@@ -363,9 +364,9 @@ const useDriverLifecycle = ({
   };
 
   return {
-    isAvailable: true, // Toujours vrai pour l'UI, le blocage se fait par abonnement
+    isAvailable: true,
     currentAddress,
-    isToggling: false, // Plus de bouton de toggle
+    isToggling: false,
     handleToggleAvailability: () => {}, 
     isArrivalModalVisible,
     isCompletingRide,

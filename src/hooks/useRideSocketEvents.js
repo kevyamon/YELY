@@ -5,7 +5,7 @@
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
-import { selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
+import { selectCurrentUser, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
   clearCurrentRide,
   clearIncomingRide,
@@ -20,7 +20,15 @@ import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 const useRideSocketEvents = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
+  const user = useSelector(selectCurrentUser);
   const lastProcessedEventRef = useRef('');
+
+  // AJOUT CRITIQUE : Inscription dans la Room Socket specifique a l'utilisateur
+  useEffect(() => {
+    if (isAuthenticated && user?._id) {
+      socketService.joinRoom(user._id.toString());
+    }
+  }, [isAuthenticated, user?._id]);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -38,8 +46,8 @@ const useRideSocketEvents = () => {
       dispatch(clearCurrentRide());
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
-        title: 'Course annulée',
-        message: data?.message || data?.reason || 'Annulation confirmée par le serveur.',
+        title: 'Course annulee',
+        message: data?.message || data?.reason || 'Annulation confirmee par le serveur.',
       }));
     };
 
@@ -59,8 +67,8 @@ const useRideSocketEvents = () => {
       dispatch(setCurrentRide({ ...data, status: 'accepted' }));
       dispatch(clearIncomingRide());
       dispatch(showSuccessToast({
-        title: 'Course confirmée',
-        message: 'Tarification validée. Démarrage de l\'itinéraire d\'approche.',
+        title: 'Course confirmee',
+        message: 'Tarification validee. Demarrage de l\'itineraire d\'approche.',
       }));
     };
 
@@ -68,8 +76,8 @@ const useRideSocketEvents = () => {
       if (isDuplicateEvent('proposal_rejected')) return;
       dispatch(clearIncomingRide());
       dispatch(showErrorToast({
-        title: 'Proposition déclinée',
-        message: 'Le client a refusé la tarification soumise.',
+        title: 'Proposition declinee',
+        message: 'Le client a refuse la tarification soumise.',
       }));
     };
 
@@ -125,7 +133,7 @@ const useRideSocketEvents = () => {
       dispatch(clearCurrentRide());
       dispatch(showSuccessToast({
         title: 'Destination atteinte',
-        message: 'Service terminé. La course a été archivée.',
+        message: 'Service termine. La course a ete archivee.',
       }));
     };
 
@@ -139,7 +147,7 @@ const useRideSocketEvents = () => {
       if (isDuplicateEvent('search_timeout')) return;
       dispatch(clearCurrentRide());
       dispatch(showErrorToast({
-        title: 'Délai expiré',
+        title: 'Delai expire',
         message: data?.message || "Recherche infructueuse dans la zone cible.",
       }));
     };
@@ -193,4 +201,4 @@ const useRideSocketEvents = () => {
   }, [isAuthenticated, dispatch]);
 };
 
-export default useRideSocketEvents;
+export default useRideSocketEvents; 

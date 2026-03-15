@@ -10,15 +10,11 @@ import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import PassengerCountModal from '../ride/PassengerCountModal';
-import AvailabilityCard from './AvailabilityCard';
 
 const SmartFooter = ({
   destination,
   isEstimating,
   onConfirmRide,
-  isAvailable,
-  onToggle,
-  isToggling,
   onSelectVehicle,
   isUserInZone = true 
 }) => {
@@ -28,7 +24,6 @@ const SmartFooter = ({
 
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
 
-  // Force le choix du vehicule standard en arriere-plan pour satisfaire le flux de donnees
   useEffect(() => {
     if (isRider && onSelectVehicle) {
       onSelectVehicle({ type: 'standard', id: 'standard_1', name: 'Standard' });
@@ -37,7 +32,6 @@ const SmartFooter = ({
 
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
 
-  // Le bouton ne depend plus de selectedVehicle, uniquement de la zone et du chargement
   const isButtonDisabled = isEstimating || !isUserInZone;
   
   let buttonText = 'Commander un Yely';
@@ -109,11 +103,6 @@ const SmartFooter = ({
         </>
       ) : (
         <>
-          <AvailabilityCard 
-            isAvailable={isAvailable} 
-            onToggle={onToggle} 
-            isLoading={isToggling} 
-          />
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value={user?.totalRides || 0} label="Courses" />
             <StatBox icon="star" value={user?.rating?.toFixed(1) || "5.0"} label="Note" />

@@ -38,12 +38,12 @@ const usePushNotifications = () => {
   // ETAT TAMPON : Capture le clic avant que le routeur ne soit forcement pret
   const [pendingRouting, setPendingRouting] = useState(null);
 
-  // 1. GESTION DU TOKEN ET ÉCOUTEUR FOREGROUND
+  // 1. GESTION DU TOKEN ET ECOUTEUR FOREGROUND
   useEffect(() => {
-    // Si non authentifié ou messaging inaccessible, on s'arrête
+    // Si non authentifie ou messaging inaccessible, on s'arrete
     if (!isAuthenticated || !messaging) return;
 
-    // Évite l'enregistrement multiple si déjà fait dans cette session
+    // Evite l'enregistrement multiple si deja fait dans cette session
     if (!isRegistered.current) {
       const registerWebPushAsync = async () => {
         try {
@@ -68,7 +68,7 @@ const usePushNotifications = () => {
       registerWebPushAsync();
     }
 
-    // ÉCOUTEUR : L'application web est OUVERTE (Foreground)
+    // ECOUTEUR : L'application web est OUVERTE (Foreground)
     const unsubscribe = onMessage(messaging, (payload) => {
       if (Notification.permission === 'granted') {
         const webNotification = new Notification(payload.notification?.title || 'Yely', {
@@ -84,7 +84,7 @@ const usePushNotifications = () => {
 
           const data = payload.data;
           if (data && data.type) {
-            // Placement dans l'état tampon plutôt que tentative immédiate de navigation
+            // Placement dans l'etat tampon plutot que tentative immediate de navigation
             setPendingRouting(data);
           }
         };
@@ -96,7 +96,7 @@ const usePushNotifications = () => {
     };
   }, [isAuthenticated, updateFcmToken]); // On a retire 'user' pour eviter de relancer le hook a chaque modif du profil
 
-  // 2. MOTEUR DE ROUTAGE DIFFÉRÉ (S'exécute uniquement quand Redux et le routeur sont prêts)
+  // 2. MOTEUR DE ROUTAGE DIFFERE (S'execute uniquement quand Redux et le routeur sont prets)
   useEffect(() => {
     if (isAuthenticated && user?.role && pendingRouting) {
       
@@ -130,7 +130,7 @@ const usePushNotifications = () => {
           case 'DRIVER_ARRIVED':
           case 'RIDE_STARTED':
           case 'RIDE_COMPLETED':
-            // REDIRECTION CORRIGÉE : Transmission du paramètre rideId
+            // REDIRECTION CORRIGEE : Transmission du parametre rideId
             if (currentRole === 'driver') {
               navigate('DriverHome', { rideId });
             } else if (currentRole === 'rider') {
@@ -142,7 +142,7 @@ const usePushNotifications = () => {
             break;
         }
 
-        // On vide l'état tampon
+        // On vide l'etat tampon
         setPendingRouting(null);
       }, 500);
 

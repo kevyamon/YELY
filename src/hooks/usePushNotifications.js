@@ -24,10 +24,9 @@ const usePushNotifications = () => {
   const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
 
-  // ETAT TAMPON : Sauvegarde la destination cliquée le temps que l'app s'initialise
   const [pendingRouting, setPendingRouting] = useState(null);
 
-  // 1. GESTION DU TOKEN (Bloquée si non authentifié)
+  // 1. GESTION DU TOKEN
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -69,14 +68,26 @@ const usePushNotifications = () => {
     registerForPushNotificationsAsync();
   }, [isAuthenticated, updateFcmToken]);
 
-  // 2. INTERCEPTEUR DE CLIC GLOBAL (Ne doit JAMAIS être conditionné par l'authentification)
+  // 2. INTERCEPTEUR DE CLIC GLOBAL (AVEC GESTION DU DEMARRAGE A FROID)
   useEffect(() => {
+    const checkColdBootNotification = async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response?.notification?.request?.content?.data?.type) {
+          setPendingRouting(response.notification.request.content.data);
+        }
+      } catch (error) {
+        console.warn('[PUSH] Erreur lecture getLastNotificationResponseAsync', error);
+      }
+    };
+
+    checkColdBootNotification();
+
     const notificationListener = Notifications.addNotificationReceivedListener(() => {});
 
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification.request.content.data;
       if (data && data.type) {
-        // On capture l'événement immédiatement et on le met en attente
         setPendingRouting(data);
       }
     });
@@ -87,13 +98,9 @@ const usePushNotifications = () => {
     };
   }, []);
 
-  // 3. MOTEUR DE ROUTAGE DIFFÉRÉ (S'exécute uniquement quand le routeur est prêt)
+  // 3. MOTEUR DE ROUTAGE DIFFERE
   useEffect(() => {
-    // On attend que le Redux soit peuplé et qu'il y ait une route en attente
     if (isAuthenticated && user?.role && pendingRouting) {
-      
-      // On introduit un micro-délai (500ms) pour laisser AppNavigator 
-      // détruire le SplashScreen et monter physiquement l'écran DriverHome
       const timer = setTimeout(() => {
         const { type, rideId } = pendingRouting;
         const currentRole = user.role;
@@ -124,7 +131,6 @@ const usePushNotifications = () => {
           case 'DRIVER_ARRIVED':
           case 'RIDE_STARTED':
           case 'RIDE_COMPLETED':
-            // REDIRECTION CORRIGÉE : Transmission du paramètre rideId
             if (currentRole === 'driver') {
               navigate('DriverHome', { rideId }); 
             } else if (currentRole === 'rider') {
@@ -136,7 +142,6 @@ const usePushNotifications = () => {
             break;
         }
 
-        // On vide l'état tampon pour ne pas boucler indéfiniment
         setPendingRouting(null); 
       }, 500);
 
