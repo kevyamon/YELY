@@ -95,7 +95,13 @@
           "color": "#D4AF37"
         }
       ],
-      "@sentry/react-native/expo"
+      [
+        "@sentry/react-native/expo",
+        {
+          "organization": "yelyllc",
+          "project": "yely-app"
+        }
+      ]
     ],
     "extra": {
       "eas": {
