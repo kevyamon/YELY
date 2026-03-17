@@ -1,54 +1,47 @@
 // src/store/slices/uiSlice.js
-// Gestion de tout l'état UI : modales, sidebar, toasts, loading, drawer
+// Gestion de tout l'état UI : modales, sidebar, toasts, loading, drawer, updates
 
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  // ─── Modal (utilisé par GlassModal) ───
   modal: {
     visible: false,
-    type: null,       // 'commander', 'confirmation', 'forfaitDetail', 'rating', 'identify', etc.
-    position: 'center', // 'center', 'bottom', 'top'
-    data: null,        // Données dynamiques à passer à la modale
+    type: null,       
+    position: 'center', 
+    data: null,        
   },
-
-  // ─── Toast / Snackbar (utilisé par AppToast) ───
   toast: {
     visible: false,
-    type: 'info',      // 'success', 'error', 'warning', 'info'
+    type: 'info',      
     title: '',
     message: '',
     duration: 3000,
   },
-
-  // ─── Sidebar / Drawer Navigation ───
   sidebarOpen: false,
-
-  // ─── Loading global ───
   loading: {
     visible: false,
     message: '',
   },
-
-  // ─── Bottom Sheet (drawer de course) ───
   bottomSheet: {
-    snapPoint: 'collapsed', // 'collapsed', 'expanded', 'full'
+    snapPoint: 'collapsed', 
   },
-
-  // ─── Écran actif (pour tracking interne) ───
   activeScreen: 'Landing',
-
-  // ─── Clavier ───
   keyboardVisible: false,
+  
+  // NOUVEAU : Etat global des mises a jour (PWA/Native/OTA)
+  appUpdate: {
+    isAvailable: false,
+    latestVersion: null,
+    mandatoryUpdate: false,
+    updateUrl: '',
+    isOta: false,
+  }
 };
 
 const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
-    // ═══════════════════════════════════════
-    // MODAL
-    // ═══════════════════════════════════════
     openModal: (state, action) => {
       state.modal.visible = true;
       state.modal.type = action.payload?.type || 'default';
@@ -65,9 +58,6 @@ const uiSlice = createSlice({
       state.modal.data = { ...state.modal.data, ...action.payload };
     },
 
-    // ═══════════════════════════════════════
-    // TOAST (AppToast)
-    // ═══════════════════════════════════════
     showToast: (state, action) => {
       state.toast.visible = true;
       state.toast.type = action.payload?.type || 'info';
@@ -81,11 +71,10 @@ const uiSlice = createSlice({
       state.toast.message = '';
     },
 
-    // Raccourcis toast
     showSuccessToast: (state, action) => {
       state.toast.visible = true;
       state.toast.type = 'success';
-      state.toast.title = action.payload?.title || 'Succès';
+      state.toast.title = action.payload?.title || 'Succes';
       state.toast.message = action.payload?.message || '';
       state.toast.duration = action.payload?.duration || 3000;
     },
@@ -97,9 +86,6 @@ const uiSlice = createSlice({
       state.toast.duration = action.payload?.duration || 4000;
     },
 
-    // ═══════════════════════════════════════
-    // SIDEBAR
-    // ═══════════════════════════════════════
     openSidebar: (state) => {
       state.sidebarOpen = true;
     },
@@ -110,9 +96,6 @@ const uiSlice = createSlice({
       state.sidebarOpen = !state.sidebarOpen;
     },
 
-    // ═══════════════════════════════════════
-    // LOADING GLOBAL
-    // ═══════════════════════════════════════
     showLoading: (state, action) => {
       state.loading.visible = true;
       state.loading.message = action.payload?.message || 'Chargement...';
@@ -122,104 +105,63 @@ const uiSlice = createSlice({
       state.loading.message = '';
     },
 
-    // ═══════════════════════════════════════
-    // BOTTOM SHEET
-    // ═══════════════════════════════════════
     setBottomSheetSnap: (state, action) => {
-      state.bottomSheet.snapPoint = action.payload; // 'collapsed', 'expanded', 'full'
+      state.bottomSheet.snapPoint = action.payload; 
     },
 
-    // ═══════════════════════════════════════
-    // NAVIGATION / ÉCRAN ACTIF
-    // ═══════════════════════════════════════
     setActiveScreen: (state, action) => {
       state.activeScreen = action.payload;
     },
 
-    // ═══════════════════════════════════════
-    // CLAVIER
-    // ═══════════════════════════════════════
     setKeyboardVisible: (state, action) => {
       state.keyboardVisible = action.payload;
     },
 
-    // ═══════════════════════════════════════
-    // RESET COMPLET UI
-    // ═══════════════════════════════════════
+    // NOUVEAU : Reducer pour la mise a jour globale
+    setAppUpdate: (state, action) => {
+      state.appUpdate = { ...state.appUpdate, ...action.payload };
+    },
+
     resetUI: () => {
       return initialState;
     },
   },
 });
 
-// ═══════════════════════════════════════════════════════════════
-// EXPORT DES ACTIONS
-// ═══════════════════════════════════════════════════════════════
 export const {
-  // Modal
   openModal,
   closeModal,
   updateModalData,
-
-  // Toast
   showToast,
   hideToast,
   showSuccessToast,
   showErrorToast,
-
-  // Sidebar
   openSidebar,
   closeSidebar,
   toggleSidebar,
-
-  // Loading
   showLoading,
   hideLoading,
-
-  // Bottom Sheet
   setBottomSheetSnap,
-
-  // Navigation
   setActiveScreen,
-
-  // Clavier
   setKeyboardVisible,
-
-  // Reset
+  setAppUpdate, // EXPORT
   resetUI,
 } = uiSlice.actions;
 
-// ═══════════════════════════════════════════════════════════════
-// SELECTORS
-// ═══════════════════════════════════════════════════════════════
-
-// Modal
 export const selectModal = (state) => state.ui.modal;
 export const selectModalVisible = (state) => state.ui.modal.visible;
 export const selectModalType = (state) => state.ui.modal.type;
 export const selectModalData = (state) => state.ui.modal.data;
-
-// Toast
 export const selectToast = (state) => state.ui.toast;
 export const selectToastVisible = (state) => state.ui.toast.visible;
-
-// Sidebar
 export const selectSidebarOpen = (state) => state.ui.sidebarOpen;
-
-// Loading
 export const selectLoading = (state) => state.ui.loading;
 export const selectIsLoading = (state) => state.ui.loading.visible;
-
-// Bottom Sheet
 export const selectBottomSheetSnap = (state) => state.ui.bottomSheet.snapPoint;
-
-// Navigation
 export const selectActiveScreen = (state) => state.ui.activeScreen;
-
-// Clavier
 export const selectKeyboardVisible = (state) => state.ui.keyboardVisible;
 
-// ═══════════════════════════════════════════════════════════════
-// EXPORT DU REDUCER
-// ═══════════════════════════════════════════════════════════════
+// NOUVEAU SELECTOR
+export const selectAppUpdate = (state) => state.ui.appUpdate;
+
 export default uiSlice.reducer;

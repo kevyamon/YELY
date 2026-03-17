@@ -2,14 +2,16 @@
 // GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
 // CSCSM Level: Bank Grade
 
+import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
-import { selectCurrentUser, selectIsAuthenticated } from '../store/slices/authSlice';
+import { selectCurrentUser, selectIsAuthenticated, updateSubscriptionStatus } from '../store/slices/authSlice';
+import { setAppUpdate } from '../store/slices/uiSlice';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
@@ -20,13 +22,13 @@ Notifications.setNotificationHandler({
 });
 
 const usePushNotifications = () => {
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
 
   const [pendingRouting, setPendingRouting] = useState(null);
 
-  // 1. GESTION DU TOKEN
   useEffect(() => {
     if (!isAuthenticated) return;
 
@@ -68,7 +70,6 @@ const usePushNotifications = () => {
     registerForPushNotificationsAsync();
   }, [isAuthenticated, updateFcmToken]);
 
-  // 2. INTERCEPTEUR DE CLIC GLOBAL (AVEC GESTION DU DEMARRAGE A FROID)
   useEffect(() => {
     const checkColdBootNotification = async () => {
       try {
@@ -98,14 +99,32 @@ const usePushNotifications = () => {
     };
   }, []);
 
-  // 3. MOTEUR DE ROUTAGE DIFFERE
   useEffect(() => {
     if (isAuthenticated && user?.role && pendingRouting) {
       const timer = setTimeout(() => {
-        const { type, rideId } = pendingRouting;
+        const { type, rideId, latestVersion, mandatoryUpdate, updateUrl, isOta, reason } = pendingRouting;
         const currentRole = user.role;
+        const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
 
         switch (type) {
+          case 'SYSTEM_UPDATE':
+            dispatch(setAppUpdate({
+              isAvailable: latestVersion !== currentAppVersion,
+              latestVersion: latestVersion,
+              mandatoryUpdate: mandatoryUpdate === 'true',
+              updateUrl: updateUrl,
+              isOta: isOta === 'true'
+            }));
+            break;
+            
+          // CORRECTION SENIOR : Injection de l'état Redux directement depuis le Push pour briser le WaitScreen
+          case 'SUBSCRIPTION_REJECTED':
+            dispatch(updateSubscriptionStatus({ isPending: false, isRejected: true, rejectionReason: reason || null }));
+            break;
+          case 'SUBSCRIPTION_APPROVED':
+            dispatch(updateSubscriptionStatus({ isPending: false, isRejected: false, isActive: true }));
+            break;
+            
           case 'NEW_REPORT':
             navigate('AdminReports');
             break;
@@ -115,8 +134,6 @@ const usePushNotifications = () => {
           case 'NEW_PAYMENT_PROOF':
             navigate('ValidationCenter');
             break;
-          case 'SUBSCRIPTION_APPROVED':
-          case 'SUBSCRIPTION_REJECTED':
           case 'PROMO_UPDATE':
             navigate('Subscription');
             break;
@@ -147,7 +164,7 @@ const usePushNotifications = () => {
 
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, user?.role, pendingRouting]);
+  }, [isAuthenticated, user?.role, pendingRouting, dispatch]);
 };
 
 export default usePushNotifications;

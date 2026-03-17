@@ -169,7 +169,14 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         release();
       }
     } else {
-      await mutex.waitForUnlock();
+      // CORRECTION SENIOR: Si un refresh est en cours (mutex OU forceSilentRefresh), on boucle intelligemment
+      if (mutex.isLocked()) {
+        await mutex.waitForUnlock();
+      } else if (api.getState().auth.isRefreshing) {
+        while (api.getState().auth.isRefreshing) {
+          await sleep(100);
+        }
+      }
       result = await baseQuery(args, api, extraOptions);
     }
   }

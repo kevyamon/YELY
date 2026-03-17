@@ -4,28 +4,46 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const WaitScreen = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  
+  const subStatus = useSelector(selectSubscriptionStatus);
+  const promoMode = useSelector(selectPromoMode);
+
+  // Verification si le chauffeur a deja un droit d'acces valide (Abonnement actif ou Mode VIP)
+  const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
 
   const handleLogout = () => {
-    // Purge uniquement la session locale. La transaction backend reste en Pending.
     dispatch(logout());
+  };
+
+  const handleClose = () => {
+    // Si la personne a un abonnement actif, on annule l'etat d'attente bloquant 
+    // pour la renvoyer vers le DriverHome. La transaction continue d'etre traitee cote backend.
+    dispatch(updateSubscriptionStatus({ isPending: false }));
   };
 
   return (
     <ScreenWrapper>
       <View style={[styles.container, { paddingTop: insets.top + 40 }]}>
         <GlassCard style={styles.contentCard}>
+          
+          {canGoToDashboard && (
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
+
           <View style={styles.iconContainer}>
             <Ionicons name="time-outline" size={80} color={THEME.COLORS.champagneGold} />
             <ActivityIndicator 
@@ -38,20 +56,19 @@ const WaitScreen = ({ navigation }) => {
           <Text style={styles.title}>Traitement en cours</Text>
           
           <Text style={styles.description}>
-            Ta capture d'écran a bien été reçue par nos services. Un administrateur vérifie actuellement ton paiement.
+            Ta capture d'ecran a bien ete recue par nos services. Un administrateur verifie actuellement ton paiement.
           </Text>
 
           <View style={styles.infoBox}>
             <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.textSecondary} />
             <Text style={styles.infoText}>
-              Activation estimée : moins de 15 minutes.
+              Activation estimee : moins de 15 minutes.
             </Text>
           </View>
 
-          {/* MODIFICATION SENIOR : Container dédié pour un centrage absolu */}
           <View style={styles.buttonContainer}>
             <GoldButton 
-              title="SE DÉCONNECTER"
+              title="SE DECONNECTER"
               onPress={handleLogout}
               style={styles.button}
             />
@@ -71,9 +88,18 @@ const styles = StyleSheet.create({
   contentCard: {
     alignItems: 'center',
     paddingVertical: 40,
+    position: 'relative', 
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    padding: 5,
+    zIndex: 10,
   },
   iconContainer: {
     marginBottom: 30,
+    marginTop: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },

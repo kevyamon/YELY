@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
@@ -17,6 +17,7 @@ const PaymentFailureScreen = ({ navigation }) => {
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
 
+  // Verification si le chauffeur a deja un droit d'acces valide
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
 
   const handleLogout = () => {
@@ -28,6 +29,7 @@ const PaymentFailureScreen = ({ navigation }) => {
   };
 
   const handleDashboard = () => {
+    // Purge de l'etat d'echec pour laisser AppNavigator router vers le DriverHome
     dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
   };
 
@@ -35,7 +37,14 @@ const PaymentFailureScreen = ({ navigation }) => {
     <ScreenWrapper>
       <View style={styles.container}>
         <GlassCard style={styles.card}>
-          <Ionicons name="close-circle" size={80} color={THEME.COLORS.error} />
+          
+          {canGoToDashboard && (
+            <TouchableOpacity style={styles.closeButton} onPress={handleDashboard}>
+              <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
+
+          <Ionicons name="close-circle" size={80} color={THEME.COLORS.error} style={{ marginTop: 20 }} />
           <Text style={styles.title}>Paiement Refuse</Text>
           
           <Text style={styles.reasonTitle}>Motif du refus :</Text>
@@ -82,6 +91,14 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 40,
     paddingHorizontal: 20,
+    position: 'relative',
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 15,
+    right: 15,
+    padding: 5,
+    zIndex: 10,
   },
   title: {
     fontSize: 24,
