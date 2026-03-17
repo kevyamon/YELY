@@ -43,6 +43,22 @@ import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
+// FONCTION UTILITAIRE : Comparaison stricte de versions (SemVer)
+// Retourne TRUE si "latest" est strictement superieur a "current"
+const isVersionOutdated = (current, latest) => {
+  if (!current || !latest) return false;
+  const currentParts = current.split('.').map(Number);
+  const latestParts = latest.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
+    const c = currentParts[i] || 0;
+    const l = latestParts[i] || 0;
+    if (l > c) return true; // Le serveur a une version plus recente
+    if (c > l) return false; // L'app est plus recente que le serveur (ex: test en dev)
+  }
+  return false; // Versions identiques
+};
+
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
@@ -78,8 +94,9 @@ const AppContent = () => {
       if (response.ok) {
         const data = await response.json();
         
+        // CORRECTION : On utilise isVersionOutdated au lieu de !==
         dispatch(setAppUpdate({
-          isAvailable: data.latestVersion && data.latestVersion !== currentAppVersion,
+          isAvailable: isVersionOutdated(currentAppVersion, data.latestVersion),
           latestVersion: data.latestVersion || currentAppVersion,
           mandatoryUpdate: data.mandatoryUpdate,
           updateUrl: data.updateUrl || 'https://download-yely.onrender.com',
@@ -102,13 +119,11 @@ const AppContent = () => {
     checkSystemStatus();
   }, [checkSystemStatus]);
 
-  // CORRECTION SENIOR : Synchronisation Cache et API au reveil
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         console.info("[APP_LIFECYCLE] Retour au premier plan. Resynchronisation totale...");
         dispatch(forceSilentRefresh()).then(() => {
-          // Vidage des caches pour forcer le refetch des donnees vitales qui auraient pu etre manquees via Socket
           dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
         });
         checkSystemStatus(); 
@@ -139,7 +154,7 @@ const AppContent = () => {
     if (socket) {
       socket.on('APP_VERSION_UPDATED', (data) => {
         dispatch(setAppUpdate({
-          isAvailable: data.latestVersion !== currentAppVersion,
+          isAvailable: isVersionOutdated(currentAppVersion, data.latestVersion),
           latestVersion: data.latestVersion,
           mandatoryUpdate: data.mandatoryUpdate,
           updateUrl: data.updateUrl,

@@ -1,110 +1,143 @@
-// src/hooks/usePushNotifications.web.js
-// GESTION FCM WEB - PWA & iOS Safari (Necessite iOS 16.4+ et Add to Home Screen)
+// src/hooks/usePushNotifications.js
+// GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
 // CSCSM Level: Bank Grade
 
-import { initializeApp } from 'firebase/app';
-import { getMessaging, getToken, onMessage } from 'firebase/messaging';
-import { useEffect, useRef, useState } from 'react';
-import { useSelector } from 'react-redux';
-import ENV from '../config/env';
+import Constants from 'expo-constants';
+import * as Device from 'expo-device';
+import * as Notifications from 'expo-notifications';
+import { useEffect, useState } from 'react';
+import { Platform } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
-import { selectCurrentUser, selectIsAuthenticated } from '../store/slices/authSlice';
+import { selectCurrentUser, selectIsAuthenticated, updateSubscriptionStatus } from '../store/slices/authSlice';
+import { setAppUpdate } from '../store/slices/uiSlice';
 
-const firebaseConfig = {
-  apiKey: ENV.FIREBASE_API_KEY,
-  authDomain: ENV.FIREBASE_AUTH_DOMAIN,
-  projectId: ENV.FIREBASE_PROJECT_ID,
-  storageBucket: ENV.FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: ENV.FIREBASE_MESSAGING_SENDER_ID,
-  appId: ENV.FIREBASE_APP_ID
+const isVersionOutdated = (current, latest) => {
+  if (!current || !latest) return false;
+  const currentParts = current.split('.').map(Number);
+  const latestParts = latest.split('.').map(Number);
+  
+  for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
+    const c = currentParts[i] || 0;
+    const l = latestParts[i] || 0;
+    if (l > c) return true; 
+    if (c > l) return false; 
+  }
+  return false; 
 };
 
-const app = initializeApp(firebaseConfig);
-let messaging;
-
-try {
-  messaging = getMessaging(app);
-} catch (error) {
-  console.warn("[PUSH WEB] API Messaging non supportee sur ce navigateur (ex: navigation privee stricte).");
-}
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
 
 const usePushNotifications = () => {
+  const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
   const [updateFcmToken] = useUpdateFcmTokenMutation();
-  const isRegistered = useRef(false);
 
-  // ETAT TAMPON : Capture le clic avant que le routeur ne soit forcement pret
   const [pendingRouting, setPendingRouting] = useState(null);
 
-  // 1. GESTION DU TOKEN ET ECOUTEUR FOREGROUND
   useEffect(() => {
-    // Si non authentifie ou messaging inaccessible, on s'arrete
-    if (!isAuthenticated || !messaging) return;
+    if (!isAuthenticated) return;
 
-    // Evite l'enregistrement multiple si deja fait dans cette session
-    if (!isRegistered.current) {
-      const registerWebPushAsync = async () => {
+    const registerForPushNotificationsAsync = async () => {
+      if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('yely_rides', {
+          name: 'Yely Courses',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#D4AF37',
+        });
+      }
+
+      if (Device.isDevice) {
+        const { status: existingStatus } = await Notifications.getPermissionsAsync();
+        let finalStatus = existingStatus;
+        
+        if (existingStatus !== 'granted') {
+          const { status } = await Notifications.requestPermissionsAsync();
+          finalStatus = status;
+        }
+        
+        if (finalStatus !== 'granted') {
+          console.warn('[PUSH] Permission refusee par l\'utilisateur.');
+          return;
+        }
+
         try {
-          const permission = await Notification.requestPermission();
-          if (permission !== 'granted') {
-            console.warn("[PUSH WEB] Permission refusee par l'utilisateur.");
-            return;
-          }
-
-          const currentToken = await getToken(messaging, {
-            vapidKey: ENV.FIREBASE_VAPID_KEY 
-          });
-
-          if (currentToken) {
-            await updateFcmToken({ fcmToken: currentToken }).unwrap();
-            isRegistered.current = true;
+          const tokenData = await Notifications.getDevicePushTokenAsync();
+          if (tokenData && tokenData.data) {
+            await updateFcmToken({ fcmToken: tokenData.data }).unwrap();
           }
         } catch (error) {
-          console.warn("[PUSH WEB] Erreur lors de l'enregistrement Web Push:", error);
+          console.warn('[PUSH] Erreur Token:', error);
         }
-      };
-      registerWebPushAsync();
-    }
+      }
+    };
 
-    // ECOUTEUR : L'application web est OUVERTE (Foreground)
-    const unsubscribe = onMessage(messaging, (payload) => {
-      if (Notification.permission === 'granted') {
-        const webNotification = new Notification(payload.notification?.title || 'Yely', {
-          body: payload.notification?.body,
-          icon: '/favicon.png',
-          data: payload.data
-        });
+    registerForPushNotificationsAsync();
+  }, [isAuthenticated, updateFcmToken]);
 
-        // Capture du clic
-        webNotification.onclick = (event) => {
-          event.preventDefault(); 
-          webNotification.close();
+  useEffect(() => {
+    const checkColdBootNotification = async () => {
+      try {
+        const response = await Notifications.getLastNotificationResponseAsync();
+        if (response?.notification?.request?.content?.data?.type) {
+          setPendingRouting(response.notification.request.content.data);
+        }
+      } catch (error) {
+        console.warn('[PUSH] Erreur lecture getLastNotificationResponseAsync', error);
+      }
+    };
 
-          const data = payload.data;
-          if (data && data.type) {
-            // Placement dans l'etat tampon plutot que tentative immediate de navigation
-            setPendingRouting(data);
-          }
-        };
+    checkColdBootNotification();
+
+    const notificationListener = Notifications.addNotificationReceivedListener(() => {});
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification.request.content.data;
+      if (data && data.type) {
+        setPendingRouting(data);
       }
     });
 
     return () => {
-      if (unsubscribe) unsubscribe();
+      notificationListener.remove();
+      responseListener.remove();
     };
-  }, [isAuthenticated, updateFcmToken]); // On a retire 'user' pour eviter de relancer le hook a chaque modif du profil
+  }, []);
 
-  // 2. MOTEUR DE ROUTAGE DIFFERE (S'execute uniquement quand Redux et le routeur sont prets)
   useEffect(() => {
     if (isAuthenticated && user?.role && pendingRouting) {
-      
       const timer = setTimeout(() => {
-        const { type, rideId } = pendingRouting;
+        const { type, rideId, latestVersion, mandatoryUpdate, updateUrl, isOta, reason } = pendingRouting;
         const currentRole = user.role;
+        const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
 
         switch (type) {
+          case 'SYSTEM_UPDATE':
+            dispatch(setAppUpdate({
+              isAvailable: isVersionOutdated(currentAppVersion, latestVersion),
+              latestVersion: latestVersion,
+              mandatoryUpdate: mandatoryUpdate === 'true',
+              updateUrl: updateUrl,
+              isOta: isOta === 'true'
+            }));
+            break;
+            
+          case 'SUBSCRIPTION_REJECTED':
+            dispatch(updateSubscriptionStatus({ isPending: false, isRejected: true, rejectionReason: reason || null }));
+            break;
+          case 'SUBSCRIPTION_APPROVED':
+            dispatch(updateSubscriptionStatus({ isPending: false, isRejected: false, isActive: true }));
+            break;
+            
           case 'NEW_REPORT':
             navigate('AdminReports');
             break;
@@ -114,8 +147,6 @@ const usePushNotifications = () => {
           case 'NEW_PAYMENT_PROOF':
             navigate('ValidationCenter');
             break;
-          case 'SUBSCRIPTION_APPROVED':
-          case 'SUBSCRIPTION_REJECTED':
           case 'PROMO_UPDATE':
             navigate('Subscription');
             break;
@@ -130,9 +161,8 @@ const usePushNotifications = () => {
           case 'DRIVER_ARRIVED':
           case 'RIDE_STARTED':
           case 'RIDE_COMPLETED':
-            // REDIRECTION CORRIGEE : Transmission du parametre rideId
             if (currentRole === 'driver') {
-              navigate('DriverHome', { rideId });
+              navigate('DriverHome', { rideId }); 
             } else if (currentRole === 'rider') {
               navigate('RiderHome', { rideId });
             }
@@ -142,14 +172,12 @@ const usePushNotifications = () => {
             break;
         }
 
-        // On vide l'etat tampon
-        setPendingRouting(null);
+        setPendingRouting(null); 
       }, 500);
 
       return () => clearTimeout(timer);
     }
-  }, [isAuthenticated, user?.role, pendingRouting]);
-
+  }, [isAuthenticated, user?.role, pendingRouting, dispatch]);
 };
 
 export default usePushNotifications;
