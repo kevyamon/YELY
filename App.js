@@ -32,10 +32,11 @@ import AppToast from './src/components/ui/AppToast';
 import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
+import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
 import { apiSlice } from './src/store/slices/apiSlice';
-import { forceSilentRefresh, updatePromoMode } from './src/store/slices/authSlice';
+import { forceSilentRefresh, selectCurrentUser, updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -43,8 +44,6 @@ import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
-// FONCTION UTILITAIRE : Comparaison stricte de versions (SemVer)
-// Retourne TRUE si "latest" est strictement superieur a "current"
 const isVersionOutdated = (current, latest) => {
   if (!current || !latest) return false;
   const currentParts = current.split('.').map(Number);
@@ -53,10 +52,10 @@ const isVersionOutdated = (current, latest) => {
   for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
     const c = currentParts[i] || 0;
     const l = latestParts[i] || 0;
-    if (l > c) return true; // Le serveur a une version plus recente
-    if (c > l) return false; // L'app est plus recente que le serveur (ex: test en dev)
+    if (l > c) return true; 
+    if (c > l) return false; 
   }
-  return false; // Versions identiques
+  return false; 
 };
 
 const GlobalErrorFallback = ({ error, resetError }) => (
@@ -76,8 +75,10 @@ const AppContent = () => {
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);
+  const user = useSelector(selectCurrentUser);
   
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
+  const isSuperAdmin = user?.role === 'superadmin';
 
   const socket = useSocket();
   const appState = useRef(AppState.currentState);
@@ -94,9 +95,8 @@ const AppContent = () => {
       if (response.ok) {
         const data = await response.json();
         
-        // CORRECTION : On utilise isVersionOutdated au lieu de !==
         dispatch(setAppUpdate({
-          isAvailable: isVersionOutdated(currentAppVersion, data.latestVersion),
+          isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
           latestVersion: data.latestVersion || currentAppVersion,
           mandatoryUpdate: data.mandatoryUpdate,
           updateUrl: data.updateUrl || 'https://download-yely.onrender.com',
@@ -113,7 +113,7 @@ const AppContent = () => {
     } catch (error) {
       console.warn("[APP_INIT] Verification de la configuration echouee:", error);
     }
-  }, [dispatch, currentAppVersion]);
+  }, [dispatch, currentAppVersion, isSuperAdmin]);
 
   useEffect(() => {
     checkSystemStatus();
@@ -154,7 +154,7 @@ const AppContent = () => {
     if (socket) {
       socket.on('APP_VERSION_UPDATED', (data) => {
         dispatch(setAppUpdate({
-          isAvailable: isVersionOutdated(currentAppVersion, data.latestVersion),
+          isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
           latestVersion: data.latestVersion,
           mandatoryUpdate: data.mandatoryUpdate,
           updateUrl: data.updateUrl,
@@ -165,7 +165,7 @@ const AppContent = () => {
     return () => {
       if (socket) socket.off('APP_VERSION_UPDATED');
     };
-  }, [socket, currentAppVersion, dispatch]);
+  }, [socket, currentAppVersion, dispatch, isSuperAdmin]);
 
   return (
     <>
@@ -187,6 +187,7 @@ const AppContent = () => {
         />
         
         <GlobalSkeleton visible={loading.visible} fullScreen={true} />
+        <SessionRecoveryOverlay />
         
         <ForceUpdateModal 
           visible={appUpdate.isAvailable}

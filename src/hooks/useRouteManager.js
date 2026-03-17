@@ -9,7 +9,6 @@ const ROUTE_DRAW_DURATION_MS = 1500;
 const ROUTE_DRAW_INTERVAL_MS = 16;
 const TRIM_THRESHOLD_METERS = 2;
 const DEVIATION_THRESHOLD_METERS = 60;
-// Augmentation du délai de réessai pour être moins sensible aux intempéries réseau
 const SILENT_RETRY_DELAY_MS = 10000; 
 
 const computeStepSize = (totalPoints) => {
@@ -116,11 +115,10 @@ const useRouteManager = (location, driverLocation, markers) => {
         if (lastRouteDestKeyRef.current !== destKey) return;
 
         if (!routePoints) {
-           // Si échec réseau, on garde l'ancien tracé s'il existe et on retente plus tard
            clearTimeout(retryTimeoutRef.current);
            retryTimeoutRef.current = setTimeout(() => {
               if (lastRouteDestKeyRef.current === destKey) {
-                 lastRouteFetchTimeRef.current = 0; // Force un nouveau fetch au prochain cycle
+                 lastRouteFetchTimeRef.current = 0; 
               }
            }, SILENT_RETRY_DELAY_MS);
            return;
@@ -132,7 +130,6 @@ const useRouteManager = (location, driverLocation, markers) => {
         lastPassedIndexRef.current = 0;
         animateRouteDraw(routePoints);
       } catch (error) {
-         // En cas d'erreur (ex: perte connexion), on ne supprime pas le tracé existant.
          clearTimeout(retryTimeoutRef.current);
          retryTimeoutRef.current = setTimeout(() => {
             if (lastRouteDestKeyRef.current === destKey) {
@@ -220,7 +217,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
     if (!activeTarget || !location) {
-      // Nettoyage uniquement si on n'a plus de cible ou plus de position du tout
       stopDrawAnimation();
       setVisibleRoutePoints([]);
       setFullRoutePoints([]);
@@ -232,8 +228,17 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
-    const routeOriginLat = hasDriverPosition ? driverLocation.latitude : location.latitude;
-    const routeOriginLng = hasDriverPosition ? driverLocation.longitude : location.longitude;
+    
+    // CORRECTION : Si une origine manuelle existe et qu'aucun chauffeur n'est assigné, elle force l'origine du tracé.
+    const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
+
+    const routeOriginLat = isManualOriginActive 
+      ? pickupOriginMarker.latitude 
+      : (hasDriverPosition ? driverLocation.latitude : location.latitude);
+      
+    const routeOriginLng = isManualOriginActive 
+      ? pickupOriginMarker.longitude 
+      : (hasDriverPosition ? driverLocation.longitude : location.longitude);
 
     const distToTarget = haversineMeters(
       routeOriginLat,
@@ -281,7 +286,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
-      // On attend 20 secondes (au lieu de 15) avant de forcer un recalcul dû à une déviation
       if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 20000)) {
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
@@ -302,7 +306,8 @@ const useRouteManager = (location, driverLocation, markers) => {
         )
       : TRIM_THRESHOLD_METERS + 1;
 
-    if (movedDist >= TRIM_THRESHOLD_METERS) {
+    // CORRECTION : On bloque le rognage (trim) si le point de départ est une origine manuelle fixe.
+    if (movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
         trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);

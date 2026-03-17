@@ -17,7 +17,6 @@ const PaymentFailureScreen = ({ navigation }) => {
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
 
-  // Verification si le chauffeur a deja un droit d'acces valide
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
 
   const handleLogout = () => {
@@ -29,8 +28,8 @@ const PaymentFailureScreen = ({ navigation }) => {
   };
 
   const handleDashboard = () => {
-    // Purge de l'etat d'echec pour laisser AppNavigator router vers le DriverHome
     dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
+    navigation.navigate('DriverHome');
   };
 
   return (

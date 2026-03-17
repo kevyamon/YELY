@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useEffect } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -20,17 +20,22 @@ const WaitScreen = ({ navigation }) => {
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
 
-  // Verification si le chauffeur a deja un droit d'acces valide (Abonnement actif ou Mode VIP)
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
+
+  // CORRECTION : Redirection automatique et instantanee si le backend refuse la capture
+  useEffect(() => {
+    if (subStatus?.isRejected) {
+      navigation.replace('PaymentFailure');
+    }
+  }, [subStatus?.isRejected, navigation]);
 
   const handleLogout = () => {
     dispatch(logout());
   };
 
   const handleClose = () => {
-    // Si la personne a un abonnement actif, on annule l'etat d'attente bloquant 
-    // pour la renvoyer vers le DriverHome. La transaction continue d'etre traitee cote backend.
     dispatch(updateSubscriptionStatus({ isPending: false }));
+    navigation.navigate('DriverHome');
   };
 
   return (

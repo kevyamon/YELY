@@ -177,9 +177,13 @@ const AppNavigator = () => {
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  const isSubscriptionRejected = isDriver && subStatus?.isRejected;
-  const isSubscriptionPending = isDriver && subStatus?.isPending && !subStatus?.isRejected && !promoMode?.isActive;
-  const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !subStatus?.isRejected && !promoMode?.isActive;
+  // CORRECTION MAJEURE ICI : On vérifie si le chauffeur a un accès valide (abonnement actif OU promo)
+  const hasValidAccess = subStatus?.isActive || promoMode?.isActive;
+  
+  // Isolement strict SI ET SEULEMENT SI le chauffeur n'a AUCUN accès valide
+  const isSubscriptionRejected = isDriver && subStatus?.isRejected && !hasValidAccess;
+  const isSubscriptionPending = isDriver && subStatus?.isPending && !subStatus?.isRejected && !hasValidAccess;
+  const isDriverBlocked = isDriver && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected;
 
   return (
     <View style={styles.rootContainer}>
@@ -251,6 +255,9 @@ const AppNavigator = () => {
               <Stack.Screen name="Report" component={ReportScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
+              {/* AJOUT ICI : Ces écrans font désormais partie du flow normal si le chauffeur a DÉJÀ un abonnement */}
+              <Stack.Screen name="WaitSubscription" component={WaitScreen} />
+              <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
               <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
               <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             </Stack.Group>
