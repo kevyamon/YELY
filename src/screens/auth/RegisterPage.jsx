@@ -89,17 +89,33 @@ const RegisterPage = ({ navigation, route }) => {
     if (!validateForm()) return;
 
     try {
-      const cleanPhone = formData.phone.replace(/\s/g, '').replace(/^0+/, '');
-      const fullPhone = `+${callingCode}${cleanPhone}`;
+      // CORRECTION : Logique de telephone robuste (anti double-indicatif)
+      let finalPhone = formData.phone.replace(/\s/g, '').trim();
       
-      const res = await register({ ...formData, phone: fullPhone, role }).unwrap();
+      // Si le numéro ne commence pas déjà par un '+', on lui ajoute le code pays
+      if (!finalPhone.startsWith('+')) {
+        // Enleve uniquement le zero initial si l'utilisateur l'a mis
+        const cleanPhone = finalPhone.replace(/^0+/, '');
+        finalPhone = `+${callingCode}${cleanPhone}`;
+      }
+      
+      const res = await register({ ...formData, phone: finalPhone, role }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
 
     } catch (err) {
-      const errorMessage = err?.data?.message || "Une erreur est survenue lors de l'inscription.";
+      // CORRECTION : Extracteur de messages d'erreur Zod
+      let errorMessage = "Une erreur est survenue lors de l'inscription.";
+      
+      if (err?.data?.errors && Array.isArray(err.data.errors) && err.data.errors.length > 0) {
+        // Zod renvoie un tableau d'erreurs, on prend le premier message clair pour l'utilisateur
+        errorMessage = err.data.errors[0].message;
+      } else if (err?.data?.message) {
+        errorMessage = err.data.message;
+      }
+
       dispatch(showErrorToast({ title: "Inscription impossible", message: errorMessage }));
     }
   };
@@ -149,7 +165,6 @@ const RegisterPage = ({ navigation, route }) => {
               </TouchableOpacity>
             </View>
 
-            {/* Isoler les champs superieurs pour gerer le plan de rendu */}
             <View style={styles.upperFields}>
               <GlassInput
                 icon="person-outline"
@@ -177,7 +192,6 @@ const RegisterPage = ({ navigation, route }) => {
               />
             </View>
 
-            {/* Le wrapper du mot de passe prend le pas sur TOUT le reste de l'ecran */}
             <View style={styles.passwordWrapper}>
               <PasswordStrengthInput 
                 password={formData.password}
@@ -186,7 +200,6 @@ const RegisterPage = ({ navigation, route }) => {
               />
             </View>
 
-            {/* La section inferieure passe au second plan pour laisser la modale s'afficher par-dessus */}
             <View style={styles.lowerSection}>
               <View style={styles.legalContainer}>
                 <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
@@ -256,13 +269,7 @@ const styles = StyleSheet.create({
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: THEME.COLORS.textInverse },
   upperFields: { zIndex: 1 },
-  passwordWrapper: { 
-    minHeight: 110, 
-    justifyContent: 'flex-start',
-    zIndex: 999, 
-    elevation: 10, 
-    position: 'relative' 
-  },
+  passwordWrapper: { minHeight: 110, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
   lowerSection: { zIndex: 1, elevation: 1 },
   legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
   checkbox: { marginRight: THEME.SPACING.sm },
