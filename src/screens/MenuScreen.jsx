@@ -1,9 +1,9 @@
 // src/screens/MenuScreen.jsx
-// PAGE MENU PRINCIPALE - Rafraichissement de Session au Montage
+// PAGE MENU PRINCIPALE - Navigation propre sans surcharge de token
 // STANDARD: Industriel / Bank Grade
 
 import { useNavigation } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { ScrollView, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -14,7 +14,7 @@ import DrawerHeader from '../components/drawer/DrawerHeader';
 import DrawerMenu from '../components/drawer/DrawerMenu';
 
 // Logique Metier
-import { forceSilentRefresh, logout, selectCurrentUser } from '../store/slices/authSlice';
+import { logout, selectCurrentUser } from '../store/slices/authSlice';
 import THEME from '../theme/theme';
 
 const MenuScreen = () => {
@@ -26,11 +26,6 @@ const MenuScreen = () => {
   const role = user?.role || 'rider'; 
 
   const [isLoggingOut, setIsLoggingOut] = useState(false);
-
-  // MISE A JOUR SILENCIEUSE : On rafraichit le profil a chaque ouverture de menu
-  useEffect(() => {
-    dispatch(forceSilentRefresh());
-  }, [dispatch]);
 
   const handleClose = () => {
     if (navigation.canGoBack()) {
@@ -100,7 +95,7 @@ const styles = StyleSheet.create({
     paddingVertical: THEME.SPACING.md,
   },
   footerSection: {
-    borderTopWidth: 0, // Suppression de la ligne de séparation
+    borderTopWidth: 0,
     borderTopColor: THEME.COLORS.border,
   },
 });
