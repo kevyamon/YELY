@@ -1,6 +1,4 @@
-// src/components/admin/PoiFormModal.jsx [MODIFIÉ]
-// FORMULAIRE DE LIEUX - Ajout, Édition et Sélection de Couleur
-// CSCSM Level: Bank Grade
+// src/components/admin/PoiFormModal.jsx
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -14,28 +12,39 @@ import GlassInput from '../ui/GlassInput';
 import GoldButton from '../ui/GoldButton';
 import IconPickerModal from './IconPickerModal';
 
-// Palette de couleurs prédéfinies
+// Palette de couleurs etendue pour un maximum de choix
 const COLOR_PALETTE = [
-  THEME.COLORS.champagneGold,
-  '#3498db', // Bleu
-  '#e74c3c', // Rouge
-  '#2ecc71', // Vert
+  THEME.COLORS.champagneGold, // Or Yely
+  '#3498db', // Bleu clair
+  '#2980b9', // Bleu fonce
+  '#e74c3c', // Rouge vif
+  '#c0392b', // Rouge fonce
+  '#2ecc71', // Vert clair
+  '#27ae60', // Vert fonce
   '#9b59b6', // Violet
+  '#8e44ad', // Violet sombre
   '#f1c40f', // Jaune
+  '#f39c12', // Jaune moutarde
   '#e67e22', // Orange
+  '#d35400', // Orange fonce
   '#1abc9c', // Turquoise
-  '#ff9ff3', // Rose
+  '#16a085', // Turquoise fonce
+  '#ff9ff3', // Rose pastel
+  '#fd79a8', // Rose vif
   '#bdc3c7', // Argent
+  '#7f8c8d', // Gris fonce
+  '#34495e', // Bleu nuit
 ];
 
 const suggestColor = (iconName) => {
   const iconKey = iconName.toLowerCase();
   if (iconKey.includes('bus') || iconKey.includes('car') || iconKey.includes('airplane') || iconKey.includes('train') || iconKey.includes('boat')) return '#3498db';
-  if (iconKey.includes('restaurant') || iconKey.includes('cafe') || iconKey.includes('pizza') || iconKey.includes('nutrition')) return '#e67e22';
-  if (iconKey.includes('medical') || iconKey.includes('hospital') || iconKey.includes('medkit') || iconKey.includes('pulse')) return '#e74c3c';
-  if (iconKey.includes('cart') || iconKey.includes('basket') || iconKey.includes('shop') || iconKey.includes('bag')) return '#9b59b6';
+  if (iconKey.includes('restaurant') || iconKey.includes('cafe') || iconKey.includes('pizza') || iconKey.includes('nutrition') || iconKey.includes('beer')) return '#e67e22';
+  if (iconKey.includes('medical') || iconKey.includes('hospital') || iconKey.includes('medkit') || iconKey.includes('pulse') || iconKey.includes('add')) return '#e74c3c';
+  if (iconKey.includes('cart') || iconKey.includes('basket') || iconKey.includes('shop') || iconKey.includes('bag') || iconKey.includes('storefront')) return '#9b59b6';
   if (iconKey.includes('tree') || iconKey.includes('leaf') || iconKey.includes('park') || iconKey.includes('flower')) return '#2ecc71';
   if (iconKey.includes('school') || iconKey.includes('library') || iconKey.includes('book')) return '#f1c40f';
+  if (iconKey.includes('shield') || iconKey.includes('lock') || iconKey.includes('key')) return '#34495e';
   return THEME.COLORS.champagneGold;
 };
 
@@ -80,7 +89,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
     setFormData(prev => ({
       ...prev,
       icon: iconName,
-      iconColor: suggestColor(iconName) // Suggestion automatique qu'on peut écraser ensuite
+      iconColor: suggestColor(iconName)
     }));
   };
 
@@ -106,10 +115,10 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
 
       if (editingPoi) {
         await updatePOI({ id: editingPoi._id, ...payload }).unwrap();
-        dispatch(showToast({ message: 'Lieu mis à jour avec succès', type: 'success' }));
+        dispatch(showToast({ message: 'Lieu mis a jour avec succes', type: 'success' }));
       } else {
         await createPOI(payload).unwrap();
-        dispatch(showToast({ message: 'Nouveau lieu ajouté', type: 'success' }));
+        dispatch(showToast({ message: 'Nouveau lieu ajoute', type: 'success' }));
       }
       onClose();
     } catch (err) {
@@ -122,7 +131,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
       <View style={styles.overlay}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.title}>{editingPoi ? 'Éditer le lieu' : 'Ajouter un lieu'}</Text>
+            <Text style={styles.title}>{editingPoi ? 'Editer le lieu' : 'Ajouter un lieu'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
             </TouchableOpacity>
@@ -157,7 +166,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               </View>
             </View>
 
-            <Text style={styles.label}>Icône & Représentation</Text>
+            <Text style={styles.label}>Icone & Representation</Text>
             
             <TouchableOpacity 
               style={styles.iconSelectorBtn} 
@@ -169,12 +178,12 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               </View>
               <View style={styles.iconSelectorTexts}>
                 <Text style={styles.iconNameText}>{formData.icon}</Text>
-                <Text style={styles.iconInstructionText}>Appuyez pour changer l'icône</Text>
+                <Text style={styles.iconInstructionText}>Appuyez pour changer l'icone</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.textTertiary} />
             </TouchableOpacity>
 
-            <Text style={styles.label}>Couleur de l'icône</Text>
+            <Text style={styles.label}>Couleur de l'icone</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPaletteContainer}>
               {COLOR_PALETTE.map((color, idx) => {
                 const isSelected = formData.iconColor === color;
@@ -198,7 +207,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
             <View style={styles.spacer} />
 
             <GoldButton
-              title={editingPoi ? "Mettre à jour" : "Ajouter à la carte"}
+              title={editingPoi ? "Mettre a jour" : "Ajouter a la carte"}
               onPress={handleSubmit}
               loading={isCreating || isUpdating}
             />
