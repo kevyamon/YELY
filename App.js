@@ -22,7 +22,7 @@ import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { AppState, Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
@@ -40,7 +40,7 @@ import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
-import { updatePromoMode } from './src/store/slices/authSlice';
+import { forceSilentRefresh, updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -74,10 +74,23 @@ const AppContent = () => {
   });
 
   const socket = useSocket();
+  const appState = useRef(AppState.currentState);
   
   useSocketEvents();
   usePushNotifications();
   usePwaAutoUpdate(); 
+
+  // ECOUTEUR DE REVEIL (Anti-Trou Noir)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
+        console.info("[APP_LIFECYCLE] Retour au premier plan. Resynchronisation de la session et des sockets...");
+        dispatch(forceSilentRefresh());
+      }
+      appState.current = nextAppState;
+    });
+    return () => subscription.remove();
+  }, [dispatch]);
 
   // RECUPERATION DE LA CONFIGURATION INITIALE AU BOOT
   useEffect(() => {

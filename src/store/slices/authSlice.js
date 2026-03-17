@@ -15,6 +15,8 @@ const initialState = {
   subscriptionStatus: {
     isActive: false,
     isPending: false,
+    isRejected: false,
+    rejectionReason: null,
     expiresAt: null
   },
   promoMode: {
@@ -52,6 +54,7 @@ const authSlice = createSlice({
         
         if (user.subscription && typeof user.subscription === 'object') {
           state.subscriptionStatus = {
+            ...state.subscriptionStatus,
             isActive: user.subscription.isActive || false,
             isPending: user.subscription.isPending || false,
             expiresAt: user.subscription.expiresAt || null
@@ -82,8 +85,10 @@ const authSlice = createSlice({
 
       if (action.payload.subscription) {
         state.subscriptionStatus = {
+          ...state.subscriptionStatus,
           isActive: action.payload.subscription.isActive || false,
           isPending: action.payload.subscription.isPending || false,
+          isRejected: action.payload.subscription.isPending ? false : state.subscriptionStatus.isRejected,
           expiresAt: action.payload.subscription.expiresAt || null
         };
       }
@@ -111,7 +116,7 @@ const authSlice = createSlice({
       state.refreshToken = null;
       state.isAuthenticated = false;
       state.isRefreshing = false;
-      state.subscriptionStatus = { isActive: false, isPending: false, expiresAt: null };
+      state.subscriptionStatus = { isActive: false, isPending: false, isRejected: false, rejectionReason: null, expiresAt: null };
       
       safeStorageRemove('userInfo');
       safeStorageRemove('token');
@@ -127,6 +132,7 @@ const authSlice = createSlice({
       
       if (user && user.subscription && typeof user.subscription === 'object') {
         state.subscriptionStatus = {
+          ...state.subscriptionStatus,
           isActive: user.subscription.isActive || false,
           isPending: user.subscription.isPending || false,
           expiresAt: user.subscription.expiresAt || null
@@ -150,7 +156,6 @@ export const {
   setRefreshing 
 } = authSlice.actions;
 
-// NOUVELLE FONCTION (Modifiee pour retourner la reponse a l'AppNavigator)
 export const fetchPromoConfig = () => async (dispatch, getState) => {
   const { auth } = getState();
   if (!auth.token) return null;
@@ -170,7 +175,7 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
         isGlobalFreeAccess: result.data.isGlobalFreeAccess,
         promoMessage: result.data.promoMessage
       }));
-      return result.data; // On retourne la data pour que l'AppNavigator l'intercepte
+      return result.data; 
     }
   } catch (error) {
     console.warn("[AUTH] Impossible de synchroniser la config VIP au demarrage/login");
@@ -218,7 +223,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
           refreshToken: newRefreshToken
         }));
         
-        // On profite du refresh pour synchroniser le VIP
         dispatch(fetchPromoConfig());
       }
     } else if (response.status === 401) {

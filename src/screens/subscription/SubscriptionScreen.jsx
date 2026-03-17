@@ -162,11 +162,16 @@ const SubscriptionScreen = ({ navigation }) => {
 
     try {
       await submitProof(formData).unwrap();
-      dispatch(updateSubscriptionStatus({ isPending: true }));
+      
+      // CORRECTION SENIOR : Nettoyage strict des flags de rejet pour debloquer le navigateur
+      dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
+      
       dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
       if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
+        // En cas de lenteur reseau, on assume que l'upload continue en arriere-plan
+        dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
         dispatch(showSuccessToast({ 
           title: "Envoi en cours", 
           message: "Le fichier est lourd, traitement en arriere-plan..." 

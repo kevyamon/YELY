@@ -58,6 +58,7 @@ import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
+import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
 import WaitScreen from '../screens/subscription/WaitScreen';
 
@@ -176,8 +177,9 @@ const AppNavigator = () => {
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  const isSubscriptionPending = isDriver && subStatus?.isPending && !promoMode?.isActive;
-  const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !promoMode?.isActive;
+  const isSubscriptionRejected = isDriver && subStatus?.isRejected;
+  const isSubscriptionPending = isDriver && subStatus?.isPending && !subStatus?.isRejected && !promoMode?.isActive;
+  const isDriverBlocked = isDriver && !subStatus?.isActive && !subStatus?.isPending && !subStatus?.isRejected && !promoMode?.isActive;
 
   return (
     <View style={styles.rootContainer}>
@@ -211,6 +213,11 @@ const AppNavigator = () => {
             <Stack.Screen name="MapManagement" component={MapManagement} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+          </Stack.Group>
+        ) : isSubscriptionRejected ? (
+          <Stack.Group>
+            <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
+            <Stack.Screen name="Subscription" component={SubscriptionScreen} />
           </Stack.Group>
         ) : isSubscriptionPending ? (
           <Stack.Group>
