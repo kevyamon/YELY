@@ -23,7 +23,6 @@ const useRideSocketEvents = () => {
   const user = useSelector(selectCurrentUser);
   const lastProcessedEventRef = useRef('');
 
-  // AJOUT CRITIQUE : Inscription dans la Room Socket specifique a l'utilisateur
   useEffect(() => {
     if (isAuthenticated && user?._id) {
       socketService.joinRoom(user._id.toString());
@@ -169,6 +168,16 @@ const useRideSocketEvents = () => {
       }
     };
 
+    // CORRECTION SENIOR : Interception du verrouillage serveur pour les abonnements expires
+    const handleForceSubscriptionLock = (data) => {
+      if (isDuplicateEvent('force_sub_lock')) return;
+      dispatch(updateUserInfo({ subscriptionStatus: 'inactive' }));
+      dispatch(showErrorToast({
+        title: 'Abonnement Requis',
+        message: data?.message || 'Votre periode de grace est terminee. Veuillez activer un Pass Yely.',
+      }));
+    };
+
     socketService.on('new_ride_request', handleNewRideRequest);
     socketService.on('ride_taken_by_other', handleRideTakenByOther);
     socketService.on('ride_cancelled', handleRideCancelled);
@@ -182,6 +191,7 @@ const useRideSocketEvents = () => {
     socketService.on('ride_status_update', handleRideStatusUpdate);
     socketService.on('search_timeout', handleSearchTimeout);
     socketService.on('driver_location_update', handleDriverLocationUpdate);
+    socketService.on('FORCE_SUBSCRIPTION_LOCK', handleForceSubscriptionLock);
 
     return () => {
       socketService.off('new_ride_request', handleNewRideRequest);
@@ -197,8 +207,9 @@ const useRideSocketEvents = () => {
       socketService.off('ride_status_update', handleRideStatusUpdate);
       socketService.off('search_timeout', handleSearchTimeout);
       socketService.off('driver_location_update', handleDriverLocationUpdate);
+      socketService.off('FORCE_SUBSCRIPTION_LOCK', handleForceSubscriptionLock);
     };
   }, [isAuthenticated, dispatch]);
 };
 
-export default useRideSocketEvents; 
+export default useRideSocketEvents;

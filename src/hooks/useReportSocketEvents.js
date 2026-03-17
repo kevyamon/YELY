@@ -13,13 +13,8 @@ const useReportSocketEvents = () => {
   useEffect(() => {
     if (!isAuthenticated) return;
 
-    const handleNewAdminReport = () => {
-      dispatch(apiSlice.util.invalidateTags(['Report']));
-      dispatch(showSuccessToast({
-        title: 'Nouveau Signalement',
-        message: 'Un utilisateur a soumis un nouveau problème.'
-      }));
-    };
+    // CORRECTION SENIOR : Suppression de l'écouteur new_admin_report d'ici.
+    // L'événement a été transféré dans useAdminSocketEvents.js pour un cloisonnement parfait.
 
     const handleReportResolved = () => {
       dispatch(apiSlice.util.invalidateTags(['Report', 'Notification']));
@@ -29,11 +24,9 @@ const useReportSocketEvents = () => {
       }));
     };
 
-    socketService.on('new_admin_report', handleNewAdminReport);
     socketService.on('report_resolved', handleReportResolved);
 
     return () => {
-      socketService.off('new_admin_report', handleNewAdminReport);
       socketService.off('report_resolved', handleReportResolved);
     };
   }, [isAuthenticated, dispatch]);

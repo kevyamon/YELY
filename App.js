@@ -40,6 +40,7 @@ import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
+import { updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -77,6 +78,37 @@ const AppContent = () => {
   useSocketEvents();
   usePushNotifications();
   usePwaAutoUpdate(); 
+
+  // RECUPERATION DE LA CONFIGURATION INITIALE AU BOOT
+  useEffect(() => {
+    const fetchInitialConfig = async () => {
+      try {
+        const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
+        const response = await fetch(`${apiUrl}/health/config`);
+        
+        if (response.ok) {
+          const data = await response.json();
+          setVersionInfo({
+            latestVersion: data.latestVersion || currentAppVersion,
+            mandatoryUpdate: data.mandatoryUpdate,
+            updateUrl: data.updateUrl || 'https://download-yely.onrender.com',
+            isOta: data.isOta 
+          });
+
+          if (data.hasOwnProperty('isGlobalFreeAccess')) {
+            dispatch(updatePromoMode({
+              isGlobalFreeAccess: data.isGlobalFreeAccess,
+              promoMessage: data.promoMessage
+            }));
+          }
+        }
+      } catch (error) {
+        console.warn("[APP_INIT] Verification de la configuration initiale echouee:", error);
+      }
+    };
+
+    fetchInitialConfig();
+  }, [dispatch, currentAppVersion]);
 
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
