@@ -1,12 +1,12 @@
 // src/services/mapService.js
 // SERVICE CARTO & GEOLOCALISATION
-// Moteurs : Nominatim (Geocodage) + OSRM (Routage) + Haversine (Geofencing)
+// Moteurs : Nominatim (Geocodage) + OSRM (Routage) + Haversine (Geofencing) + Repères Locaux (POI)
+// CSCSM Level: Bank Grade
 
 import * as Location from 'expo-location';
 import { Platform } from 'react-native';
+import ENV from '../config/env';
 
-// CORRECTION SENIOR : Le navigateur Web interdit de modifier le User-Agent.
-// On ne l'ajoute que si on est sur mobile.
 const API_HEADERS = {
   'Accept': 'application/json',
   ...(Platform.OS !== 'web' && { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' })
@@ -20,6 +20,73 @@ const MAX_RETRIES = 3;
 const RETRY_BACKOFF_MS = 1000;
 
 const addressCache = new Map();
+
+// --- GESTION DU CACHE DES REPERES LOCAUX (POI) ---
+let globalPoisCache = null;
+let globalPoisCacheTimestamp = 0;
+const POI_CACHE_TTL = 3600 * 1000; 
+
+const getApiUrl = () => {
+  return (ENV && ENV.API_URL) ? ENV.API_URL : (process.env.EXPO_PUBLIC_API_URL || '');
+};
+
+const fetchActivePOIs = async () => {
+  if (globalPoisCache && Date.now() - globalPoisCacheTimestamp < POI_CACHE_TTL) {
+    return globalPoisCache;
+  }
+  try {
+    const url = `${getApiUrl()}/pois`;
+    const res = await fetch(url, { headers: API_HEADERS });
+    if (res.ok) {
+      const json = await res.json();
+      globalPoisCache = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
+      globalPoisCacheTimestamp = Date.now();
+      return globalPoisCache;
+    }
+  } catch (e) {
+    console.warn('[MapService] Impossible de synchroniser les POIs:', e.message);
+  }
+  return globalPoisCache || [];
+};
+
+const enrichWithPOI = async (address, lat, lng) => {
+  try {
+    const pois = await fetchActivePOIs();
+    if (!pois || pois.length === 0) return address;
+
+    let nearestPOI = null;
+    let minDistance = Infinity;
+
+    for (const poi of pois) {
+      if (poi.isActive === false) continue;
+      const d = MapService.calculateDistance(
+        { latitude: lat, longitude: lng },
+        { latitude: poi.latitude, longitude: poi.longitude }
+      );
+      if (d < minDistance) {
+        minDistance = d;
+        nearestPOI = poi;
+      }
+    }
+
+    if (nearestPOI && minDistance <= 1500) {
+      const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
+      let baseAddr = address;
+      
+      if (baseAddr.toLowerCase().includes('maféré') || baseAddr.toLowerCase().includes('aboisso')) {
+        baseAddr = 'Maféré';
+      } else {
+        baseAddr = baseAddr.split(',')[0].trim();
+      }
+      
+      return `${baseAddr} (A ${distStr} de : ${nearestPOI.name})`;
+    }
+  } catch(e) {
+    console.warn('[MapService] Erreur lors de l\'enrichissement:', e.message);
+  }
+  return address;
+};
+// --------------------------------------------------
 
 const roundCoord = (value) => Number(value.toFixed(ADDRESS_CACHE_PRECISION));
 const getCacheKey = (lat, lng) => `${roundCoord(lat)},${roundCoord(lng)}`;
@@ -128,29 +195,54 @@ class MapService {
     if (!query || query.length < 3) return [];
 
     try {
-      const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
-      const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
-
-      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
-
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('application/json')) throw new Error("JSON invalide.");
-
-      const data = await response.json();
-
-      if (data && Array.isArray(data) && data.length > 0) {
-        return data.map((item) => ({
-          id: item.place_id.toString(),
-          description: item.display_name,
-          mainText: item.name || item.address?.road || item.display_name.split(',')[0],
-          secondaryText: item.display_name,
-          latitude: parseFloat(item.lat),
-          longitude: parseFloat(item.lon),
-        }));
+      // 1. Recherche instantanee dans nos Lieux Locaux (POIs)
+      let localMatches = [];
+      try {
+        const pois = await fetchActivePOIs();
+        localMatches = pois
+          .filter(p => p.isActive !== false && p.name.toLowerCase().includes(query.toLowerCase()))
+          .map(p => ({
+            id: `poi-${p._id || p.name}`,
+            description: `${p.name}, Maféré`,
+            mainText: p.name,
+            secondaryText: 'Repère local',
+            latitude: parseFloat(p.latitude),
+            longitude: parseFloat(p.longitude),
+          }));
+      } catch (e) {
+        console.warn('[MapService] Erreur recherche POI local:', e.message);
       }
-      return [];
+
+      // 2. Recherche Globale via Nominatim
+      let nominatimMatches = [];
+      try {
+        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
+        const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
+
+        if (response.ok) {
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('application/json')) {
+            const data = await response.json();
+            if (data && Array.isArray(data) && data.length > 0) {
+              nominatimMatches = data.map((item) => ({
+                id: item.place_id.toString(),
+                description: item.display_name,
+                mainText: item.name || item.address?.road || item.display_name.split(',')[0],
+                secondaryText: item.display_name,
+                latitude: parseFloat(item.lat),
+                longitude: parseFloat(item.lon),
+              }));
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[MapService] Erreur recherche Nominatim:', e.message);
+      }
+
+      // On combine en priorisant nos reperes locaux
+      return [...localMatches, ...nominatimMatches];
     } catch (error) {
-      console.warn('[MapService] Erreur getPlaceSuggestions:', error.message);
+      console.warn('[MapService] Erreur globale getPlaceSuggestions:', error.message);
       return [];
     }
   }
@@ -168,9 +260,13 @@ class MapService {
     if (cached) return cached;
 
     try {
-      const address = await new Promise((resolve, reject) => {
+      let address = await new Promise((resolve, reject) => {
         debouncedFetchAddress(lat, lng, resolve, reject);
       });
+
+      // INTERCEPTION ET ENRICHISSEMENT INTELLIGENT
+      address = await enrichWithPOI(address, lat, lng);
+
       writeAddressCache(cacheKey, address);
       return address;
     } catch (error) {
