@@ -38,7 +38,7 @@ import THEME from './src/theme/theme';
 import AppToast from './src/components/ui/AppToast';
 import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
-import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide'; // IMPORT DU GUIDE IOS
+import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 import { hideToast, selectLoading, selectToast, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
@@ -68,7 +68,8 @@ const AppContent = () => {
   const [versionInfo, setVersionInfo] = useState({
     latestVersion: currentAppVersion,
     mandatoryUpdate: false,
-    updateUrl: 'https://download-yely.onrender.com'
+    updateUrl: 'https://download-yely.onrender.com',
+    isOta: false
   });
 
   const socket = useSocket();
@@ -100,7 +101,8 @@ const AppContent = () => {
         setVersionInfo({
           latestVersion: data.latestVersion,
           mandatoryUpdate: data.mandatoryUpdate,
-          updateUrl: data.updateUrl
+          updateUrl: data.updateUrl,
+          isOta: data.isOta 
         });
       });
     }
@@ -137,9 +139,9 @@ const AppContent = () => {
           latestVersion={versionInfo.latestVersion}
           mandatoryUpdate={versionInfo.mandatoryUpdate}
           updateUrl={versionInfo.updateUrl}
+          isOta={versionInfo.isOta} 
         />
 
-        {/* INTEGRATION GLOBALE DU GUIDE IOS ICI */}
         <PwaIOSInstallGuide />
       </Portal>
     </>

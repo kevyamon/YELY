@@ -1,5 +1,5 @@
 // src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Z-Index Fix)
+// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Z-Index Fix & Jauge Dynamique)
 // STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -74,10 +74,16 @@ const RegisterPage = ({ navigation, route }) => {
       dispatch(showErrorToast({ title: "Email invalide", message: ERROR_MESSAGES.email }));
       return false;
     }
+    
+    // CORRECTION : Le score doit etre de 1 (soit 3/3 criteres valides)
     if (passwordScore < 1) { 
-       dispatch(showErrorToast({ title: "Securite", message: "Le mot de passe doit respecter tous les criteres de securite." }));
+       dispatch(showErrorToast({ 
+         title: "Mot de passe trop faible", 
+         message: "Votre mot de passe doit contenir au moins 8 caracteres, un chiffre et un symbole." 
+       }));
        return false;
     }
+    
     if (!hasAcceptedLegal) {
       dispatch(showErrorToast({ title: "Action requise", message: "Veuillez accepter les conditions d'utilisation et la politique de confidentialite." }));
       return false;
@@ -89,12 +95,9 @@ const RegisterPage = ({ navigation, route }) => {
     if (!validateForm()) return;
 
     try {
-      // CORRECTION : Logique de telephone robuste (anti double-indicatif)
       let finalPhone = formData.phone.replace(/\s/g, '').trim();
       
-      // Si le numéro ne commence pas déjà par un '+', on lui ajoute le code pays
       if (!finalPhone.startsWith('+')) {
-        // Enleve uniquement le zero initial si l'utilisateur l'a mis
         const cleanPhone = finalPhone.replace(/^0+/, '');
         finalPhone = `+${callingCode}${cleanPhone}`;
       }
@@ -106,11 +109,9 @@ const RegisterPage = ({ navigation, route }) => {
       dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
 
     } catch (err) {
-      // CORRECTION : Extracteur de messages d'erreur Zod
       let errorMessage = "Une erreur est survenue lors de l'inscription.";
       
       if (err?.data?.errors && Array.isArray(err.data.errors) && err.data.errors.length > 0) {
-        // Zod renvoie un tableau d'erreurs, on prend le premier message clair pour l'utilisateur
         errorMessage = err.data.errors[0].message;
       } else if (err?.data?.message) {
         errorMessage = err.data.message;
@@ -192,6 +193,7 @@ const RegisterPage = ({ navigation, route }) => {
               />
             </View>
 
+            {/* CORRECTION : L'espace alloue est agrandi (minHeight) pour laisser la place au nouveau bouton et a la jauge de 3 criteres */}
             <View style={styles.passwordWrapper}>
               <PasswordStrengthInput 
                 password={formData.password}
@@ -269,7 +271,8 @@ const styles = StyleSheet.create({
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: THEME.COLORS.textInverse },
   upperFields: { zIndex: 1 },
-  passwordWrapper: { minHeight: 110, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
+  // CORRECTION : Le minHeight passe de 110 a 160 pour eviter que la jauge et le bouton ne chevauchent le reste
+  passwordWrapper: { minHeight: 160, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
   lowerSection: { zIndex: 1, elevation: 1 },
   legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
   checkbox: { marginRight: THEME.SPACING.sm },
