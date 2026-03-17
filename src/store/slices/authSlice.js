@@ -10,6 +10,7 @@ const initialState = {
   user: null,
   token: null,
   refreshToken: null,
+  tokenAcquiredAt: null, 
   isAuthenticated: false,
   isRefreshing: false, 
   subscriptionStatus: {
@@ -62,7 +63,11 @@ const authSlice = createSlice({
         }
       }
 
-      if (finalToken) state.token = finalToken;
+      if (finalToken) {
+        state.token = finalToken;
+        state.tokenAcquiredAt = Date.now(); 
+      }
+      
       if (refreshToken) state.refreshToken = refreshToken;
       
       state.isAuthenticated = !!state.token;
@@ -114,6 +119,7 @@ const authSlice = createSlice({
       state.user = null;
       state.token = null;
       state.refreshToken = null;
+      state.tokenAcquiredAt = null; 
       state.isAuthenticated = false;
       state.isRefreshing = false;
       state.subscriptionStatus = { isActive: false, isPending: false, isRejected: false, rejectionReason: null, expiresAt: null };
@@ -128,6 +134,7 @@ const authSlice = createSlice({
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
+      state.tokenAcquiredAt = 0; 
       state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
@@ -195,8 +202,17 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     return;
   }
 
+  // CORRECTION : Limite portée à 14 minutes (840 000 ms)
+  if (auth.token && auth.tokenAcquiredAt) {
+    const ageInMs = Date.now() - auth.tokenAcquiredAt;
+    if (ageInMs < 14 * 60 * 1000) { 
+      console.info(`[AUTH] Token recent (${Math.round(ageInMs / 60000)}m). Overlay et API ignores.`);
+      return;
+    }
+  }
+
   try {
-    dispatch(setRefreshing(true));
+    dispatch(setRefreshing(true)); 
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
     
     const response = await fetch(`${API_URL}/auth/refresh`, {
@@ -232,7 +248,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   } catch (error) {
     console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
   } finally {
-    dispatch(setRefreshing(false));
+    dispatch(setRefreshing(false)); 
   }
 };
 

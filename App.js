@@ -41,8 +41,9 @@ import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, s
 
 import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
-import useSocket from './src/hooks/useSocket';
 import useSocketEvents from './src/hooks/useSocketEvents';
+// CORRECTION : Import direct du singleton au lieu du hook pour garantir l'écoute
+import socketService from './src/services/socketService';
 
 const isVersionOutdated = (current, latest) => {
   if (!current || !latest) return false;
@@ -80,7 +81,6 @@ const AppContent = () => {
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const isSuperAdmin = user?.role === 'superadmin';
 
-  const socket = useSocket();
   const appState = useRef(AppState.currentState);
   
   useSocketEvents();
@@ -93,7 +93,9 @@ const AppContent = () => {
       const response = await fetch(`${apiUrl}/health/config`);
       
       if (response.ok) {
-        const data = await response.json();
+        const payload = await response.json();
+        // CORRECTION MAJEURE ICI : Extraction sécurisée de .data
+        const data = payload.data || payload; 
         
         dispatch(setAppUpdate({
           isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
@@ -150,22 +152,24 @@ const AppContent = () => {
     return () => unsubscribe();
   }, [dispatch, toast]);
 
+  // CORRECTION : Écouteur Socket direct sur le service global (garanti de toujours fonctionner)
   useEffect(() => {
-    if (socket) {
-      socket.on('APP_VERSION_UPDATED', (data) => {
-        dispatch(setAppUpdate({
-          isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
-          latestVersion: data.latestVersion,
-          mandatoryUpdate: data.mandatoryUpdate,
-          updateUrl: data.updateUrl,
-          isOta: data.isOta 
-        }));
-      });
-    }
-    return () => {
-      if (socket) socket.off('APP_VERSION_UPDATED');
+    const handleAppVersionUpdate = (data) => {
+      dispatch(setAppUpdate({
+        isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
+        latestVersion: data.latestVersion,
+        mandatoryUpdate: data.mandatoryUpdate,
+        updateUrl: data.updateUrl,
+        isOta: data.isOta 
+      }));
     };
-  }, [socket, currentAppVersion, dispatch, isSuperAdmin]);
+
+    socketService.on('APP_VERSION_UPDATED', handleAppVersionUpdate);
+    
+    return () => {
+      socketService.off('APP_VERSION_UPDATED', handleAppVersionUpdate);
+    };
+  }, [currentAppVersion, dispatch, isSuperAdmin]);
 
   return (
     <>
