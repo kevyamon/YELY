@@ -8,27 +8,20 @@ import { FlatList, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View 
 import THEME from '../../theme/theme';
 import GlassModal from '../ui/GlassModal';
 
-// LE TRICK SENIOR++ : On aspire TOUT le dictionnaire interne de la librairie au démarrage.
-// Aucune icône n'est tapée à la main. On a instantanément accès aux ~1300 icônes Ionicons.
-// Si glyphMap n'est pas dispo, on fallback sur un tableau vide, mais dans Expo c'est garanti.
 const ALL_ICONS = Ionicons.glyphMap ? Object.keys(Ionicons.glyphMap) : [];
 
 const IconPickerModal = ({ visible, onClose, onSelectIcon }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Moteur de recherche hyper-optimisé en mémoire
   const filteredIcons = useMemo(() => {
-    // Si la recherche est vide, on n'affiche que 60 icônes pour éviter de faire ramer le téléphone
     if (!searchQuery) return ALL_ICONS.slice(0, 60); 
-    
-    // Sinon, on filtre en direct sur les 1300+ icônes
     return ALL_ICONS.filter(name => 
       name.toLowerCase().includes(searchQuery.toLowerCase())
     ).slice(0, 100);
   }, [searchQuery]);
 
   const openExpoDirectory = () => {
-    // Si l'admin veut voir tout le catalogue visuellement sur grand écran
+    // Le lien force le filtre sur la famille Ionicons pour éviter les erreurs
     Linking.openURL('https://icons.expo.fyi/Index?iconFamily=Ionicons');
   };
 
@@ -49,7 +42,7 @@ const IconPickerModal = ({ visible, onClose, onSelectIcon }) => {
         <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} style={styles.searchIcon} />
         <TextInput
           style={styles.searchInput}
-          placeholder="Rechercher (ex: car, hospital, food...)"
+          placeholder="Chercher (ex: car, medkit, cafe...)"
           placeholderTextColor={THEME.COLORS.textSecondary}
           value={searchQuery}
           onChangeText={setSearchQuery}
@@ -58,8 +51,8 @@ const IconPickerModal = ({ visible, onClose, onSelectIcon }) => {
       </View>
 
       <TouchableOpacity style={styles.webLinkButton} onPress={openExpoDirectory}>
-        <Ionicons name="globe-outline" size={18} color={THEME.COLORS.textPrimary} />
-        <Text style={styles.webLinkText}>Explorer le catalogue complet (Web)</Text>
+        <Ionicons name="information-circle-outline" size={18} color={THEME.COLORS.textPrimary} />
+        <Text style={styles.webLinkText}>Voir dico web (Copiez le nom et tapez-le ici)</Text>
       </TouchableOpacity>
 
       <FlatList
@@ -74,6 +67,12 @@ const IconPickerModal = ({ visible, onClose, onSelectIcon }) => {
           <Text style={styles.emptyText}>Aucune icône trouvée pour "{searchQuery}"</Text>
         }
       />
+
+      {/* AJOUT : Bouton de fermeture explicite (Indispensable pour la PWA) */}
+      <TouchableOpacity style={styles.closeButton} onPress={onClose}>
+        <Text style={styles.closeButtonText}>Fermer</Text>
+      </TouchableOpacity>
+
     </GlassModal>
   );
 };
@@ -85,7 +84,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.3)',
     borderRadius: 12,
     paddingHorizontal: 15,
-    marginBottom: 15,
+    marginBottom: 10,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.1)',
   },
@@ -108,10 +107,10 @@ const styles = StyleSheet.create({
   },
   webLinkText: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
   },
-  listContainer: { paddingBottom: 20 },
+  listContainer: { paddingBottom: 10 },
   iconItem: {
     flex: 1,
     alignItems: 'center',
@@ -135,6 +134,20 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: 20,
     fontStyle: 'italic',
+  },
+  closeButton: {
+    backgroundColor: 'rgba(231, 76, 60, 0.2)',
+    borderWidth: 1,
+    borderColor: THEME.COLORS.error,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  closeButtonText: {
+    color: THEME.COLORS.error,
+    fontWeight: 'bold',
+    fontSize: 16,
   }
 });
 
