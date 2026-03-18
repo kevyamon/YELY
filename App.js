@@ -36,7 +36,8 @@ import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
 import { apiSlice } from './src/store/slices/apiSlice';
-import { forceSilentRefresh, selectCurrentUser, selectToken, updatePromoMode } from './src/store/slices/authSlice';
+// AJOUT de selectIsAuthenticated
+import { forceSilentRefresh, selectCurrentUser, selectIsAuthenticated, selectToken, updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -77,6 +78,7 @@ const AppContent = () => {
   const appUpdate = useSelector(selectAppUpdate);
   const user = useSelector(selectCurrentUser);
   const token = useSelector(selectToken);
+  const isAuthenticated = useSelector(selectIsAuthenticated); // AJOUT
   
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const isSuperAdmin = user?.role === 'superadmin';
@@ -87,7 +89,6 @@ const AppContent = () => {
   usePushNotifications();
   usePwaAutoUpdate(); 
 
-  // 1. Definition de la fonction de verification (Doit etre declaree avant les useEffects)
   const checkSystemStatus = useCallback(async () => {
     try {
       const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
@@ -117,27 +118,31 @@ const AppContent = () => {
     }
   }, [dispatch, currentAppVersion, isSuperAdmin]);
 
-  // 2. Initialisation au lancement
   useEffect(() => {
     checkSystemStatus();
   }, [checkSystemStatus]);
 
-  // 3. CORRECTION : Catch-Up au moment de la Connexion (Token obtenu)
+  // CORRECTION MAJEURE : On utilise isAuthenticated au lieu de token en dépendance
+  // pour éviter que le socket se déconnecte/reconnecte brutalement toutes les 15 minutes.
   useEffect(() => {
-    if (token) {
+    if (isAuthenticated && token) {
       socketService.connect(token);
-      checkSystemStatus(); // <-- RATTRAPAGE : Recupere les events admin rates pendant qu'il etait deconnecte
-    } else {
+      checkSystemStatus(); 
+    } else if (!isAuthenticated) {
       socketService.disconnect();
     }
-  }, [token, checkSystemStatus]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, checkSystemStatus]); // Retrait volontaire de "token" de la liste
 
-  // 4. Verification au retour du background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         dispatch(forceSilentRefresh()).then(() => {
-          dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
+          // CORRECTION MAJEURE : On ne recharge les données que si la session a survécu au Refresh
+          const currentToken = store.getState().auth.token;
+          if (currentToken) {
+            dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
+          }
         });
         checkSystemStatus(); 
       }
@@ -146,7 +151,6 @@ const AppContent = () => {
     return () => subscription.remove();
   }, [dispatch, checkSystemStatus]);
 
-  // 5. CORRECTION : Catch-Up au retour de la connexion Internet (Sortie de tunnel)
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
@@ -159,13 +163,12 @@ const AppContent = () => {
           title: "Connexion retablie", 
           message: "Vous etes de nouveau en ligne." 
         }));
-        checkSystemStatus(); // <-- RATTRAPAGE : Recupere les events admin rates pendant la coupure 4G
+        checkSystemStatus(); 
       }
     });
     return () => unsubscribe();
   }, [dispatch, toast, checkSystemStatus]);
 
-  // 6. Ecoute des mises a jour d'application via Socket
   useEffect(() => {
     const handleAppVersionUpdate = (data) => {
       dispatch(setAppUpdate({

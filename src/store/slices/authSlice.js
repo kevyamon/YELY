@@ -52,7 +52,6 @@ const authSlice = createSlice({
 
       if (user) {
         state.user = user;
-        
         if (user.subscription && typeof user.subscription === 'object') {
           state.subscriptionStatus = {
             ...state.subscriptionStatus,
@@ -79,13 +78,10 @@ const authSlice = createSlice({
     
     updateUserInfo: (state, action) => {
       if (!state.user) return;
-      
       state.user = { 
         ...state.user, 
         ...action.payload,
-        subscription: action.payload.subscription !== undefined 
-          ? action.payload.subscription 
-          : state.user.subscription
+        subscription: action.payload.subscription !== undefined ? action.payload.subscription : state.user.subscription
       };
 
       if (action.payload.subscription) {
@@ -97,7 +93,6 @@ const authSlice = createSlice({
           expiresAt: action.payload.subscription.expiresAt || null
         };
       }
-
       safeStorageSet('userInfo', JSON.stringify(state.user));
     },
 
@@ -134,7 +129,9 @@ const authSlice = createSlice({
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
-      state.tokenAcquiredAt = Date.now(); 
+      
+      // FIX VITAL : On force l'âge à 0 pour garantir un refresh silencieux net au premier réveil.
+      state.tokenAcquiredAt = 0; 
       state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
@@ -170,10 +167,7 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
   try {
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
     const response = await fetch(`${API_URL}/subscription/config`, {
-      headers: {
-        'Authorization': `Bearer ${auth.token}`,
-        'Accept': 'application/json'
-      }
+      headers: { 'Authorization': `Bearer ${auth.token}`, 'Accept': 'application/json' }
     });
 
     const result = await response.json();
@@ -211,17 +205,22 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   }
 
   try {
+    dispatch(setRefreshing(true)); 
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
     
+    // PROTECTION ANTI-DEADLOCK RÉSEAU : Timeout de 15s
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000);
+
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'Accept': 'application/json' 
-      },
-      body: JSON.stringify({ refreshToken: currentRefreshToken })
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body: JSON.stringify({ refreshToken: currentRefreshToken }),
+      credentials: 'omit',
+      signal: controller.signal
     });
 
+    clearTimeout(timeoutId);
     const result = await response.json().catch(() => null);
 
     if (response.ok && result?.success) {
@@ -239,12 +238,14 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
         
         dispatch(fetchPromoConfig());
       }
-    } else if (response.status === 401) {
+    } else if (response.status === 401 || response.status === 403) {
       socketService.disconnect();
       dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
     }
   } catch (error) {
     console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
+  } finally {
+    dispatch(setRefreshing(false)); 
   }
 };
 
