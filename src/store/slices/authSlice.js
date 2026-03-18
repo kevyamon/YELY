@@ -134,7 +134,6 @@ const authSlice = createSlice({
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
-      // CORRECTION: Initialisation à Date.now() pour armer la minuterie de 14 minutes correctement
       state.tokenAcquiredAt = Date.now(); 
       state.isAuthenticated = !!token;
       
@@ -203,7 +202,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     return;
   }
 
-  // La logique fonctionne maintenant car tokenAcquiredAt est correctement initialisé
   if (auth.token && auth.tokenAcquiredAt) {
     const ageInMs = Date.now() - auth.tokenAcquiredAt;
     if (ageInMs < 14 * 60 * 1000) { 
@@ -213,8 +211,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   }
 
   try {
-    // ICI: C'est le seul endroit légitime pour déclencher l'overlay de "longue veille"
-    dispatch(setRefreshing(true)); 
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
     
     const response = await fetch(`${API_URL}/auth/refresh`, {
@@ -249,8 +245,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     }
   } catch (error) {
     console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
-  } finally {
-    dispatch(setRefreshing(false)); 
   }
 };
 

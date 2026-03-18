@@ -10,7 +10,7 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
     getConfig: builder.query({
       query: () => '/subscriptions/config',
       providesTags: ['Subscription'],
-      keepUnusedDataFor: 0, 
+      // Nettoyage: retrait de keepUnusedDataFor pour laisser le cache RTK (60s) operer
     }),
 
     getSubscriptionStatus: builder.query({
@@ -25,10 +25,7 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
         body: formData,
       }),
       extraOptions: { silent: true }, 
-      // SUPPRESSION DE L'INVALIDATION BRUTALE pour éviter la tempête réseau après upload
-      // invalidatesTags: ['Subscription'], 
       
-      // AJOUT : Mise à jour optimiste du cache (Optimistic Update)
       async onQueryStarted(formData, { dispatch, queryFulfilled }) {
         const patchResult = dispatch(
           subscriptionApiSlice.util.updateQueryData('getSubscriptionStatus', undefined, (draft) => {
@@ -42,7 +39,7 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
         try {
           await queryFulfilled;
         } catch {
-          patchResult.undo(); // Annule la mise à jour si la requête échoue vraiment
+          patchResult.undo(); 
         }
       }
     }),

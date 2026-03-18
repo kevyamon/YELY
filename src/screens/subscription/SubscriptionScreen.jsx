@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -51,8 +51,8 @@ const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const promoMode = useSelector(selectPromoMode);
   
-  const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
-  const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
+  const { data: configData, isLoading: isConfigLoading, isError: isConfigError, refetch: refetchConfig } = useGetConfigQuery();
+  const { data: statusData, isLoading: isStatusLoading, isError: isStatusError, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
   const [submitProof, { isLoading: isSubmitting }] = useSubmitProofMutation();
 
   const [currentStep, setCurrentStep] = useState(null); 
@@ -92,14 +92,18 @@ const SubscriptionScreen = ({ navigation }) => {
   );
 
   useEffect(() => {
-    if (statusData?.data && !isStatusLoading) {
+    if (isStatusLoading || isConfigLoading) return;
+
+    if (statusData?.data) {
       if (statusData.data.isActive || statusData.data.isPending || promoMode?.isActive) {
         setCurrentStep(STEPS.DASHBOARD);
       } else {
         setCurrentStep(STEPS.CHOOSE_PLAN);
       }
+    } else if (isStatusError || !statusData) {
+      setCurrentStep(STEPS.CHOOSE_PLAN);
     }
-  }, [statusData, isStatusLoading, promoMode?.isActive]);
+  }, [statusData, isStatusLoading, isConfigLoading, isStatusError, promoMode?.isActive]);
 
   const handleProlong = useCallback(() => {
     setCurrentStep(STEPS.CHOOSE_PLAN);
@@ -163,14 +167,11 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       await submitProof(formData).unwrap();
       
-      // CORRECTION SENIOR : Nettoyage strict des flags de rejet pour debloquer le navigateur
       dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
-      
       dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
       setCurrentStep(STEPS.DASHBOARD); 
     } catch (error) {
       if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
-        // En cas de lenteur reseau, on assume que l'upload continue en arriere-plan
         dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
         dispatch(showSuccessToast({ 
           title: "Envoi en cours", 
