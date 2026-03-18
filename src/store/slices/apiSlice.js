@@ -1,4 +1,7 @@
 // src/store/slices/apiSlice.js
+// PASSERELLE RESEAU - Auto-Retry & Anti-Deadlock integrés
+// CSCSM Level: Bank Grade
+
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import * as Sentry from '@sentry/react-native';
 import { Mutex } from 'async-mutex';
@@ -14,7 +17,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 const baseQuery = fetchBaseQuery({
   baseUrl: API_URL,
-  timeout: 60000, 
+  timeout: 15000, 
   prepareHeaders: (headers, { getState }) => {
     const token = getState().auth.token;
     
@@ -33,19 +36,26 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   await mutex.waitForUnlock();
   
   const tokenBeforeRequest = api.getState().auth.token;
+  
+  let requestUrl = '';
+  if (typeof args === 'string') {
+    requestUrl = args;
+  } else if (args && args.url) {
+    requestUrl = args.url;
+  }
+  
   let result = await baseQuery(args, api, extraOptions);
+
+  if (result.error && (result.error.status === 'FETCH_ERROR' || result.error.status === 'TIMEOUT_ERROR')) {
+    console.warn(`[API] Micro-decrochage reseau sur ${requestUrl}. Auto-Retry silencieux dans 1.5s...`);
+    await sleep(1500);
+    result = await baseQuery(args, api, extraOptions);
+  }
 
   if (result.error) {
     const errorStatus = result.error.status;
     const originalStatus = result.error.originalStatus;
     const actualStatus = errorStatus === 'PARSING_ERROR' ? originalStatus : errorStatus;
-    
-    let requestUrl = '';
-    if (typeof args === 'string') {
-      requestUrl = args;
-    } else if (args && args.url) {
-      requestUrl = args.url;
-    }
     
     const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit');
     const isSystemRefreshing = mutex.isLocked() || api.getState().auth.isRefreshing;
@@ -62,7 +72,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         } else if (actualStatus >= 500) {
           toastMessage = "Nos serveurs rencontrent un probleme technique. Nous y travaillons.";
         } else if (errorStatus === 'TIMEOUT_ERROR') {
-          toastMessage = "La requete a pris trop de temps.";
+          toastMessage = "La requete a pris trop de temps. Veuillez reessayer.";
         }
 
         api.dispatch(showErrorToast({
@@ -79,8 +89,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             }
           });
         }
-      } else {
-        console.info(`[API] Toast d'erreur etouffe volontairement pour l'URL: ${requestUrl}`);
       }
     }
   }
@@ -121,8 +129,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return result;
         }
 
-        console.info('[API] Demarrage du rafraichissement exclusif.');
-
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           headers: {
@@ -140,7 +146,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           const newRefreshToken = payload?.refreshToken || currentRefreshToken; 
 
           if (newAccessToken) {
-            console.info('[AUTH SUCCESS] Rafraichissement reussi.');
             socketService.updateToken(newAccessToken);
             
             api.dispatch(setCredentials({ 
@@ -151,30 +156,30 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
             
             result = await baseQuery(args, api, extraOptions);
           } else {
-            console.warn('[AUTH FATAL] Access Token manquant dans la reponse.');
             socketService.disconnect();
             api.dispatch(logout({ reason: 'MALFORMED_REFRESH_PAYLOAD' }));
           }
         } else if (refreshResponse.status === 401) {
-          console.warn('[AUTH FATAL] Refresh Token rejete par le backend (401).');
           socketService.disconnect();
           api.dispatch(logout({ reason: 'REFRESH_REJECTED_401' }));
-        } else {
-          console.warn(`[API] Erreur reseau ou serveur (${refreshResponse.status}). Session conservee intacte.`);
         }
       } catch (error) {
-        console.error('[API] Echec du fetch de rafraichissement (Reseau coupe ?). Session conservee.', error);
+        console.error('[API] Echec du fetch de rafraichissement. Session conservee.', error);
       } finally {
         api.dispatch(setRefreshing(false));
         release();
       }
     } else {
-      // CORRECTION SENIOR: Si un refresh est en cours (mutex OU forceSilentRefresh), on boucle intelligemment
       if (mutex.isLocked()) {
         await mutex.waitForUnlock();
       } else if (api.getState().auth.isRefreshing) {
-        while (api.getState().auth.isRefreshing) {
+        let loopCount = 0;
+        while (api.getState().auth.isRefreshing && loopCount < 100) { 
           await sleep(100);
+          loopCount++;
+        }
+        if (loopCount >= 100) {
+          console.warn('[API] Force unlock declenche (Deadlock evite).');
         }
       }
       result = await baseQuery(args, api, extraOptions);
