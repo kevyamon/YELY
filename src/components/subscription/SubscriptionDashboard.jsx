@@ -1,23 +1,33 @@
 // src/components/subscription/SubscriptionDashboard.jsx
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useRef, useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
+import { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSelector } from 'react-redux';
-import { selectPromoMode } from '../../store/slices/authSlice';
+import { selectPromoMode, selectSubscriptionStatus } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import GlassCard from '../ui/GlassCard';
 import GoldButton from '../ui/GoldButton';
 
 const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
+  const navigation = useNavigation();
   const [timeLeft, setTimeLeft] = useState(null);
   
   const promoMode = useSelector(selectPromoMode);
+  const subStatus = useSelector(selectSubscriptionStatus); // AJOUT
 
   const onExpiredRef = useRef(onExpired);
 
   useEffect(() => {
     onExpiredRef.current = onExpired;
   }, [onExpired]);
+
+  // AJOUT : Écoute du refus pour rediriger automatiquement même depuis le Dashboard
+  useEffect(() => {
+    if (subStatus?.isRejected) {
+      navigation.navigate('PaymentFailure');
+    }
+  }, [subStatus?.isRejected, navigation]);
 
   // COMPTEUR TEMPS REEL (Seulement si actif ET non gele par le VIP)
   useEffect(() => {

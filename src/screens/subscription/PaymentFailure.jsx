@@ -3,7 +3,6 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
@@ -24,6 +23,8 @@ const PaymentFailureScreen = ({ navigation }) => {
   };
 
   const handleRetry = () => {
+    // CORRECTION : On purge le flag de rejet avant de retourner sur l'écran d'abonnement
+    dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
     navigation.navigate('Subscription');
   };
 
