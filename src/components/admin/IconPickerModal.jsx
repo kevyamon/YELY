@@ -1,211 +1,141 @@
 // src/components/admin/IconPickerModal.jsx
+// PICKER DYNAMIQUE - Zéro Hardcodage, Aspiration Native
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useMemo, useState } from 'react';
-import { FlatList, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-
+import { useMemo, useState } from 'react';
+import { FlatList, Linking, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
-import GlassInput from '../ui/GlassInput';
+import GlassModal from '../ui/GlassModal';
 
-// DICTIONNAIRE INTELLIGENT ULTRA-COMPLET
-// Base de donnees massive d'icones avec vocabulaire local et synonymes.
-const AVAILABLE_ICONS = [
-  // Transports
-  { name: 'car', tags: 'voiture auto taxi vehicule parking woro-woro yango uber vtc' },
-  { name: 'bus', tags: 'bus transport car autocar station gbaka sotra gare voyage' },
-  { name: 'airplane', tags: 'avion vol aeroport voyage ciel piste' },
-  { name: 'boat', tags: 'bateau navire port mer lac pinasse eau' },
-  { name: 'train', tags: 'train metro gare chemin fer wagon' },
-  { name: 'bicycle', tags: 'velo bicyclette cycliste sport' },
-  { name: 'walk', tags: 'marche pieton promeneur' },
+// LE TRICK SENIOR++ : On aspire TOUT le dictionnaire interne de la librairie au démarrage.
+// Aucune icône n'est tapée à la main. On a instantanément accès aux ~1300 icônes Ionicons.
+// Si glyphMap n'est pas dispo, on fallback sur un tableau vide, mais dans Expo c'est garanti.
+const ALL_ICONS = Ionicons.glyphMap ? Object.keys(Ionicons.glyphMap) : [];
 
-  // Lieux & Navigation
-  { name: 'location', tags: 'lieu position adresse gps point repere carte' },
-  { name: 'pin', tags: 'epingle marqueur repere' },
-  { name: 'map', tags: 'carte plan ville' },
-  { name: 'compass', tags: 'boussole direction nord sud est ouest' },
-  { name: 'navigate', tags: 'navigation trajet itineraire' },
+const IconPickerModal = ({ visible, onClose, onSelectIcon }) => {
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Restauration & Boissons
-  { name: 'restaurant', tags: 'restaurant manger nourriture plat resto allocodrome garba garbadrome faim' },
-  { name: 'fast-food', tags: 'fast-food hamburger burger macdo frites chawarma' },
-  { name: 'pizza', tags: 'pizza pizzeria italie four' },
-  { name: 'cafe', tags: 'cafe boire boisson bar tasse kiosque the dejeuner' },
-  { name: 'beer', tags: 'biere alcool bar maquis pub boisson cave fete' },
-  { name: 'wine', tags: 'vin cave alcool bar maquis boisson bouteille' },
-  { name: 'water', tags: 'eau goutte fontaine source soif pompe' },
-  { name: 'nutrition', tags: 'nutrition dietetique sain legume fruit' },
-  { name: 'ice-cream', tags: 'glace dessert sucre glacier' },
-
-  // Sante & Securite
-  { name: 'medkit', tags: 'sante pharmacie hopital medecin soin urgence trousse chu clinique dispensaire' },
-  { name: 'medical', tags: 'croix hopital centre medical soin' },
-  { name: 'pulse', tags: 'pouls coeur battement vie' },
-  { name: 'shield', tags: 'bouclier securite police gendarmerie commissariat garde protection' },
-  { name: 'shield-checkmark', tags: 'securise valide sur' },
-  { name: 'warning', tags: 'attention danger alerte urgence risque' },
-
-  // Commerces & Argent
-  { name: 'cart', tags: 'panier courses supermarche achat magasin marche mall hypermarche' },
-  { name: 'basket', tags: 'panier courses marche boutique epicerie' },
-  { name: 'bag', tags: 'sac boutique shopping sachet' },
-  { name: 'storefront', tags: 'boutique magasin echoppe commerce vitrine' },
-  { name: 'wallet', tags: 'portefeuille argent paiement tresor caisse' },
-  { name: 'cash', tags: 'billet argent espece banque guichet atm distributeur monnaie' },
-  { name: 'card', tags: 'carte bancaire credit visa mastercard paiement tpe' },
-  { name: 'pricetag', tags: 'prix etiquette solde promotion' },
-
-  // Education & Administration
-  { name: 'school', tags: 'ecole universite lycee education college campus faculte institut' },
-  { name: 'library', tags: 'bibliotheque livre lecture etude' },
-  { name: 'book', tags: 'livre cahier manuel' },
-  { name: 'business', tags: 'entreprise immeuble bureau societe mairie ministere prefecture institution batiment' },
-  { name: 'briefcase', tags: 'valise travail emploi affaire patron' },
-
-  // Religion & Domicile
-  { name: 'home', tags: 'maison domicile residence foyer' },
-  { name: 'add', tags: 'croix eglise temple paroisse religion plus ajout catholique chretien' },
-  { name: 'moon', tags: 'lune nuit soiree islam mosquee musulman' },
-  { name: 'bed', tags: 'lit hotel dormir repos chambre auberge motel' },
-
-  // Nature & Animaux
-  { name: 'leaf', tags: 'feuille nature ecologie arbre foret plante' },
-  { name: 'flower', tags: 'fleur parc jardin plante botanique' },
-  { name: 'paw', tags: 'patte animal chien chat veterinaire zoo bête' },
-  { name: 'sunny', tags: 'soleil meteo jour chaud plage lumiere' },
-  { name: 'partly-sunny', tags: 'nuage eclaircie meteo' },
-  { name: 'rainy', tags: 'pluie parapluie averse eau' },
-  { name: 'earth', tags: 'terre monde globe planete pays' },
-
-  // Sport & Divertissement
-  { name: 'fitness', tags: 'sport fitness musculation salle gym' },
-  { name: 'football', tags: 'football ballon sport stade match' },
-  { name: 'basketball', tags: 'basketball ballon sport' },
-  { name: 'tennisball', tags: 'tennis balle sport' },
-  { name: 'trophy', tags: 'trophee coupe victoire sport stade champion' },
-  { name: 'medal', tags: 'medaille recompense or' },
-  { name: 'game-controller', tags: 'jeu video console jouer arcade' },
-  { name: 'musical-notes', tags: 'musique note concert spectacle fete' },
-  { name: 'headset', tags: 'casque ecouteur musique son' },
-  { name: 'radio', tags: 'radio emission frequence' },
-
-  // Objets & Outils
-  { name: 'camera', tags: 'appareil photo photographie studio image' },
-  { name: 'videocam', tags: 'video camera film cinema tournage' },
-  { name: 'cut', tags: 'ciseaux coiffeur salon beaute tresse couture' },
-  { name: 'shirt', tags: 'vetement chemise boutique mode couturier tailleur friperie' },
-  { name: 'glasses', tags: 'lunettes vue opticien soleil' },
-  { name: 'watch', tags: 'montre heure temps bijoutier' },
-  { name: 'construct', tags: 'travaux chantier construction outil reparation garage' },
-  { name: 'hammer', tags: 'marteau bricolage menuisier' },
-  { name: 'key', tags: 'cle serrure securite' },
-  { name: 'lock-closed', tags: 'cadenas ferme securite' },
-
-  // Communication & Tech
-  { name: 'call', tags: 'telephone appel contact cabine numero' },
-  { name: 'mail', tags: 'courrier poste lettre message email' },
-  { name: 'chatbubbles', tags: 'discussion message sms forum' },
-  { name: 'phone-portrait', tags: 'smartphone portable mobile' },
-  { name: 'desktop', tags: 'ordinateur pc bureau cyber' },
-  { name: 'laptop', tags: 'ordinateur portable laptop tech' },
-  { name: 'wifi', tags: 'wifi internet connexion reseau' },
-
-  // Personnes & Divers
-  { name: 'people', tags: 'foule groupe assemblee reunion public' },
-  { name: 'person', tags: 'personne humain homme femme client' },
-  { name: 'body', tags: 'corps humain personne pieton' },
-  { name: 'star', tags: 'etoile favori monument tourisme' },
-  { name: 'heart', tags: 'coeur amour sante vie' },
-  { name: 'information-circle', tags: 'information info aide renseignement accueil' },
-  { name: 'help-circle', tags: 'aide question support' }
-];
-
-// L'ALGORITHME DE NETTOYAGE
-// Cette fonction enleve tous les accents d'un mot et le met en minuscule.
-// Exemple: "Eglise" devient "eglise"
-const normalizeString = (str) => {
-  return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
-};
-
-const IconPickerModal = ({ visible, onClose, onSelect }) => {
-  const [search, setSearch] = useState('');
-
+  // Moteur de recherche hyper-optimisé en mémoire
   const filteredIcons = useMemo(() => {
-    const query = normalizeString(search);
+    // Si la recherche est vide, on n'affiche que 60 icônes pour éviter de faire ramer le téléphone
+    if (!searchQuery) return ALL_ICONS.slice(0, 60); 
     
-    // Si la barre de recherche est vide, on affiche tout
-    if (!query) return AVAILABLE_ICONS;
-    
-    // Sinon, on cherche dans notre dictionnaire nettoye
-    return AVAILABLE_ICONS.filter(icon => {
-      const normalizedName = normalizeString(icon.name);
-      const normalizedTags = normalizeString(icon.tags);
-      
-      return normalizedName.includes(query) || normalizedTags.includes(query);
-    });
-  }, [search]);
+    // Sinon, on filtre en direct sur les 1300+ icônes
+    return ALL_ICONS.filter(name => 
+      name.toLowerCase().includes(searchQuery.toLowerCase())
+    ).slice(0, 100);
+  }, [searchQuery]);
 
-  const handleSelect = (iconName) => {
-    onSelect(iconName);
-    setSearch('');
-    onClose();
+  const openExpoDirectory = () => {
+    // Si l'admin veut voir tout le catalogue visuellement sur grand écran
+    Linking.openURL('https://icons.expo.fyi/Index?iconFamily=Ionicons');
   };
 
+  const renderIconItem = ({ item }) => (
+    <TouchableOpacity style={styles.iconItem} onPress={() => {
+      onSelectIcon(item);
+      onClose();
+    }}>
+      <Ionicons name={item} size={32} color={THEME.COLORS.champagneGold} />
+      <Text style={styles.iconName} numberOfLines={1} ellipsizeMode="tail">{item}</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        style={styles.overlay}
-      >
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.title}>Choisir une icone</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
-              <Ionicons name="close-circle" size={28} color={THEME.COLORS.textSecondary} />
-            </TouchableOpacity>
-          </View>
+    <GlassModal visible={visible} onClose={onClose} title="Choisir une icône">
+      
+      <View style={styles.searchContainer}>
+        <Ionicons name="search" size={20} color={THEME.COLORS.textSecondary} style={styles.searchIcon} />
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Rechercher (ex: car, hospital, food...)"
+          placeholderTextColor={THEME.COLORS.textSecondary}
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          autoCapitalize="none"
+        />
+      </View>
 
-          <View style={styles.searchWrapper}>
-            <GlassInput
-              placeholder="Ex: eglise, maquis, ecole, gbaka..."
-              value={search}
-              onChangeText={setSearch}
-              icon="search-outline"
-            />
-          </View>
+      <TouchableOpacity style={styles.webLinkButton} onPress={openExpoDirectory}>
+        <Ionicons name="globe-outline" size={18} color={THEME.COLORS.textPrimary} />
+        <Text style={styles.webLinkText}>Explorer le catalogue complet (Web)</Text>
+      </TouchableOpacity>
 
-          <FlatList
-            data={filteredIcons}
-            keyExtractor={(item) => item.name}
-            numColumns={4}
-            showsVerticalScrollIndicator={false}
-            columnWrapperStyle={styles.row}
-            keyboardShouldPersistTaps="handled"
-            renderItem={({ item }) => (
-              <TouchableOpacity style={styles.iconItem} onPress={() => handleSelect(item.name)}>
-                <Ionicons name={item.name} size={30} color={THEME.COLORS.textPrimary} />
-              </TouchableOpacity>
-            )}
-            ListEmptyComponent={
-              <Text style={styles.emptyText}>Aucune icone trouvee pour "{search}"</Text>
-            }
-          />
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+      <FlatList
+        data={filteredIcons}
+        keyExtractor={(item) => item}
+        renderItem={renderIconItem}
+        numColumns={3}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.listContainer}
+        keyboardShouldPersistTaps="handled"
+        ListEmptyComponent={
+          <Text style={styles.emptyText}>Aucune icône trouvée pour "{searchQuery}"</Text>
+        }
+      />
+    </GlassModal>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'flex-end' },
-  container: { backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, padding: 20, height: '80%' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
-  title: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
-  closeBtn: { padding: 5 },
-  searchWrapper: { marginBottom: 20 },
-  row: { justifyContent: 'space-between', marginBottom: 15 },
-  iconItem: { width: '22%', aspectRatio: 1, backgroundColor: THEME.COLORS.glassLight, borderRadius: 16, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  emptyText: { textAlign: 'center', color: THEME.COLORS.textTertiary, marginTop: 40, fontStyle: 'italic' }
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.3)',
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    marginBottom: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  searchIcon: { marginRight: 10 },
+  searchInput: {
+    flex: 1,
+    color: THEME.COLORS.textPrimary,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  webLinkButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    paddingVertical: 10,
+    borderRadius: 8,
+    marginBottom: 15,
+    gap: 8,
+  },
+  webLinkText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 13,
+    fontWeight: '600',
+  },
+  listContainer: { paddingBottom: 20 },
+  iconItem: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    margin: 5,
+    padding: 15,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.02)',
+    aspectRatio: 1,
+  },
+  iconName: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 10,
+    marginTop: 8,
+    textAlign: 'center',
+  },
+  emptyText: {
+    color: THEME.COLORS.textSecondary,
+    textAlign: 'center',
+    marginTop: 20,
+    fontStyle: 'italic',
+  }
 });
 
 export default IconPickerModal;
