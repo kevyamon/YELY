@@ -7,6 +7,7 @@ import { useDispatch } from 'react-redux';
 import socketService from '../services/socketService';
 import { apiSlice } from '../store/slices/apiSlice';
 import { logout, updatePromoMode, updateSubscriptionStatus } from '../store/slices/authSlice';
+import { showSuccessToast } from '../store/slices/uiSlice'; // AJOUT : Import du Toast
 import useAdminSocketEvents from './useAdminSocketEvents';
 import usePoiSocketEvents from './usePoiSocketEvents';
 import useReportSocketEvents from './useReportSocketEvents';
@@ -29,15 +30,21 @@ const useSocketEvents = () => {
     const handleSubscriptionRejected = (data) => {
       console.info("[SOCKET] Abonnement refuse:", data);
       dispatch(updateSubscriptionStatus({ isPending: false, isRejected: true, rejectionReason: data?.reason }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription']));
     };
 
     const handleSubscriptionValidated = (data) => {
       console.info("[SOCKET] Abonnement valide:", data);
       dispatch(updateSubscriptionStatus({ isPending: false, isRejected: false, isActive: true, expiresAt: data?.expiresAt }));
       dispatch(apiSlice.util.invalidateTags(['Subscription', 'User', 'Stats']));
+      
+      // AJOUT : Notification globale informant de l'activation, visible n'importe où dans l'app
+      dispatch(showSuccessToast({ 
+        title: "Pass Yely Actif", 
+        message: "Votre abonnement a ete valide avec succes." 
+      }));
     };
 
-    // CORRECTION MAJEURE : Executions des sanctions Admin en temps reel
     const handleUserBanned = (data) => {
       console.warn("[SOCKET] Utilisateur banni en direct ! Ejection.");
       dispatch(logout({ reason: 'BANNED_BY_ADMIN' }));
