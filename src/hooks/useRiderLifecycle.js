@@ -35,13 +35,9 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const previousFetchDataRef = useRef(undefined); 
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
-  
-  const [manualOrigin, setManualOrigin] = useState(null);
   const [destination, setDestination] = useState(null);
   
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
-  const [searchModalMode, setSearchModalMode] = useState('destination'); 
-  
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
@@ -52,8 +48,9 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   });
 
   const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
-
-  const effectiveOrigin = manualOrigin || location;
+  
+  // CORRECTION : L'origine effective est strictement la position GPS
+  const effectiveOrigin = location;
 
   useEffect(() => {
     if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
@@ -86,13 +83,11 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
-  // GESTION CORRIGEE DE L'AFFICHAGE DE L'ADRESSE
+  // CORRECTION : Suppression totale de la logique d'origine manuelle pour l'adresse
   useEffect(() => {
     let isMounted = true;
 
-    if (manualOrigin) {
-      setCurrentAddress(manualOrigin.address || manualOrigin.name || 'Depart selectionne');
-    } else if (location) {
+    if (location) {
       let shouldFetch = false;
       
       if (!lastGeocodedLocationRef.current) {
@@ -134,7 +129,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       isMounted = false;
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
-  }, [location, errorMsg, manualOrigin]);
+  }, [location, errorMsg]);
 
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
@@ -146,7 +141,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   useEffect(() => {
     if (rideToRate || !currentRide || currentRide?.status === 'cancelled' || currentRide?.status === 'timeout') {
       setDestination(null);
-      setManualOrigin(null); 
       setSelectedVehicle(null);
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
@@ -154,8 +148,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
   }, [rideToRate, currentRide, mapRef]);
 
-  // NORMALISATION STRICTE DES COORDONNEES POUR EVITER LES SILENT CRASHS
-  const handlePlaceSelect = async (selectedPlace, mode) => {
+  // CORRECTION : Normalisation et affectation uniquement a la destination
+  const handlePlaceSelect = async (selectedPlace) => {
     const pLat = selectedPlace.latitude || selectedPlace.lat;
     const pLng = selectedPlace.longitude || selectedPlace.lng;
 
@@ -175,26 +169,16 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       return;
     }
 
-    if (mode === 'origin') {
-      setManualOrigin(normalizedPlace);
-      if (destination) {
-        estimateRide({
-          pickupLat: normalizedPlace.latitude, pickupLng: normalizedPlace.longitude,
-          dropoffLat: destination.latitude, dropoffLng: destination.longitude
-        });
-      }
-    } else {
-      setDestination(normalizedPlace);
-      setSelectedVehicle(null);
-      
-      if (effectiveOrigin && mapRef.current) {
-        const oLat = effectiveOrigin.latitude || effectiveOrigin.lat;
-        const oLng = effectiveOrigin.longitude || effectiveOrigin.lng;
-        estimateRide({
-          pickupLat: oLat, pickupLng: oLng,
-          dropoffLat: normalizedPlace.latitude, dropoffLng: normalizedPlace.longitude
-        });
-      }
+    setDestination(normalizedPlace);
+    setSelectedVehicle(null);
+    
+    if (effectiveOrigin && mapRef.current) {
+      const oLat = effectiveOrigin.latitude || effectiveOrigin.lat;
+      const oLng = effectiveOrigin.longitude || effectiveOrigin.lng;
+      estimateRide({
+        pickupLat: oLat, pickupLng: oLng,
+        dropoffLat: normalizedPlace.latitude, dropoffLng: normalizedPlace.longitude
+      });
     }
     
     setIsSearchModalVisible(false);
@@ -208,19 +192,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
   };
 
-  const handleCancelManualOrigin = () => {
-    setManualOrigin(null);
-    if (destination && location) {
-      estimateRide({
-        pickupLat: location.latitude, pickupLng: location.longitude,
-        dropoffLat: destination.latitude || destination.lat, 
-        dropoffLng: destination.longitude || destination.lng
-      });
-    }
-  };
-
-  const openSearchModal = (mode = 'destination') => {
-    setSearchModalMode(mode);
+  const openSearchModal = () => {
     setIsSearchModalVisible(true);
   };
 
@@ -228,12 +200,12 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
 
     if (!effectiveOrigin) {
-      dispatch(showErrorToast({ title: 'Erreur Depart', message: 'Veuillez definir votre point de depart.' }));
+      dispatch(showErrorToast({ title: 'Erreur Depart', message: 'Veuillez patienter, signal GPS en cours d\'acquisition.' }));
       return;
     }
     
     if (!isLocationInMafereZone(effectiveOrigin)) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre point de depart est hors de la zone de service.' }));
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre position actuelle est hors de la zone de service.' }));
       return;
     }
 
@@ -263,7 +235,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
     
     try {
-      let safeOriginAddress = String(currentAddress || manualOrigin?.address || manualOrigin?.name || "Position actuelle").trim();
+      let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
       if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
       if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
 
@@ -310,12 +282,10 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
 
   return {
     effectiveOrigin,
-    manualOrigin,
     currentAddress,
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
-    searchModalMode,
     openSearchModal,
     selectedVehicle,
     setSelectedVehicle,
@@ -326,7 +296,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     estimateError,
     handlePlaceSelect,
     handleCancelDestination,
-    handleCancelManualOrigin,
     handleConfirmRide
   };
 };

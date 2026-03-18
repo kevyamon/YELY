@@ -29,9 +29,6 @@ const SmartHeader = ({
   onMenuPress, 
   onNotificationPress,
   onSearchPress,
-  onOriginPress,
-  isManualOrigin = false,
-  onCancelOrigin,
   hasDestination = false,
   onCancelDestination 
 }) => {
@@ -48,7 +45,6 @@ const SmartHeader = ({
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
-  // Securite: on garantit que l'adresse est toujours du texte avant de chercher un mot dedans
   const isFetchingAddress = (address || "").toLowerCase().includes('recherche');
 
   const defaultScrollY = useSharedValue(0);
@@ -76,7 +72,7 @@ const SmartHeader = ({
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       
       <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
-        {isRider && <LocationSyncGauge isFetching={isFetchingAddress && !isManualOrigin} variant="rider" />}
+        {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
@@ -86,20 +82,15 @@ const SmartHeader = ({
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <TouchableOpacity 
-              style={styles.locationTitleWrapper}
-              onPress={onOriginPress}
-              disabled={hasActiveRide || !isRider}
-              activeOpacity={0.7}
-            >
+            <View style={styles.locationTitleWrapper}>
               <Ionicons 
-                name={isManualOrigin ? "pin" : "location"} 
+                name="location" 
                 size={14} 
-                color={isManualOrigin ? THEME.COLORS.champagneGold : THEME.COLORS.textPrimary} 
+                color={THEME.COLORS.textPrimary} 
                 style={styles.locationIcon} 
               />
               <Text style={styles.locationTitle} numberOfLines={1}>{address}</Text>
-            </TouchableOpacity>
+            </View>
           </Animated.View>
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
@@ -118,28 +109,14 @@ const SmartHeader = ({
              
              {isRider && (
                <View style={styles.riderAddressRow}>
-                 <TouchableOpacity 
-                   style={styles.originTouchable}
-                   onPress={onOriginPress}
-                   disabled={hasActiveRide}
-                   activeOpacity={0.7}
-                 >
+                 <View style={styles.originView}>
                    <Ionicons 
-                     name={isManualOrigin ? "pin" : "location-sharp"} 
+                     name="location-sharp" 
                      size={14} 
-                     color={isManualOrigin ? THEME.COLORS.textPrimary : THEME.COLORS.champagneGold} 
+                     color={THEME.COLORS.champagneGold} 
                    />
                    <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
-                   {!hasActiveRide && (
-                     <Ionicons name="chevron-down" size={14} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />
-                   )}
-                 </TouchableOpacity>
-
-                 {isManualOrigin && !hasActiveRide && (
-                   <TouchableOpacity onPress={onCancelOrigin} style={styles.cancelOriginBtn}>
-                     <Ionicons name="close-circle" size={18} color={THEME.COLORS.danger} />
-                   </TouchableOpacity>
-                 )}
+                 </View>
                </View>
              )}
           </View>
@@ -248,7 +225,7 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     marginBottom: 4,
   },
-  originTouchable: {
+  originView: {
     flexDirection: 'row',
     alignItems: 'center',
     flexShrink: 1,
@@ -260,10 +237,6 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     opacity: 0.9,
     flexShrink: 1,
-  },
-  cancelOriginBtn: {
-    padding: 4,
-    marginLeft: 8,
   },
   driverGpsBadge: {
     flexDirection: 'row',
@@ -293,7 +266,6 @@ const styles = StyleSheet.create({
 const arePropsEqual = (prevProps, nextProps) => {
   return (
     prevProps.address === nextProps.address &&
-    prevProps.isManualOrigin === nextProps.isManualOrigin &&
     prevProps.hasDestination === nextProps.hasDestination &&
     prevProps.userName === nextProps.userName
   );

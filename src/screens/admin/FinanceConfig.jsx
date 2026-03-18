@@ -10,6 +10,7 @@ import { useDispatch } from 'react-redux';
 import {
   useGetDashboardStatsQuery,
   useGetFinanceDataQuery,
+  useGetSystemConfigQuery,
   useToggleGlobalFreeAccessMutation,
   useToggleLoadReduceMutation,
   useTogglePromoMutation
@@ -30,9 +31,11 @@ const FinanceConfig = ({ navigation }) => {
   const dispatch = useDispatch();
   
   const { data: financeResponse, isLoading } = useGetFinanceDataQuery({ period: 'all' });
-  // 🔥 On recupere les stats generales pour avoir l'etat initial des switches
   const { data: statsData } = useGetDashboardStatsQuery(); 
   
+  // CORRECTION : Source de verite specifique pour la configuration VIP/Systeme
+  const { data: systemConfigData } = useGetSystemConfigQuery(); 
+
   const [togglePromo, { isLoading: isTogglingPromo }] = useTogglePromoMutation();
   const [toggleLoadReduce, { isLoading: isTogglingLoad }] = useToggleLoadReduceMutation();
   const [toggleGlobalFreeAccess, { isLoading: isTogglingFreeAccess }] = useToggleGlobalFreeAccessMutation();
@@ -41,37 +44,41 @@ const FinanceConfig = ({ navigation }) => {
   const [isLoadReduced, setIsLoadReduced] = useState(false);
   const [isGlobalFreeAccess, setIsGlobalFreeAccess] = useState(false);
   
-  // 🔥 Etat pour le message personnalisé
-  const [promoMessage, setPromoMessage] = useState("🎉 Yély Régal ! Pour fêter notre lancement, Yély vous offre l'accès VIP.");
+  const [promoMessage, setPromoMessage] = useState("Yely Regal ! Pour feter notre lancement, Yely vous offre l'acces VIP.");
 
   const financeData = financeResponse?.data || financeResponse || [];
   const safeFinanceArray = Array.isArray(financeData) ? financeData : [];
   const totalRevenue = safeFinanceArray.reduce((acc, curr) => acc + (curr.totalAmount || 0), 0);
 
-  // Initialisation des switches avec les donnees du serveur
   useEffect(() => {
     if (statsData?.data?.settings) {
       setIsPromoActive(statsData.data.settings.isPromoActive || false);
       setIsLoadReduced(statsData.data.settings.isLoadReduced || false);
-      setIsGlobalFreeAccess(statsData.data.settings.isGlobalFreeAccess || false);
-      if (statsData.data.settings.promoMessage) {
-        setPromoMessage(statsData.data.settings.promoMessage);
-      }
     }
   }, [statsData]);
+
+  // CORRECTION : Initialisation de l'etat VIP basee sur SystemConfig
+  useEffect(() => {
+    if (systemConfigData?.data) {
+      setIsGlobalFreeAccess(systemConfigData.data.isGlobalFreeAccess || false);
+      if (systemConfigData.data.promoMessage) {
+        setPromoMessage(systemConfigData.data.promoMessage);
+      }
+    }
+  }, [systemConfigData]);
 
   const handleTogglePromo = async (value) => {
     setIsPromoActive(value);
     try { 
       await togglePromo({ isActive: value }).unwrap(); 
       dispatch(showSuccessToast({
-        title: 'Succès',
-        message: `Mode Promotionnel (Tarifs) ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
+        title: 'Succes',
+        message: `Mode Promotionnel (Tarifs) ${value ? 'ACTIVE' : 'DESACTIVE'}`,
       }));
     } catch (e) { 
       setIsPromoActive(!value); 
       dispatch(showErrorToast({
-        title: 'Échec',
+        title: 'Echec',
         message: "Impossible de changer le mode promotionnel.",
       }));
     }
@@ -84,8 +91,8 @@ const FinanceConfig = ({ navigation }) => {
     } catch (e) {
       setIsLoadReduced(!value);
       dispatch(showErrorToast({
-        title: 'Échec',
-        message: "Impossible de modifier la répartition des validations.",
+        title: 'Echec',
+        message: "Impossible de modifier la repartition des validations.",
       }));
     }
   };
@@ -93,21 +100,20 @@ const FinanceConfig = ({ navigation }) => {
   const handleToggleGlobalFreeAccess = async (value) => {
     setIsGlobalFreeAccess(value);
     try {
-      // 🔥 On envoie l'etat ET le message au backend
       await toggleGlobalFreeAccess({ 
         isActive: value,
-        promoMessage: value ? promoMessage : undefined // On ne met à jour le message que si on l'active
+        promoMessage: value ? promoMessage : undefined 
       }).unwrap();
       
       dispatch(showSuccessToast({
-        title: 'Gratuité Chauffeurs',
-        message: `Accès gratuit ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'} pour tous.`,
+        title: 'Gratuite Chauffeurs',
+        message: `Acces gratuit ${value ? 'ACTIVE' : 'DESACTIVE'} pour tous.`,
       }));
     } catch (e) {
       setIsGlobalFreeAccess(!value);
       dispatch(showErrorToast({
-        title: 'Échec',
-        message: "Impossible de modifier le statut de gratuité.",
+        title: 'Echec',
+        message: "Impossible de modifier le statut de gratuite.",
       }));
     }
   };
@@ -116,9 +122,9 @@ const FinanceConfig = ({ navigation }) => {
     if (!isGlobalFreeAccess) return;
     try {
       await toggleGlobalFreeAccess({ isActive: true, promoMessage }).unwrap();
-      dispatch(showSuccessToast({ title: 'Message à jour', message: 'Le texte a été diffusé aux chauffeurs.' }));
+      dispatch(showSuccessToast({ title: 'Message a jour', message: 'Le texte a ete diffuse aux chauffeurs.' }));
     } catch (e) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de mettre à jour le message.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de mettre a jour le message.' }));
     }
   };
 
@@ -144,12 +150,12 @@ const FinanceConfig = ({ navigation }) => {
         </GlassCard>
 
         {/* SECTION : ADMINISTRATION EXCEPTIONNELLE */}
-        <Text style={styles.sectionTitle}>Opérations Spéciales (VIP)</Text>
+        <Text style={styles.sectionTitle}>Operations Speciales (VIP)</Text>
         <GlassCard style={styles.actionCard}>
           <View style={styles.rowBetween}>
             <View style={styles.textContainer}>
-              <Text style={styles.cardTitle}>Accès Gratuit Global</Text>
-              <Text style={styles.cardDescription}>Permet à tous les chauffeurs de rouler sans abonnement payant.</Text>
+              <Text style={styles.cardTitle}>Acces Gratuit Global</Text>
+              <Text style={styles.cardDescription}>Permet a tous les chauffeurs de rouler sans abonnement payant.</Text>
             </View>
             <Switch
               trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
@@ -160,10 +166,9 @@ const FinanceConfig = ({ navigation }) => {
             />
           </View>
 
-          {/* 🔥 Zone de personnalisation du message (Visible uniquement si actif) */}
           {isGlobalFreeAccess && (
             <View style={styles.messageEditorContainer}>
-              <Text style={styles.messageEditorLabel}>Message affiché aux chauffeurs :</Text>
+              <Text style={styles.messageEditorLabel}>Message affiche aux chauffeurs :</Text>
               <TextInput
                 style={styles.messageInput}
                 value={promoMessage}
@@ -174,7 +179,7 @@ const FinanceConfig = ({ navigation }) => {
                 placeholderTextColor={THEME.COLORS.textSecondary}
               />
               <TouchableOpacity style={styles.updateMsgBtn} onPress={handleUpdateMessage}>
-                <Text style={styles.updateMsgBtnText}>Mettre à jour le texte</Text>
+                <Text style={styles.updateMsgBtnText}>Mettre a jour le texte</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -185,7 +190,7 @@ const FinanceConfig = ({ navigation }) => {
         <GlassCard style={styles.actionCard}>
           <View style={styles.rowBetween}>
             <View style={styles.textContainer}>
-              <Text style={styles.cardTitle}>Répartition 3 par 3</Text>
+              <Text style={styles.cardTitle}>Repartition 3 par 3</Text>
               <Text style={styles.cardDescription}>Distribue les nouvelles demandes d'abonnement aux autres administrateurs.</Text>
             </View>
             <Switch
@@ -204,7 +209,7 @@ const FinanceConfig = ({ navigation }) => {
           <View style={styles.rowBetween}>
             <View style={styles.textContainer}>
               <Text style={styles.cardTitle}>Mode Promotionnel (Tarifs)</Text>
-              <Text style={styles.cardDescription}>Active les tarifs réduits (Plans Hebdo/Mensuel) pour les chauffeurs.</Text>
+              <Text style={styles.cardDescription}>Active les tarifs reduits (Plans Hebdo/Mensuel) pour les chauffeurs.</Text>
             </View>
             <Switch
               trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
@@ -240,7 +245,6 @@ const styles = StyleSheet.create({
   cardTitle: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: 'bold' },
   cardDescription: { color: THEME.COLORS.textSecondary, fontSize: 12, marginTop: 4 },
   
-  // 🔥 Styles pour l'éditeur de message VIP
   messageEditorContainer: { marginTop: 20, paddingTop: 15, borderTopWidth: 1, borderTopColor: THEME.COLORS.border },
   messageEditorLabel: { color: THEME.COLORS.primary, fontSize: 13, fontWeight: '600', marginBottom: 8 },
   messageInput: { backgroundColor: 'rgba(0,0,0,0.3)', color: THEME.COLORS.textPrimary, borderRadius: 8, padding: 12, minHeight: 60, textAlignVertical: 'top', borderWidth: 1, borderColor: THEME.COLORS.border },

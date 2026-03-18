@@ -16,10 +16,9 @@ const normalizeSearchText = (text) => {
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
 
-const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'destination' }) => {
+const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Intelligence adaptative de l'espace
   const { height: screenHeight } = useWindowDimensions();
   const isSmallScreen = screenHeight < 700;
 
@@ -73,11 +72,6 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
     </TouchableOpacity>
   ), [handleSelectPlace, isSmallScreen]);
 
-  const title = mode === 'origin' ? "D'ou partez-vous ?" : "Ou allons-nous ?";
-  const placeholder = mode === 'origin' ? "Ex: Gare routiere..." : "Ex: Marche de Mafere...";
-
-  // On calcule une hauteur maximale dynamique pour que la liste ne passe pas sous le clavier
-  // Sur un petit ecran avec clavier ouvert, on limite a 35% de l'ecran pour garantir la visibilite
   const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.35 : 0.50);
 
   return (
@@ -89,7 +83,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
       style={styles.modalStyle}
     >
       <View style={[styles.header, isSmallScreen && { marginBottom: 8 }]}>
-        <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>{title}</Text>
+        <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>Ou allons-nous ?</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
           <Ionicons name="close-circle" size={isSmallScreen ? 24 : 28} color={THEME.COLORS.textSecondary} />
         </TouchableOpacity>
@@ -97,7 +91,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect, mode = 'desti
 
       <View style={[styles.inputWrapper, isSmallScreen && { marginBottom: 8 }]}>
         <GlassInput
-          placeholder={placeholder}
+          placeholder="Ex: Marche de Mafere..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoFocus={true}
@@ -169,7 +163,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4
   },
   listContainer: {
-    // maxHeight est maintenant gere dynamiquement dans le JSX
   },
   listContent: {
     paddingBottom: 20,

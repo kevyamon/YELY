@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect } from 'react';
+import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,12 +22,8 @@ const WaitScreen = ({ navigation }) => {
 
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
 
-  // CORRECTION : Redirection automatique et instantanee si le backend refuse la capture
-  useEffect(() => {
-    if (subStatus?.isRejected) {
-      navigation.replace('PaymentFailure');
-    }
-  }, [subStatus?.isRejected, navigation]);
+  // CORRECTION : Le useEffect contenant navigation.replace a ete supprime.
+  // La navigation est geree dynamiquement par l'AppNavigator des que subStatus.isRejected passe a true via Socket.
 
   const handleLogout = () => {
     dispatch(logout());

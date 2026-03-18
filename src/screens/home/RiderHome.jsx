@@ -70,12 +70,10 @@ const RiderHome = ({ navigation }) => {
 
   const {
     effectiveOrigin,
-    manualOrigin,
     currentAddress,
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
-    searchModalMode,
     openSearchModal,
     selectedVehicle,
     setSelectedVehicle,
@@ -86,7 +84,6 @@ const RiderHome = ({ navigation }) => {
     estimateError,
     handlePlaceSelect,
     handleCancelDestination,
-    handleCancelManualOrigin,
     handleConfirmRide
   } = useRiderLifecycle({
     location,
@@ -96,7 +93,6 @@ const RiderHome = ({ navigation }) => {
     rideToRate
   });
 
-  // CORRECTION MAJEURE : La couverture de zone dépend désormais de l'origine finale (GPS ou Manuelle)
   const isEffectiveOriginInZone = effectiveOrigin ? isLocationInMafereZone(effectiveOrigin) : true;
 
   const {
@@ -126,7 +122,7 @@ const RiderHome = ({ navigation }) => {
       latitude: poi.latitude,
       longitude: poi.longitude,
       address: poi.name,
-    }, 'destination');
+    });
   };
 
   const handleHeaderLayout = (event) => {
@@ -177,12 +173,9 @@ const RiderHome = ({ navigation }) => {
           userName={user?.name?.split(' ')[0] || "Passager"}
           onMenuPress={() => navigation.navigate('Menu')}
           onNotificationPress={() => navigation.navigate('Notifications')}
-          onSearchPress={() => openSearchModal('destination')}
-          onOriginPress={() => openSearchModal('origin')}
+          onSearchPress={() => openSearchModal()}
           hasDestination={!!destination && !isRideActive} 
           onCancelDestination={handleCancelDestination}
-          isManualOrigin={!!manualOrigin}
-          onCancelOrigin={handleCancelManualOrigin}
         />
       </View>
 
@@ -206,9 +199,8 @@ const RiderHome = ({ navigation }) => {
 
       <DestinationSearchModal 
         visible={isSearchModalVisible}
-        mode={searchModalMode}
         onClose={() => setIsSearchModalVisible(false)}
-        onPlaceSelect={(place) => handlePlaceSelect(place, searchModalMode)}
+        onPlaceSelect={(place) => handlePlaceSelect(place)}
       />
 
       <PoiDetailsModal

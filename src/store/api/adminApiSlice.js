@@ -96,6 +96,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog'],
     }),
 
+    // CORRECTION : Invalidation de SystemConfig pour reactivite en temps reel de l'interface admin
     toggleGlobalFreeAccess: builder.mutation({
       query: (payload) => ({
         url: '/admin/free-access/toggle',
@@ -105,7 +106,7 @@ export const adminApiSlice = apiSlice.injectEndpoints({
           promoMessage: payload.promoMessage 
         },
       }),
-      invalidatesTags: ['Stats', 'AuditLog', 'Subscription'],
+      invalidatesTags: ['Stats', 'AuditLog', 'Subscription', 'SystemConfig'],
     }),
     
     updateMapSettings: builder.mutation({
@@ -135,7 +136,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       providesTags: ['AuditLog'],
     }),
 
-    // --- AJOUT VAGUE 2 : CONFIGURATION SYSTEME & VERSIONING ---
     getSystemConfig: builder.query({
       query: () => '/admin/system-config',
       providesTags: ['SystemConfig'],

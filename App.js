@@ -36,13 +36,12 @@ import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
 import { apiSlice } from './src/store/slices/apiSlice';
-import { forceSilentRefresh, selectCurrentUser, updatePromoMode } from './src/store/slices/authSlice';
+import { forceSilentRefresh, selectCurrentUser, selectToken, updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
 import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
-// CORRECTION : Import direct du singleton au lieu du hook pour garantir l'écoute
 import socketService from './src/services/socketService';
 
 const isVersionOutdated = (current, latest) => {
@@ -77,6 +76,7 @@ const AppContent = () => {
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);
   const user = useSelector(selectCurrentUser);
+  const token = useSelector(selectToken);
   
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const isSuperAdmin = user?.role === 'superadmin';
@@ -87,6 +87,15 @@ const AppContent = () => {
   usePushNotifications();
   usePwaAutoUpdate(); 
 
+  // CORRECTION : Laison stricte du SocketService au Token global
+  useEffect(() => {
+    if (token) {
+      socketService.connect(token);
+    } else {
+      socketService.disconnect();
+    }
+  }, [token]);
+
   const checkSystemStatus = useCallback(async () => {
     try {
       const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
@@ -94,7 +103,6 @@ const AppContent = () => {
       
       if (response.ok) {
         const payload = await response.json();
-        // CORRECTION MAJEURE ICI : Extraction sécurisée de .data
         const data = payload.data || payload; 
         
         dispatch(setAppUpdate({
@@ -152,7 +160,6 @@ const AppContent = () => {
     return () => unsubscribe();
   }, [dispatch, toast]);
 
-  // CORRECTION : Écouteur Socket direct sur le service global (garanti de toujours fonctionner)
   useEffect(() => {
     const handleAppVersionUpdate = (data) => {
       dispatch(setAppUpdate({
