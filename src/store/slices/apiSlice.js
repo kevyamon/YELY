@@ -7,7 +7,7 @@ import * as Sentry from '@sentry/react-native';
 import { Mutex } from 'async-mutex';
 import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
-import { logout, setCredentials, setRefreshing } from './authSlice';
+import { logout, setCredentials } from './authSlice';
 import { showErrorToast } from './uiSlice';
 
 const mutex = new Mutex();
@@ -108,7 +108,9 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return await baseQuery(args, api, extraOptions);
         }
 
-        api.dispatch(setRefreshing(true));
+        // CORRECTION : On ne dispatch plus setRefreshing(true) ici. 
+        // Le mutex bloque les autres requêtes de façon invisible pour l'UX.
+        // Cela empêche l'overlay "bête" d'apparaître sur de simples appels API.
         
         let currentRefreshToken = api.getState().auth.refreshToken;
         
@@ -166,7 +168,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
       } catch (error) {
         console.error('[API] Echec du fetch de rafraichissement. Session conservee.', error);
       } finally {
-        api.dispatch(setRefreshing(false));
+        // CORRECTION : On retire aussi le setRefreshing(false) ici.
         release();
       }
     } else {

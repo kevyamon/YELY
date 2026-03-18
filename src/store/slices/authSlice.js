@@ -134,7 +134,8 @@ const authSlice = createSlice({
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
-      state.tokenAcquiredAt = 0; 
+      // CORRECTION: Initialisation à Date.now() pour armer la minuterie de 14 minutes correctement
+      state.tokenAcquiredAt = Date.now(); 
       state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
@@ -202,7 +203,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     return;
   }
 
-  // CORRECTION : Limite portée à 14 minutes (840 000 ms)
+  // La logique fonctionne maintenant car tokenAcquiredAt est correctement initialisé
   if (auth.token && auth.tokenAcquiredAt) {
     const ageInMs = Date.now() - auth.tokenAcquiredAt;
     if (ageInMs < 14 * 60 * 1000) { 
@@ -212,6 +213,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   }
 
   try {
+    // ICI: C'est le seul endroit légitime pour déclencher l'overlay de "longue veille"
     dispatch(setRefreshing(true)); 
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
     
