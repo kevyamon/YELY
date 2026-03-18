@@ -6,7 +6,7 @@ import Constants from 'expo-constants';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import { useEffect, useState } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
@@ -129,6 +129,23 @@ const usePushNotifications = () => {
               updateUrl: updateUrl,
               isOta: isOta === 'true'
             }));
+
+            if (updateUrl) {
+              let finalUrl = updateUrl.trim();
+              if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+                finalUrl = `https://${finalUrl}`;
+              }
+              
+              if (Platform.OS === 'web') {
+                window.location.href = finalUrl;
+              } else {
+                Linking.canOpenURL(finalUrl).then(supported => {
+                  if (supported) {
+                    Linking.openURL(finalUrl);
+                  }
+                }).catch(err => console.warn('[PUSH] Erreur redirection mise a jour:', err));
+              }
+            }
             break;
             
           case 'SUBSCRIPTION_REJECTED':

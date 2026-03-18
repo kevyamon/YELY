@@ -3,8 +3,8 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useRef, useState } from 'react';
+import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
@@ -59,6 +59,16 @@ const NotificationsScreen = ({ navigation }) => {
     if (item.metadata && item.metadata.reportId) {
       setSelectedReportId(item.metadata.reportId);
       setIsReportModalVisible(true);
+    } else if (item.metadata && item.metadata.updateUrl) {
+      let finalUrl = item.metadata.updateUrl.trim();
+      if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
+        finalUrl = `https://${finalUrl}`;
+      }
+      Linking.canOpenURL(finalUrl).then(supported => {
+        if (supported) {
+          Linking.openURL(finalUrl);
+        }
+      }).catch(err => console.warn('[NOTIFS] Erreur redirection mise a jour:', err));
     }
   };
 
