@@ -1,6 +1,6 @@
 // App.js
 // POINT D'ENTREE - Cablage Redux, Providers, Sentry & Intelligence PWA/Update
-// STANDARD: Industriel / Bank Grade
+// STANDARD: Industriel / Bank Grade (Avec Catch-Up temps reel)
 
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
@@ -87,15 +87,7 @@ const AppContent = () => {
   usePushNotifications();
   usePwaAutoUpdate(); 
 
-  // CORRECTION : Laison stricte du SocketService au Token global
-  useEffect(() => {
-    if (token) {
-      socketService.connect(token);
-    } else {
-      socketService.disconnect();
-    }
-  }, [token]);
-
+  // 1. Definition de la fonction de verification (Doit etre declaree avant les useEffects)
   const checkSystemStatus = useCallback(async () => {
     try {
       const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
@@ -125,14 +117,25 @@ const AppContent = () => {
     }
   }, [dispatch, currentAppVersion, isSuperAdmin]);
 
+  // 2. Initialisation au lancement
   useEffect(() => {
     checkSystemStatus();
   }, [checkSystemStatus]);
 
+  // 3. CORRECTION : Catch-Up au moment de la Connexion (Token obtenu)
+  useEffect(() => {
+    if (token) {
+      socketService.connect(token);
+      checkSystemStatus(); // <-- RATTRAPAGE : Recupere les events admin rates pendant qu'il etait deconnecte
+    } else {
+      socketService.disconnect();
+    }
+  }, [token, checkSystemStatus]);
+
+  // 4. Verification au retour du background
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        console.info("[APP_LIFECYCLE] Retour au premier plan. Resynchronisation totale...");
         dispatch(forceSilentRefresh()).then(() => {
           dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
         });
@@ -143,6 +146,7 @@ const AppContent = () => {
     return () => subscription.remove();
   }, [dispatch, checkSystemStatus]);
 
+  // 5. CORRECTION : Catch-Up au retour de la connexion Internet (Sortie de tunnel)
   useEffect(() => {
     const unsubscribe = NetInfo.addEventListener(state => {
       if (!state.isConnected) {
@@ -155,11 +159,13 @@ const AppContent = () => {
           title: "Connexion retablie", 
           message: "Vous etes de nouveau en ligne." 
         }));
+        checkSystemStatus(); // <-- RATTRAPAGE : Recupere les events admin rates pendant la coupure 4G
       }
     });
     return () => unsubscribe();
-  }, [dispatch, toast]);
+  }, [dispatch, toast, checkSystemStatus]);
 
+  // 6. Ecoute des mises a jour d'application via Socket
   useEffect(() => {
     const handleAppVersionUpdate = (data) => {
       dispatch(setAppUpdate({
