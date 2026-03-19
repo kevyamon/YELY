@@ -102,7 +102,7 @@ const usePushNotifications = () => {
   useEffect(() => {
     if (isAuthenticated && user?.role && pendingRouting) {
       const timer = setTimeout(() => {
-        const { type, rideId, latestVersion, mandatoryUpdate, updateUrl, isOta, reason } = pendingRouting;
+        const { type, rideId, latestVersion, mandatoryUpdate, updateUrl, isOta, reason, reportId, notificationId } = pendingRouting;
         const currentRole = user.role;
         const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
 
@@ -140,7 +140,7 @@ const usePushNotifications = () => {
             navigate('AdminReports');
             break;
           case 'REPORT_RESOLVED':
-            navigate('Report');
+            navigate('Notifications', { reportId, notificationId });
             break;
           case 'NEW_PAYMENT_PROOF':
             navigate('ValidationCenter');

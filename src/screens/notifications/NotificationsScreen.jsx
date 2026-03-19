@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
@@ -24,7 +24,7 @@ const NOTIF_ICONS = {
   PAYMENT: { icon: 'cash', color: THEME.COLORS.success },
 };
 
-const NotificationsScreen = ({ navigation }) => {
+const NotificationsScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
@@ -33,11 +33,24 @@ const NotificationsScreen = ({ navigation }) => {
   const [markRead] = useMarkAsReadMutation();
   const [deleteNotif, { isLoading: isDeleting }] = useDeleteNotificationMutation();
 
-  const [notifToDelete, setNotifToDelete] = useState(null);
+  const [notifToDelete, setInterceptionId] = useState(null);
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
 
   const notifications = data?.data?.notifications || [];
+
+  useEffect(() => {
+    if (route.params?.reportId) {
+      setSelectedReportId(route.params.reportId);
+      setIsReportModalVisible(true);
+      
+      if (route.params?.notificationId) {
+        markRead(route.params.notificationId);
+      }
+      
+      navigation.setParams({ reportId: undefined, notificationId: undefined });
+    }
+  }, [route.params?.reportId, route.params?.notificationId, markRead, navigation]);
 
   const handleScroll = (event) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
@@ -80,7 +93,7 @@ const NotificationsScreen = ({ navigation }) => {
     } catch (error) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer.' }));
     } finally {
-      setNotifToDelete(null);
+      setInterceptionId(null);
     }
   };
 
@@ -104,7 +117,7 @@ const NotificationsScreen = ({ navigation }) => {
               <Text style={styles.time}>{new Date(item.createdAt).toLocaleDateString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</Text>
               
               <TouchableOpacity 
-                onPress={() => setNotifToDelete(item._id)} 
+                onPress={() => setInterceptionId(item._id)} 
                 style={styles.deleteBtn}
                 disabled={isDeleting}
               >
@@ -130,7 +143,7 @@ const NotificationsScreen = ({ navigation }) => {
             <TouchableOpacity onPress={() => markRead('all')} style={styles.actionTextBtn}>
               <Text style={styles.markAll}>Tout lire</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setNotifToDelete('all')} style={styles.actionTextBtn}>
+            <TouchableOpacity onPress={() => setInterceptionId('all')} style={styles.actionTextBtn}>
               <Text style={styles.deleteAll}>Vider</Text>
             </TouchableOpacity>
           </View>
@@ -169,7 +182,7 @@ const NotificationsScreen = ({ navigation }) => {
         message={notifToDelete === 'all' ? "Êtes-vous sûr de vouloir supprimer TOUTES vos notifications ?" : "Voulez-vous vraiment supprimer cette notification ?"}
         isDestructive={true}
         onConfirm={handleDeleteConfirm}
-        onCancel={() => setNotifToDelete(null)}
+        onCancel={() => setInterceptionId(null)}
       />
 
       <ReportResolutionModal 
