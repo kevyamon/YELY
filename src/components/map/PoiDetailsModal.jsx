@@ -1,11 +1,8 @@
 // src/components/map/PoiDetailsModal.jsx
-// MODALE DETAILS LIEU - Context Aware (Passager vs Chauffeur)
-// CSCSM Level: Bank Grade
-
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
+import UniversalIcon from '../ui/UniversalIcon'; // AJOUT
 
 const PoiDetailsModal = ({ visible, poi, onClose, onSelect, readOnly = false }) => {
   if (!visible || !poi) return null;
@@ -17,7 +14,12 @@ const PoiDetailsModal = ({ visible, poi, onClose, onSelect, readOnly = false }) 
         <TouchableOpacity style={styles.card} activeOpacity={1}>
           <View style={styles.header}>
             <View style={[styles.iconContainer, { backgroundColor: poi.iconColor ? `${poi.iconColor}20` : 'rgba(212, 175, 55, 0.2)' }]}>
-              <Ionicons name={poi.icon || "location"} size={28} color={poi.iconColor || THEME.COLORS.champagneGold} />
+              {/* CORRECTION MAJEURE : Utilisation de l'UniversalIcon */}
+              <UniversalIcon 
+                iconString={poi.icon || "Ionicons/location"} 
+                size={28} 
+                color={poi.iconColor || THEME.COLORS.champagneGold} 
+              />
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close-circle" size={28} color={THEME.COLORS.textTertiary} />
@@ -27,14 +29,12 @@ const PoiDetailsModal = ({ visible, poi, onClose, onSelect, readOnly = false }) 
           <Text style={styles.title}>{poi.name}</Text>
           <Text style={styles.subtitle}>Maféré, Côte d'Ivoire</Text>
 
-          {/* VERROUILLAGE STRICT : Si readOnly est VRAI, on affiche l'info chauffeur et on coupe le reste */}
           {readOnly ? (
             <View style={styles.readOnlyBadge}>
               <Ionicons name="information-circle-outline" size={16} color={THEME.COLORS.textSecondary} />
               <Text style={styles.readOnlyText}>Point d'intérêt de la zone</Text>
             </View>
           ) : (
-            /* Sinon (Passager), on affiche le bouton d'action */
             onSelect && (
               <TouchableOpacity style={styles.button} onPress={() => onSelect(poi)}>
                 <Text style={styles.buttonText}>Choisir comme destination</Text>
@@ -42,7 +42,6 @@ const PoiDetailsModal = ({ visible, poi, onClose, onSelect, readOnly = false }) 
               </TouchableOpacity>
             )
           )}
-
         </TouchableOpacity>
       </TouchableOpacity>
     </Modal>

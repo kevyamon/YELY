@@ -1,7 +1,6 @@
 // src/components/admin/PoiFormModal.jsx
-
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Modal, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
@@ -10,30 +9,14 @@ import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from '../ui/GlassInput';
 import GoldButton from '../ui/GoldButton';
+import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Import du nouveau moteur
 import IconPickerModal from './IconPickerModal';
 
-// Palette de couleurs etendue pour un maximum de choix
 const COLOR_PALETTE = [
-  THEME.COLORS.champagneGold, // Or Yely
-  '#3498db', // Bleu clair
-  '#2980b9', // Bleu fonce
-  '#e74c3c', // Rouge vif
-  '#c0392b', // Rouge fonce
-  '#2ecc71', // Vert clair
-  '#27ae60', // Vert fonce
-  '#9b59b6', // Violet
-  '#8e44ad', // Violet sombre
-  '#f1c40f', // Jaune
-  '#f39c12', // Jaune moutarde
-  '#e67e22', // Orange
-  '#d35400', // Orange fonce
-  '#1abc9c', // Turquoise
-  '#16a085', // Turquoise fonce
-  '#ff9ff3', // Rose pastel
-  '#fd79a8', // Rose vif
-  '#bdc3c7', // Argent
-  '#7f8c8d', // Gris fonce
-  '#34495e', // Bleu nuit
+  THEME.COLORS.champagneGold, '#3498db', '#2980b9', '#e74c3c', '#c0392b', 
+  '#2ecc71', '#27ae60', '#9b59b6', '#8e44ad', '#f1c40f', '#f39c12', 
+  '#e67e22', '#d35400', '#1abc9c', '#16a085', '#ff9ff3', '#fd79a8', 
+  '#bdc3c7', '#7f8c8d', '#34495e',
 ];
 
 const suggestColor = (iconName) => {
@@ -59,7 +42,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
     name: '',
     latitude: '',
     longitude: '',
-    icon: 'location',
+    icon: 'Ionicons/location', // CORRECTION : Nouveau format par défaut
     iconColor: THEME.COLORS.champagneGold
   });
 
@@ -78,7 +61,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
           name: '',
           latitude: '',
           longitude: '',
-          icon: 'location',
+          icon: 'Ionicons/location', // CORRECTION
           iconColor: THEME.COLORS.champagneGold
         });
       }
@@ -174,10 +157,11 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               onPress={() => setIsIconPickerVisible(true)}
             >
               <View style={[styles.iconPreviewBox, { backgroundColor: `${formData.iconColor}15`, borderColor: formData.iconColor }]}>
-                <Ionicons name={formData.icon} size={32} color={formData.iconColor} />
+                {/* CORRECTION MAJEURE : On utilise UniversalIcon pour la preview */}
+                <UniversalIcon iconString={formData.icon} size={32} color={formData.iconColor} />
               </View>
               <View style={styles.iconSelectorTexts}>
-                <Text style={styles.iconNameText}>{formData.icon}</Text>
+                <Text style={styles.iconNameText}>{formData.icon.split('/').pop()}</Text>
                 <Text style={styles.iconInstructionText}>Appuyez pour changer l'icone</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.textTertiary} />
@@ -218,7 +202,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
       <IconPickerModal 
         visible={isIconPickerVisible} 
         onClose={() => setIsIconPickerVisible(false)} 
-        onSelect={handleIconSelect} 
+        onSelectIcon={handleIconSelect} 
       />
     </Modal>
   );
