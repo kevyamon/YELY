@@ -1,10 +1,11 @@
 // src/store/slices/apiSlice.js
-// PASSERELLE RESEAU - Auto-Retry & Anti-Deadlock integrés
+// PASSERELLE RESEAU - Auto-Retry & Anti-Deadlock integres
 // CSCSM Level: Bank Grade
 
 import { createApi, fetchBaseQuery } from '@reduxjs/toolkit/query/react';
 import * as Sentry from '@sentry/react-native';
 import { Mutex } from 'async-mutex';
+import { Platform } from 'react-native';
 import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 import { logout, setCredentials } from './authSlice';
@@ -44,9 +45,23 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     requestUrl = args.url;
   }
   
+  // Enregistrement du temps de depart pour detecter la mise en veille
+  const startTime = Date.now();
   let result = await baseQuery(args, api, extraOptions);
 
-  if (result.error && (result.error.status === 'FETCH_ERROR' || result.error.status === 'TIMEOUT_ERROR')) {
+  // LOGIQUE DE DETECTION DE VEILLE (Sleep/Suspend)
+  const duration = Date.now() - startTime;
+  // Si la requete prend plus de 25s (alors que le timeout natif la coupe a 15s), c'est que le CPU a ete endormi.
+  const wasSuspended = duration > 25000; 
+  
+  // Detection specifique au Web (PWA)
+  const isBrowserHidden = Platform.OS === 'web' && typeof document !== 'undefined' && document.visibilityState === 'hidden';
+  const isBrowserOffline = Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.onLine === false;
+
+  const isSleepingOrOffline = wasSuspended || isBrowserHidden || isBrowserOffline;
+
+  // On ne tente pas de Retry si l'appareil est en veille ou clairement hors ligne
+  if (!isSleepingOrOffline && result.error && (result.error.status === 'FETCH_ERROR' || result.error.status === 'TIMEOUT_ERROR')) {
     console.warn(`[API] Micro-decrochage reseau sur ${requestUrl}. Auto-Retry silencieux dans 1.5s...`);
     await sleep(1500);
     result = await baseQuery(args, api, extraOptions);
@@ -57,8 +72,10 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     const originalStatus = result.error.originalStatus;
     const actualStatus = errorStatus === 'PARSING_ERROR' ? originalStatus : errorStatus;
     
-    const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit');
     const isSystemRefreshing = mutex.isLocked() || api.getState().auth.isRefreshing;
+    
+    // On etouffe le toast si l'option silent est active, si c'est un submit, ou si l'appareil se reveille/est hors ligne
+    const isSilent = (extraOptions && extraOptions.silent === true) || requestUrl.includes('submit') || isSleepingOrOffline;
 
     if (actualStatus !== 401 && actualStatus !== 400 && actualStatus !== 404 && actualStatus !== 409) {
       if (isSystemRefreshing && (errorStatus === 'FETCH_ERROR' || errorStatus === 'TIMEOUT_ERROR')) {
@@ -85,8 +102,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
   const actualStatus = errorStatus === 'PARSING_ERROR' ? originalStatus : errorStatus;
 
   if (result.error && actualStatus === 401) {
-    
-    // 1. GESTION DE LA CONCURRENCE INTELLIGENTE (Fix du rejeu aveugle)
     if (mutex.isLocked() || api.getState().auth.isRefreshing) {
       if (mutex.isLocked()) {
         await mutex.waitForUnlock();
@@ -98,16 +113,12 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         }
       }
 
-      // VÉRIFICATION POST-ATTENTE : L'autre processus a-t-il sauvé la session ?
       const tokenAfterWait = api.getState().auth.token;
       if (tokenBeforeRequest !== tokenAfterWait) {
         return await baseQuery(args, api, extraOptions); 
       }
-      // Si on arrive ici, l'autre processus a échoué (réseau coupé). 
-      // On ne rejoue PAS la requête, on laisse le code descendre pour prendre le Mutex.
     }
 
-    // 2. PRISE DE CONTRÔLE ET RAFRAÎCHISSEMENT
     if (!mutex.isLocked()) {
       const release = await mutex.acquire();
       try {
@@ -131,7 +142,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
           return result;
         }
 
-        // PROTECTION ANTI-DEADLOCK : Timeout strict de 15s sur le fetch
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -160,7 +170,6 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
               user: payload?.user || api.getState().auth.user 
             }));
             
-            // TOUT EST RÉPARÉ, ON REJOUE LA REQUÊTE
             result = await baseQuery(args, api, extraOptions);
           } else {
             socketService.disconnect();
