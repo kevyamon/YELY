@@ -9,23 +9,36 @@ import { Platform } from 'react-native';
 
 const isWeb = Platform.OS === 'web';
 
+const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+
+const getItemWithRetry = async (key, maxRetries = 3) => {
+  let attempt = 0;
+  while (attempt < maxRetries) {
+    try {
+      return await SecureStore.getItemAsync(key);
+    } catch (error) {
+      attempt++;
+      if (attempt >= maxRetries) {
+        // Echec apres tous les essais, on capitule mais on NE SUPPRIME PAS la cle.
+        // Le Keystore est peut-etre juste temporairement indisponible a la sortie de veille.
+        return null;
+      }
+      // Delai exponentiel pour laisser le Keystore se reveiller sans bloquer le thread principal
+      await sleep(100 * Math.pow(2, attempt - 1));
+    }
+  }
+  return null;
+};
+
 const SecureStorageAdapter = {
   getItem: async (key) => {
     try {
       if (isWeb || key === 'userInfo') {
         return await AsyncStorage.getItem(key);
       }
-      return await SecureStore.getItemAsync(key);
+      return await getItemWithRetry(key);
     } catch (error) {
-      // Mecanisme Fail-Safe : Si le Keystore natif est corrompu (ex: changement de code PIN du telephone),
-      // on force la purge de la cle pour eviter un crash en boucle au demarrage.
-      if (!isWeb && key !== 'userInfo') {
-        try {
-          await SecureStore.deleteItemAsync(key);
-        } catch (e) {
-          // Echec silencieux accepte ici
-        }
-      }
+      // Securite globale : en cas d'erreur fatale non catchee plus haut, on retourne null
       return null;
     }
   },
