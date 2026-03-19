@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -37,6 +37,7 @@ const HistoryScreen = ({ navigation }) => {
   const [hideRide, { isLoading: isHiding }] = useHideFromHistoryMutation();
 
   const [rideToDelete, setRideToDelete] = useState(null);
+  const [showClearAllModal, setShowClearAllModal] = useState(false);
 
   const rides = data?.data?.rides || data?.rides || [];
 
@@ -66,6 +67,17 @@ const HistoryScreen = ({ navigation }) => {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de masquer cette course.' }));
     } finally {
       setRideToDelete(null);
+    }
+  };
+
+  const handleClearAllConfirm = async () => {
+    try {
+      await hideRide('all').unwrap();
+      dispatch(showSuccessToast({ title: 'Historique vidé', message: 'Toutes vos courses ont été retirées.' }));
+    } catch (e) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de vider l\'historique.' }));
+    } finally {
+      setShowClearAllModal(false);
     }
   };
 
@@ -131,6 +143,16 @@ const HistoryScreen = ({ navigation }) => {
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
           <Text style={styles.headerTitle}>Historique des courses</Text>
         </TouchableOpacity>
+        
+        {rides && rides.length > 0 && (
+          <TouchableOpacity 
+            onPress={() => setShowClearAllModal(true)} 
+            disabled={isHiding} 
+            style={styles.clearAllButton}
+          >
+            <Ionicons name="trash-bin-outline" size={22} color={THEME.COLORS.danger} />
+          </TouchableOpacity>
+        )}
       </View>
 
       <GlobalSkeleton visible={isLoading} style={{ flex: 1 }}>
@@ -195,15 +217,25 @@ const HistoryScreen = ({ navigation }) => {
         onConfirm={handleHideConfirm}
         onCancel={() => setRideToDelete(null)}
       />
+
+      <ConfirmModal 
+        visible={showClearAllModal}
+        title="Vider l'historique"
+        message="Voulez-vous vraiment masquer toutes vos courses terminées et annulées ? Cette action est irréversible."
+        isDestructive={true}
+        onConfirm={handleClearAllConfirm}
+        onCancel={() => setShowClearAllModal(false)}
+      />
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
   centerContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
   backButton: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
+  clearAllButton: { padding: 8, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderRadius: 8 },
   listContainer: { paddingHorizontal: 20, paddingBottom: 50, paddingTop: 10 },
   emptyText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 15 },
   card: { padding: 15, marginBottom: 15 },
