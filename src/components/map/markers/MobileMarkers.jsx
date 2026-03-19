@@ -7,7 +7,7 @@ import MapLibreGL from '@maplibre/maplibre-react-native';
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../../theme/theme';
-import UniversalIcon from '../../ui/UniversalIcon'; // AJOUT : Import du moteur universel
+import UniversalIcon from '../../ui/UniversalIcon';
 
 export const TrackedMarker = ({
   coordinate,
@@ -189,8 +189,11 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
         >
           <View style={styles.poiBottom}>
             <View style={[styles.poiDot, { backgroundColor: color }]}>
-              {/* MODIFICATION SÉCURISÉE : L'icône dynamique est ici */}
-              <UniversalIcon iconString={icon || 'Ionicons/location'} size={13} color="#FFFFFF" />
+              <UniversalIcon 
+                iconString={icon || 'Ionicons/location'} 
+                size={13} 
+                color="#FFFFFF" 
+              />
             </View>
             <Text
               style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}

@@ -10,7 +10,7 @@ import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
-import UniversalIcon from './UniversalIcon'; // AJOUT : Import du composant universel (même dossier)
+import UniversalIcon from './UniversalIcon'; // AJOUT : Import du moteur universel
 
 const normalizeSearchText = (text) => {
   if (!text) return '';
@@ -63,7 +63,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       onPress={() => handleSelectPlace(item)}
     >
       <View style={[styles.suggestionIcon, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
-        {/* CORRECTION MAJEURE : On utilise l'UniversalIcon pour décoder le "Famille/Nom" de l'icône */}
+        {/* CORRECTION : Utilisation de UniversalIcon au lieu de Ionicons pur */}
         <UniversalIcon 
           iconString={item.icon || "Ionicons/location"} 
           size={isSmallScreen ? 18 : 20} 

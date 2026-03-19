@@ -16,7 +16,7 @@ import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassInput from '../../components/ui/GlassInput';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import UniversalIcon from '../../components/ui/UniversalIcon'; // AJOUT : Le moteur universel
+import UniversalIcon from '../../components/ui/UniversalIcon'; // AJOUT : Import du moteur universel
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -46,12 +46,14 @@ const MapManagement = () => {
   }, [pois, searchQuery]);
 
   const handleScroll = (event) => {
+    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
+    // Securite: on ne scroll que si on a des resultats
     if (filteredPois && filteredPois.length > 0) {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
@@ -108,8 +110,12 @@ const MapManagement = () => {
   const renderPoiItem = ({ item }) => (
     <View style={styles.poiCard}>
       <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-        {/* CORRECTION MAJEURE : Utilisation de l'UniversalIcon avec la prop iconString */}
-        <UniversalIcon iconString={item.icon} size={28} color={item.iconColor} />
+        {/* CORRECTION : Utilisation de UniversalIcon pour prévenir le crash sur Ionicons */}
+        <UniversalIcon 
+          iconString={item.icon || 'Ionicons/location'} 
+          size={28} 
+          color={item.iconColor || THEME.COLORS.champagneGold} 
+        />
       </View>
       <View style={styles.poiInfo}>
         <Text style={styles.poiName}>{item.name}</Text>
