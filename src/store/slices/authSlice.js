@@ -3,6 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { createSlice } from '@reduxjs/toolkit';
+import { Platform } from 'react-native';
 import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 
@@ -217,7 +218,10 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ refreshToken: currentRefreshToken }),
+      body: JSON.stringify({ 
+        refreshToken: currentRefreshToken,
+        clientPlatform: Platform.OS
+      }),
       credentials: 'omit',
       signal: controller.signal
     });

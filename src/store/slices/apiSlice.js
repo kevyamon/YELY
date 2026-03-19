@@ -148,7 +148,10 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         const refreshResponse = await fetch(`${API_URL}/auth/refresh`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-          body: JSON.stringify({ refreshToken: currentRefreshToken }),
+          body: JSON.stringify({ 
+            refreshToken: currentRefreshToken,
+            clientPlatform: Platform.OS
+          }),
           credentials: 'omit',
           signal: controller.signal
         });

@@ -89,7 +89,7 @@ const NotificationsScreen = ({ navigation, route }) => {
     if (!notifToDelete) return;
     try {
       await deleteNotif(notifToDelete).unwrap();
-      dispatch(showSuccessToast({ title: 'Supprimée', message: 'Notification effacée.' }));
+      dispatch(showSuccessToast({ title: 'Supprimee', message: 'Notification effacee.' }));
     } catch (error) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer.' }));
     } finally {
@@ -144,7 +144,7 @@ const NotificationsScreen = ({ navigation, route }) => {
               <Text style={styles.markAll}>Tout lire</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={() => setInterceptionId('all')} style={styles.clearAllButton}>
-              <Ionicons name="trash-bin-outline" size={22} color={THEME.COLORS.danger} />
+              <Ionicons name="trash-outline" size={22} color={THEME.COLORS.danger} />
             </TouchableOpacity>
           </View>
         )}
@@ -179,7 +179,7 @@ const NotificationsScreen = ({ navigation, route }) => {
       <ConfirmModal 
         visible={!!notifToDelete}
         title={notifToDelete === 'all' ? "Vider les notifications" : "Supprimer la notification"}
-        message={notifToDelete === 'all' ? "Êtes-vous sûr de vouloir supprimer TOUTES vos notifications ?" : "Voulez-vous vraiment supprimer cette notification ?"}
+        message={notifToDelete === 'all' ? "Etes-vous sur de vouloir supprimer TOUTES vos notifications ?" : "Voulez-vous vraiment supprimer cette notification ?"}
         isDestructive={true}
         onConfirm={handleDeleteConfirm}
         onCancel={() => setInterceptionId(null)}
