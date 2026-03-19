@@ -4,13 +4,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AppState, Vibration } from 'react-native';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import MapService from '../services/mapService';
 import socketService from '../services/socketService';
 import { useCompleteRideMutation, useGetCurrentRideQuery, useMarkAsArrivedMutation, useStartRideMutation } from '../store/api/ridesApiSlice';
 import { useUpdateAvailabilityMutation } from '../store/api/usersApiSlice';
-import { updateUserInfo } from '../store/slices/authSlice';
+import { selectIsRefreshing, updateUserInfo } from '../store/slices/authSlice';
 import { clearCurrentRide, setCurrentRide, setEffectiveLocation, updateRideStatus } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
@@ -45,6 +45,8 @@ const useDriverLifecycle = ({
   isDisabled
 }) => {
   const dispatch = useDispatch();
+  const isRefreshing = useSelector(selectIsRefreshing);
+
   const isProcessingPickupRef = useRef(false);
   const isProcessingStartRef = useRef(false); 
   const snoozeTimerRef = useRef(null);
@@ -110,13 +112,13 @@ const useDriverLifecycle = ({
     }
   }, [location, dispatch]);
 
-  // LOGIQUE ALWAYS ONLINE ENFORCEMENT CORRIGEE
   useEffect(() => {
     const enforceOnlineStatus = async () => {
+      // ANTI-LOGOUT PROTECTION : Si l'overlay de restauration de session est a l'ecran, on attend sagement.
+      if (isRefreshing) return;
+
       if (location && !isDisabled && isDriverInZone) {
         try {
-          // On force l'appel API au moins une fois par session (hasForcedOnlineRef)
-          // meme si le cache Redux pense que l'utilisateur est deja en ligne.
           if (!hasForcedOnlineRef.current || !user?.isAvailable) {
              await updateAvailability({ isAvailable: true }).unwrap();
              dispatch(updateUserInfo({ isAvailable: true }));
@@ -130,7 +132,7 @@ const useDriverLifecycle = ({
     };
 
     enforceOnlineStatus();
-  }, [location, isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch]);
+  }, [location, isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch, isRefreshing]);
 
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);

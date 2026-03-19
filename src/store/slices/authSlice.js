@@ -130,7 +130,6 @@ const authSlice = createSlice({
       state.token = token;
       state.refreshToken = refreshToken;
       
-      // FIX VITAL : On force l'âge à 0 pour garantir un refresh silencieux net au premier réveil.
       state.tokenAcquiredAt = 0; 
       state.isAuthenticated = !!token;
       
@@ -186,29 +185,32 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
 
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
-  let currentRefreshToken = auth.refreshToken;
 
-  if (!currentRefreshToken) {
-     currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
-  }
-
-  if (!currentRefreshToken || auth.isRefreshing) {
-    return;
-  }
+  // ANTI-RACE CONDITION : On verifie l'etat AVANT toute action asynchrone
+  if (auth.isRefreshing) return;
 
   if (auth.token && auth.tokenAcquiredAt) {
     const ageInMs = Date.now() - auth.tokenAcquiredAt;
     if (ageInMs < 14 * 60 * 1000) { 
-      console.info(`[AUTH] Token recent (${Math.round(ageInMs / 60000)}m). Overlay et API ignores.`);
       return;
     }
   }
 
+  // ON VERROUILLE IMMEDIATEMENT LE SYSTEME (Pour bloquer les autres appels API)
+  dispatch(setRefreshing(true)); 
+
   try {
-    dispatch(setRefreshing(true)); 
+    let currentRefreshToken = auth.refreshToken;
+    if (!currentRefreshToken) {
+       currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
+    }
+
+    if (!currentRefreshToken) {
+      dispatch(setRefreshing(false));
+      return;
+    }
+
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-    
-    // PROTECTION ANTI-DEADLOCK RÉSEAU : Timeout de 15s
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 15000);
 
@@ -239,8 +241,16 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
         dispatch(fetchPromoConfig());
       }
     } else if (response.status === 401 || response.status === 403) {
-      socketService.disconnect();
-      dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
+      // PROTECTION ANTI-LOGOUT SAUVAGE : 
+      // Si apiSlice.js a reussi a rafraichir le token pendant notre appel fetch (collision),
+      // auth.tokenAcquiredAt aura change. On ne se deconnecte SURTOUT PAS.
+      const currentAuth = getState().auth;
+      if (currentAuth.tokenAcquiredAt !== auth.tokenAcquiredAt) {
+        console.info('[AUTH] Race condition evitee silencieusement : apiSlice a pris le relais.');
+      } else {
+        socketService.disconnect();
+        dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
+      }
     }
   } catch (error) {
     console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
