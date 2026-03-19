@@ -14,28 +14,27 @@ export const ICON_FAMILIES = {
 };
 
 const UniversalIcon = ({ iconString, size = 24, color = "black", style }) => {
+  // Sécurité absolue si la donnée est corrompue
   if (!iconString || typeof iconString !== 'string') {
     return <Ionicons name="help-circle" size={size} color={color} style={style} />;
   }
 
-  // CORRECTION : Nettoyage des espaces cachés qui crashent la vue native
+  // Nettoyage strict des espaces invisibles venant de la base de données
   const cleanString = iconString.trim();
   const parts = cleanString.split('/');
   
   if (parts.length === 2) {
-    const familyName = parts[0];
-    const iconName = parts[1].trim(); // Nettoyage de la deuxième partie
+    const familyName = parts[0].trim();
+    const iconName = parts[1].trim();
     const IconComponent = ICON_FAMILIES[familyName];
     
     if (IconComponent) {
-      // CORRECTION MAJEURE : FontAwesome5 exige la prop "solid" sur React Native pour afficher 90% de ses icônes
-      if (familyName === 'FontAwesome5') {
-        return <IconComponent name={iconName} size={size} color={color} style={style} solid />;
-      }
+      // Rendu dynamique de la famille correspondante
       return <IconComponent name={iconName} size={size} color={color} style={style} />;
     }
   }
 
+  // Fallback si c'est un ancien POI (ex: "location" au lieu de "Ionicons/location")
   return <Ionicons name={cleanString} size={size} color={color} style={style} />;
 };
 

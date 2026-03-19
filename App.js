@@ -4,7 +4,6 @@
 
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
-import * as Font from 'expo-font';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
@@ -45,6 +44,19 @@ import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
 import socketService from './src/services/socketService';
+
+// PRELOADER FURTIF : Force Metro Bundler et React Native à charger les polices en RAM
+// Sans faire appel à Font.loadAsync qui peut crasher silencieusement.
+const HiddenFontPreloader = () => (
+  <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }} pointerEvents="none">
+    <Ionicons name="help" size={1} />
+    <FontAwesome5 name="car" size={1} />
+    <MaterialIcons name="help" size={1} />
+    <MaterialCommunityIcons name="help" size={1} />
+    <Feather name="help" size={1} />
+    <AntDesign name="help" size={1} />
+  </View>
+);
 
 const isVersionOutdated = (current, latest) => {
   if (!current || !latest) return false;
@@ -221,30 +233,15 @@ const AppContent = () => {
 };
 
 const App = () => {
-  const [appIsReady, setAppIsReady] = useState(false);
   const [themeChanged, setThemeChanged] = useState(false);
   const initialTheme = useRef(Appearance.getColorScheme());
 
-  // CORRECTION MAJEURE : On charge TOUTES les familles d'icônes en RAM avant de démarrer l'app
   useEffect(() => {
-    async function prepare() {
-      try {
-        await Font.loadAsync({
-          ...Ionicons.font,
-          ...FontAwesome5.font,
-          ...MaterialIcons.font,
-          ...MaterialCommunityIcons.font,
-          ...Feather.font,
-          ...AntDesign.font,
-        });
-      } catch (e) {
-        console.warn("[APP_INIT] Erreur chargement polices:", e);
-      } finally {
-        setAppIsReady(true);
-        await NativeSplashScreen.hideAsync();
-      }
-    }
-    prepare();
+    const initApp = async () => {
+      // Retrait du délai artificiel pour laisser le Preloader agir naturellement
+      await NativeSplashScreen.hideAsync();
+    };
+    initApp();
   }, []);
 
   useEffect(() => {
@@ -254,16 +251,13 @@ const App = () => {
     return () => subscription.remove();
   }, []);
 
-  if (!appIsReady) {
-    return null; // Maintient le splash screen natif tant que les polices ne sont pas en RAM
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
         <PaperProvider>
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
+              <HiddenFontPreloader /> {/* INJECTION DE NOTRE FIX ICI */}
               <AppContent />
               {themeChanged && <ThemeChangeModal />}
             </Sentry.ErrorBoundary>
