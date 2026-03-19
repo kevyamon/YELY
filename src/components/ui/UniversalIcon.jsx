@@ -1,5 +1,5 @@
 // src/components/ui/UniversalIcon.jsx
-// MOTEUR DE RENDU MULTI-FAMILLES - Rétrocompatible, Anti-Crash et Auto-Solid
+// MOTEUR DE RENDU MULTI-FAMILLES - Rétrocompatible et Anti-Crash
 // CSCSM Level: Bank Grade
 
 import { AntDesign, Feather, FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
@@ -18,17 +18,17 @@ const UniversalIcon = ({ iconString, size = 24, color = "black", style }) => {
     return <Ionicons name="help-circle" size={size} color={color} style={style} />;
   }
 
-  // Nettoyage des espaces accidentels
+  // CORRECTION : Nettoyage des espaces cachés qui crashent la vue native
   const cleanString = iconString.trim();
   const parts = cleanString.split('/');
   
   if (parts.length === 2) {
     const familyName = parts[0];
-    const iconName = parts[1];
+    const iconName = parts[1].trim(); // Nettoyage de la deuxième partie
     const IconComponent = ICON_FAMILIES[familyName];
     
     if (IconComponent) {
-      // LE TUEUR DE BUG : FontAwesome5 exige le prop "solid" pour afficher 90% de ses icônes
+      // CORRECTION MAJEURE : FontAwesome5 exige la prop "solid" sur React Native pour afficher 90% de ses icônes
       if (familyName === 'FontAwesome5') {
         return <IconComponent name={iconName} size={size} color={color} style={style} solid />;
       }
@@ -36,7 +36,6 @@ const UniversalIcon = ({ iconString, size = 24, color = "black", style }) => {
     }
   }
 
-  // Rétrocompatibilité
   return <Ionicons name={cleanString} size={size} color={color} style={style} />;
 };
 

@@ -4,10 +4,12 @@
 
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
+import * as Font from 'expo-font';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
+import { AntDesign, Feather, FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
 import ENV from './src/config/env';
 import './src/tasks/backgroundLocationTask';
 
@@ -36,7 +38,6 @@ import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
 import { apiSlice } from './src/store/slices/apiSlice';
-// AJOUT de selectIsAuthenticated
 import { forceSilentRefresh, selectCurrentUser, selectIsAuthenticated, selectToken, updatePromoMode } from './src/store/slices/authSlice';
 import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
 
@@ -78,7 +79,7 @@ const AppContent = () => {
   const appUpdate = useSelector(selectAppUpdate);
   const user = useSelector(selectCurrentUser);
   const token = useSelector(selectToken);
-  const isAuthenticated = useSelector(selectIsAuthenticated); // AJOUT
+  const isAuthenticated = useSelector(selectIsAuthenticated);
   
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const isSuperAdmin = user?.role === 'superadmin';
@@ -122,8 +123,6 @@ const AppContent = () => {
     checkSystemStatus();
   }, [checkSystemStatus]);
 
-  // CORRECTION MAJEURE : On utilise isAuthenticated au lieu de token en dépendance
-  // pour éviter que le socket se déconnecte/reconnecte brutalement toutes les 15 minutes.
   useEffect(() => {
     if (isAuthenticated && token) {
       socketService.connect(token);
@@ -131,14 +130,12 @@ const AppContent = () => {
     } else if (!isAuthenticated) {
       socketService.disconnect();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAuthenticated, checkSystemStatus]); // Retrait volontaire de "token" de la liste
+  }, [isAuthenticated, checkSystemStatus]);
 
   useEffect(() => {
     const subscription = AppState.addEventListener('change', nextAppState => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
         dispatch(forceSilentRefresh()).then(() => {
-          // CORRECTION MAJEURE : On ne recharge les données que si la session a survécu au Refresh
           const currentToken = store.getState().auth.token;
           if (currentToken) {
             dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
@@ -224,8 +221,31 @@ const AppContent = () => {
 };
 
 const App = () => {
+  const [appIsReady, setAppIsReady] = useState(false);
   const [themeChanged, setThemeChanged] = useState(false);
   const initialTheme = useRef(Appearance.getColorScheme());
+
+  // CORRECTION MAJEURE : On charge TOUTES les familles d'icônes en RAM avant de démarrer l'app
+  useEffect(() => {
+    async function prepare() {
+      try {
+        await Font.loadAsync({
+          ...Ionicons.font,
+          ...FontAwesome5.font,
+          ...MaterialIcons.font,
+          ...MaterialCommunityIcons.font,
+          ...Feather.font,
+          ...AntDesign.font,
+        });
+      } catch (e) {
+        console.warn("[APP_INIT] Erreur chargement polices:", e);
+      } finally {
+        setAppIsReady(true);
+        await NativeSplashScreen.hideAsync();
+      }
+    }
+    prepare();
+  }, []);
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener((preferences) => {
@@ -233,6 +253,10 @@ const App = () => {
     });
     return () => subscription.remove();
   }, []);
+
+  if (!appIsReady) {
+    return null; // Maintient le splash screen natif tant que les polices ne sont pas en RAM
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
