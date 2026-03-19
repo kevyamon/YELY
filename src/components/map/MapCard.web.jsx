@@ -7,7 +7,7 @@ import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } f
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
-// SUPPRESSION DU CRASH METRO : import 'leaflet/dist/leaflet.css';
+import { renderToString } from 'react-dom/server'; // AJOUT : Moteur de compilation React -> HTML
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -15,6 +15,7 @@ import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
+import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur multi-familles
 import {
   MapAutoFitter,
   defaultIcon,
@@ -24,20 +25,23 @@ import {
   userIcon
 } from './markers/WebMarkers';
 
-// ON FORCE LA CARTE CLAIRE (CartoDB Positron pour matcher avec le style epure)
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
-const POI_SVG = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="14" height="14"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
-
+// CORRECTION MAJEURE : On compile l'icône Universelle dynamiquement en conservant le nom du lieu
 const createPoiIcon = (poi) => {
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
   
+  // Compilation du composant React en HTML pur pour Leaflet
+  const iconHtml = renderToString(
+    <UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />
+  );
+  
   const htmlContent = `
     <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
       <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
-        ${POI_SVG}
+        ${iconHtml}
       </div>
       <div style="margin-top: 2px; font-size: 13px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
         ${fullName}
@@ -85,7 +89,6 @@ const MapCard = forwardRef(({
   const [isButtonActive, setIsButtonActive] = useState(true);
   const buttonSleepTimeout = useRef(null);
 
-  // INJECTION DYNAMIQUE DU CSS LEAFLET (Contournement Metro Bundler)
   useEffect(() => {
     if (typeof document !== 'undefined') {
       if (!document.getElementById('leaflet-css')) {
@@ -159,7 +162,6 @@ const MapCard = forwardRef(({
     location?.longitude || MAFERE_CENTER.longitude,
   ];
 
-  // SANITISATION : Élimination des doublons consécutifs et securite anti-crash
   const polylinePositions = (visibleRoutePoints || [])
     .map(p => [p?.latitude, p?.longitude])
     .filter(p => p && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number' && !isNaN(p[0]) && !isNaN(p[1]))
@@ -187,7 +189,6 @@ const MapCard = forwardRef(({
       >
         <MapInteractionTracker onInteract={handleMapInteraction} />
 
-        {/* FORCAGE CARTE CLAIRE */}
         <TileLayer
           url={LIGHT_TILE_URL}
           attribution={ATTRIBUTION}
@@ -207,7 +208,7 @@ const MapCard = forwardRef(({
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
             position={[poi.latitude, poi.longitude]}
-            icon={createPoiIcon(poi)}
+            icon={createPoiIcon(poi)} // SÉCURISÉ : On utilise notre générateur local mis à jour
             eventHandlers={{ click: () => onMarkerPress?.(poi) }}
           />
         ))}
@@ -227,14 +228,13 @@ const MapCard = forwardRef(({
           
           if (marker.type === 'pickup') {
             if (isDriver) {
-               markerIcon = pickupIcon; // Seulement le chauffeur voit le bonhomme bleu
+               markerIcon = pickupIcon; 
             } else {
-               // Suppression de l'icône redondante pour le passager (le client a déjà son propre point)
                return null;
             }
           }
           else if (marker.type === 'destination') markerIcon = destinationIcon;
-          else if (marker.type === 'pickup_origin') return null; // Invisible comme sur mobile
+          else if (marker.type === 'pickup_origin') return null; 
 
           return (
             <Marker
@@ -307,7 +307,6 @@ const arePropsEqual = (prevProps, nextProps) => {
   const isSameLocation = (loc1, loc2) => {
     if (!loc1 && !loc2) return true;
     if (!loc1 || !loc2) return false;
-    // Securite: on verifie que les coordonnees sont bien des nombres avant de couper les decimales
     if (typeof loc1.latitude !== 'number' || typeof loc2.latitude !== 'number') return false;
     if (typeof loc1.longitude !== 'number' || typeof loc2.longitude !== 'number') return false;
     

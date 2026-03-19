@@ -4,13 +4,30 @@
 
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
+import { renderToString } from 'react-dom/server';
 import { useMap } from 'react-leaflet';
 import { MAFERE_CENTER } from '../../../utils/mafereZone';
+import UniversalIcon from '../../ui/UniversalIcon'; // AJOUT : Import du composant
 
 const SVG_PIN = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="20" height="20"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 const SVG_USER = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
 const SVG_FLAG = `<svg viewBox="0 0 24 24" fill="#E74C3C" width="26" height="26"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
 const SVG_CAR = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="22" height="22"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`;
+
+// AJOUT MAJEUR : Générateur dynamique d'icônes Leaflet (Transforme le React en HTML)
+export const createDynamicPoiIcon = (iconString, color) => {
+  // On utilise renderToString pour compiler le composant avant de le donner à Leaflet
+  const iconHtml = renderToString(
+    <UniversalIcon iconString={iconString || 'Ionicons/location'} size={18} color="#FFFFFF" />
+  );
+
+  return L.divIcon({
+    className: 'yely-dynamic-marker',
+    html: `<div style="width: 32px; height: 32px; border-radius: 50%; background: ${color || '#D4AF37'}; border: 2px solid #FFFFFF; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${iconHtml}</div>`,
+    iconSize: [32, 32],
+    iconAnchor: [16, 16],
+  });
+};
 
 export const userIcon = L.divIcon({
   className: 'yely-user-marker',
@@ -79,12 +96,10 @@ export const MapAutoFitter = ({
   const lastUpdateRef = useRef(0);
 
   useEffect(() => {
-    // 🛡️ RESPECT DE L'UX
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    // 🎯 1. IDENTIFICATION DES EXTRÉMITÉS
     const targetMarker = markers.find((m) => m.type === 'pickup' || m.type === 'destination');
     const originMarker = driverLocation?.latitude ? driverLocation : location;
 
@@ -116,7 +131,6 @@ export const MapAutoFitter = ({
       lastUpdateRef.current = now;
       isInitialFitDone.current = true;
 
-      // 🧠 2. DÉCISION DU NIVEAU DE ZOOM SÉCURISÉ
       let dynamicMaxZoom = 16; 
 
       if (isTrackingActive && targetMarker && originMarker) {
@@ -131,20 +145,15 @@ export const MapAutoFitter = ({
           dynamicMaxZoom = 15;
         }
 
-        // Sur le web, si les points sont trop proches, l'animation flyToBounds bugge. On recentre doucement.
         if (distance < 150) {
             map.flyTo([originMarker.latitude, originMarker.longitude], 17, { duration: 1 });
             return;
         }
       }
 
-      // 🛡️ 3. LE BOUCLIER D'ÉVASION WEB (Anti-Implosion)
-      // Leaflet crashe si on lui donne un padding supérieur à la taille réelle de sa div conteneur.
-      // On récupère dynamiquement la taille du conteneur de la carte pour limiter le padding.
       const mapContainer = map.getContainer();
       const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
       
-      // On ne dépasse jamais 35% de la hauteur dispo pour le Top, et 45% pour le Bottom
       const maxAllowedTop = Math.floor(mapHeight * 0.35);
       const maxAllowedBottom = Math.floor(mapHeight * 0.45);
 

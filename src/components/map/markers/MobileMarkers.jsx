@@ -4,9 +4,10 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
-import React, { useEffect, useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../../theme/theme';
+import UniversalIcon from '../../ui/UniversalIcon'; // AJOUT : Import du moteur universel
 
 export const TrackedMarker = ({
   coordinate,
@@ -138,7 +139,6 @@ export const AnimatedDestinationMarker = ({ color }) => {
   );
 };
 
-// Refonte complète : Remplacement de la rotation par un design premium ultra-stable
 export const SmoothDriverMarker = ({ coordinate }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
 
@@ -189,7 +189,8 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
         >
           <View style={styles.poiBottom}>
             <View style={[styles.poiDot, { backgroundColor: color }]}>
-              <Ionicons name={icon || 'location'} size={13} color="#FFFFFF" />
+              {/* MODIFICATION SÉCURISÉE : L'icône dynamique est ici */}
+              <UniversalIcon iconString={icon || 'Ionicons/location'} size={13} color="#FFFFFF" />
             </View>
             <Text
               style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
@@ -221,7 +222,7 @@ const styles = StyleSheet.create({
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)', // Aura champagne légère
+    backgroundColor: 'rgba(212, 175, 55, 0.15)', 
     justifyContent: 'center',
     alignItems: 'center',
   },
