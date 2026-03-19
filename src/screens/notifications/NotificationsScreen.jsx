@@ -143,8 +143,8 @@ const NotificationsScreen = ({ navigation, route }) => {
             <TouchableOpacity onPress={() => markRead('all')} style={styles.actionTextBtn}>
               <Text style={styles.markAll}>Tout lire</Text>
             </TouchableOpacity>
-            <TouchableOpacity onPress={() => setInterceptionId('all')} style={styles.actionTextBtn}>
-              <Text style={styles.deleteAll}>Vider</Text>
+            <TouchableOpacity onPress={() => setInterceptionId('all')} style={styles.clearAllButton}>
+              <Ionicons name="trash-bin-outline" size={22} color={THEME.COLORS.danger} />
             </TouchableOpacity>
           </View>
         )}
@@ -201,7 +201,7 @@ const styles = StyleSheet.create({
   headerActions: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   actionTextBtn: { paddingVertical: 5 },
   markAll: { color: THEME.COLORS.textSecondary, fontSize: 14 },
-  deleteAll: { color: THEME.COLORS.danger, fontSize: 14, fontWeight: 'bold' },
+  clearAllButton: { padding: 8, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderRadius: 8 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   list: { paddingHorizontal: 20, paddingBottom: 40 },
   card: { flexDirection: 'row', padding: 15, marginBottom: 12, alignItems: 'center' },
