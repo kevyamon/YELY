@@ -1,6 +1,6 @@
 // src/components/map/MapCard.jsx
 // COMPOSANT ORCHESTRATEUR CARTE MOBILE - MAPLIBRE NATIVE
-// CSCSM Level: Bank Grade
+// CSCSM Level: Bank Grade (Avec Cinematic Focus UX)
 
 import { Ionicons } from '@expo/vector-icons';
 import MapLibreGL from '@maplibre/maplibre-react-native';
@@ -13,7 +13,7 @@ import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
-import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur Universel
+import UniversalIcon from '../ui/UniversalIcon';
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
@@ -158,8 +158,13 @@ const MapCard = forwardRef(({
     }, []);
 
   const isRouteValid = safeRouteCoordinates.length > 1;
-
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+
+  // --- UX : CINEMATIC FOCUS (Bank Grade) ---
+  // Dès qu'un itinéraire est tracé ou qu'une action de course est engagée,
+  // on masque le bruit visuel (les milliers de POIs) pour focaliser l'attention.
+  const isCinematicMode = isRouteValid || rideStatus !== null;
+  const visiblePOIs = isCinematicMode ? [] : mapPOIs;
   
   const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
   const actualDriverLocation = isDriver ? safeLocation : driverLocation;
@@ -171,18 +176,6 @@ const MapCard = forwardRef(({
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
-      
-      {/* TRICK SENIOR++ : PRÉCHARGEMENT INVISIBLE DES POLICES POUR MAPLIBRE (NATIVE) */}
-      {/* Oblige le téléphone à charger les fichiers .ttf en RAM avant que la carte MapLibre ne les réclame */}
-      <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', zIndex: -1 }}>
-        {mapPOIs.map((poi) => (
-          <UniversalIcon key={`preload-poi-${poi._id || poi.id}`} iconString={poi.icon} size={10} color="transparent" />
-        ))}
-        {markers.map((marker, index) => (
-          marker.icon ? <UniversalIcon key={`preload-marker-${index}`} iconString={marker.icon} size={10} color="transparent" /> : null
-        ))}
-      </View>
-
       <View style={[styles.mapClip, !floating && styles.mapClipEdge, { backgroundColor: mapBackgroundColor }]}>
         
         <MapLibreGL.MapView
@@ -245,7 +238,8 @@ const MapCard = forwardRef(({
             </MapLibreGL.ShapeSource>
           )}
 
-          {mapPOIs.map((poi) => (
+          {/* Rendu des POIs filtrés par le Cinematic Focus */}
+          {visiblePOIs.map((poi) => (
             <PoiMarker
               key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.latitude}-${poi.longitude}`}
               coordinate={{ latitude: poi.latitude, longitude: poi.longitude }}
@@ -295,6 +289,7 @@ const MapCard = forwardRef(({
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                     zIndex={110}
                   >
+                    {/* Héritage visuel : le marqueur prend la couleur du POI s'il en a une */}
                     <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
                   </TrackedMarker>
                 );
@@ -304,8 +299,8 @@ const MapCard = forwardRef(({
                     key={marker.id || `marker-${index}`}
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                     name={marker.name || "Destination"}
-                    icon="Ionicons/location"
-                    color={THEME.COLORS.danger}
+                    icon={marker.icon || "Ionicons/location"} // Héritage visuel de l'icône du POI
+                    color={marker.iconColor || THEME.COLORS.danger} // Héritage visuel de la couleur du POI
                     onPress={() => onMarkerPress?.(marker)}
                   />
                 );
@@ -323,7 +318,6 @@ const MapCard = forwardRef(({
                 <TouchableOpacity activeOpacity={0.8} onPress={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
                   {marker.customView || (
                     <View style={[styles.defaultMarker, marker.style]}>
-                      {/* L'UniversalIcon est bien présent ici, sécurité absolue */}
                       <UniversalIcon
                         iconString={marker.icon || 'Ionicons/location'}
                         size={marker.iconSize || 20}

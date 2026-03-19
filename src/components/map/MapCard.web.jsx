@@ -1,10 +1,10 @@
 // src/components/map/MapCard.web.jsx
 // COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready (Force Light Theme)
-// CSCSM Level: Bank Grade
+// CSCSM Level: Bank Grade (Avec Cinematic Focus UX)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
-import { renderToString } from 'react-dom/server'; // AJOUT : Moteur de compilation React -> HTML
+import { renderToString } from 'react-dom/server';
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
@@ -15,7 +15,7 @@ import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
-import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur Universel
+import UniversalIcon from '../ui/UniversalIcon';
 import {
   MapAutoFitter,
   defaultIcon,
@@ -28,7 +28,6 @@ import {
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
-// CORRECTION MAJEURE : On compile l'icône Universelle en HTML
 const createPoiIcon = (poi) => {
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
@@ -71,6 +70,7 @@ const MapCard = forwardRef(({
   driverLocation,
   markers = [],
   isDriver = false,
+  rideStatus = null, // AJOUT : Indispensable pour le Cinematic Focus
   showUserMarker = true,
   showRecenterButton = true,
   mapTopPadding = 140,
@@ -174,12 +174,14 @@ const MapCard = forwardRef(({
     }, []);
 
   const isRouteValid = polylinePositions.length > 1;
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+
+  // --- UX : CINEMATIC FOCUS (Version Web) ---
+  const isCinematicMode = isRouteValid || rideStatus !== null;
+  const visiblePOIs = isCinematicMode ? [] : mapPOIs;
 
   return (
     <View style={[styles.container, style]}>
-      {/* TRICK SENIOR++ : PRÉCHARGEMENT INVISIBLE DES POLICES POUR LEAFLET */}
-      {/* Cela force le navigateur à télécharger toutes les polices nécessaires (FontAwesome, Material, etc.) */}
-      {/* AVANT que renderToString n'en ait besoin. Fini les points d'interrogation ! */}
       <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', zIndex: -1 }}>
         {mapPOIs.map((poi) => (
           <UniversalIcon key={`preload-poi-${poi._id || poi.id}`} iconString={poi.icon} size={10} color="transparent" />
@@ -215,7 +217,8 @@ const MapCard = forwardRef(({
           mapBottomPadding={mapBottomPadding}
         />
 
-        {mapPOIs.map((poi) => (
+        {/* Cinematic Focus appliqué ici : on map sur visiblePOIs et non mapPOIs */}
+        {visiblePOIs.map((poi) => (
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
             position={[poi.latitude, poi.longitude]}
@@ -224,7 +227,7 @@ const MapCard = forwardRef(({
           />
         ))}
 
-        {showUserMarker && location && (
+        {showUserMarker && !isOngoingRide && location && !isDriver && (
           <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
         )}
 
@@ -244,10 +247,20 @@ const MapCard = forwardRef(({
                return null;
             }
           }
-          else if (marker.type === 'destination') markerIcon = destinationIcon;
+          else if (marker.type === 'destination') {
+            // Héritage Visuel de la destination
+            if (marker.icon) {
+                markerIcon = createPoiIcon({
+                  icon: marker.icon,
+                  iconColor: marker.iconColor || THEME.COLORS.danger,
+                  name: marker.name || "Destination"
+                });
+            } else {
+                markerIcon = destinationIcon;
+            }
+          }
           else if (marker.type === 'pickup_origin') return null; 
           else if (marker.icon) {
-              // CORRECTION MAJEURE : Les marqueurs génériques sur le web respectent aussi UniversalIcon
               const mColor = marker.iconColor || THEME.COLORS.champagneGold;
               const mHtml = renderToString(<UniversalIcon iconString={marker.icon} size={18} color="#FFFFFF" />);
               markerIcon = L.divIcon({
@@ -342,7 +355,8 @@ const arePropsEqual = (prevProps, nextProps) => {
     prevProps.markers?.length === nextProps.markers?.length &&
     prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
     prevProps.showUserMarker === nextProps.showUserMarker &&
-    prevProps.isDriver === nextProps.isDriver
+    prevProps.isDriver === nextProps.isDriver &&
+    prevProps.rideStatus === nextProps.rideStatus // CORRECTION : Forcer le re-rendu lors des changements de statut
   );
 };
 
