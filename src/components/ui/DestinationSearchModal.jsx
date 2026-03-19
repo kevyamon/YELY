@@ -3,13 +3,14 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
 
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
+import UniversalIcon from './UniversalIcon'; // AJOUT : Import du composant universel (même dossier)
 
 const normalizeSearchText = (text) => {
   if (!text) return '';
@@ -62,7 +63,12 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       onPress={() => handleSelectPlace(item)}
     >
       <View style={[styles.suggestionIcon, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
-        <Ionicons name={item.icon || "location"} size={isSmallScreen ? 18 : 20} color={item.iconColor || THEME.COLORS.champagneGold} />
+        {/* CORRECTION MAJEURE : On utilise l'UniversalIcon pour décoder le "Famille/Nom" de l'icône */}
+        <UniversalIcon 
+          iconString={item.icon || "Ionicons/location"} 
+          size={isSmallScreen ? 18 : 20} 
+          color={item.iconColor || THEME.COLORS.champagneGold} 
+        />
       </View>
       <View style={styles.suggestionTextContainer}>
         <Text style={[styles.mainText, isSmallScreen && { fontSize: 14 }]} numberOfLines={1}>{item.name}</Text>

@@ -171,6 +171,18 @@ const MapCard = forwardRef(({
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>
+      
+      {/* TRICK SENIOR++ : PRÉCHARGEMENT INVISIBLE DES POLICES POUR MAPLIBRE (NATIVE) */}
+      {/* Oblige le téléphone à charger les fichiers .ttf en RAM avant que la carte MapLibre ne les réclame */}
+      <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', zIndex: -1 }}>
+        {mapPOIs.map((poi) => (
+          <UniversalIcon key={`preload-poi-${poi._id || poi.id}`} iconString={poi.icon} size={10} color="transparent" />
+        ))}
+        {markers.map((marker, index) => (
+          marker.icon ? <UniversalIcon key={`preload-marker-${index}`} iconString={marker.icon} size={10} color="transparent" /> : null
+        ))}
+      </View>
+
       <View style={[styles.mapClip, !floating && styles.mapClipEdge, { backgroundColor: mapBackgroundColor }]}>
         
         <MapLibreGL.MapView
@@ -311,7 +323,7 @@ const MapCard = forwardRef(({
                 <TouchableOpacity activeOpacity={0.8} onPress={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
                   {marker.customView || (
                     <View style={[styles.defaultMarker, marker.style]}>
-                      {/* CORRECTION MAJEURE : On détruit l'Ionicons hardcodé pour l'UniversalIcon */}
+                      {/* L'UniversalIcon est bien présent ici, sécurité absolue */}
                       <UniversalIcon
                         iconString={marker.icon || 'Ionicons/location'}
                         size={marker.iconSize || 20}

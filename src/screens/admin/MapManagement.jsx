@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
-import React, { useMemo, useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
@@ -16,6 +16,7 @@ import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassInput from '../../components/ui/GlassInput';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import UniversalIcon from '../../components/ui/UniversalIcon'; // AJOUT : Le moteur universel
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -45,14 +46,12 @@ const MapManagement = () => {
   }, [pois, searchQuery]);
 
   const handleScroll = (event) => {
-    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    // Securite: on ne scroll que si on a des resultats
     if (filteredPois && filteredPois.length > 0) {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
@@ -109,7 +108,8 @@ const MapManagement = () => {
   const renderPoiItem = ({ item }) => (
     <View style={styles.poiCard}>
       <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-        <Ionicons name={item.icon} size={28} color={item.iconColor} />
+        {/* CORRECTION MAJEURE : Utilisation de l'UniversalIcon avec la prop iconString */}
+        <UniversalIcon iconString={item.icon} size={28} color={item.iconColor} />
       </View>
       <View style={styles.poiInfo}>
         <Text style={styles.poiName}>{item.name}</Text>
