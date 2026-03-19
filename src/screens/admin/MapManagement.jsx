@@ -12,11 +12,12 @@ import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import PoiFormModal from '../../components/admin/PoiFormModal';
+import PoiSelectionMapModal from '../../components/admin/PoiSelectionMapModal';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassInput from '../../components/ui/GlassInput';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import UniversalIcon from '../../components/ui/UniversalIcon'; // AJOUT : Import du moteur universel
+import UniversalIcon from '../../components/ui/UniversalIcon';
 import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -28,8 +29,12 @@ const MapManagement = () => {
   const flatListRef = useRef(null);
   
   const [searchQuery, setSearchQuery] = useState('');
+  
+  const [isSelectionMapVisible, setIsSelectionMapVisible] = useState(false);
   const [isFormModalVisible, setIsFormModalVisible] = useState(false);
+  
   const [editingPoi, setEditingPoi] = useState(null);
+  const [prefillData, setPrefillData] = useState(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
@@ -46,14 +51,12 @@ const MapManagement = () => {
   }, [pois, searchQuery]);
 
   const handleScroll = (event) => {
-    // Calcul dynamique de la moitie de l'ecran pour declencher le bouton
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
     const halfScreenHeight = layoutMeasurement.height / 2;
     setShowScrollTop(contentOffset.y > halfScreenHeight);
   };
 
   const scrollToTop = () => {
-    // Securite: on ne scroll que si on a des resultats
     if (filteredPois && filteredPois.length > 0) {
       flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
     }
@@ -61,12 +64,21 @@ const MapManagement = () => {
 
   const openAddModal = () => {
     setEditingPoi(null);
+    setPrefillData(null);
     setIsFormModalVisible(true);
   };
 
   const openEditModal = (poi) => {
     setEditingPoi(poi);
+    setPrefillData(null);
     setIsFormModalVisible(true);
+  };
+  
+  const handleMapSelection = (data) => {
+    setIsSelectionMapVisible(false);
+    setEditingPoi(null);
+    setPrefillData(data);
+    setTimeout(() => setIsFormModalVisible(true), 350);
   };
 
   const confirmDelete = (poi) => {
@@ -110,7 +122,6 @@ const MapManagement = () => {
   const renderPoiItem = ({ item }) => (
     <View style={styles.poiCard}>
       <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-        {/* CORRECTION : Utilisation de UniversalIcon pour prévenir le crash sur Ionicons */}
         <UniversalIcon 
           iconString={item.icon || 'Ionicons/location'} 
           size={28} 
@@ -141,9 +152,14 @@ const MapManagement = () => {
         
         <Text style={styles.headerTitle}>Gestion de la Carte</Text>
         
-        <TouchableOpacity onPress={handleBulkImport} style={styles.bulkBtn}>
-          <Ionicons name="cloud-upload" size={20} color={THEME.COLORS.champagneGold} />
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          <TouchableOpacity onPress={() => setIsSelectionMapVisible(true)} style={[styles.bulkBtn, { marginRight: 10 }]}>
+            <Ionicons name="map-outline" size={20} color={THEME.COLORS.champagneGold} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={handleBulkImport} style={styles.bulkBtn}>
+            <Ionicons name="cloud-upload" size={20} color={THEME.COLORS.champagneGold} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <View style={styles.content}>
@@ -193,10 +209,17 @@ const MapManagement = () => {
         <Ionicons name="add" size={32} color={THEME.COLORS.background} />
       </TouchableOpacity>
 
+      <PoiSelectionMapModal
+        visible={isSelectionMapVisible}
+        onClose={() => setIsSelectionMapVisible(false)}
+        onSelect={handleMapSelection}
+      />
+
       <PoiFormModal 
         visible={isFormModalVisible}
         onClose={() => setIsFormModalVisible(false)}
         editingPoi={editingPoi}
+        prefillData={prefillData}
       />
 
       <ConfirmModal 
@@ -217,6 +240,7 @@ const styles = StyleSheet.create({
   customHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 15, backgroundColor: THEME.COLORS.background, zIndex: 10 },
   backBtn: { padding: 5 },
   headerTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  headerActions: { flexDirection: 'row', alignItems: 'center' },
   bulkBtn: { padding: 8, backgroundColor: THEME.COLORS.glassLight, borderRadius: 12 },
   content: { flex: 1, paddingHorizontal: 20 },
   searchWrapper: { marginBottom: 15 },

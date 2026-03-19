@@ -40,6 +40,7 @@ const MapCard = forwardRef(({
   onMapReady,
   onPress,
   onMarkerPress,
+  onRegionDidChange,
   style,
   children,
 }, ref) => {
@@ -160,9 +161,6 @@ const MapCard = forwardRef(({
   const isRouteValid = safeRouteCoordinates.length > 1;
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
-  // --- UX : CINEMATIC FOCUS (Bank Grade) ---
-  // Dès qu'un itinéraire est tracé ou qu'une action de course est engagée,
-  // on masque le bruit visuel (les milliers de POIs) pour focaliser l'attention.
   const isCinematicMode = isRouteValid || rideStatus !== null;
   const visiblePOIs = isCinematicMode ? [] : mapPOIs;
   
@@ -189,6 +187,7 @@ const MapCard = forwardRef(({
           zoomEnabled={true}
           onDidFinishLoadingMap={handleMapReady}
           onRegionWillChange={handleMapInteraction}
+          onRegionDidChange={onRegionDidChange}
           onPress={onPress}
           styleJSON={JSON.stringify({ version: 8, sources: {}, layers: [] })}
         >
@@ -238,7 +237,6 @@ const MapCard = forwardRef(({
             </MapLibreGL.ShapeSource>
           )}
 
-          {/* Rendu des POIs filtrés par le Cinematic Focus */}
           {visiblePOIs.map((poi) => (
             <PoiMarker
               key={`map-poi-${poi._id || poi.id}-${poi.name}-${poi.latitude}-${poi.longitude}`}
@@ -289,7 +287,6 @@ const MapCard = forwardRef(({
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                     zIndex={110}
                   >
-                    {/* Héritage visuel : le marqueur prend la couleur du POI s'il en a une */}
                     <AnimatedDestinationMarker color={marker.iconColor || THEME.COLORS.danger} />
                   </TrackedMarker>
                 );
@@ -299,8 +296,8 @@ const MapCard = forwardRef(({
                     key={marker.id || `marker-${index}`}
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                     name={marker.name || "Destination"}
-                    icon={marker.icon || "Ionicons/location"} // Héritage visuel de l'icône du POI
-                    color={marker.iconColor || THEME.COLORS.danger} // Héritage visuel de la couleur du POI
+                    icon={marker.icon || "Ionicons/location"} 
+                    color={marker.iconColor || THEME.COLORS.danger} 
                     onPress={() => onMarkerPress?.(marker)}
                   />
                 );

@@ -9,7 +9,7 @@ import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from '../ui/GlassInput';
 import GoldButton from '../ui/GoldButton';
-import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Import du nouveau moteur
+import UniversalIcon from '../ui/UniversalIcon';
 import IconPickerModal from './IconPickerModal';
 
 const COLOR_PALETTE = [
@@ -31,7 +31,7 @@ const suggestColor = (iconName) => {
   return THEME.COLORS.champagneGold;
 };
 
-const PoiFormModal = ({ visible, onClose, editingPoi }) => {
+const PoiFormModal = ({ visible, onClose, editingPoi, prefillData }) => {
   const dispatch = useDispatch();
   const [isIconPickerVisible, setIsIconPickerVisible] = useState(false);
 
@@ -42,7 +42,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
     name: '',
     latitude: '',
     longitude: '',
-    icon: 'Ionicons/location', // CORRECTION : Nouveau format par défaut
+    icon: 'Ionicons/location', 
     iconColor: THEME.COLORS.champagneGold
   });
 
@@ -56,17 +56,25 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
           icon: editingPoi.icon,
           iconColor: editingPoi.iconColor
         });
+      } else if (prefillData) {
+        setFormData({
+          name: prefillData.name || '',
+          latitude: prefillData.latitude ? prefillData.latitude.toString() : '',
+          longitude: prefillData.longitude ? prefillData.longitude.toString() : '',
+          icon: 'Ionicons/location',
+          iconColor: THEME.COLORS.champagneGold
+        });
       } else {
         setFormData({
           name: '',
           latitude: '',
           longitude: '',
-          icon: 'Ionicons/location', // CORRECTION
+          icon: 'Ionicons/location', 
           iconColor: THEME.COLORS.champagneGold
         });
       }
     }
-  }, [visible, editingPoi]);
+  }, [visible, editingPoi, prefillData]);
 
   const handleIconSelect = (iconName) => {
     setFormData(prev => ({
@@ -98,10 +106,10 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
 
       if (editingPoi) {
         await updatePOI({ id: editingPoi._id, ...payload }).unwrap();
-        dispatch(showToast({ message: 'Lieu mis a jour avec succes', type: 'success' }));
+        dispatch(showToast({ message: 'Lieu mis à jour avec succès', type: 'success' }));
       } else {
         await createPOI(payload).unwrap();
-        dispatch(showToast({ message: 'Nouveau lieu ajoute', type: 'success' }));
+        dispatch(showToast({ message: 'Nouveau lieu ajouté', type: 'success' }));
       }
       onClose();
     } catch (err) {
@@ -114,7 +122,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
       <View style={styles.overlay}>
         <View style={styles.content}>
           <View style={styles.header}>
-            <Text style={styles.title}>{editingPoi ? 'Editer le lieu' : 'Ajouter un lieu'}</Text>
+            <Text style={styles.title}>{editingPoi ? 'Éditer le lieu' : 'Ajouter un lieu'}</Text>
             <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
               <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
             </TouchableOpacity>
@@ -149,7 +157,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               </View>
             </View>
 
-            <Text style={styles.label}>Icone & Representation</Text>
+            <Text style={styles.label}>Icône & Représentation</Text>
             
             <TouchableOpacity 
               style={styles.iconSelectorBtn} 
@@ -157,17 +165,16 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
               onPress={() => setIsIconPickerVisible(true)}
             >
               <View style={[styles.iconPreviewBox, { backgroundColor: `${formData.iconColor}15`, borderColor: formData.iconColor }]}>
-                {/* CORRECTION MAJEURE : On utilise UniversalIcon pour la preview */}
                 <UniversalIcon iconString={formData.icon} size={32} color={formData.iconColor} />
               </View>
               <View style={styles.iconSelectorTexts}>
                 <Text style={styles.iconNameText}>{formData.icon.split('/').pop()}</Text>
-                <Text style={styles.iconInstructionText}>Appuyez pour changer l'icone</Text>
+                <Text style={styles.iconInstructionText}>Appuyez pour changer l'icône</Text>
               </View>
               <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.textTertiary} />
             </TouchableOpacity>
 
-            <Text style={styles.label}>Couleur de l'icone</Text>
+            <Text style={styles.label}>Couleur de l'icône</Text>
             <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.colorPaletteContainer}>
               {COLOR_PALETTE.map((color, idx) => {
                 const isSelected = formData.iconColor === color;
@@ -191,7 +198,7 @@ const PoiFormModal = ({ visible, onClose, editingPoi }) => {
             <View style={styles.spacer} />
 
             <GoldButton
-              title={editingPoi ? "Mettre a jour" : "Ajouter a la carte"}
+              title={editingPoi ? "Mettre à jour" : "Ajouter à la carte"}
               onPress={handleSubmit}
               loading={isCreating || isUpdating}
             />
