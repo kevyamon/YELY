@@ -71,7 +71,6 @@ const PoiSelectionMapModal = ({ visible, onClose, onSelect }) => {
     <Modal visible={visible} animationType="slide" transparent={false} onRequestClose={onClose}>
       <View style={styles.container}>
         
-        {/* Header avec Barre de recherche */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.closeBtn}>
             <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
@@ -95,7 +94,6 @@ const PoiSelectionMapModal = ({ visible, onClose, onSelect }) => {
           </TouchableOpacity>
         </View>
 
-        {/* Zone de la Carte */}
         <View style={styles.mapContainer}>
           <MapCard
             ref={mapCardRef}
@@ -107,13 +105,11 @@ const PoiSelectionMapModal = ({ visible, onClose, onSelect }) => {
             onRegionDidChange={handleRegionChange}
           />
           
-          {/* Réticule Central Fixe (La Cible) */}
           <View style={styles.crosshairWrapper} pointerEvents="none">
             <Ionicons name="add" size={42} color={THEME.COLORS.danger} style={styles.crosshairIcon} />
           </View>
         </View>
 
-        {/* Footer de validation */}
         <View style={styles.footer}>
           <Text style={styles.coordText}>
             Lat: {currentCenter.latitude.toFixed(6)} | Lng: {currentCenter.longitude.toFixed(6)}
@@ -133,7 +129,16 @@ const styles = StyleSheet.create({
   searchContainer: { flex: 1, marginRight: 10 },
   searchActionBtn: { padding: 12, backgroundColor: THEME.COLORS.glassDark, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
   mapContainer: { flex: 1, position: 'relative' },
-  crosshairWrapper: { ...StyleSheet.absoluteFillObject, justifyContent: 'center', alignItems: 'center' },
+  
+  // CORRECTION CRITIQUE : Ajout de zIndex et elevation pour forcer l'affichage AU-DESSUS du moteur OpenGL natif de la carte
+  crosshairWrapper: { 
+    ...StyleSheet.absoluteFillObject, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    zIndex: 9999, 
+    elevation: 9999 
+  },
+  
   crosshairIcon: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: THEME.COLORS.glassModal, padding: 25, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, ...THEME.SHADOWS.strong },
   coordText: { textAlign: 'center', color: THEME.COLORS.textSecondary, fontSize: 13, marginBottom: 15, fontWeight: '600' }
