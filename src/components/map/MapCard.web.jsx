@@ -4,10 +4,10 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+import { renderToString } from 'react-dom/server'; // AJOUT : Moteur de compilation React -> HTML
 import { Animated, StyleSheet, TouchableOpacity, View } from 'react-native';
 
 import L from 'leaflet';
-import { renderToString } from 'react-dom/server'; // AJOUT : Moteur de compilation React -> HTML
 import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
 
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
@@ -15,7 +15,7 @@ import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
-import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur multi-familles
+import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur Universel
 import {
   MapAutoFitter,
   defaultIcon,
@@ -28,16 +28,15 @@ import {
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
-// CORRECTION MAJEURE : On compile l'icône Universelle dynamiquement en conservant le nom du lieu
+// CORRECTION MAJEURE : On compile l'icône Universelle en HTML
 const createPoiIcon = (poi) => {
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
   
-  // Compilation du composant React en HTML pur pour Leaflet
   const iconHtml = renderToString(
     <UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />
   );
-  
+
   const htmlContent = `
     <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
       <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
@@ -178,6 +177,18 @@ const MapCard = forwardRef(({
 
   return (
     <View style={[styles.container, style]}>
+      {/* TRICK SENIOR++ : PRÉCHARGEMENT INVISIBLE DES POLICES POUR LEAFLET */}
+      {/* Cela force le navigateur à télécharger toutes les polices nécessaires (FontAwesome, Material, etc.) */}
+      {/* AVANT que renderToString n'en ait besoin. Fini les points d'interrogation ! */}
+      <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', zIndex: -1 }}>
+        {mapPOIs.map((poi) => (
+          <UniversalIcon key={`preload-poi-${poi._id || poi.id}`} iconString={poi.icon} size={10} color="transparent" />
+        ))}
+        {markers.map((marker, index) => (
+          marker.icon ? <UniversalIcon key={`preload-marker-${index}`} iconString={marker.icon} size={10} color="transparent" /> : null
+        ))}
+      </View>
+
       <MapContainer
         center={center}
         zoom={15}
@@ -208,7 +219,7 @@ const MapCard = forwardRef(({
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
             position={[poi.latitude, poi.longitude]}
-            icon={createPoiIcon(poi)} // SÉCURISÉ : On utilise notre générateur local mis à jour
+            icon={createPoiIcon(poi)}
             eventHandlers={{ click: () => onMarkerPress?.(poi) }}
           />
         ))}
@@ -235,6 +246,17 @@ const MapCard = forwardRef(({
           }
           else if (marker.type === 'destination') markerIcon = destinationIcon;
           else if (marker.type === 'pickup_origin') return null; 
+          else if (marker.icon) {
+              // CORRECTION MAJEURE : Les marqueurs génériques sur le web respectent aussi UniversalIcon
+              const mColor = marker.iconColor || THEME.COLORS.champagneGold;
+              const mHtml = renderToString(<UniversalIcon iconString={marker.icon} size={18} color="#FFFFFF" />);
+              markerIcon = L.divIcon({
+                  className: '',
+                  html: `<div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(18, 20, 24, 0.92); border: 0.5px solid rgba(242, 244, 246, 0.10); display: flex; justify-content: center; align-items: center;">${mHtml}</div>`,
+                  iconSize: [36, 36],
+                  iconAnchor: [18, 18],
+              });
+          }
 
           return (
             <Marker

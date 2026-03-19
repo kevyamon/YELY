@@ -13,6 +13,7 @@ import useRouteManager from '../../hooks/useRouteManager';
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
 import { MAFERE_CENTER } from '../../utils/mafereZone';
+import UniversalIcon from '../ui/UniversalIcon'; // AJOUT : Moteur Universel
 import {
   AnimatedDestinationMarker,
   AnimatedPickupMarker,
@@ -291,7 +292,7 @@ const MapCard = forwardRef(({
                     key={marker.id || `marker-${index}`}
                     coordinate={{ latitude: marker.latitude, longitude: marker.longitude }}
                     name={marker.name || "Destination"}
-                    icon="location"
+                    icon="Ionicons/location"
                     color={THEME.COLORS.danger}
                     onPress={() => onMarkerPress?.(marker)}
                   />
@@ -310,8 +311,9 @@ const MapCard = forwardRef(({
                 <TouchableOpacity activeOpacity={0.8} onPress={() => onMarkerPress?.(marker)} style={styles.customMarkerWrapper}>
                   {marker.customView || (
                     <View style={[styles.defaultMarker, marker.style]}>
-                      <Ionicons
-                        name={marker.icon || 'location'}
+                      {/* CORRECTION MAJEURE : On détruit l'Ionicons hardcodé pour l'UniversalIcon */}
+                      <UniversalIcon
+                        iconString={marker.icon || 'Ionicons/location'}
                         size={marker.iconSize || 20}
                         color={marker.iconColor || THEME.COLORS.champagneGold}
                       />
