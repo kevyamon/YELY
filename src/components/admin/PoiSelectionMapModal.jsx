@@ -210,7 +210,24 @@ const styles = StyleSheet.create({
   },
   crosshairIcon: { textShadowColor: 'rgba(0, 0, 0, 0.5)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
   locateMeBtn: { position: 'absolute', right: 20, bottom: 30, width: 50, height: 50, borderRadius: 25, backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.champagneGold, zIndex: 9999, elevation: 9999, ...THEME.SHADOWS.medium },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: THEME.COLORS.glassModal, padding: 25, borderTopLeftRadius: 30, borderTopRightRadius: 30, borderWidth: 1, borderColor: THEME.COLORS.glassBorder, ...THEME.SHADOWS.strong },
+  
+  // CORRECTION MATÉRIELLE ANDROID : Élévation et zIndex ajoutés au conteneur footer
+  footer: { 
+    position: 'absolute', 
+    bottom: 0, 
+    left: 0, 
+    right: 0, 
+    backgroundColor: THEME.COLORS.glassModal, 
+    padding: 25, 
+    borderTopLeftRadius: 30, 
+    borderTopRightRadius: 30, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.glassBorder,
+    zIndex: 9999,
+    elevation: 9999,
+    ...THEME.SHADOWS.strong 
+  },
+  
   dataDisplayContainer: { marginBottom: 15, alignItems: 'center', minHeight: 45, justifyContent: 'center' },
   loadingRow: { flexDirection: 'row', alignItems: 'center' },
   loaderIcon: { marginRight: 8 },
