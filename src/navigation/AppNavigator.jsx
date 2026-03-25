@@ -51,6 +51,7 @@ import SplashScreenComponent from '../screens/SplashScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
 import AdminReports from '../screens/admin/AdminReports';
+import AdminRides from '../screens/admin/AdminRides'; // NOUVEAU
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import MapManagement from '../screens/admin/MapManagement';
 import SystemConfig from '../screens/admin/SystemConfig';
@@ -177,10 +178,8 @@ const AppNavigator = () => {
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
   
-  // CORRECTION MAJEURE ICI : On vérifie si le chauffeur a un accès valide (abonnement actif OU promo)
   const hasValidAccess = subStatus?.isActive || promoMode?.isActive;
   
-  // Isolement strict SI ET SEULEMENT SI le chauffeur n'a AUCUN accès valide
   const isSubscriptionRejected = isDriver && subStatus?.isRejected && !hasValidAccess;
   const isSubscriptionPending = isDriver && subStatus?.isPending && !subStatus?.isRejected && !hasValidAccess;
   const isDriverBlocked = isDriver && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected;
@@ -210,6 +209,7 @@ const AppNavigator = () => {
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />
+            <Stack.Screen name="AdminRides" component={AdminRides} /> {/* NOUVEAU */}
             <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
             <Stack.Screen name="SystemConfig" component={SystemConfig} /> 
             <Stack.Screen name="AdminJournal" component={AdminJournal} />
@@ -255,7 +255,6 @@ const AppNavigator = () => {
               <Stack.Screen name="Report" component={ReportScreen} />
               <Stack.Screen name="Notifications" component={NotificationsScreen} />
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-              {/* AJOUT ICI : Ces écrans font désormais partie du flow normal si le chauffeur a DÉJÀ un abonnement */}
               <Stack.Screen name="WaitSubscription" component={WaitScreen} />
               <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
               <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />

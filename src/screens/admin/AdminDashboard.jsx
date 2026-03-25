@@ -60,7 +60,6 @@ const AdminDashboard = () => {
     skip: user?.role !== 'admin' && user?.role !== 'superadmin',
   });
   
-  // 📈 INTELLIGENCE DES STATS : On récupère les nouvelles données du back-end
   const stats = statsData?.data || statsData || { 
     totalUsers: 0, 
     totalRiders: 0, 
@@ -128,6 +127,8 @@ const AdminDashboard = () => {
       badge: !seenReports && unresolvedReportsCount > 0 ? unresolvedReportsCount : undefined, 
       allowed: true 
     },
+    // NOUVEAU : Le bouton pour voir toutes les courses
+    { id: 'rides', title: 'Historique Courses', icon: 'car-sport-outline', route: 'AdminRides', allowed: true },
     { id: 'journal', title: 'Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },
@@ -177,7 +178,6 @@ const AdminDashboard = () => {
 
         <Text style={styles.sectionTitle}>Indicateurs en temps réel</Text>
         <View style={styles.statsGrid}>
-          {/* On affiche 4 StatCards dans une grille 2x2 */}
           <View style={styles.statWrapper}><StatCard title="Chauffeurs Actifs" value={stats.activeDrivers} icon="car-sport-outline" /></View>
           <View style={styles.statWrapper}><StatCard title="En Attente" value={stats.pendingValidations} icon="time-outline" iconColor={stats.pendingValidations > 0 ? THEME.COLORS.danger : THEME.COLORS.primary} /></View>
           <View style={styles.statWrapper}><StatCard title="Passagers" value={stats.totalRiders} icon="person-outline" /></View>
@@ -247,11 +247,8 @@ const styles = StyleSheet.create({
   errorTitle: { color: THEME.COLORS.pureWhite, fontWeight: 'bold', fontSize: 16 },
   errorDetail: { color: THEME.COLORS.pureWhite, fontSize: 13, marginTop: 4, opacity: 0.9 },
   sectionTitle: { fontSize: 18, fontWeight: '600', color: THEME.COLORS.textPrimary, marginBottom: 15, marginTop: 10 },
-  
-  // MISE À JOUR STATS GRID : 2x2
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   statWrapper: { width: '48%', marginBottom: 15 },
-
   glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.xl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay },
   glassContent: { padding: 20, alignItems: 'center', justifyContent: 'center' },
   menuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },

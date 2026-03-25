@@ -96,7 +96,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog'],
     }),
 
-    // CORRECTION : Invalidation de SystemConfig pour reactivite en temps reel de l'interface admin
     toggleGlobalFreeAccess: builder.mutation({
       query: (payload) => ({
         url: '/admin/free-access/toggle',
@@ -149,6 +148,12 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['SystemConfig', 'AuditLog'],
     }),
+
+    // 🚗 NOUVEAU : Récupération des courses
+    getAllRides: builder.query({
+      query: ({ page = 1, limit = 20 }) => `/admin/rides?page=${page}&limit=${limit}`,
+      providesTags: ['Stats'], // Invalidera si on change des stats
+    }),
   }),
   overrideExisting: true,
 });
@@ -172,4 +177,5 @@ export const {
   useGetAuditLogsQuery,
   useGetSystemConfigQuery,
   useUpdateAppVersionMutation,
+  useGetAllRidesQuery, // NOUVEAU
 } = adminApiSlice;
