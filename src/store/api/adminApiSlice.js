@@ -149,10 +149,17 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['SystemConfig', 'AuditLog'],
     }),
 
-    // 🚗 NOUVEAU : Récupération des courses
     getAllRides: builder.query({
-      query: ({ page = 1, limit = 20 }) => `/admin/rides?page=${page}&limit=${limit}`,
-      providesTags: ['Stats'], // Invalidera si on change des stats
+      query: ({ page = 1, limit = 50, isArchived = false }) => `/admin/rides?page=${page}&limit=${limit}&isArchived=${isArchived}`,
+      providesTags: ['Stats'],
+    }),
+    
+    toggleRideArchive: builder.mutation({
+      query: (rideId) => ({
+        url: `/admin/rides/${rideId}/archive`,
+        method: 'PUT',
+      }),
+      invalidatesTags: ['Stats'],
     }),
   }),
   overrideExisting: true,
@@ -177,5 +184,6 @@ export const {
   useGetAuditLogsQuery,
   useGetSystemConfigQuery,
   useUpdateAppVersionMutation,
-  useGetAllRidesQuery, // NOUVEAU
+  useGetAllRidesQuery,
+  useToggleRideArchiveMutation,
 } = adminApiSlice;
