@@ -224,4 +224,4 @@ const styles = StyleSheet.create({
   emptyText: { color: THEME.COLORS.textSecondary, marginTop: 15, fontSize: 16 }
 });
 
-export default AdminRides;
+export default AdminRides; 
