@@ -16,8 +16,6 @@
     "production": {
       "channel": "production",
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://yely-backend-production.up.railway.app/api/v1",
-        "EXPO_PUBLIC_LOCATIONIQ_TOKEN": "pk.4e174e5a5b55092ab9d70c29533077b2",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     },
@@ -27,8 +25,6 @@
         "buildType": "apk"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://yely-backend-pu0n.onrender.com/api/v1",
-        "EXPO_PUBLIC_LOCATIONIQ_TOKEN": "pk.4e174e5a5b55092ab9d70c29533077b2",
         "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
