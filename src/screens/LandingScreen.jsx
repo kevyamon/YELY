@@ -123,7 +123,7 @@ export default function LandingScreen({ navigation }) {
             </Animated.View>
 
             <Animated.Text style={[styles.mainTitle, titleStyle]}>
-              L'ELITE DU{'\n'}TRANSPORT.
+              Avec Yély ça va vite!.
             </Animated.Text>
             
             <Animated.View style={subtitleStyle}>
