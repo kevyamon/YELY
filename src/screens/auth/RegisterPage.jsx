@@ -3,7 +3,7 @@
 // STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useState } from 'react';
+import { useState } from 'react';
 import {
   KeyboardAvoidingView,
   Platform,
@@ -75,7 +75,6 @@ const RegisterPage = ({ navigation, route }) => {
       return false;
     }
     
-    // CORRECTION : Le score doit etre de 1 (soit 3/3 criteres valides)
     if (passwordScore < 1) { 
        dispatch(showErrorToast({ 
          title: "Mot de passe trop faible", 
@@ -98,8 +97,8 @@ const RegisterPage = ({ navigation, route }) => {
       let finalPhone = formData.phone.replace(/\s/g, '').trim();
       
       if (!finalPhone.startsWith('+')) {
-        const cleanPhone = finalPhone.replace(/^0+/, '');
-        finalPhone = `+${callingCode}${cleanPhone}`;
+        // CORRECTION ROOT: On ne supprime plus le zero initial (.replace(/^0+/, '') a ete retire)
+        finalPhone = `+${callingCode}${finalPhone}`;
       }
       
       const res = await register({ ...formData, phone: finalPhone, role }).unwrap();
@@ -193,7 +192,6 @@ const RegisterPage = ({ navigation, route }) => {
               />
             </View>
 
-            {/* CORRECTION : L'espace alloue est agrandi (minHeight) pour laisser la place au nouveau bouton et a la jauge de 3 criteres */}
             <View style={styles.passwordWrapper}>
               <PasswordStrengthInput 
                 password={formData.password}
@@ -271,7 +269,6 @@ const styles = StyleSheet.create({
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: THEME.COLORS.textInverse },
   upperFields: { zIndex: 1 },
-  // CORRECTION : Le minHeight passe de 110 a 160 pour eviter que la jauge et le bouton ne chevauchent le reste
   passwordWrapper: { minHeight: 160, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
   lowerSection: { zIndex: 1, elevation: 1 },
   legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },

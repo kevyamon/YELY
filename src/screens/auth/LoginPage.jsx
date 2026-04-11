@@ -71,7 +71,8 @@ const LoginPage = ({ navigation }) => {
     try {
       let finalIdentifier = formData.identifier.trim();
       if (!isEmailMode) {
-        const cleanPhone = finalIdentifier.replace(/\s/g, '').replace(/^0+/, '');
+        // CORRECTION ROOT: On ne supprime plus le zero initial (.replace(/^0+/, '') a ete retire)
+        const cleanPhone = finalIdentifier.replace(/\s/g, '');
         finalIdentifier = `+${callingCode}${cleanPhone}`;
       }
 
@@ -93,7 +94,6 @@ const LoginPage = ({ navigation }) => {
     } catch (err) {
       const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez reessayer.";
       
-      // Interception specifique du verrou backend
       if (errorMessage === 'DEVICE_NOT_SUPPORTED') {
         setShowPwaModal(true);
         return;
