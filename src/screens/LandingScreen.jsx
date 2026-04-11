@@ -128,7 +128,7 @@ export default function LandingScreen({ navigation }) {
             
             <Animated.View style={subtitleStyle}>
               <View style={styles.separator} />
-              <Text style={styles.subTitle}>A Mafere.</Text>
+              <Text style={styles.subTitle}>@By Yély Dev Team</Text>
             </Animated.View>
           </View>
 
