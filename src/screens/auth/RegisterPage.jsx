@@ -1,5 +1,5 @@
-// src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Z-Index Fix & Jauge Dynamique)
+//src/screens/auth/RegisterPage.jsx
+// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Validation par Modale CGU)
 // STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -23,6 +23,7 @@ import GoldButton from '../../components/ui/GoldButton';
 
 import PasswordStrengthInput from '../../components/auth/PasswordStrengthInput';
 import PhoneInputGroup from '../../components/auth/PhoneInputGroup';
+import TermsModal from '../../components/auth/TermsModal';
 
 import { useRegisterMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
@@ -38,9 +39,9 @@ const RegisterPage = ({ navigation, route }) => {
   const [countryCode, setCountryCode] = useState('CI');
   const [callingCode, setCallingCode] = useState('225');
   const [passwordScore, setPasswordScore] = useState(0);
-  const [hasAcceptedLegal, setHasAcceptedLegal] = useState(false);
   
   const [showDriverRestrictionModal, setShowDriverRestrictionModal] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -59,20 +60,20 @@ const RegisterPage = ({ navigation, route }) => {
     setRole(selectedRole);
   };
 
-  const validateForm = () => {
+  const validateFormAndShowTerms = () => {
     const { name, email, password, phone } = formData;
     
     if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
       dispatch(showErrorToast({ title: "Informations manquantes", message: "Veuillez remplir tous les champs." }));
-      return false;
+      return;
     }
     if (!VALIDATORS.name(name)) {
       dispatch(showErrorToast({ title: "Nom invalide", message: ERROR_MESSAGES.name }));
-      return false;
+      return;
     }
     if (!VALIDATORS.email(email)) {
       dispatch(showErrorToast({ title: "Email invalide", message: ERROR_MESSAGES.email }));
-      return false;
+      return;
     }
     
     if (passwordScore < 1) { 
@@ -80,24 +81,18 @@ const RegisterPage = ({ navigation, route }) => {
          title: "Mot de passe trop faible", 
          message: "Votre mot de passe doit contenir au moins 8 caracteres, un chiffre et un symbole." 
        }));
-       return false;
+       return;
     }
-    
-    if (!hasAcceptedLegal) {
-      dispatch(showErrorToast({ title: "Action requise", message: "Veuillez accepter les conditions d'utilisation et la politique de confidentialite." }));
-      return false;
-    }
-    return true;
+
+    // Si tout est valide, on ouvre la modale des conditions
+    setShowTermsModal(true);
   };
 
-  const handleRegister = async () => {
-    if (!validateForm()) return;
-
+  const executeRegistration = async () => {
     try {
       let finalPhone = formData.phone.replace(/\s/g, '').trim();
       
       if (!finalPhone.startsWith('+')) {
-        // CORRECTION ROOT: On ne supprime plus le zero initial (.replace(/^0+/, '') a ete retire)
         finalPhone = `+${callingCode}${finalPhone}`;
       }
       
@@ -105,9 +100,12 @@ const RegisterPage = ({ navigation, route }) => {
       const { user, accessToken, refreshToken } = res.data;
 
       dispatch(setCredentials({ user, accessToken, refreshToken }));
+      
+      setShowTermsModal(false);
       dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
 
     } catch (err) {
+      setShowTermsModal(false);
       let errorMessage = "Une erreur est survenue lors de l'inscription.";
       
       if (err?.data?.errors && Array.isArray(err.data.errors) && err.data.errors.length > 0) {
@@ -201,25 +199,11 @@ const RegisterPage = ({ navigation, route }) => {
             </View>
 
             <View style={styles.lowerSection}>
-              <View style={styles.legalContainer}>
-                <TouchableOpacity onPress={() => setHasAcceptedLegal(!hasAcceptedLegal)} style={styles.checkbox}>
-                  <Ionicons 
-                    name={hasAcceptedLegal ? "checkbox" : "square-outline"} 
-                    size={24} 
-                    color={hasAcceptedLegal ? THEME.COLORS.champagneGold : THEME.COLORS.textSecondary} 
-                  />
-                </TouchableOpacity>
-                <Text style={styles.legalText}>
-                  J'ai lu et j'accepte les <Text style={styles.linkText} onPress={() => navigation.navigate('TermsOfService')}>Conditions d'utilisation</Text> et la <Text style={styles.linkText} onPress={() => navigation.navigate('PrivacyPolicy')}>Politique de confidentialite</Text>.
-                </Text>
-              </View>
-
               <GoldButton
-                title="CREER MON COMPTE"
-                onPress={handleRegister}
-                loading={isLoading}
+                title="S'INSCRIRE"
+                onPress={validateFormAndShowTerms}
                 style={styles.registerButton}
-                icon="person-add-outline"
+                icon="arrow-forward-outline"
               />
             </View>
           </GlassCard>
@@ -252,6 +236,13 @@ const RegisterPage = ({ navigation, route }) => {
         />
       </GlassModal>
 
+      <TermsModal 
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={executeRegistration}
+        isLoading={isLoading}
+      />
+
     </SafeAreaView>
   );
 };
@@ -270,10 +261,7 @@ const styles = StyleSheet.create({
   roleTextActive: { color: THEME.COLORS.textInverse },
   upperFields: { zIndex: 1 },
   passwordWrapper: { minHeight: 160, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
-  lowerSection: { zIndex: 1, elevation: 1 },
-  legalContainer: { flexDirection: 'row', alignItems: 'center', marginTop: THEME.SPACING.sm, marginBottom: THEME.SPACING.md, paddingRight: THEME.SPACING.xl },
-  checkbox: { marginRight: THEME.SPACING.sm },
-  legalText: { color: THEME.COLORS.textSecondary, fontSize: 12, lineHeight: 18, flexShrink: 1 },
+  lowerSection: { zIndex: 1, elevation: 1, marginTop: THEME.SPACING.md },
   registerButton: { marginTop: THEME.SPACING.sm },
   footer: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },
