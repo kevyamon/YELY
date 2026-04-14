@@ -1,4 +1,4 @@
-// src/config/env.js
+//src/config/env.js
 // VALIDATION STRICTE DE L'ENVIRONNEMENT FRONTEND (Fail-Fast)
 // STANDARD: Industriel
 
@@ -7,6 +7,7 @@ const ENV = {
   SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
   APP_ENV: process.env.EXPO_PUBLIC_APP_ENV || 'development',
   LOCATIONIQ_TOKEN: process.env.EXPO_PUBLIC_LOCATIONIQ_TOKEN,
+  FACEBOOK_LINK: process.env.EXPO_PUBLIC_FACEBOOK_LINK,
   
   FIREBASE_API_KEY: process.env.EXPO_PUBLIC_FIREBASE_API_KEY,
   FIREBASE_AUTH_DOMAIN: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN,

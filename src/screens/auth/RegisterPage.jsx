@@ -1,6 +1,6 @@
 //src/screens/auth/RegisterPage.jsx
 // PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Validation par Modale CGU)
-// STANDARD: Industriel / Bank Grade
+// STANDARD: Industriel / Bank Grade (Fix Overflow PWA)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
@@ -84,7 +84,6 @@ const RegisterPage = ({ navigation, route }) => {
        return;
     }
 
-    // Si tout est valide, on ouvre la modale des conditions
     setShowTermsModal(true);
   };
 
@@ -259,9 +258,12 @@ const styles = StyleSheet.create({
   roleBtnActive: { backgroundColor: THEME.COLORS.success, borderColor: THEME.COLORS.success },
   roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
   roleTextActive: { color: THEME.COLORS.textInverse },
-  upperFields: { zIndex: 1 },
-  passwordWrapper: { minHeight: 160, justifyContent: 'flex-start', zIndex: 999, elevation: 10, position: 'relative' },
-  lowerSection: { zIndex: 1, elevation: 1, marginTop: THEME.SPACING.md },
+  
+  // CORRECTIONS APPORTEES ICI :
+  upperFields: { zIndex: 10, elevation: 10 }, // Priorite haute pour le dropdown des indicatifs telephoniques
+  passwordWrapper: { zIndex: 1, elevation: 1, position: 'relative' }, // Suppression du minHeight bloquant
+  lowerSection: { zIndex: 1, elevation: 1, marginTop: THEME.SPACING.md }, 
+  
   registerButton: { marginTop: THEME.SPACING.sm },
   footer: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
   footerText: { color: THEME.COLORS.textTertiary },

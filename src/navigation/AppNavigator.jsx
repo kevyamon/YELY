@@ -1,4 +1,4 @@
-// src/navigation/AppNavigator.jsx
+//src/navigation/AppNavigator.jsx
 // ORCHESTRATEUR DE NAVIGATION - Routage Securise et Isolation par Role
 // CSCSM Level: Bank Grade
 
@@ -59,6 +59,7 @@ import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
+import FacebookFollowModal from '../components/ui/FacebookFollowModal';
 import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
 import WaitScreen from '../screens/subscription/WaitScreen';
@@ -268,6 +269,9 @@ const AppNavigator = () => {
         message={promoAlert.message}
         onClose={() => setPromoAlert({ ...promoAlert, visible: false })}
       />
+
+      {/* INJECTION DE LA MODALE FACEBOOK ICI - Ne s'affichera que si necessaire */}
+      <FacebookFollowModal />
 
       {showSplash && (
         <SplashScreenComponent 
