@@ -4,14 +4,14 @@
     "module": "esnext",
     "target": "esnext",
     "jsx": "react-native",
-    "moduleResolution": "node",
-    "baseUrl": "./",
+    "moduleResolution": "bundler",
     "paths": {
-      "*": ["src/*"]
+      "*": ["./src/*"]
     },
     "skipLibCheck": true,
     "allowJs": true,
-    "noEmit": true
+    "noEmit": true,
+    "ignoreDeprecations": "6.0"
   },
   "exclude": [
     "node_modules",

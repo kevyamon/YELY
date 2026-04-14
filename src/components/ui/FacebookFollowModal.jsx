@@ -1,5 +1,5 @@
 //src/components/ui/FacebookFollowModal.jsx
-// MODALE INTELLIGENTE FACEBOOK - Tracking d'etat et de redirection (HOTFIX STORAGE)
+// MODALE INTELLIGENTE FACEBOOK - Tracking d'etat et de redirection (HOTFIX IMPORT REDUX)
 // STANDARD: Industriel / Bank Grade
 
 import React, { useEffect, useRef, useState } from 'react';
@@ -8,7 +8,7 @@ import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 
 import ENV from '../../config/env';
-import { useUpdateProfileMutation } from '../../store/api/usersApiSlice';
+import { useUpdateUserProfileMutation } from '../../store/api/usersApiSlice';
 import SecureStorageAdapter from '../../store/secureStoreAdapter';
 import { selectCurrentUser, selectIsAuthenticated, setCredentials } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
@@ -19,7 +19,9 @@ const FacebookFollowModal = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
-  const [updateProfile] = useUpdateProfileMutation();
+  
+  // CORRECTION ICI : Utilisation du nom exact exporte par ton store
+  const [updateProfile] = useUpdateUserProfileMutation();
 
   const [visible, setVisible] = useState(false);
   const [step, setStep] = useState('invite'); // 'invite' | 'thank_you'
@@ -32,7 +34,6 @@ const FacebookFollowModal = () => {
 
     const checkEligibility = async () => {
       try {
-        // Utilisation de ton adaptateur maison au lieu de AsyncStorage
         const localFollowFlag = await SecureStorageAdapter.getItem(`FB_FOLLOWED_${user._id}`);
         if (localFollowFlag === 'true') return;
 
