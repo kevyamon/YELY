@@ -1,0 +1,23 @@
+//jsconfig.json
+{
+  "compilerOptions": {
+    "module": "esnext",
+    "target": "esnext",
+    "jsx": "react-native",
+    "moduleResolution": "node",
+    "baseUrl": "./",
+    "paths": {
+      "*": ["src/*"]
+    },
+    "skipLibCheck": true,
+    "allowJs": true,
+    "noEmit": true
+  },
+  "exclude": [
+    "node_modules",
+    ".expo",
+    "web-build",
+    "build",
+    "dist"
+  ]
+}
