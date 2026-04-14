@@ -1,7 +1,4 @@
-// App.js
-// POINT D'ENTREE - Cablage Redux, Providers, Sentry & Intelligence PWA/Update
-// STANDARD: Industriel / Bank Grade (Avec Catch-Up temps reel)
-
+//App.js
 import * as Sentry from '@sentry/react-native';
 import Constants from 'expo-constants';
 import * as NativeSplashScreen from 'expo-splash-screen';
@@ -30,6 +27,7 @@ import store from './src/store/store';
 import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
+import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
 import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
@@ -45,8 +43,6 @@ import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
 import socketService from './src/services/socketService';
 
-// PRELOADER FURTIF : Force Metro Bundler et React Native à charger les polices en RAM
-// Sans faire appel à Font.loadAsync qui peut crasher silencieusement.
 const HiddenFontPreloader = () => (
   <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }} pointerEvents="none">
     <Ionicons name="help" size={1} />
@@ -62,7 +58,6 @@ const isVersionOutdated = (current, latest) => {
   if (!current || !latest) return false;
   const currentParts = current.split('.').map(Number);
   const latestParts = latest.split('.').map(Number);
-  
   for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
     const c = currentParts[i] || 0;
     const l = latestParts[i] || 0;
@@ -76,7 +71,7 @@ const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
     <Text style={styles.fallbackText}>
-      L'application a rencontre un probleme. Nos equipes techniques ont ete automatiquement alertes.
+      L'application a rencontre un probleme. Nos equipes techniques ont ete automatiquement alertees.
     </Text>
     <TouchableOpacity onPress={resetError} style={styles.fallbackButton}>
       <Text style={styles.fallbackButtonText}>Redemarrer Yely</Text>
@@ -92,10 +87,8 @@ const AppContent = () => {
   const user = useSelector(selectCurrentUser);
   const token = useSelector(selectToken);
   const isAuthenticated = useSelector(selectIsAuthenticated);
-  
   const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
   const isSuperAdmin = user?.role === 'superadmin';
-
   const appState = useRef(AppState.currentState);
   
   useSocketEvents();
@@ -106,11 +99,9 @@ const AppContent = () => {
     try {
       const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
       const response = await fetch(`${apiUrl}/health/config`);
-      
       if (response.ok) {
         const payload = await response.json();
         const data = payload.data || payload; 
-        
         dispatch(setAppUpdate({
           isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
           latestVersion: data.latestVersion || currentAppVersion,
@@ -118,7 +109,6 @@ const AppContent = () => {
           updateUrl: data.updateUrl || 'https://download-yely.onrender.com',
           isOta: data.isOta 
         }));
-
         if (data.hasOwnProperty('isGlobalFreeAccess')) {
           dispatch(updatePromoMode({
             isGlobalFreeAccess: data.isGlobalFreeAccess,
@@ -178,24 +168,6 @@ const AppContent = () => {
     return () => unsubscribe();
   }, [dispatch, toast, checkSystemStatus]);
 
-  useEffect(() => {
-    const handleAppVersionUpdate = (data) => {
-      dispatch(setAppUpdate({
-        isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
-        latestVersion: data.latestVersion,
-        mandatoryUpdate: data.mandatoryUpdate,
-        updateUrl: data.updateUrl,
-        isOta: data.isOta 
-      }));
-    };
-
-    socketService.on('APP_VERSION_UPDATED', handleAppVersionUpdate);
-    
-    return () => {
-      socketService.off('APP_VERSION_UPDATED', handleAppVersionUpdate);
-    };
-  }, [currentAppVersion, dispatch, isSuperAdmin]);
-
   return (
     <>
       <NavigationContainer ref={navigationRef} documentTitle={{ formatter: () => 'Yely' }}>
@@ -214,10 +186,8 @@ const AppContent = () => {
           duration={toast.duration}
           onHide={() => dispatch(hideToast())}
         />
-        
         <GlobalSkeleton visible={loading.visible} fullScreen={true} />
         <SessionRecoveryOverlay />
-        
         <ForceUpdateModal 
           visible={appUpdate.isAvailable}
           latestVersion={appUpdate.latestVersion}
@@ -225,7 +195,7 @@ const AppContent = () => {
           updateUrl={appUpdate.updateUrl}
           isOta={appUpdate.isOta} 
         />
-
+        <FacebookFollowModal />
         <PwaIOSInstallGuide />
       </Portal>
     </>
@@ -235,29 +205,25 @@ const AppContent = () => {
 const App = () => {
   const [themeChanged, setThemeChanged] = useState(false);
   const initialTheme = useRef(Appearance.getColorScheme());
-
   useEffect(() => {
     const initApp = async () => {
-      // Retrait du délai artificiel pour laisser le Preloader agir naturellement
       await NativeSplashScreen.hideAsync();
     };
     initApp();
   }, []);
-
   useEffect(() => {
     const subscription = Appearance.addChangeListener((preferences) => {
       setThemeChanged(preferences.colorScheme !== initialTheme.current);
     });
     return () => subscription.remove();
   }, []);
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
         <PaperProvider>
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
-              <HiddenFontPreloader /> {/* INJECTION DE NOTRE FIX ICI */}
+              <HiddenFontPreloader />
               <AppContent />
               {themeChanged && <ThemeChangeModal />}
             </Sentry.ErrorBoundary>

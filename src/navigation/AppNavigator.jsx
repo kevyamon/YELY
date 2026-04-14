@@ -1,16 +1,11 @@
 //src/navigation/AppNavigator.jsx
-// ORCHESTRATEUR DE NAVIGATION - Routage Securise et Isolation par Role
-// CSCSM Level: Bank Grade
-
-import { Ionicons } from '@expo/vector-icons';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import * as SplashScreen from 'expo-splash-screen';
 import { useEffect, useState } from 'react';
-import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import useServerWakeup from '../hooks/useServerWakeup';
-import socketService from '../services/socketService';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
 
 import {
@@ -21,8 +16,7 @@ import {
   selectCurrentUser,
   selectIsAuthenticated,
   selectPromoMode,
-  selectSubscriptionStatus,
-  updatePromoMode
+  selectSubscriptionStatus
 } from '../store/slices/authSlice';
 
 import THEME from '../theme/theme';
@@ -59,22 +53,9 @@ import UsersManagement from '../screens/admin/UsersManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
-import FacebookFollowModal from '../components/ui/FacebookFollowModal';
 import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
 import WaitScreen from '../screens/subscription/WaitScreen';
-
-const PlaceholderScreen = ({ route, navigation }) => (
-  <View style={styles.placeholderContainer}>
-    <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-      <Ionicons name="arrow-back" size={24} color={THEME.COLORS.champagneGold} />
-      <Text style={styles.backText}>Retour</Text>
-    </TouchableOpacity>
-    <Ionicons name="construct-outline" size={64} color={THEME.COLORS.textSecondary} />
-    <Text style={styles.placeholderTitle}>{route.name}</Text>
-    <Text style={styles.placeholderText}>Ce module arrive bientot.</Text>
-  </View>
-);
 
 SplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -89,7 +70,6 @@ const AppNavigator = () => {
   
   const { isServerReady } = useServerWakeup();
   const [isAuthReady, setIsAuthReady] = useState(false);
-  
   const [showSplash, setShowSplash] = useState(true);
   const [promoAlert, setPromoAlert] = useState({ visible: false, isActive: false, message: '' });
 
@@ -115,26 +95,13 @@ const AppNavigator = () => {
         const storedUserStr = await SecureStorageAdapter.getItem('userInfo');
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
-
         if (storedRefreshToken && storedToken) {
           let storedUser = null;
-          
           if (storedUserStr) {
-            try {
-              storedUser = JSON.parse(storedUserStr);
-            } catch (parseError) {
-              await SecureStorageAdapter.removeItem('userInfo');
-            }
+            try { storedUser = JSON.parse(storedUserStr); } catch (e) { await SecureStorageAdapter.removeItem('userInfo'); }
           }
-
-          dispatch(restoreAuth({ 
-            user: storedUser, 
-            token: storedToken, 
-            refreshToken: storedRefreshToken 
-          }));
-
+          dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
           dispatch(forceSilentRefresh());
-          
         } else {
           dispatch(logout({ reason: 'MISSING_TOKENS_AT_STARTUP' })); 
         }
@@ -142,43 +109,15 @@ const AppNavigator = () => {
         dispatch(logout({ reason: 'CRITICAL_BOOT_ERROR' }));
       } finally {
         setIsAuthReady(true);
-        setTimeout(async () => {
-          try {
-            await SplashScreen.hideAsync();
-          } catch (err) {}
-        }, 300);
+        setTimeout(async () => { try { await SplashScreen.hideAsync(); } catch (err) {} }, 300);
       }
     };
-
     verifyAndRestoreSession();
   }, [dispatch]);
 
-  useEffect(() => {
-    if (!isAuthenticated) return;
-
-    const handlePromoModeChange = (data) => {
-      dispatch(updatePromoMode(data));
-      
-      if (user?.role === 'driver') {
-        setPromoAlert({
-          visible: true,
-          isActive: data.isGlobalFreeAccess,
-          message: data.isGlobalFreeAccess 
-            ? data.promoMessage 
-            : "Le mode gratuit est termine. Votre statut d'abonnement a ete mis a jour."
-        });
-      }
-    };
-
-    socketService.on('PROMO_MODE_CHANGED', handlePromoModeChange);
-    return () => socketService.off('PROMO_MODE_CHANGED', handlePromoModeChange);
-  }, [isAuthenticated, user?.role, dispatch]);
-
   const isDriver = user?.role === 'driver';
   const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
-  
   const hasValidAccess = subStatus?.isActive || promoMode?.isActive;
-  
   const isSubscriptionRejected = isDriver && subStatus?.isRejected && !hasValidAccess;
   const isSubscriptionPending = isDriver && subStatus?.isPending && !subStatus?.isRejected && !hasValidAccess;
   const isDriverBlocked = isDriver && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected;
@@ -214,8 +153,6 @@ const AppNavigator = () => {
             <Stack.Screen name="AdminJournal" component={AdminJournal} />
             <Stack.Screen name="AdminReports" component={AdminReports} />
             <Stack.Screen name="MapManagement" component={MapManagement} />
-            <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-            <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
           </Stack.Group>
         ) : isSubscriptionRejected ? (
           <Stack.Group>
@@ -237,17 +174,8 @@ const AppNavigator = () => {
             ) : (
               <Stack.Screen name="RiderHome" component={RiderHome} />
             )}
-            
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
-              <Stack.Screen 
-                name="Menu" 
-                component={MenuScreen} 
-                options={{
-                  animation: 'fade_from_bottom',
-                  gestureEnabled: true,
-                  animationDuration: 100, 
-                }}
-              />
+              <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: true, animationDuration: 100 }} />
               <Stack.Screen name="Pancarte" component={PancarteScreen} options={{ animation: 'slide_from_bottom' }} />
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="History" component={HistoryScreen} />
@@ -256,8 +184,6 @@ const AppNavigator = () => {
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
               <Stack.Screen name="WaitSubscription" component={WaitScreen} />
               <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
-              <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
-              <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
             </Stack.Group>
           </Stack.Group>
         )}
@@ -270,9 +196,6 @@ const AppNavigator = () => {
         onClose={() => setPromoAlert({ ...promoAlert, visible: false })}
       />
 
-      {/* INJECTION DE LA MODALE FACEBOOK ICI - Ne s'affichera que si necessaire */}
-      <FacebookFollowModal />
-
       {showSplash && (
         <SplashScreenComponent 
           isServerReady={isServerReady && isAuthReady} 
@@ -284,29 +207,7 @@ const AppNavigator = () => {
 };
 
 const styles = StyleSheet.create({
-  rootContainer: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background
-  },
-  placeholderContainer: { 
-    flex: 1, 
-    backgroundColor: THEME.COLORS.background, 
-    justifyContent: 'center', 
-    alignItems: 'center', 
-    padding: 20 
-  },
-  backButton: { 
-    position: 'absolute', 
-    top: 50, 
-    left: 20, 
-    flexDirection: 'row', 
-    alignItems: 'center',
-    padding: 10,
-    zIndex: 10
-  },
-  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: 'bold' },
-  placeholderTitle: { color: THEME.COLORS.champagneGold, fontSize: 28, fontWeight: 'bold', marginTop: 20, marginBottom: 10 },
-  placeholderText: { color: THEME.COLORS.textSecondary, fontSize: 16, textAlign: 'center' },
+  rootContainer: { flex: 1, backgroundColor: THEME.COLORS.background }
 });
 
 export default AppNavigator;

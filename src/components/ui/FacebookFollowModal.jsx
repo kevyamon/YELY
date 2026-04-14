@@ -1,9 +1,6 @@
 //src/components/ui/FacebookFollowModal.jsx
-// MODALE INTELLIGENTE FACEBOOK - Tracking d'etat et de redirection (HOTFIX IMPORT REDUX)
-// STANDARD: Industriel / Bank Grade
-
 import React, { useEffect, useRef, useState } from 'react';
-import { AppState, Linking, StyleSheet, View } from 'react-native';
+import { AppState, Linking, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -19,39 +16,29 @@ const FacebookFollowModal = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
-  
-  // CORRECTION ICI : Utilisation du nom exact exporte par ton store
   const [updateProfile] = useUpdateUserProfileMutation();
-
   const [visible, setVisible] = useState(false);
-  const [step, setStep] = useState('invite'); // 'invite' | 'thank_you'
+  const [step, setStep] = useState('invite'); 
   const [waitingForReturn, setWaitingForReturn] = useState(false);
-  
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
     if (!isAuthenticated || !user || user.hasFollowedFB) return;
-
     const checkEligibility = async () => {
       try {
         const localFollowFlag = await SecureStorageAdapter.getItem(`FB_FOLLOWED_${user._id}`);
         if (localFollowFlag === 'true') return;
-
         const lastClosedStr = await SecureStorageAdapter.getItem(`FB_MODAL_CLOSED_${user._id}`);
         if (lastClosedStr) {
           const lastClosedTime = parseInt(lastClosedStr, 10);
-          const now = Date.now();
           const hours24 = 24 * 60 * 60 * 1000;
-          
-          if (now - lastClosedTime < hours24) return;
+          if (Date.now() - lastClosedTime < hours24) return;
         }
-
-        setTimeout(() => setVisible(true), 3500);
+        setTimeout(() => setVisible(true), 5000);
       } catch (error) {
-        console.error("Erreur lecture SecureStorage FB Modal:", error);
+        console.warn("SecureStorage FB Modal Error:", error);
       }
     };
-
     checkEligibility();
   }, [isAuthenticated, user]);
 
@@ -66,22 +53,20 @@ const FacebookFollowModal = () => {
       }
       appState.current = nextAppState;
     };
-
     const subscription = AppState.addEventListener('change', handleAppStateChange);
     return () => subscription.remove();
   }, [waitingForReturn]);
 
   const handleFollowSuccess = async () => {
+    if (!user?._id) return;
     try {
       await SecureStorageAdapter.setItem(`FB_FOLLOWED_${user._id}`, 'true');
-      
       const res = await updateProfile({ hasFollowedFB: true }).unwrap();
-      
       if (res.data) {
         dispatch(setCredentials({ user: res.data }));
       }
     } catch (error) {
-      console.error("Erreur lors de la mise a jour du statut Facebook:", error);
+      console.warn("FB Status Update Error:", error);
     }
   };
 
@@ -91,13 +76,12 @@ const FacebookFollowModal = () => {
       setWaitingForReturn(true);
       await Linking.openURL(facebookUrl);
     } catch (error) {
-      console.error("Erreur ouverture du lien Facebook:", error);
       setWaitingForReturn(false);
     }
   };
 
   const handleClose = async () => {
-    if (step === 'invite') {
+    if (step === 'invite' && user?._id) {
       try {
         await SecureStorageAdapter.setItem(`FB_MODAL_CLOSED_${user._id}`, Date.now().toString());
       } catch (e) {}
@@ -120,27 +104,17 @@ const FacebookFollowModal = () => {
             <Text style={styles.message}>
               Restez informe de toutes nos nouveautes, promotions et actualites en vous abonnant a la page officielle Yely.
             </Text>
-            <GoldButton
-              title="S'abonner a la page"
-              icon="logo-facebook"
-              onPress={handleSubscribeClick}
-              style={styles.button}
-            />
-            <Text style={styles.cancelText} onPress={handleClose}>
-              Plus tard
-            </Text>
+            <GoldButton title="S'abonner a la page" icon="logo-facebook" onPress={handleSubscribeClick} style={styles.button} />
+            <TouchableOpacity onPress={handleClose} activeOpacity={0.7}>
+              <Text style={styles.cancelText}>Plus tard</Text>
+            </TouchableOpacity>
           </>
         ) : (
           <>
             <Text style={styles.message}>
               Nous sommes ravis de vous compter parmi nos abonnes. Votre soutien nous aide a grandir !
             </Text>
-            <GoldButton
-              title="Fermer"
-              icon="checkmark-outline"
-              onPress={handleClose}
-              style={styles.button}
-            />
+            <GoldButton title="Fermer" icon="checkmark-outline" onPress={handleClose} style={styles.button} />
           </>
         )}
       </View>
@@ -149,27 +123,10 @@ const FacebookFollowModal = () => {
 };
 
 const styles = StyleSheet.create({
-  content: {
-    alignItems: 'center',
-    paddingVertical: THEME.SPACING.sm,
-  },
-  message: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 15,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: THEME.SPACING.lg,
-  },
-  button: {
-    width: '100%',
-    marginBottom: THEME.SPACING.md,
-  },
-  cancelText: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: 14,
-    textDecorationLine: 'underline',
-    padding: THEME.SPACING.xs,
-  }
+  content: { alignItems: 'center', paddingVertical: THEME.SPACING.sm },
+  message: { color: THEME.COLORS.textSecondary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: THEME.SPACING.lg },
+  button: { width: '100%', marginBottom: THEME.SPACING.md },
+  cancelText: { color: THEME.COLORS.textTertiary, fontSize: 14, textDecorationLine: 'underline', padding: THEME.SPACING.xs }
 });
 
 export default FacebookFollowModal;
