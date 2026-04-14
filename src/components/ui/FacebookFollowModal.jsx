@@ -1,15 +1,15 @@
 //src/components/ui/FacebookFollowModal.jsx
-// MODALE INTELLIGENTE FACEBOOK - Tracking d'etat et de redirection
+// MODALE INTELLIGENTE FACEBOOK - Tracking d'etat et de redirection (HOTFIX STORAGE)
 // STANDARD: Industriel / Bank Grade
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { AppState, Linking, StyleSheet, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
 
 import ENV from '../../config/env';
 import { useUpdateProfileMutation } from '../../store/api/usersApiSlice';
+import SecureStorageAdapter from '../../store/secureStoreAdapter';
 import { selectCurrentUser, selectIsAuthenticated, setCredentials } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import GlassModal from './GlassModal';
@@ -28,36 +28,32 @@ const FacebookFollowModal = () => {
   const appState = useRef(AppState.currentState);
 
   useEffect(() => {
-    // Si l'utilisateur n'est pas connecte ou a deja suivi la page en base de donnees, on ne fait rien.
     if (!isAuthenticated || !user || user.hasFollowedFB) return;
 
     const checkEligibility = async () => {
       try {
-        // Double verification locale au cas ou la session n'est pas a jour
-        const localFollowFlag = await AsyncStorage.getItem(`FB_FOLLOWED_${user._id}`);
+        // Utilisation de ton adaptateur maison au lieu de AsyncStorage
+        const localFollowFlag = await SecureStorageAdapter.getItem(`FB_FOLLOWED_${user._id}`);
         if (localFollowFlag === 'true') return;
 
-        const lastClosedStr = await AsyncStorage.getItem(`FB_MODAL_CLOSED_${user._id}`);
+        const lastClosedStr = await SecureStorageAdapter.getItem(`FB_MODAL_CLOSED_${user._id}`);
         if (lastClosedStr) {
           const lastClosedTime = parseInt(lastClosedStr, 10);
           const now = Date.now();
           const hours24 = 24 * 60 * 60 * 1000;
           
-          // S'il a ferme la modale il y a moins de 24h, on n'affiche pas
           if (now - lastClosedTime < hours24) return;
         }
 
-        // Delai pour ne pas brusquer l'UX au demarrage de l'app (laisser les autres alertes passer)
         setTimeout(() => setVisible(true), 3500);
       } catch (error) {
-        console.error("Erreur lecture AsyncStorage FB Modal:", error);
+        console.error("Erreur lecture SecureStorage FB Modal:", error);
       }
     };
 
     checkEligibility();
   }, [isAuthenticated, user]);
 
-  // Ecouteur d'etat de l'application pour detecter le retour de Facebook
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {
       if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
@@ -76,13 +72,10 @@ const FacebookFollowModal = () => {
 
   const handleFollowSuccess = async () => {
     try {
-      // 1. Validation locale definitive
-      await AsyncStorage.setItem(`FB_FOLLOWED_${user._id}`, 'true');
+      await SecureStorageAdapter.setItem(`FB_FOLLOWED_${user._id}`, 'true');
       
-      // 2. Mise a jour Backend
       const res = await updateProfile({ hasFollowedFB: true }).unwrap();
       
-      // 3. Mise a jour du store Redux pour refleter le changement immediatement
       if (res.data) {
         dispatch(setCredentials({ user: res.data }));
       }
@@ -98,7 +91,6 @@ const FacebookFollowModal = () => {
       await Linking.openURL(facebookUrl);
     } catch (error) {
       console.error("Erreur ouverture du lien Facebook:", error);
-      // Fallback si le telephone refuse d'ouvrir le lien
       setWaitingForReturn(false);
     }
   };
@@ -106,7 +98,7 @@ const FacebookFollowModal = () => {
   const handleClose = async () => {
     if (step === 'invite') {
       try {
-        await AsyncStorage.setItem(`FB_MODAL_CLOSED_${user._id}`, Date.now().toString());
+        await SecureStorageAdapter.setItem(`FB_MODAL_CLOSED_${user._id}`, Date.now().toString());
       } catch (e) {}
     }
     setVisible(false);
