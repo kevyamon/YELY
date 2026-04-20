@@ -18,8 +18,7 @@ const AuthFormWrapper = ({
   title, 
   subtitle, 
   onBack, 
-  footer,
-  containerStyle 
+  actionButton 
 }) => {
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -27,52 +26,58 @@ const AuthFormWrapper = ({
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
         style={styles.keyboardContainer}
       >
+        <View style={styles.headerContainer}>
+          {onBack && (
+            <TouchableOpacity onPress={onBack} style={styles.iconButton}>
+              <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.welcomeText}>{title}</Text>
+          {subtitle && <Text style={styles.subText}>{subtitle}</Text>}
+        </View>
+
         <ScrollView 
-          contentContainerStyle={[styles.scrollContent, containerStyle]} 
+          contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {onBack && (
-            <View style={styles.topNavigation}>
-              <TouchableOpacity onPress={onBack} style={styles.iconButton}>
-                <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
-              </TouchableOpacity>
-            </View>
-          )}
-
-          <View style={styles.headerContainer}>
-            <Text style={styles.welcomeText}>{title}</Text>
-            {subtitle && <Text style={styles.subText}>{subtitle}</Text>}
-          </View>
-
           <View style={styles.glassWrapper}>
             {children}
           </View>
-
-          {footer && (
-            <View style={styles.footerContainer}>
-              {footer}
-            </View>
-          )}
         </ScrollView>
+
+        {actionButton && (
+          <View style={styles.actionContainer}>
+            {actionButton}
+          </View>
+        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 };
 
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
-  keyboardContainer: { flex: 1 },
-  scrollContent: { 
-    flexGrow: 1, 
-    paddingHorizontal: THEME.SPACING.xl, 
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20 
+  safeArea: { 
+    flex: 1, 
+    backgroundColor: THEME.COLORS.background 
   },
-  topNavigation: { height: 64, justifyContent: 'center' },
-  iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
-  headerContainer: { marginBottom: THEME.SPACING.xxl, marginTop: THEME.SPACING.md },
+  keyboardContainer: { 
+    flex: 1 
+  },
+  headerContainer: { 
+    paddingHorizontal: THEME.SPACING.xl, 
+    paddingTop: THEME.SPACING.md, 
+    marginBottom: THEME.SPACING.lg 
+  },
+  iconButton: { 
+    width: 40, 
+    height: 40, 
+    justifyContent: 'center', 
+    alignItems: 'flex-start', 
+    marginBottom: THEME.SPACING.md 
+  },
   welcomeText: { 
-    color: THEME.COLORS.primary, 
+    color: THEME.COLORS.textPrimary, 
     fontSize: THEME.FONTS.sizes.hero, 
     fontWeight: THEME.FONTS.weights.bold, 
     lineHeight: 40 
@@ -82,14 +87,19 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.body, 
     marginTop: THEME.SPACING.sm 
   },
+  scrollContent: { 
+    flexGrow: 1, 
+    paddingHorizontal: THEME.SPACING.xl, 
+    paddingBottom: THEME.SPACING.xxl 
+  },
   glassWrapper: { 
     ...THEME.GLASS.card, 
     padding: THEME.SPACING.xl,
-    marginBottom: THEME.SPACING.xl
   },
-  footerContainer: {
-    marginTop: 'auto',
-    paddingBottom: THEME.SPACING.xl
+  actionContainer: {
+    paddingHorizontal: THEME.SPACING.xl,
+    paddingTop: THEME.SPACING.md,
+    paddingBottom: Platform.OS === 'ios' ? THEME.SPACING.xl : THEME.SPACING.lg,
   }
 });
 

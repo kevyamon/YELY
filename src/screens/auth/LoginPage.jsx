@@ -72,6 +72,14 @@ const LoginPage = ({ navigation }) => {
       title="Bon retour"
       subtitle="Accédez à votre espace sécurisé."
       onBack={() => navigation.navigate('Landing')}
+      actionButton={
+        <GoldButton
+          title="Se connecter"
+          onPress={handleLogin}
+          loading={isLoading}
+          icon="log-in-outline"
+        />
+      }
     >
       {error && (
         <View style={styles.errorBox}>
@@ -124,14 +132,6 @@ const LoginPage = ({ navigation }) => {
         />
       </View>
 
-      <GoldButton
-        title="Se connecter"
-        onPress={handleLogin}
-        loading={isLoading}
-        icon="log-in-outline"
-        style={styles.loginButton}
-      />
-
       <AuthActionLinks 
         leftLabel="Mot de passe oublié ?"
         leftOnPress={() => navigation.navigate('ForgotPassword')}
@@ -150,14 +150,46 @@ const LoginPage = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   inputGroup: { marginBottom: THEME.SPACING.xl },
-  inputLabel: { color: THEME.COLORS.textSecondary, fontSize: THEME.FONTS.sizes.caption, fontWeight: THEME.FONTS.weights.bold, marginBottom: THEME.SPACING.sm, marginLeft: THEME.SPACING.sm, textTransform: 'uppercase', letterSpacing: 1 },
-  inputRow: { flexDirection: 'row', gap: 8, alignItems: 'flex-start' },
-  countryPickerContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, paddingHorizontal: 10, borderRadius: THEME.BORDERS.radius.lg, height: 52, borderWidth: 1, borderColor: THEME.COLORS.border },
-  callingCodeText: { color: THEME.COLORS.textPrimary, marginLeft: 5, fontWeight: THEME.FONTS.weights.bold },
+  inputLabel: { 
+    color: THEME.COLORS.textSecondary, 
+    fontSize: THEME.FONTS.sizes.caption, 
+    fontWeight: THEME.FONTS.weights.bold, 
+    marginBottom: THEME.SPACING.sm, 
+    marginLeft: THEME.SPACING.sm, 
+    textTransform: 'uppercase', 
+    letterSpacing: 1 
+  },
+  inputRow: { flexDirection: 'row', gap: THEME.SPACING.sm, alignItems: 'flex-start' },
+  countryPickerContainer: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    backgroundColor: THEME.COLORS.glassSurface, 
+    paddingHorizontal: THEME.SPACING.md, 
+    borderRadius: THEME.BORDERS.radius.lg, 
+    height: THEME.DIMENSIONS.input.height, 
+    borderWidth: THEME.BORDERS.width.normal, 
+    borderColor: THEME.COLORS.border 
+  },
+  callingCodeText: { 
+    color: THEME.COLORS.textPrimary, 
+    marginLeft: THEME.SPACING.sm, 
+    fontWeight: THEME.FONTS.weights.bold 
+  },
   flexItem: { flex: 1 },
-  loginButton: { height: 60, marginTop: THEME.SPACING.md },
-  errorBox: { backgroundColor: 'rgba(192, 57, 43, 0.1)', padding: THEME.SPACING.md, borderRadius: THEME.BORDERS.radius.md, marginBottom: THEME.SPACING.lg, borderWidth: 1, borderColor: THEME.COLORS.danger },
-  errorText: { color: THEME.COLORS.danger, fontSize: THEME.FONTS.sizes.bodySmall, textAlign: 'center', fontWeight: THEME.FONTS.weights.bold }
+  errorBox: { 
+    backgroundColor: 'rgba(192, 57, 43, 0.1)', 
+    padding: THEME.SPACING.md, 
+    borderRadius: THEME.BORDERS.radius.md, 
+    marginBottom: THEME.SPACING.lg, 
+    borderWidth: THEME.BORDERS.width.normal, 
+    borderColor: THEME.COLORS.danger 
+  },
+  errorText: { 
+    color: THEME.COLORS.danger, 
+    fontSize: THEME.FONTS.sizes.bodySmall, 
+    textAlign: 'center', 
+    fontWeight: THEME.FONTS.weights.bold 
+  }
 });
 
 export default LoginPage;

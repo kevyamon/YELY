@@ -82,11 +82,11 @@ const RegisterPage = ({ navigation, route }) => {
     <AuthFormWrapper
       title="Créer un compte"
       onBack={() => navigation.navigate('Landing')}
-      footer={
-        <AuthActionLinks 
-          subLabel="Déjà membre ?"
-          subActionLabel="Se connecter"
-          subOnPress={() => navigation.navigate('Login')}
+      actionButton={
+        <GoldButton 
+          title="S'inscrire" 
+          onPress={validateFormAndShowTerms} 
+          loading={isLoading} 
         />
       }
     >
@@ -97,56 +97,148 @@ const RegisterPage = ({ navigation, route }) => {
             style={[styles.roleBtn, role === r && styles.roleBtnActive]} 
             onPress={() => handleRoleSelection(r)}
           >
-            <Ionicons name={r === 'rider' ? 'person' : 'car'} size={20} color={role === r ? THEME.COLORS.background : THEME.COLORS.textSecondary} />
-            <Text style={[styles.roleText, role === r && styles.roleTextActive]}>{r === 'rider' ? 'Passager' : 'Chauffeur'}</Text>
+            <Ionicons 
+              name={r === 'rider' ? 'person' : 'car'} 
+              size={20} 
+              color={role === r ? THEME.COLORS.textInverse : THEME.COLORS.textSecondary} 
+            />
+            <Text style={[styles.roleText, role === r && styles.roleTextActive]}>
+              {r === 'rider' ? 'Passager' : 'Chauffeur'}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Nom complet</Text>
-        <GlassInput icon="person-outline" placeholder="Jean Dupont" value={formData.name} onChangeText={(t) => setFormData({ ...formData, name: t })} />
+        <GlassInput 
+          icon="person-outline" 
+          placeholder="Jean Dupont" 
+          value={formData.name} 
+          onChangeText={(t) => setFormData({ ...formData, name: t })} 
+        />
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Téléphone</Text>
-        <PhoneInputGroup phone={formData.phone} setPhone={(t) => setFormData({ ...formData, phone: t })} countryCode={countryCode} setCountryCode={setCountryCode} callingCode={callingCode} setCallingCode={setCallingCode} />
+        <PhoneInputGroup 
+          phone={formData.phone} 
+          setPhone={(t) => setFormData({ ...formData, phone: t })} 
+          countryCode={countryCode} 
+          setCountryCode={setCountryCode} 
+          callingCode={callingCode} 
+          setCallingCode={setCallingCode} 
+        />
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Adresse email</Text>
-        <GlassInput icon="mail-outline" placeholder="jean@exemple.com" keyboardType="email-address" autoCapitalize="none" value={formData.email} onChangeText={(t) => setFormData({ ...formData, email: t })} />
+        <GlassInput 
+          icon="mail-outline" 
+          placeholder="jean@exemple.com" 
+          keyboardType="email-address" 
+          autoCapitalize="none" 
+          value={formData.email} 
+          onChangeText={(t) => setFormData({ ...formData, email: t })} 
+        />
       </View>
 
       <View style={styles.inputGroup}>
         <Text style={styles.inputLabel}>Mot de passe</Text>
-        <PasswordStrengthInput password={formData.password} setPassword={(t) => setFormData({ ...formData, password: t })} onStrengthChange={setPasswordScore} />
+        <PasswordStrengthInput 
+          password={formData.password} 
+          setPassword={(t) => setFormData({ ...formData, password: t })} 
+          onStrengthChange={setPasswordScore} 
+        />
       </View>
 
-      <GoldButton title="S'inscrire" onPress={validateFormAndShowTerms} style={styles.registerButton} loading={isLoading} />
+      <AuthActionLinks 
+        subLabel="Déjà membre ?"
+        subActionLabel="Se connecter"
+        subOnPress={() => navigation.navigate('Login')}
+      />
 
-      <GlassModal visible={showDriverRestrictionModal} onClose={() => setShowDriverRestrictionModal(false)} title="Appareil Non Compatible" icon="phone-portrait-outline">
-        <Text style={styles.modalText}>L'application Chauffeur n'est disponible que sur <Text style={styles.boldPrimary}>Android</Text>.</Text>
-        <GoldButton title="J'ai compris" onPress={() => setShowDriverRestrictionModal(false)} style={styles.modalBtn}/>
+      <GlassModal 
+        visible={showDriverRestrictionModal} 
+        onClose={() => setShowDriverRestrictionModal(false)} 
+        title="Appareil non compatible" 
+        icon="phone-portrait-outline"
+      >
+        <Text style={styles.modalText}>
+          L'application Chauffeur n'est disponible que sur <Text style={styles.boldPrimary}>Android</Text>.
+        </Text>
+        <GoldButton 
+          title="J'ai compris" 
+          onPress={() => setShowDriverRestrictionModal(false)} 
+          style={styles.modalBtn}
+        />
       </GlassModal>
 
-      <TermsModal visible={showTermsModal} onClose={() => setShowTermsModal(false)} onAccept={executeRegistration} isLoading={isLoading} />
+      <TermsModal 
+        visible={showTermsModal} 
+        onClose={() => setShowTermsModal(false)} 
+        onAccept={executeRegistration} 
+        isLoading={isLoading} 
+      />
     </AuthFormWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.xl },
-  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: THEME.BORDERS.radius.lg, borderWidth: 1, borderColor: THEME.COLORS.surface, backgroundColor: THEME.COLORS.surface },
-  roleBtnActive: { backgroundColor: THEME.COLORS.primary, borderColor: THEME.COLORS.primary },
-  roleText: { marginLeft: 8, fontWeight: THEME.FONTS.weights.bold, color: THEME.COLORS.textSecondary },
-  roleTextActive: { color: THEME.COLORS.background },
-  inputGroup: { marginBottom: THEME.SPACING.xl },
-  inputLabel: { color: THEME.COLORS.textSecondary, fontSize: THEME.FONTS.sizes.caption, fontWeight: THEME.FONTS.weights.bold, marginBottom: THEME.SPACING.sm, marginLeft: THEME.SPACING.sm, textTransform: 'uppercase', letterSpacing: 1 },
-  registerButton: { height: 60, marginTop: THEME.SPACING.sm },
-  modalText: { color: THEME.COLORS.textPrimary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
-  boldPrimary: { fontWeight: 'bold', color: THEME.COLORS.primary },
-  modalBtn: { marginTop: 15 }
+  roleContainer: { 
+    flexDirection: 'row', 
+    gap: THEME.SPACING.lg, 
+    marginBottom: THEME.SPACING.xl 
+  },
+  roleBtn: { 
+    flex: 1, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    paddingVertical: THEME.SPACING.lg, 
+    borderRadius: THEME.BORDERS.radius.lg, 
+    borderWidth: THEME.BORDERS.width.normal, 
+    borderColor: THEME.COLORS.border, 
+    backgroundColor: THEME.COLORS.glassSurface 
+  },
+  roleBtnActive: { 
+    backgroundColor: THEME.COLORS.primary, 
+    borderColor: THEME.COLORS.primary 
+  },
+  roleText: { 
+    marginLeft: THEME.SPACING.sm, 
+    fontWeight: THEME.FONTS.weights.bold, 
+    color: THEME.COLORS.textSecondary 
+  },
+  roleTextActive: { 
+    color: THEME.COLORS.textInverse 
+  },
+  inputGroup: { 
+    marginBottom: THEME.SPACING.xl 
+  },
+  inputLabel: { 
+    color: THEME.COLORS.textSecondary, 
+    fontSize: THEME.FONTS.sizes.caption, 
+    fontWeight: THEME.FONTS.weights.bold, 
+    marginBottom: THEME.SPACING.sm, 
+    marginLeft: THEME.SPACING.sm, 
+    textTransform: 'uppercase', 
+    letterSpacing: 1 
+  },
+  modalText: { 
+    color: THEME.COLORS.textPrimary, 
+    fontSize: THEME.FONTS.sizes.body, 
+    textAlign: 'center', 
+    lineHeight: 22, 
+    marginBottom: THEME.SPACING.md 
+  },
+  boldPrimary: { 
+    fontWeight: 'bold', 
+    color: THEME.COLORS.primary 
+  },
+  modalBtn: { 
+    marginTop: THEME.SPACING.lg 
+  }
 });
 
 export default RegisterPage;

@@ -1,7 +1,4 @@
-// src/components/auth/PasswordStrengthInput.jsx
-// COMPOSANT MODULAIRE - Saisie de mot de passe intelligente
-// STANDARD: Industriel / Bank Grade (UX Optimisée)
-
+//src/components/auth/PasswordStrengthInput.jsx
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import React, { useEffect, useState } from 'react';
@@ -17,21 +14,20 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
   });
 
   useEffect(() => {
-    // CORRECTION : On passe a 3 regles claires
     const s = {
       length: password.length >= 8,
       number: /\d/.test(password),
-      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(password)
+      special: /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)
     };
     const validCount = Object.values(s).filter(Boolean).length;
-    const currentStats = { ...s, score: validCount / 3 }; // Divise par 3 criteres
+    const currentStats = { ...s, score: validCount / 3 };
     
     setStats(currentStats);
     if (onStrengthChange) onStrengthChange(currentStats.score);
   }, [password]);
 
   const generateSecurePassword = async () => {
-    const length = 12; // Un mot de passe genere automatiquement reste un peu plus long par securite
+    const length = 12;
     const lowers = "abcdefghijklmnopqrstuvwxyz";
     const uppers = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
     const numbers = "0123456789";
@@ -45,16 +41,16 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
 
     let generated = [
       await getSecureChar(lowers),
+      await getSecureChar(uppers),
       await getSecureChar(numbers),
       await getSecureChar(symbols)
     ];
 
-    const remainingBytes = await Crypto.getRandomBytesAsync(length - 3);
-    for (let i = 0; i < length - 3; i++) {
+    const remainingBytes = await Crypto.getRandomBytesAsync(length - 4);
+    for (let i = 0; i < length - 4; i++) {
       generated.push(allChars[remainingBytes[i] % allChars.length]);
     }
 
-    // Melange aleatoire
     for (let i = generated.length - 1; i > 0; i--) {
       const randomByte = await Crypto.getRandomBytesAsync(1);
       const j = randomByte[0] % (i + 1);
@@ -62,7 +58,7 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
     }
 
     setPassword(generated.join(''));
-    setShowPassword(true); // On affiche le mot de passe pour que l'utilisateur le voie
+    setShowPassword(true);
   };
 
   const getProgressColor = (score) => {
@@ -98,6 +94,16 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
         <View style={styles.actionButtons}>
           <TouchableOpacity 
             style={styles.iconBtn} 
+            onPress={generateSecurePassword}
+          >
+            <Ionicons 
+              name="sparkles-outline" 
+              size={20} 
+              color={THEME.COLORS.primary} 
+            />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.iconBtn} 
             onPress={() => setShowPassword(!showPassword)}
           >
             <Ionicons 
@@ -109,16 +115,6 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
         </View>
       </View>
 
-      {/* NOUVEAU BOUTON : Visible, explicite et design */}
-      <TouchableOpacity 
-        style={styles.generateBtn} 
-        onPress={generateSecurePassword}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="sparkles" size={16} color={THEME.COLORS.background} />
-        <Text style={styles.generateBtnText}>Generer un mot de passe fort</Text>
-      </TouchableOpacity>
-
       {password.length > 0 && (
         <View style={styles.gaugeContainer}>
           <ProgressBar 
@@ -127,9 +123,9 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
             style={styles.progressBar} 
           />
           <View style={styles.requirementsBox}>
-            <PasswordRequirement met={stats.length} text="8 car. min." />
-            <PasswordRequirement met={stats.number} text="1 Chiffre" />
-            <PasswordRequirement met={stats.special} text="1 Symbole" />
+            <PasswordRequirement met={stats.length} text="8 caractères min." />
+            <PasswordRequirement met={stats.number} text="1 chiffre" />
+            <PasswordRequirement met={stats.special} text="1 symbole" />
           </View>
         </View>
       )}
@@ -138,42 +134,47 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { marginBottom: THEME.SPACING.md },
-  inputWrapper: { position: 'relative', justifyContent: 'center' },
+  container: { 
+    marginBottom: THEME.SPACING.md 
+  },
+  inputWrapper: { 
+    position: 'relative', 
+    justifyContent: 'center' 
+  },
   actionButtons: { 
     position: 'absolute', 
     right: THEME.SPACING.md, 
     flexDirection: 'row', 
     alignItems: 'center',
+    gap: THEME.SPACING.xs,
   },
-  iconBtn: { padding: 4 },
-  generateBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.champagneGold,
-    paddingVertical: 8,
-    paddingHorizontal: 15,
-    borderRadius: 20,
-    alignSelf: 'flex-start',
-    marginTop: 8,
-    marginBottom: 4,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    elevation: 3,
+  iconBtn: { 
+    padding: THEME.SPACING.xs 
   },
-  generateBtnText: {
-    color: THEME.COLORS.background,
-    fontWeight: 'bold',
-    fontSize: 12,
-    marginLeft: 6,
+  gaugeContainer: { 
+    marginTop: THEME.SPACING.sm, 
+    paddingHorizontal: THEME.SPACING.xs 
   },
-  gaugeContainer: { marginTop: THEME.SPACING.sm, paddingHorizontal: 4 },
-  progressBar: { borderRadius: THEME.BORDERS.radius.sm, height: 4, backgroundColor: THEME.COLORS.overlay },
-  requirementsBox: { flexDirection: 'row', flexWrap: 'wrap', marginTop: THEME.SPACING.sm, gap: THEME.SPACING.sm },
-  reqRow: { flexDirection: 'row', alignItems: 'center', marginRight: THEME.SPACING.xs },
-  reqText: { fontSize: THEME.FONTS.sizes.caption, marginLeft: THEME.SPACING.xs },
+  progressBar: { 
+    borderRadius: THEME.BORDERS.radius.sm, 
+    height: 4, 
+    backgroundColor: THEME.COLORS.overlay 
+  },
+  requirementsBox: { 
+    flexDirection: 'row', 
+    flexWrap: 'wrap', 
+    marginTop: THEME.SPACING.sm, 
+    gap: THEME.SPACING.sm 
+  },
+  reqRow: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    marginRight: THEME.SPACING.xs 
+  },
+  reqText: { 
+    fontSize: THEME.FONTS.sizes.caption, 
+    marginLeft: THEME.SPACING.xs 
+  },
 });
 
 export default PasswordStrengthInput;

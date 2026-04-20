@@ -1,88 +1,62 @@
-// src/theme/theme.js
-// LE COEUR DE L'IDENTITÉ VISUELLE - YÉLY REBRANDING (OR / BLANC / NOIR)
-// Ce fichier gère dynamiquement le mode SOMBRE et le mode CLAIR.
-
+//src/theme/theme.js
 import { Appearance, Dimensions, Platform } from 'react-native';
 import { MD3DarkTheme, MD3LightTheme } from 'react-native-paper';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
-// DÉTECTION DU MODE SYSTÈME (Dark vs Light)
 const colorScheme = Appearance.getColorScheme();
 const isDark = colorScheme === 'dark';
 
-// ═══════════════════════════════════════════════════════════════
-// 1. PALETTE PRIMITIVE (Les ingrédients bruts)
-// ═══════════════════════════════════════════════════════════════
 const PALETTE = {
-  // L'OR YÉLY (Identité de Marque)
-  gold: '#D4AF37',       // Vrai Or Classique
-  goldLight: '#F3E5AB',  // Or Pâle (Champagne)
-  goldDark: '#AA8C2C',   // Or Vieilli (Ombres)
+  gold: '#D4AF37',
+  goldLight: '#F3E5AB',
+  goldDark: '#AA8C2C',
   
-  // LE BLANC (Mode Jour)
   pureWhite: '#FFFFFF',
-  offWhite: '#F8F9FA',   // Blanc cassé (Anti-éblouissement)
-  softGray: '#E9ECEF',   // Gris très léger pour les séparateurs
+  offWhite: '#F8F9FA',
+  softGray: '#E9ECEF',
 
-  // LE NOIR (Mode Nuit)
   pureBlack: '#000000',
-  richBlack: '#0A0A0A',  // Noir Premium (Pas gris, juste profond)
-  charcoal: '#121212',   // Surface sombre standard
+  richBlack: '#0A0A0A',
+  charcoal: '#121212',
 
-  // FONCTIONNEL
-  success: '#27AE60',    // Vert Émeraude (Plus classe que le vert néon)
-  danger: '#C0392B',     // Rouge Rubis (Plus profond)
+  success: '#27AE60',
+  danger: '#C0392B',
   warning: '#F39C12',
   info: '#2980B9',
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 2. COULEURS SÉMANTIQUES (L'adaptation Jour/Nuit)
-// ═══════════════════════════════════════════════════════════════
 const COLORS = {
-  // --- FONDAMENTAUX ---
-  // Le fond principal change radicalement selon le mode
   background: isDark ? PALETTE.pureBlack : PALETTE.offWhite,
   
-  // Couleur principale (L'OR reste constant mais s'ajuste légèrement)
   primary: PALETTE.gold,
   primaryLight: PALETTE.goldLight,
   primaryDark: PALETTE.goldDark,
 
-  // Couleur secondaire (Contraste absolu)
   secondary: isDark ? PALETTE.pureWhite : PALETTE.pureBlack,
 
-  // --- TYPOGRAPHIE ---
-  // En mode Jour, on écrit en Noir. En mode Nuit, en Blanc.
   textPrimary: isDark ? '#F8F9FA' : '#1A1A1A',
   textSecondary: isDark ? 'rgba(248, 249, 250, 0.70)' : 'rgba(26, 26, 26, 0.70)', 
   textTertiary: isDark ? 'rgba(248, 249, 250, 0.45)' : 'rgba(26, 26, 26, 0.45)',
-  textInverse: isDark ? '#1A1A1A' : '#FFFFFF', // Pour le texte sur bouton Or
+  textInverse: isDark ? '#1A1A1A' : '#FFFFFF',
 
-  // --- GLASSMORPHISM & SURFACES ---
-  // Glass: Blanc givré le jour / Fumé sombre la nuit
   glassSurface: isDark ? 'rgba(18, 18, 18, 0.85)' : 'rgba(255, 255, 255, 0.85)',
   glassModal: isDark ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)',
   
-  // Bordures : Subtiles et adaptées
-  border: isDark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(0, 0, 0, 0.75)',
+  border: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
   borderActive: PALETTE.gold,
 
-  // Fonctionnel
   success: PALETTE.success,
   danger: PALETTE.danger,
   warning: PALETTE.warning,
   info: PALETTE.info,
   
-  // Utilitaires
   transparent: 'transparent',
   overlay: isDark ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)',
-  shadow: isDark ? '#000000' : '#888888', // Ombres grises le jour pour le réalisme
+  shadow: isDark ? '#000000' : '#888888',
 };
 
-// COMPATIBILITÉ RÉTROACTIVE (Pour ne pas casser les vieux imports)
-COLORS.deepAsphalt = COLORS.background; // Redirige vers le nouveau fond
+COLORS.deepAsphalt = COLORS.background;
 COLORS.champagneGold = COLORS.primary;
 COLORS.moonlightWhite = COLORS.textPrimary;
 COLORS.glassDark = COLORS.glassSurface;
@@ -95,9 +69,6 @@ COLORS.textDisabled = 'rgba(128, 128, 128, 0.5)';
 COLORS.overlayDark = 'rgba(0, 0, 0, 0.60)';
 COLORS.overlayMedium = 'rgba(0, 0, 0, 0.40)';
 
-// ═══════════════════════════════════════════════════════════════
-// 3. TYPOGRAPHIE
-// ═══════════════════════════════════════════════════════════════
 const FONTS = {
   family: {
     bold: Platform.OS === 'ios' ? 'System' : 'Roboto',
@@ -118,9 +89,6 @@ const FONTS = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 4. ESPACEMENTS & BORDURES
-// ═══════════════════════════════════════════════════════════════
 const SPACING = {
   xxs: 2, xs: 4, sm: 8, md: 12, lg: 16, xl: 20, xxl: 24, xxxl: 32, huge: 40, massive: 48, giant: 64,
 };
@@ -134,9 +102,6 @@ const BORDERS = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 5. OMBRES (Adaptées Jour/Nuit)
-// ═══════════════════════════════════════════════════════════════
 const SHADOWS = {
   none: { shadowColor: 'transparent', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0, shadowRadius: 0, elevation: 0 },
   soft: {
@@ -176,9 +141,6 @@ const SHADOWS = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 6. ANIMATIONS ET ICÔNES (RÉTABLIS EN CONSTANTES STRICTES)
-// ═══════════════════════════════════════════════════════════════
 const ANIMATIONS = {
   duration: { instant: 100, fast: 200, normal: 300, slow: 450, verySlow: 600, dramatic: 800 },
   spring: {
@@ -204,9 +166,6 @@ const ICONS = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 7. STYLES GLASSMORPHISM (ADAPTATIF)
-// ═══════════════════════════════════════════════════════════════
 const GLASS = {
   card: {
     backgroundColor: COLORS.glassSurface,
@@ -234,9 +193,6 @@ const GLASS = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 8. LAYOUT & DIMENSIONS
-// ═══════════════════════════════════════════════════════════════
 const DIMENSIONS = {
   screen: { width: SCREEN_WIDTH, height: SCREEN_HEIGHT },
   sidebar: { width: SCREEN_WIDTH * 0.78, maxWidth: 320 },
@@ -264,9 +220,6 @@ const LAYOUT = {
   HEADER_MAX_HEIGHT: 180,
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 9. STYLES DE COMPOSANTS UNIFIÉS
-// ═══════════════════════════════════════════════════════════════
 const COMPONENT_STYLES = {
   buttonPrimary: {
     backgroundColor: COLORS.primary,
@@ -278,7 +231,7 @@ const COMPONENT_STYLES = {
     ...SHADOWS.gold,
   },
   buttonPrimaryText: {
-    color: COLORS.textInverse, // Contraste géré (Noir sur or)
+    color: COLORS.textInverse,
     fontSize: FONTS.sizes.body,
     fontWeight: FONTS.weights.bold,
   },
@@ -314,7 +267,7 @@ const COMPONENT_STYLES = {
     height: DIMENSIONS.input.height,
     backgroundColor: isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.03)',
     borderRadius: BORDERS.radius.lg,
-    borderWidth: BORDERS.width.thin,
+    borderWidth: BORDERS.width.normal,
     borderColor: COLORS.border,
     paddingHorizontal: SPACING.lg,
     color: COLORS.textPrimary,
@@ -343,9 +296,6 @@ const COMPONENT_STYLES = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// 10. THÈME REACT NATIVE PAPER (MD3)
-// ═══════════════════════════════════════════════════════════════
 const BasePaperTheme = isDark ? MD3DarkTheme : MD3LightTheme;
 
 const YelyTheme = {
@@ -367,9 +317,6 @@ const YelyTheme = {
   },
 };
 
-// ═══════════════════════════════════════════════════════════════
-// EXPORT UNIFIÉ & SÉCURISÉ (Rétrocompatibilité Totale)
-// ═══════════════════════════════════════════════════════════════
 const THEME = {
   COLORS,
   FONTS,
@@ -384,8 +331,6 @@ const THEME = {
   ICONS,
 };
 
-// Il est crucial d'exporter séparément chaque constante pour que 
-// `import { ANIMATIONS } from 'theme'` fonctionne sans casser.
 export {
   ANIMATIONS,
   BORDERS,
