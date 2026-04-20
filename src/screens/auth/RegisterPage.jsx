@@ -1,7 +1,4 @@
-//src/screens/auth/RegisterPage.jsx
-// PAGE INSCRIPTION - Architecture Modulaire & UX Optimisee (Validation par Modale CGU)
-// STANDARD: Industriel / Bank Grade (Fix Overflow PWA)
-
+// src/screens/auth/RegisterPage.jsx
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import {
@@ -16,7 +13,6 @@ import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
-import GlassCard from '../../components/ui/GlassCard';
 import GlassInput from '../../components/ui/GlassInput';
 import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
@@ -60,6 +56,12 @@ const RegisterPage = ({ navigation, route }) => {
     setRole(selectedRole);
   };
 
+  const generateStrongPassword = () => {
+    const randomNum = Math.floor(Math.random() * 9000 + 1000);
+    const strongPass = `Yely@${randomNum}`;
+    setFormData({ ...formData, password: strongPass });
+  };
+
   const validateFormAndShowTerms = () => {
     const { name, email, password, phone } = formData;
     
@@ -76,7 +78,7 @@ const RegisterPage = ({ navigation, route }) => {
       return;
     }
     
-    if (passwordScore < 1) { 
+    if (passwordScore < 1 && password.length < 8) { 
        dispatch(showErrorToast({ 
          title: "Mot de passe trop faible", 
          message: "Votre mot de passe doit contenir au moins 8 caracteres, un chiffre et un symbole." 
@@ -121,31 +123,30 @@ const RegisterPage = ({ navigation, route }) => {
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
-        style={{ flex: 1 }}
+        style={styles.keyboardContainer}
       >
         <ScrollView 
           contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <TouchableOpacity onPress={() => navigation.navigate('Landing')} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.champagneGold} />
-            <Text style={styles.backText}>Retour</Text>
-          </TouchableOpacity>
+          <View style={styles.topNavigation}>
+            <TouchableOpacity onPress={() => navigation.navigate('Landing')} style={styles.iconButton}>
+              <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
+            </TouchableOpacity>
+          </View>
 
-          <Text style={styles.mainTitle}>INSCRIPTION</Text>
+          <View style={styles.headerContainer}>
+            <Text style={styles.mainTitle}>Creer un compte</Text>
+          </View>
 
-          <GlassCard style={styles.card}>
+          <View style={styles.formContainer}>
             <View style={styles.roleContainer}>
               <TouchableOpacity 
                 style={[styles.roleBtn, role === 'rider' && styles.roleBtnActive]} 
                 onPress={() => handleRoleSelection('rider')}
               >
-                <Ionicons 
-                  name="person" 
-                  size={20} 
-                  color={role === 'rider' ? THEME.COLORS.textInverse : THEME.COLORS.textSecondary} 
-                />
+                <Ionicons name="person" size={20} color={role === 'rider' ? THEME.COLORS.background : THEME.COLORS.textSecondary} />
                 <Text style={[styles.roleText, role === 'rider' && styles.roleTextActive]}>Passager</Text>
               </TouchableOpacity>
 
@@ -153,94 +154,88 @@ const RegisterPage = ({ navigation, route }) => {
                 style={[styles.roleBtn, role === 'driver' && styles.roleBtnActive]} 
                 onPress={() => handleRoleSelection('driver')}
               >
-                <Ionicons 
-                  name="car" 
-                  size={20} 
-                  color={role === 'driver' ? THEME.COLORS.textInverse : THEME.COLORS.textSecondary} 
-                />
+                <Ionicons name="car" size={20} color={role === 'driver' ? THEME.COLORS.background : THEME.COLORS.textSecondary} />
                 <Text style={[styles.roleText, role === 'driver' && styles.roleTextActive]}>Chauffeur</Text>
               </TouchableOpacity>
             </View>
 
             <View style={styles.upperFields}>
-              <GlassInput
-                icon="person-outline"
-                placeholder="Nom complet"
-                value={formData.name}
-                onChangeText={(t) => setFormData({ ...formData, name: t })}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>NOM COMPLET</Text>
+                <GlassInput
+                  icon="person-outline"
+                  placeholder="Jean Dupont"
+                  value={formData.name}
+                  onChangeText={(t) => setFormData({ ...formData, name: t })}
+                />
+              </View>
 
-              <PhoneInputGroup 
-                phone={formData.phone}
-                setPhone={(t) => setFormData({ ...formData, phone: t })}
-                countryCode={countryCode}
-                setCountryCode={setCountryCode}
-                callingCode={callingCode}
-                setCallingCode={setCallingCode}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>TELEPHONE</Text>
+                <PhoneInputGroup 
+                  phone={formData.phone}
+                  setPhone={(t) => setFormData({ ...formData, phone: t })}
+                  countryCode={countryCode}
+                  setCountryCode={setCountryCode}
+                  callingCode={callingCode}
+                  setCallingCode={setCallingCode}
+                />
+              </View>
 
-              <GlassInput
-                icon="mail-outline"
-                placeholder="Email"
-                keyboardType="email-address"
-                autoCapitalize="none"
-                value={formData.email}
-                onChangeText={(t) => setFormData({ ...formData, email: t })}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>ADRESSE EMAIL</Text>
+                <GlassInput
+                  icon="mail-outline"
+                  placeholder="jean@exemple.com"
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  value={formData.email}
+                  onChangeText={(t) => setFormData({ ...formData, email: t })}
+                />
+              </View>
             </View>
 
             <View style={styles.passwordWrapper}>
-              <PasswordStrengthInput 
-                password={formData.password}
-                setPassword={(t) => setFormData({ ...formData, password: t })}
-                onStrengthChange={setPasswordScore}
-              />
+              <View style={styles.inputGroup}>
+                <Text style={styles.inputLabel}>MOT DE PASSE</Text>
+                <PasswordStrengthInput 
+                  password={formData.password}
+                  setPassword={(t) => setFormData({ ...formData, password: t })}
+                  onStrengthChange={setPasswordScore}
+                />
+                <View style={styles.generatePasswordContainer}>
+                  <TouchableOpacity onPress={generateStrongPassword} style={styles.generateButton}>
+                    <Ionicons name="key" size={16} color={THEME.COLORS.primary} />
+                    <Text style={styles.generateButtonText}>Generer un mot de passe fort</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
             </View>
 
-            <View style={styles.lowerSection}>
+            <View style={styles.actionArea}>
               <GoldButton
-                title="S'INSCRIRE"
+                title="S'inscrire"
                 onPress={validateFormAndShowTerms}
                 style={styles.registerButton}
-                icon="arrow-forward-outline"
               />
             </View>
-          </GlassCard>
+          </View>
 
-          <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.footer}>
+          <View style={styles.footer}>
             <Text style={styles.footerText}>
-              Deja membre ? <Text style={styles.linkText}>Se connecter</Text>
+              Deja membre ? <Text onPress={() => navigation.navigate('Login')} style={styles.linkTextHighlight}>Se connecter</Text>
             </Text>
-          </TouchableOpacity>
+          </View>
 
         </ScrollView>
       </KeyboardAvoidingView>
 
-      <GlassModal
-        visible={showDriverRestrictionModal}
-        onClose={() => setShowDriverRestrictionModal(false)}
-        title="Appareil Non Compatible"
-        icon="phone-portrait-outline"
-      >
-        <Text style={styles.modalText}>
-          Pour des raisons techniques liees a la cartographie et au suivi GPS en arriere-plan, l'application Chauffeur Yely n'est disponible que sur les appareils <Text style={{fontWeight: 'bold', color: THEME.COLORS.champagneGold}}>Android</Text>.
-        </Text>
-        <Text style={styles.modalSubText}>
-          Si vous possedez un telephone Android, veuillez telecharger l'application depuis notre site officiel pour vous inscrire en tant que chauffeur.
-        </Text>
-        <GoldButton 
-          title="J'ai compris" 
-          onPress={() => setShowDriverRestrictionModal(false)} 
-          style={{marginTop: 15}}
-        />
+      <GlassModal visible={showDriverRestrictionModal} onClose={() => setShowDriverRestrictionModal(false)} title="Appareil Non Compatible" icon="phone-portrait-outline">
+        <Text style={styles.modalText}>Pour des raisons techniques liees a la cartographie, l'application Chauffeur n'est disponible que sur <Text style={{fontWeight: 'bold', color: THEME.COLORS.primary}}>Android</Text>.</Text>
+        <GoldButton title="J'ai compris" onPress={() => setShowDriverRestrictionModal(false)} style={{marginTop: 15}}/>
       </GlassModal>
 
-      <TermsModal 
-        visible={showTermsModal}
-        onClose={() => setShowTermsModal(false)}
-        onAccept={executeRegistration}
-        isLoading={isLoading}
-      />
+      <TermsModal visible={showTermsModal} onClose={() => setShowTermsModal(false)} onAccept={executeRegistration} isLoading={isLoading} />
 
     </SafeAreaView>
   );
@@ -248,28 +243,31 @@ const RegisterPage = ({ navigation, route }) => {
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
-  scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingTop: THEME.SPACING.sm, paddingBottom: THEME.SPACING.lg },
-  backButton: { flexDirection: 'row', alignItems: 'center', marginBottom: THEME.SPACING.md, alignSelf: 'flex-start' },
-  backText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 16, fontWeight: '600' },
-  mainTitle: { color: THEME.COLORS.champagneGold, textAlign: 'center', fontSize: THEME.FONTS.sizes.h3, fontWeight: 'bold', marginBottom: THEME.SPACING.md, letterSpacing: 2 },
-  card: { padding: THEME.SPACING.lg, overflow: 'visible' },
-  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.lg, zIndex: 1 },
-  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.glassSurface },
-  roleBtnActive: { backgroundColor: THEME.COLORS.success, borderColor: THEME.COLORS.success },
-  roleText: { marginLeft: 8, fontWeight: '600', color: THEME.COLORS.textSecondary },
-  roleTextActive: { color: THEME.COLORS.textInverse },
-  
-  // CORRECTIONS APPORTEES ICI :
-  upperFields: { zIndex: 10, elevation: 10 }, // Priorite haute pour le dropdown des indicatifs telephoniques
-  passwordWrapper: { zIndex: 1, elevation: 1, position: 'relative' }, // Suppression du minHeight bloquant
-  lowerSection: { zIndex: 1, elevation: 1, marginTop: THEME.SPACING.md }, 
-  
-  registerButton: { marginTop: THEME.SPACING.sm },
-  footer: { marginTop: THEME.SPACING.lg, alignItems: 'center' },
-  footerText: { color: THEME.COLORS.textTertiary },
-  linkText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold' },
-  modalText: { color: THEME.COLORS.textPrimary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 10 },
-  modalSubText: { color: THEME.COLORS.textSecondary, fontSize: 13, textAlign: 'center', lineHeight: 20, fontStyle: 'italic', marginBottom: 10 }
+  keyboardContainer: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: THEME.SPACING.xl, paddingBottom: THEME.SPACING.xxl },
+  topNavigation: { height: 64, justifyContent: 'center', zIndex: 20 },
+  iconButton: { width: 40, height: 40, justifyContent: 'center', alignItems: 'flex-start' },
+  headerContainer: { marginBottom: THEME.SPACING.xxl, marginTop: THEME.SPACING.md },
+  mainTitle: { color: THEME.COLORS.textPrimary, fontSize: THEME.FONTS.sizes.hero, fontWeight: THEME.FONTS.weights.bold, letterSpacing: -0.5 },
+  formContainer: { flex: 1 },
+  roleContainer: { flexDirection: 'row', gap: 15, marginBottom: THEME.SPACING.xxl, zIndex: 1 },
+  roleBtn: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, borderRadius: THEME.BORDERS.radius.lg, borderWidth: 1, borderColor: THEME.COLORS.surface, backgroundColor: THEME.COLORS.surface },
+  roleBtnActive: { backgroundColor: THEME.COLORS.primary, borderColor: THEME.COLORS.primary },
+  roleText: { marginLeft: 8, fontWeight: THEME.FONTS.weights.bold, color: THEME.COLORS.textSecondary },
+  roleTextActive: { color: THEME.COLORS.background },
+  upperFields: { zIndex: 10, elevation: 10 },
+  inputGroup: { marginBottom: THEME.SPACING.xl },
+  inputLabel: { color: THEME.COLORS.textSecondary, fontSize: THEME.FONTS.sizes.caption, fontWeight: THEME.FONTS.weights.bold, marginBottom: THEME.SPACING.sm, marginLeft: THEME.SPACING.sm, textTransform: 'uppercase', letterSpacing: 1 },
+  passwordWrapper: { zIndex: 1, elevation: 1, position: 'relative' },
+  generatePasswordContainer: { flexDirection: 'row', justifyContent: 'flex-end', marginTop: THEME.SPACING.sm },
+  generateButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  generateButtonText: { color: THEME.COLORS.primary, fontSize: THEME.FONTS.sizes.bodySmall, fontWeight: THEME.FONTS.weights.medium },
+  actionArea: { zIndex: 1, elevation: 1, marginTop: THEME.SPACING.md }, 
+  registerButton: { height: 60, borderRadius: THEME.BORDERS.radius.pill },
+  footer: { marginTop: THEME.SPACING.xxxl, alignItems: 'center' },
+  footerText: { color: THEME.COLORS.textSecondary, fontSize: THEME.FONTS.sizes.body },
+  linkTextHighlight: { color: THEME.COLORS.primary, fontWeight: THEME.FONTS.weights.bold },
+  modalText: { color: THEME.COLORS.textPrimary, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 10 }
 });
 
 export default RegisterPage;
