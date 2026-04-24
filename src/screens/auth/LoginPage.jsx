@@ -69,75 +69,90 @@ const LoginPage = ({ navigation }) => {
 
   return (
     <AuthFormWrapper
-      title="Bon retour"
-      subtitle="Accédez à votre espace sécurisé."
       onBack={() => navigation.navigate('Landing')}
       actionButton={
-        <GoldButton
-          title="Se connecter"
-          onPress={handleLogin}
-          loading={isLoading}
-          icon="log-in-outline"
-        />
+        <View style={styles.actionButtonContainer}>
+          <GoldButton
+            title="Se connecter"
+            onPress={handleLogin}
+            loading={isLoading}
+            icon="log-in-outline"
+          />
+        </View>
       }
     >
+      <View style={styles.customHeader}>
+        <Text style={styles.massiveTitle}>Bon retour</Text>
+        <Text style={styles.subTitle}>Accédez à votre espace sécurisé.</Text>
+      </View>
+
       {error && (
         <View style={styles.errorBox}>
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Identifiant</Text>
-        <View style={styles.inputRow}>
-          {!isEmailMode && (
-            <View style={styles.countryPickerContainer}>
-              <CountryPicker
-                countryCode={countryCode}
-                withFilter withFlag withCallingCode
-                onSelect={(c) => { 
-                  setCountryCode(c.cca2); 
-                  setCallingCode(c.callingCode[0]); 
+      <View style={styles.formContainer}>
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Identifiant</Text>
+          <View style={styles.inputRow}>
+            {!isEmailMode && (
+              <View style={styles.countryPickerContainer}>
+                <CountryPicker
+                  countryCode={countryCode}
+                  withFilter 
+                  withFlag 
+                  withCallingCode
+                  theme={{
+                    backgroundColor: THEME.COLORS.background,
+                    onBackgroundTextColor: THEME.COLORS.textPrimary,
+                  }}
+                  onSelect={(c) => { 
+                    setCountryCode(c.cca2); 
+                    setCallingCode(c.callingCode[0]); 
+                  }}
+                />
+                <Text style={styles.callingCodeText}>+{callingCode}</Text>
+              </View>
+            )}
+            <View style={styles.flexItem}>
+              <GlassInput
+                icon={isEmailMode ? "mail-outline" : "call-outline"}
+                placeholder="Tél ou Email"
+                autoCapitalize="none"
+                value={formData.identifier}
+                onChangeText={(t) => {
+                  setFormData({ ...formData, identifier: t });
+                  if (error) dispatch(clearError());
                 }}
               />
-              <Text style={styles.callingCodeText}>+{callingCode}</Text>
             </View>
-          )}
-          <View style={styles.flexItem}>
-            <GlassInput
-              icon={isEmailMode ? "mail-outline" : "call-outline"}
-              placeholder="Tél ou Email"
-              autoCapitalize="none"
-              value={formData.identifier}
-              onChangeText={(t) => {
-                setFormData({ ...formData, identifier: t });
-                if (error) dispatch(clearError());
-              }}
-            />
           </View>
+        </View>
+
+        <View style={styles.inputGroup}>
+          <Text style={styles.inputLabel}>Mot de passe</Text>
+          <GlassInput
+            icon="lock-closed-outline"
+            placeholder="Votre mot de passe"
+            secureTextEntry
+            value={formData.password}
+            onChangeText={(t) => {
+              setFormData({ ...formData, password: t });
+              if (error) dispatch(clearError());
+            }}
+          />
         </View>
       </View>
 
-      <View style={styles.inputGroup}>
-        <Text style={styles.inputLabel}>Mot de passe</Text>
-        <GlassInput
-          icon="lock-closed-outline"
-          placeholder="Votre mot de passe"
-          secureTextEntry
-          value={formData.password}
-          onChangeText={(t) => {
-            setFormData({ ...formData, password: t });
-            if (error) dispatch(clearError());
-          }}
+      <View style={styles.footerLinks}>
+        <AuthActionLinks 
+          leftLabel="Mot de passe oublié ?"
+          leftOnPress={() => navigation.navigate('ForgotPassword')}
+          rightLabel="Créer un compte"
+          rightOnPress={() => navigation.navigate('Register')}
         />
       </View>
-
-      <AuthActionLinks 
-        leftLabel="Mot de passe oublié ?"
-        leftOnPress={() => navigation.navigate('ForgotPassword')}
-        rightLabel="Créer un compte"
-        rightOnPress={() => navigation.navigate('Register')}
-      />
 
       <PwaIOSWarningModal 
         forceShow={showPwaModal} 
@@ -149,46 +164,80 @@ const LoginPage = ({ navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  inputGroup: { marginBottom: THEME.SPACING.xl },
-  inputLabel: { 
-    color: THEME.COLORS.textSecondary, 
-    fontSize: THEME.FONTS.sizes.caption, 
-    fontWeight: THEME.FONTS.weights.bold, 
-    marginBottom: THEME.SPACING.sm, 
-    marginLeft: THEME.SPACING.sm, 
-    textTransform: 'uppercase', 
-    letterSpacing: 1 
+  customHeader: {
+    marginBottom: THEME.SPACING.xxxl,
+    marginTop: THEME.SPACING.sm,
   },
-  inputRow: { flexDirection: 'row', gap: THEME.SPACING.sm, alignItems: 'flex-start' },
-  countryPickerContainer: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    backgroundColor: THEME.COLORS.glassSurface, 
-    paddingHorizontal: THEME.SPACING.md, 
-    borderRadius: THEME.BORDERS.radius.lg, 
-    height: THEME.DIMENSIONS.input.height, 
-    borderWidth: THEME.BORDERS.width.normal, 
-    borderColor: THEME.COLORS.border 
+  massiveTitle: {
+    fontSize: 42,
+    fontWeight: THEME.FONTS.weights.bold,
+    color: THEME.COLORS.primary,
+    lineHeight: 48,
+    letterSpacing: -1,
   },
-  callingCodeText: { 
-    color: THEME.COLORS.textPrimary, 
-    marginLeft: THEME.SPACING.sm, 
-    fontWeight: THEME.FONTS.weights.bold 
+  subTitle: {
+    fontSize: THEME.FONTS.sizes.body,
+    color: THEME.COLORS.textSecondary,
+    marginTop: THEME.SPACING.sm,
+    fontWeight: THEME.FONTS.weights.regular,
   },
-  flexItem: { flex: 1 },
-  errorBox: { 
-    backgroundColor: 'rgba(192, 57, 43, 0.1)', 
-    padding: THEME.SPACING.md, 
-    borderRadius: THEME.BORDERS.radius.md, 
-    marginBottom: THEME.SPACING.lg, 
-    borderWidth: THEME.BORDERS.width.normal, 
-    borderColor: THEME.COLORS.danger 
+  formContainer: {
+    gap: THEME.SPACING.xl,
   },
-  errorText: { 
-    color: THEME.COLORS.danger, 
-    fontSize: THEME.FONTS.sizes.bodySmall, 
-    textAlign: 'center', 
-    fontWeight: THEME.FONTS.weights.bold 
+  inputGroup: {
+    marginBottom: THEME.SPACING.md,
+  },
+  inputLabel: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: THEME.FONTS.sizes.caption,
+    fontWeight: THEME.FONTS.weights.bold,
+    marginBottom: THEME.SPACING.xs,
+    marginLeft: THEME.SPACING.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 1.5,
+  },
+  inputRow: {
+    flexDirection: 'row',
+    gap: THEME.SPACING.sm,
+    alignItems: 'stretch',
+  },
+  countryPickerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    paddingHorizontal: THEME.SPACING.md,
+    borderRadius: THEME.BORDERS.radius.lg,
+    minHeight: THEME.DIMENSIONS.input.height,
+    borderWidth: 0,
+  },
+  callingCodeText: {
+    color: THEME.COLORS.textPrimary,
+    marginLeft: THEME.SPACING.xs,
+    fontWeight: THEME.FONTS.weights.semiBold,
+    fontSize: THEME.FONTS.sizes.body,
+  },
+  flexItem: {
+    flex: 1,
+  },
+  actionButtonContainer: {
+    paddingTop: THEME.SPACING.md,
+  },
+  footerLinks: {
+    marginTop: THEME.SPACING.xxl,
+  },
+  errorBox: {
+    backgroundColor: 'rgba(192, 57, 43, 0.1)',
+    paddingVertical: THEME.SPACING.md,
+    paddingHorizontal: THEME.SPACING.lg,
+    borderRadius: THEME.BORDERS.radius.md,
+    marginBottom: THEME.SPACING.xl,
+    borderLeftWidth: 4,
+    borderColor: THEME.COLORS.danger,
+  },
+  errorText: {
+    color: THEME.COLORS.danger,
+    fontSize: THEME.FONTS.sizes.bodySmall,
+    fontWeight: THEME.FONTS.weights.medium,
   }
 });
 
