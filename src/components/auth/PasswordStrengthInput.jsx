@@ -1,4 +1,3 @@
-//src/components/auth/PasswordStrengthInput.jsx
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import React, { useEffect, useState } from 'react';
@@ -123,7 +122,7 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
             style={styles.progressBar} 
           />
           <View style={styles.requirementsBox}>
-            <PasswordRequirement met={stats.length} text="8 caractères min." />
+            <PasswordRequirement met={stats.length} text="8 caracteres min." />
             <PasswordRequirement met={stats.number} text="1 chiffre" />
             <PasswordRequirement met={stats.special} text="1 symbole" />
           </View>

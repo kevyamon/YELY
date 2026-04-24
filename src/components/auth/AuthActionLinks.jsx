@@ -1,4 +1,3 @@
-//src/components/auth/AuthActionLinks.jsx
 import React from 'react';
 import { StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
@@ -9,8 +8,6 @@ const AuthActionLinks = ({
   leftOnPress, 
   rightLabel, 
   rightOnPress,
-  centeredLabel,
-  centeredOnPress,
   subLabel,
   subActionLabel,
   subOnPress
@@ -18,34 +15,26 @@ const AuthActionLinks = ({
   return (
     <View style={styles.container}>
       {(leftLabel || rightLabel) && (
-        <View style={styles.row}>
+        <View style={styles.rowMode}>
           {leftLabel && (
-            <TouchableOpacity onPress={leftOnPress}>
+            <TouchableOpacity onPress={leftOnPress} activeOpacity={0.7}>
               <Text style={styles.linkTextDimmed}>{leftLabel}</Text>
             </TouchableOpacity>
           )}
           {rightLabel && (
-            <TouchableOpacity onPress={rightOnPress}>
+            <TouchableOpacity onPress={rightOnPress} activeOpacity={0.7}>
               <Text style={styles.linkTextHighlight}>{rightLabel}</Text>
             </TouchableOpacity>
           )}
         </View>
       )}
 
-      {centeredLabel && (
-        <TouchableOpacity onPress={centeredOnPress} style={styles.centered}>
-          <Text style={styles.linkTextHighlight}>{centeredLabel}</Text>
-        </TouchableOpacity>
-      )}
-
       {(subLabel && subActionLabel) && (
         <View style={styles.footerRow}>
-          <Text style={styles.footerText}>
-            {subLabel}{' '}
-            <Text onPress={subOnPress} style={styles.linkTextHighlight}>
-              {subActionLabel}
-            </Text>
-          </Text>
+          <Text style={styles.footerText}>{subLabel} </Text>
+          <TouchableOpacity onPress={subOnPress} activeOpacity={0.7}>
+            <Text style={styles.linkTextHighlight}>{subActionLabel}</Text>
+          </TouchableOpacity>
         </View>
       )}
     </View>
@@ -54,35 +43,28 @@ const AuthActionLinks = ({
 
 const styles = StyleSheet.create({
   container: { 
-    marginTop: THEME.SPACING.md, 
-    gap: THEME.SPACING.lg 
+    marginTop: THEME.SPACING.xl, 
   },
-  row: { 
+  rowMode: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
-    alignItems: 'center', 
-    paddingHorizontal: THEME.SPACING.xs 
-  },
-  centered: {
-    alignItems: 'center'
+    alignItems: 'center',
   },
   footerRow: { 
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
     marginTop: THEME.SPACING.md
   },
   linkTextDimmed: { 
     color: THEME.COLORS.textSecondary, 
     fontSize: THEME.FONTS.sizes.bodySmall, 
-    fontWeight: THEME.FONTS.weights.bold, 
-    textTransform: 'uppercase', 
-    letterSpacing: 0.5 
+    fontWeight: THEME.FONTS.weights.semiBold, 
   },
   linkTextHighlight: { 
     color: THEME.COLORS.primary, 
     fontSize: THEME.FONTS.sizes.bodySmall, 
     fontWeight: THEME.FONTS.weights.bold, 
-    textTransform: 'uppercase', 
-    letterSpacing: 0.5 
   },
   footerText: { 
     color: THEME.COLORS.textSecondary, 

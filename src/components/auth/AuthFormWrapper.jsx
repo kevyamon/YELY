@@ -1,13 +1,12 @@
-//src/components/auth/AuthFormWrapper.jsx
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    ScrollView,
-    StyleSheet,
-    TouchableOpacity,
-    View
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  StyleSheet,
+  TouchableOpacity,
+  View
 } from 'react-native';
 import { Text } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -32,7 +31,7 @@ const AuthFormWrapper = ({
               <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           )}
-          <Text style={styles.welcomeText}>{title}</Text>
+          {title && <Text style={styles.welcomeText}>{title}</Text>}
           {subtitle && <Text style={styles.subText}>{subtitle}</Text>}
         </View>
 
@@ -41,16 +40,16 @@ const AuthFormWrapper = ({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.glassWrapper}>
+          <View style={styles.formContent}>
             {children}
           </View>
+          
+          {actionButton && (
+            <View style={styles.actionContainer}>
+              {actionButton}
+            </View>
+          )}
         </ScrollView>
-
-        {actionButton && (
-          <View style={styles.actionContainer}>
-            {actionButton}
-          </View>
-        )}
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
@@ -90,15 +89,14 @@ const styles = StyleSheet.create({
   scrollContent: { 
     flexGrow: 1, 
     paddingHorizontal: THEME.SPACING.xl, 
-    paddingBottom: THEME.SPACING.xxl 
+    paddingBottom: THEME.SPACING.xxl,
+    justifyContent: 'space-between',
   },
-  glassWrapper: { 
-    ...THEME.GLASS.card, 
-    padding: THEME.SPACING.xl,
+  formContent: {
+    // Plus de cadre rigide (glassWrapper supprimé), les éléments flottent librement
   },
   actionContainer: {
-    paddingHorizontal: THEME.SPACING.xl,
-    paddingTop: THEME.SPACING.md,
+    paddingTop: THEME.SPACING.lg,
     paddingBottom: Platform.OS === 'ios' ? THEME.SPACING.xl : THEME.SPACING.lg,
   }
 });

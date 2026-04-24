@@ -1,0 +1,224 @@
+YELY
+├── App.js
+├── Developer
+├── README.md
+├── app.json
+├── arborescence.txt
+├── babel.config.js
+├── dist
+│   ├── assetmap.json
+│   ├── favicon.ico
+│   ├── firebase-messaging-sw.js
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   ├── index.html
+│   ├── manifest.json
+│   ├── metadata.json
+│   └── splash-center.png
+├── eas.json
+├── eslint.config.js
+├── google-services.json
+├── jsconfig.json
+├── metro.config.js
+├── package-lock.json
+├── package.json
+├── public
+│   ├── firebase-messaging-sw.js
+│   ├── icon-192.png
+│   ├── icon-512.png
+│   ├── index.html
+│   ├── manifest.json
+│   └── splash-center.png
+├── src
+│   ├── components
+│   │   ├── admin
+│   │   │   ├── AdminHeaderMenu.jsx
+│   │   │   ├── AdminModals.jsx
+│   │   │   ├── BlinkingBadge.jsx
+│   │   │   ├── HelpModal.jsx
+│   │   │   ├── IconPickerModal.jsx
+│   │   │   ├── PoiFormModal.jsx
+│   │   │   ├── PoiSelectionMapModal.jsx
+│   │   │   ├── ResolveReportModal.jsx
+│   │   │   ├── ScrollToTopButton.jsx
+│   │   │   ├── StatCard.jsx
+│   │   │   ├── UserInfoModal.jsx
+│   │   │   └── ValidationModal.jsx
+│   │   ├── auth
+│   │   │   ├── AuthActionLinks.jsx
+│   │   │   ├── AuthFormWrapper.jsx
+│   │   │   ├── PasswordStrengthInput.jsx
+│   │   │   ├── PhoneInputGroup.jsx
+│   │   │   └── TermsModal.jsx
+│   │   ├── debug
+│   │   │   └── GpsTeleporter.jsx
+│   │   ├── drawer
+│   │   │   ├── DrawerFooter.jsx
+│   │   │   ├── DrawerHeader.jsx
+│   │   │   ├── DrawerLogoutOverlay.jsx
+│   │   │   ├── DrawerMenu.jsx
+│   │   │   ├── SettingsModal.jsx
+│   │   │   └── menuConfig.js
+│   │   ├── help
+│   │   │   └── HelpVideoModal.jsx
+│   │   ├── map
+│   │   │   ├── MapCard.jsx
+│   │   │   ├── MapCard.web.jsx
+│   │   │   ├── PoiDetailsModal.jsx
+│   │   │   ├── markers
+│   │   │   │   ├── MobileMarkers.jsx
+│   │   │   │   ├── UserLocationMarker.jsx
+│   │   │   │   └── WebMarkers.jsx
+│   │   │   └── useMapAutoFitter.js
+│   │   ├── notifications
+│   │   │   └── ReportResolutionModal.jsx
+│   │   ├── profile
+│   │   │   ├── ProfileAvatar.jsx
+│   │   │   └── ProfileForm.jsx
+│   │   ├── ride
+│   │   │   ├── ArrivalConfirmModal.jsx
+│   │   │   ├── DriverBottomPanel.jsx
+│   │   │   ├── DriverRequestModal.jsx
+│   │   │   ├── DriverRideOverlay.jsx
+│   │   │   ├── PassengerCountModal.jsx
+│   │   │   ├── RatingModal.jsx
+│   │   │   ├── RideRouteDisplay.jsx
+│   │   │   ├── RiderBottomPanel.jsx
+│   │   │   ├── RiderRideOverlay.jsx
+│   │   │   ├── RiderWaitModal.jsx
+│   │   │   ├── SearchingRadar.jsx
+│   │   │   ├── StartRideButton.jsx
+│   │   │   ├── VehicleCard.jsx
+│   │   │   └── VehicleCarousel.jsx
+│   │   ├── subscription
+│   │   │   ├── PlanSelection.jsx
+│   │   │   ├── PricingCard.jsx
+│   │   │   ├── PromoAlertModal.jsx
+│   │   │   ├── ProofUploadForm.jsx
+│   │   │   └── SubscriptionDashboard.jsx
+│   │   └── ui
+│   │       ├── ActionPill.jsx
+│   │       ├── AppToast.jsx
+│   │       ├── AvailabilityCard.jsx
+│   │       ├── DestinationSearchModal.jsx
+│   │       ├── EmergencyResetButton.jsx
+│   │       ├── FacebookFollowModal.jsx
+│   │       ├── ForceUpdateModal.jsx
+│   │       ├── GlassCard.jsx
+│   │       ├── GlassInput.jsx
+│   │       ├── GlassModal.jsx
+│   │       ├── GlobalSkeleton.jsx
+│   │       ├── GoldButton.jsx
+│   │       ├── GpsPermissionModal.web.jsx
+│   │       ├── ImagePreviewModal.jsx
+│   │       ├── LocationSyncGauge.jsx
+│   │       ├── NotificationBell.jsx
+│   │       ├── PwaIOSInstallGuide.jsx
+│   │       ├── PwaIOSInstallGuide.web.jsx
+│   │       ├── PwaIOSWarningModal.jsx
+│   │       ├── ScreenHeader.jsx
+│   │       ├── ScreenWrapper.jsx
+│   │       ├── SearchBar.jsx
+│   │       ├── SessionRecoveryOverlay.jsx
+│   │       ├── SessionRefreshSkeleton.jsx
+│   │       ├── SmartFooter.jsx
+│   │       ├── SmartHeader.jsx
+│   │       ├── ThemeChangeModal.jsx
+│   │       ├── UniversalIcon.jsx
+│   │       └── kml
+│   ├── config
+│   │   ├── env.js
+│   │   └── helpConfig.js
+│   ├── hooks
+│   │   ├── useAdminSocketEvents.js
+│   │   ├── useDriverLifecycle.js
+│   │   ├── useDriverMapFeatures.js
+│   │   ├── useGeolocation.js
+│   │   ├── useGeolocation.web.js
+│   │   ├── useMapFitter.js
+│   │   ├── usePoiSocketEvents.js
+│   │   ├── usePushNotifications.js
+│   │   ├── usePushNotifications.web.js
+│   │   ├── usePwaAutoUpdate.js
+│   │   ├── useReportSocketEvents.js
+│   │   ├── useRideSocketEvents.js
+│   │   ├── useRiderLifecycle.js
+│   │   ├── useRiderMapFeatures.js
+│   │   ├── useRouteManager.js
+│   │   ├── useSearchExpansion.js
+│   │   ├── useServerWakeup.js
+│   │   ├── useSocket.js
+│   │   └── useSocketEvents.js
+│   ├── navigation
+│   │   ├── AppNavigator.jsx
+│   │   └── navigationRef.js
+│   ├── screens
+│   │   ├── LandingScreen.jsx
+│   │   ├── MenuScreen.jsx
+│   │   ├── SplashScreen.jsx
+│   │   ├── admin
+│   │   │   ├── AdminDashboard.jsx
+│   │   │   ├── AdminJournal.jsx
+│   │   │   ├── AdminReports.jsx
+│   │   │   ├── AdminRides.jsx
+│   │   │   ├── FinanceConfig.jsx
+│   │   │   ├── MapManagement.jsx
+│   │   │   ├── SystemConfig.jsx
+│   │   │   ├── UsersManagement.jsx
+│   │   │   └── ValidationCenter.jsx
+│   │   ├── auth
+│   │   │   ├── ForgotPasswordScreen.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── RegisterPage.jsx
+│   │   │   └── ResetPasswordScreen.jsx
+│   │   ├── history
+│   │   │   └── HistoryScreen.jsx
+│   │   ├── home
+│   │   │   ├── DriverHome.jsx
+│   │   │   ├── DriverHome.web.jsx
+│   │   │   ├── RiderHome.jsx
+│   │   │   └── RiderHome.web.jsx
+│   │   ├── legal
+│   │   │   ├── PrivacyPolicyScreen.jsx
+│   │   │   └── TermsOfServiceScreen.jsx
+│   │   ├── notifications
+│   │   │   └── NotificationsScreen.jsx
+│   │   ├── profile
+│   │   │   └── ProfileScreen.jsx
+│   │   ├── report
+│   │   │   └── ReportScreen.jsx
+│   │   ├── ride
+│   │   │   └── PancarteScreen.jsx
+│   │   └── subscription
+│   │       ├── PaymentFailure.jsx
+│   │       ├── SubscriptionScreen.jsx
+│   │       └── WaitScreen.jsx
+│   ├── services
+│   │   ├── mapService.js
+│   │   └── socketService.js
+│   ├── store
+│   │   ├── api
+│   │   │   ├── adminApiSlice.js
+│   │   │   ├── notificationsApiSlice.js
+│   │   │   ├── poiApiSlice.js
+│   │   │   ├── reportsApiSlice.js
+│   │   │   ├── ridesApiSlice.js
+│   │   │   ├── subscriptionApiSlice.js
+│   │   │   └── usersApiSlice.js
+│   │   ├── secureStoreAdapter.js
+│   │   ├── slices
+│   │   │   ├── apiSlice.js
+│   │   │   ├── authSlice.js
+│   │   │   ├── rideSlice.js
+│   │   │   └── uiSlice.js
+│   │   └── store.js
+│   ├── tasks
+│   │   └── backgroundLocationTask.js
+│   ├── theme
+│   │   └── theme.js
+│   └── utils
+│       ├── distanceUtils.js
+│       ├── maferePOIs.js
+│       ├── mafereZone.js
+│       └── validators.js
+└── vercel.json
