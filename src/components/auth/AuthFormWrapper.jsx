@@ -19,11 +19,20 @@ const AuthFormWrapper = ({
   onBack, 
   actionButton 
 }) => {
+  // Configuration intelligente du clavier pour PWA et APK
+  // Sur Web (PWA), le navigateur gère le clavier, on ne met pas de behavior pour éviter les bugs de réduction
+  // Sur iOS, 'padding' est le plus fluide
+  // Sur Android, 'height' pousse bien la vue
+  const keyboardBehavior = Platform.OS === 'ios' ? 'padding' : Platform.OS === 'android' ? 'height' : undefined;
+  const keyboardVerticalOffset = Platform.OS === 'ios' ? 40 : 0;
+
   return (
     <SafeAreaView style={styles.safeArea}>
       <KeyboardAvoidingView 
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'} 
+        behavior={keyboardBehavior}
+        verticalOffset={keyboardVerticalOffset}
         style={styles.keyboardContainer}
+        enabled={Platform.OS !== 'web'} // Désactive le KeyboardAvoidingView sur PWA
       >
         <View style={styles.headerContainer}>
           {onBack && (
@@ -39,6 +48,7 @@ const AuthFormWrapper = ({
           contentContainerStyle={styles.scrollContent} 
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
+          // Sur le web, le scroll natif du navigateur prend le relais
         >
           <View style={styles.formContent}>
             {children}
@@ -93,7 +103,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   formContent: {
-    // Plus de cadre rigide (glassWrapper supprimé), les éléments flottent librement
+    // Pas de cadre rigide, les éléments flottent librement
   },
   actionContainer: {
     paddingTop: THEME.SPACING.lg,
