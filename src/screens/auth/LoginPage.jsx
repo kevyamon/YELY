@@ -55,9 +55,9 @@ const LoginPage = ({ navigation }) => {
       
       const { user, accessToken, refreshToken } = res.data;
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      dispatch(showSuccessToast({ title: "Connexion reussie", message: `Ravi de vous revoir, ${user.name.split(' ')[0]} !` }));
+      dispatch(showSuccessToast({ title: "Connexion réussie", message: `Ravi de vous revoir, ${user.name.split(' ')[0]} !` }));
     } catch (err) {
-      const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez reessayer.";
+      const errorMessage = err?.data?.message || "Vos identifiants sont incorrects. Veuillez réessayer.";
       if (errorMessage === 'DEVICE_NOT_SUPPORTED') {
         setShowPwaModal(true);
         return;
@@ -69,7 +69,7 @@ const LoginPage = ({ navigation }) => {
   return (
     <AuthFormWrapper
       title="Bon retour"
-      subtitle="Accedez a votre espace securise."
+      subtitle="Accédez à votre espace sécurisé."
       onBack={() => navigation.navigate('Landing')}
       actionButton={
         <GoldButton
@@ -89,60 +89,64 @@ const LoginPage = ({ navigation }) => {
       <View style={styles.formContainer}>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Identifiant</Text>
-          <View style={styles.inputRow}>
-            {!isEmailMode && (
-              <View style={styles.countryPickerContainer}>
-                <CountryPicker
-                  countryCode={countryCode}
-                  withFilter 
-                  withFlag 
-                  withCallingCode
-                  theme={{
-                    backgroundColor: THEME.COLORS.background,
-                    onBackgroundTextColor: THEME.COLORS.textPrimary,
-                  }}
-                  onSelect={(c) => { 
-                    setCountryCode(c.cca2); 
-                    setCallingCode(c.callingCode[0]); 
+          <View style={styles.goldInputContainer}>
+            <View style={styles.inputRow}>
+              {!isEmailMode && (
+                <View style={styles.countryPickerContainer}>
+                  <CountryPicker
+                    countryCode={countryCode}
+                    withFilter 
+                    withFlag 
+                    withCallingCode
+                    theme={{
+                      backgroundColor: THEME.COLORS.primary,
+                      onBackgroundTextColor: THEME.COLORS.textInverse,
+                    }}
+                    onSelect={(c) => { 
+                      setCountryCode(c.cca2); 
+                      setCallingCode(c.callingCode[0]); 
+                    }}
+                  />
+                  <Text style={styles.callingCodeText}>+{callingCode}</Text>
+                </View>
+              )}
+              <View style={styles.flexItem}>
+                <GlassInput
+                  icon={isEmailMode ? "mail-outline" : "call-outline"}
+                  placeholder="Tél ou Email"
+                  autoCapitalize="none"
+                  value={formData.identifier}
+                  onChangeText={(t) => {
+                    setFormData({ ...formData, identifier: t });
+                    if (error) dispatch(clearError());
                   }}
                 />
-                <Text style={styles.callingCodeText}>+{callingCode}</Text>
               </View>
-            )}
-            <View style={styles.flexItem}>
-              <GlassInput
-                icon={isEmailMode ? "mail-outline" : "call-outline"}
-                placeholder="Tel ou Email"
-                autoCapitalize="none"
-                value={formData.identifier}
-                onChangeText={(t) => {
-                  setFormData({ ...formData, identifier: t });
-                  if (error) dispatch(clearError());
-                }}
-              />
             </View>
           </View>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Mot de passe</Text>
-          <GlassInput
-            icon="lock-closed-outline"
-            placeholder="Votre mot de passe"
-            secureTextEntry
-            value={formData.password}
-            onChangeText={(t) => {
-              setFormData({ ...formData, password: t });
-              if (error) dispatch(clearError());
-            }}
-          />
+          <View style={styles.goldInputContainer}>
+            <GlassInput
+              icon="lock-closed-outline"
+              placeholder="Votre mot de passe"
+              secureTextEntry
+              value={formData.password}
+              onChangeText={(t) => {
+                setFormData({ ...formData, password: t });
+                if (error) dispatch(clearError());
+              }}
+            />
+          </View>
         </View>
       </View>
 
       <AuthActionLinks 
-        leftLabel="Mot de passe oublie ?"
+        leftLabel="Mot de passe oublié ?"
         leftOnPress={() => navigation.navigate('ForgotPassword')}
-        rightLabel="Creer un compte"
+        rightLabel="Créer un compte"
         rightOnPress={() => navigation.navigate('Register')}
       />
 
@@ -172,20 +176,25 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
+  goldInputContainer: {
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: THEME.BORDERS.radius.lg,
+    padding: THEME.BORDERS.width.thick,
+  },
   inputRow: {
     flexDirection: 'row',
     gap: THEME.SPACING.sm,
     alignItems: 'stretch',
+    backgroundColor: THEME.COLORS.background,
+    borderRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
   },
   countryPickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    paddingHorizontal: THEME.SPACING.md,
-    borderRadius: THEME.BORDERS.radius.lg,
-    minHeight: THEME.DIMENSIONS.input.height,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.border,
+    paddingLeft: THEME.SPACING.md,
+    backgroundColor: THEME.COLORS.background,
+    borderTopLeftRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
+    borderBottomLeftRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
   },
   callingCodeText: {
     color: THEME.COLORS.textPrimary,

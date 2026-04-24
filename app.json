@@ -104,7 +104,11 @@
           "organization": "yelyllc",
           "project": "yely-app"
         }
-      ]
+      ],
+      "@sentry/react-native",
+      "expo-font",
+      "expo-image",
+      "expo-web-browser"
     ],
     "extra": {
       "eas": {

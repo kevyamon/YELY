@@ -1,22 +1,14 @@
-//App.js
 import * as Sentry from '@sentry/react-native';
-import Constants from 'expo-constants';
 import * as NativeSplashScreen from 'expo-splash-screen';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
-import { AntDesign, Feather, FontAwesome5, Ionicons, MaterialCommunityIcons, MaterialIcons } from '@expo/vector-icons';
-import ENV from './src/config/env';
-import './src/tasks/backgroundLocationTask';
-
-import NetInfo from '@react-native-community/netinfo';
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { AppState, Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useEffect, useRef, useState } from 'react';
+import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux';
@@ -34,38 +26,14 @@ import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
-import { apiSlice } from './src/store/slices/apiSlice';
-import { forceSilentRefresh, selectCurrentUser, selectIsAuthenticated, selectToken, updatePromoMode } from './src/store/slices/authSlice';
-import { hideToast, selectAppUpdate, selectLoading, selectToast, setAppUpdate, showErrorToast, showSuccessToast } from './src/store/slices/uiSlice';
-
+import useAppStartup from './src/hooks/useAppStartup';
 import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
-import socketService from './src/services/socketService';
 
-const HiddenFontPreloader = () => (
-  <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0 }} pointerEvents="none">
-    <Ionicons name="help" size={1} />
-    <FontAwesome5 name="car" size={1} />
-    <MaterialIcons name="help" size={1} />
-    <MaterialCommunityIcons name="help" size={1} />
-    <Feather name="help" size={1} />
-    <AntDesign name="help" size={1} />
-  </View>
-);
+import { hideToast, selectAppUpdate, selectLoading, selectToast } from './src/store/slices/uiSlice';
 
-const isVersionOutdated = (current, latest) => {
-  if (!current || !latest) return false;
-  const currentParts = current.split('.').map(Number);
-  const latestParts = latest.split('.').map(Number);
-  for (let i = 0; i < Math.max(currentParts.length, latestParts.length); i++) {
-    const c = currentParts[i] || 0;
-    const l = latestParts[i] || 0;
-    if (l > c) return true; 
-    if (c > l) return false; 
-  }
-  return false; 
-};
+import './src/tasks/backgroundLocationTask';
 
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
@@ -84,89 +52,11 @@ const AppContent = () => {
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);
-  const user = useSelector(selectCurrentUser);
-  const token = useSelector(selectToken);
-  const isAuthenticated = useSelector(selectIsAuthenticated);
-  const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
-  const isSuperAdmin = user?.role === 'superadmin';
-  const appState = useRef(AppState.currentState);
-  
+
+  useAppStartup();
   useSocketEvents();
   usePushNotifications();
   usePwaAutoUpdate(); 
-
-  const checkSystemStatus = useCallback(async () => {
-    try {
-      const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/health/config`);
-      if (response.ok) {
-        const payload = await response.json();
-        const data = payload.data || payload; 
-        dispatch(setAppUpdate({
-          isAvailable: isSuperAdmin ? false : isVersionOutdated(currentAppVersion, data.latestVersion),
-          latestVersion: data.latestVersion || currentAppVersion,
-          mandatoryUpdate: data.mandatoryUpdate,
-          updateUrl: data.updateUrl || 'https://download-yely.onrender.com',
-          isOta: data.isOta 
-        }));
-        if (data.hasOwnProperty('isGlobalFreeAccess')) {
-          dispatch(updatePromoMode({
-            isGlobalFreeAccess: data.isGlobalFreeAccess,
-            promoMessage: data.promoMessage
-          }));
-        }
-      }
-    } catch (error) {
-      console.warn("[APP_INIT] Verification de la configuration echouee:", error);
-    }
-  }, [dispatch, currentAppVersion, isSuperAdmin]);
-
-  useEffect(() => {
-    checkSystemStatus();
-  }, [checkSystemStatus]);
-
-  useEffect(() => {
-    if (isAuthenticated && token) {
-      socketService.connect(token);
-      checkSystemStatus(); 
-    } else if (!isAuthenticated) {
-      socketService.disconnect();
-    }
-  }, [isAuthenticated, checkSystemStatus]);
-
-  useEffect(() => {
-    const subscription = AppState.addEventListener('change', nextAppState => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        dispatch(forceSilentRefresh()).then(() => {
-          const currentToken = store.getState().auth.token;
-          if (currentToken) {
-            dispatch(apiSlice.util.invalidateTags(['User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride']));
-          }
-        });
-        checkSystemStatus(); 
-      }
-      appState.current = nextAppState;
-    });
-    return () => subscription.remove();
-  }, [dispatch, checkSystemStatus]);
-
-  useEffect(() => {
-    const unsubscribe = NetInfo.addEventListener(state => {
-      if (!state.isConnected) {
-        dispatch(showErrorToast({
-          title: "PAS DE CONNEXION",
-          message: "Veuillez activer vos donnees mobiles ou le Wi-Fi."
-        }));
-      } else if (state.isConnected && toast.visible && toast.title === "PAS DE CONNEXION") {
-        dispatch(showSuccessToast({ 
-          title: "Connexion retablie", 
-          message: "Vous etes de nouveau en ligne." 
-        }));
-        checkSystemStatus(); 
-      }
-    });
-    return () => unsubscribe();
-  }, [dispatch, toast, checkSystemStatus]);
 
   return (
     <>
@@ -205,25 +95,27 @@ const AppContent = () => {
 const App = () => {
   const [themeChanged, setThemeChanged] = useState(false);
   const initialTheme = useRef(Appearance.getColorScheme());
+
   useEffect(() => {
     const initApp = async () => {
       await NativeSplashScreen.hideAsync();
     };
     initApp();
   }, []);
+
   useEffect(() => {
     const subscription = Appearance.addChangeListener((preferences) => {
       setThemeChanged(preferences.colorScheme !== initialTheme.current);
     });
     return () => subscription.remove();
   }, []);
+
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
         <PaperProvider>
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
-              <HiddenFontPreloader />
               <AppContent />
               {themeChanged && <ThemeChangeModal />}
             </Sentry.ErrorBoundary>

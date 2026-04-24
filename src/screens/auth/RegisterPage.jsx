@@ -55,7 +55,7 @@ const RegisterPage = ({ navigation, route }) => {
       return;
     }
     if (passwordScore < 1 && password.length < 8) { 
-       dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caracteres, un chiffre et un symbole." }));
+       dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caractères, un chiffre et un symbole." }));
        return;
     }
     setShowTermsModal(true);
@@ -69,7 +69,7 @@ const RegisterPage = ({ navigation, route }) => {
       const { user, accessToken, refreshToken } = res.data;
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       setShowTermsModal(false);
-      dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
+      dispatch(showSuccessToast({ title: "Bienvenue sur Yély", message: "Votre compte a été créé avec succès." }));
     } catch (err) {
       setShowTermsModal(false);
       const errorMessage = err?.data?.errors?.[0]?.message || err?.data?.message || "Une erreur est survenue.";
@@ -79,7 +79,7 @@ const RegisterPage = ({ navigation, route }) => {
 
   return (
     <AuthFormWrapper
-      title="Creer un compte"
+      title="Créer un compte"
       onBack={() => navigation.navigate('Landing')}
       actionButton={
         <GoldButton 
@@ -98,8 +98,8 @@ const RegisterPage = ({ navigation, route }) => {
           >
             <Ionicons 
               name={r === 'rider' ? 'person' : 'car'} 
-              size={20} 
-              color={role === r ? THEME.COLORS.primary : THEME.COLORS.textTertiary} 
+              size={22} 
+              color={role === r ? THEME.COLORS.textInverse : THEME.COLORS.primary} 
             />
             <Text style={[styles.roleText, role === r && styles.roleTextActive]}>
               {r === 'rider' ? 'Passager' : 'Chauffeur'}
@@ -111,50 +111,58 @@ const RegisterPage = ({ navigation, route }) => {
       <View style={styles.formContainer}>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Nom complet</Text>
-          <GlassInput 
-            icon="person-outline" 
-            placeholder="Jean Dupont" 
-            value={formData.name} 
-            onChangeText={(t) => setFormData({ ...formData, name: t })} 
-          />
+          <View style={styles.goldInputContainer}>
+            <GlassInput 
+              icon="person-outline" 
+              placeholder="Jean Dupont" 
+              value={formData.name} 
+              onChangeText={(t) => setFormData({ ...formData, name: t })} 
+            />
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Telephone</Text>
-          <PhoneInputGroup 
-            phone={formData.phone} 
-            setPhone={(t) => setFormData({ ...formData, phone: t })} 
-            countryCode={countryCode} 
-            setCountryCode={setCountryCode} 
-            callingCode={callingCode} 
-            setCallingCode={setCallingCode} 
-          />
+          <Text style={styles.inputLabel}>Téléphone</Text>
+          <View style={styles.goldInputContainer}>
+            <PhoneInputGroup 
+              phone={formData.phone} 
+              setPhone={(t) => setFormData({ ...formData, phone: t })} 
+              countryCode={countryCode} 
+              setCountryCode={setCountryCode} 
+              callingCode={callingCode} 
+              setCallingCode={setCallingCode} 
+            />
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Adresse email</Text>
-          <GlassInput 
-            icon="mail-outline" 
-            placeholder="jean@exemple.com" 
-            keyboardType="email-address" 
-            autoCapitalize="none" 
-            value={formData.email} 
-            onChangeText={(t) => setFormData({ ...formData, email: t })} 
-          />
+          <View style={styles.goldInputContainer}>
+            <GlassInput 
+              icon="mail-outline" 
+              placeholder="jean@exemple.com" 
+              keyboardType="email-address" 
+              autoCapitalize="none" 
+              value={formData.email} 
+              onChangeText={(t) => setFormData({ ...formData, email: t })} 
+            />
+          </View>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Mot de passe</Text>
-          <PasswordStrengthInput 
-            password={formData.password} 
-            setPassword={(t) => setFormData({ ...formData, password: t })} 
-            onStrengthChange={setPasswordScore} 
-          />
+          <View style={styles.goldInputContainer}>
+            <PasswordStrengthInput 
+              password={formData.password} 
+              setPassword={(t) => setFormData({ ...formData, password: t })} 
+              onStrengthChange={setPasswordScore} 
+            />
+          </View>
         </View>
       </View>
 
       <AuthActionLinks 
-        subLabel="Deja membre ?"
+        subLabel="Déjà membre ?"
         subActionLabel="Se connecter"
         subOnPress={() => navigation.navigate('Login')}
       />
@@ -188,35 +196,34 @@ const RegisterPage = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   roleContainer: { 
     flexDirection: 'row', 
-    gap: THEME.SPACING.md, 
-    marginBottom: THEME.SPACING.xl,
+    gap: THEME.SPACING.lg, 
+    marginBottom: THEME.SPACING.xxl,
     marginTop: THEME.SPACING.lg,
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: THEME.BORDERS.radius.lg,
-    padding: THEME.SPACING.xs,
-    borderWidth: THEME.BORDERS.width.thin,
-    borderColor: THEME.COLORS.border,
   },
   roleBtn: { 
     flex: 1, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    paddingVertical: THEME.SPACING.md, 
-    borderRadius: THEME.BORDERS.radius.md, 
+    paddingVertical: THEME.SPACING.lg, 
+    borderRadius: THEME.BORDERS.radius.pill, 
+    borderWidth: THEME.BORDERS.width.thick, 
+    borderColor: THEME.COLORS.primary, 
+    backgroundColor: THEME.COLORS.transparent,
   },
   roleBtnActive: { 
-    backgroundColor: THEME.COLORS.background,
-    ...THEME.SHADOWS.soft,
+    backgroundColor: THEME.COLORS.primary, 
+    borderColor: THEME.COLORS.primaryDark,
+    ...THEME.SHADOWS.gold,
   },
   roleText: { 
     marginLeft: THEME.SPACING.sm, 
-    fontWeight: THEME.FONTS.weights.semiBold, 
-    color: THEME.COLORS.textTertiary 
+    fontWeight: THEME.FONTS.weights.bold, 
+    fontSize: THEME.FONTS.sizes.h4,
+    color: THEME.COLORS.primary,
   },
   roleTextActive: { 
-    color: THEME.COLORS.primary,
-    fontWeight: THEME.FONTS.weights.bold,
+    color: THEME.COLORS.textInverse,
   },
   formContainer: {
     gap: THEME.SPACING.lg,
@@ -232,6 +239,11 @@ const styles = StyleSheet.create({
     marginLeft: THEME.SPACING.xs, 
     textTransform: 'uppercase', 
     letterSpacing: 1 
+  },
+  goldInputContainer: {
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: THEME.BORDERS.radius.lg,
+    padding: THEME.BORDERS.width.thick,
   },
   modalText: { 
     color: THEME.COLORS.textPrimary, 
