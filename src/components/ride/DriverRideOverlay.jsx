@@ -108,26 +108,25 @@ const DriverRideOverlay = () => {
     transform: [{ translateY: translateY.value }],
   }));
 
-  if (!currentRide) return null;
-
   const isOngoing = localStatus === 'in_progress';
   const isArrived = localStatus === 'arrived';
   
-  const target = (isOngoing || isArrived) ? currentRide.destination : currentRide.origin;
+  const target = (isOngoing || isArrived) ? currentRide?.destination : currentRide?.origin;
   const targetLat = target?.coordinates?.[1] || target?.latitude;
   const targetLng = target?.coordinates?.[0] || target?.longitude;
 
   const distanceToTarget = useMemo(() => {
+    if (!currentRide) return Infinity;
     return calculateDistanceInMeters(
       effectiveLocation?.latitude,
       effectiveLocation?.longitude,
       targetLat,
       targetLng
     );
-  }, [effectiveLocation, targetLat, targetLng]);
+  }, [currentRide, effectiveLocation, targetLat, targetLng]);
 
   useEffect(() => {
-    if (isOngoing && distanceToTarget <= 150) {
+    if (currentRide && isOngoing && distanceToTarget <= 150) {
       pulseScale.value = withRepeat(
         withSequence(
           withTiming(1.03, { duration: 600, easing: Easing.inOut(Easing.ease) }),
@@ -139,11 +138,13 @@ const DriverRideOverlay = () => {
     } else {
       pulseScale.value = withTiming(1);
     }
-  }, [isOngoing, distanceToTarget, pulseScale]);
+  }, [currentRide, isOngoing, distanceToTarget, pulseScale]);
 
   const pulseStyle = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
   }));
+
+  if (!currentRide) return null;
 
   const bannerConfig = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
 

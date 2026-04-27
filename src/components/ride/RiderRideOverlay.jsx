@@ -68,8 +68,6 @@ const RiderRideOverlay = () => {
     transform: [{ translateY: translateY.value }],
   }));
 
-  if (!currentRide) return null;
-
   const isOngoing = riderStatus === RIDER_STATUS.IN_PROGRESS;
 
   const driverLat =
@@ -79,13 +77,16 @@ const RiderRideOverlay = () => {
     currentRide?.driverLocation?.coordinates?.[0] ||
     currentRide?.driverLocation?.longitude;
 
-  const target = isOngoing ? currentRide.destination : currentRide.origin;
+  const target = isOngoing ? currentRide?.destination : currentRide?.origin;
   const targetLat = target?.coordinates?.[1] || target?.latitude;
   const targetLng = target?.coordinates?.[0] || target?.longitude;
 
   const liveDistance = useMemo(() => {
+    if (!currentRide) return Infinity;
     return calculateDistanceInMeters(driverLat, driverLng, targetLat, targetLng);
-  }, [driverLat, driverLng, targetLat, targetLng]);
+  }, [currentRide, driverLat, driverLng, targetLat, targetLng]);
+
+  if (!currentRide) return null;
 
   // SUPPRESSION ARCHITECTURALE : Le passager ne force plus l'etat "arrived" localement. 
   // Il fait confiance absolue au Smart Drive 2.0 du chauffeur et au backend.
