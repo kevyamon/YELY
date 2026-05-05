@@ -7,6 +7,7 @@ import { useEffect } from 'react';
 import {
   BackHandler,
   Dimensions,
+  Modal,
   Platform,
   StyleSheet,
   TouchableWithoutFeedback,
@@ -75,8 +76,6 @@ const GlassModal = ({
     opacity: opacity.value,
   }));
 
-  if (!visible) return null;
-
   const getPositionStyle = () => {
     switch (position) {
       case 'bottom':
@@ -89,36 +88,44 @@ const GlassModal = ({
   };
 
   return (
-    <View style={styles.overlay}>
-      <TouchableWithoutFeedback onPress={closeOnBackdrop ? onClose : undefined}>
-        <Animated.View style={[styles.backdrop, backdropStyle]}>
-          {Platform.OS === 'ios' ? (
-            <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
-          ) : (
-            <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.overlayDark }]} />
-          )}
-        </Animated.View>
-      </TouchableWithoutFeedback>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="none"
+      onRequestClose={onClose}
+      statusBarTranslucent
+    >
+      <View style={styles.overlay}>
+        <TouchableWithoutFeedback onPress={closeOnBackdrop ? onClose : undefined}>
+          <Animated.View style={[styles.backdrop, backdropStyle]}>
+            {Platform.OS === 'ios' ? (
+              <BlurView intensity={30} tint="dark" style={StyleSheet.absoluteFill} />
+            ) : (
+              <View style={[StyleSheet.absoluteFill, { backgroundColor: COLORS.overlayDark }]} />
+            )}
+          </Animated.View>
+        </TouchableWithoutFeedback>
 
-      <View style={[styles.modalPositioner, getPositionStyle(), { pointerEvents: 'box-none' }]}>
-        <Animated.View
-          style={[
-            styles.modalContainer,
-            position === 'bottom' && styles.bottomModalContainer,
-            fullWidth && styles.fullWidthModal,
-            modalStyle,
-            style,
-          ]}
-        >
-          {showHandle && (
-            <View style={styles.handleContainer}>
-              <View style={styles.handle} />
-            </View>
-          )}
-          {children}
-        </Animated.View>
+        <View style={[styles.modalPositioner, getPositionStyle(), { pointerEvents: 'box-none' }]}>
+          <Animated.View
+            style={[
+              styles.modalContainer,
+              position === 'bottom' && styles.bottomModalContainer,
+              fullWidth && styles.fullWidthModal,
+              modalStyle,
+              style,
+            ]}
+          >
+            {showHandle && (
+              <View style={styles.handleContainer}>
+                <View style={styles.handle} />
+              </View>
+            )}
+            {children}
+          </Animated.View>
+        </View>
       </View>
-    </View>
+    </Modal>
   );
 };
 

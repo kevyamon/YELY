@@ -20,30 +20,32 @@ const TermsModal = ({ visible, onClose, onAccept, isLoading }) => {
         <ScrollView 
           showsVerticalScrollIndicator={true}
           contentContainerStyle={styles.scrollContent}
+          style={styles.scrollView}
+          nestedScrollEnabled={true}
         >
           <Text style={styles.sectionTitle}>1. Acceptation des conditions</Text>
           <Text style={styles.paragraph}>
-            En creant un compte sur Yely, vous acceptez de vous conformer aux presentes conditions d'utilisation et a notre politique de confidentialite. Si vous n'acceptez pas ces termes, veuillez ne pas utiliser l'application.
+            En créant un compte sur Yely, vous acceptez de vous conformer aux présentes conditions d'utilisation et à notre politique de confidentialité. Si vous n'acceptez pas ces termes, veuillez ne pas utiliser l'application.
           </Text>
 
           <Text style={styles.sectionTitle}>2. Utilisation du service</Text>
           <Text style={styles.paragraph}>
-            Yely met en relation des passagers avec des chauffeurs independants. Nous nous engageons a fournir une plateforme securisee et fiable. Vous acceptez d'utiliser le service uniquement a des fins legales et de maniere respectueuse envers les autres utilisateurs.
+            Yely met en relation des passagers avec des chauffeurs indépendants. Nous nous engageons à fournir une plateforme sécurisée et fiable. Vous acceptez d'utiliser le service uniquement à des fins légales et de manière respectueuse envers les autres utilisateurs.
           </Text>
 
-          <Text style={styles.sectionTitle}>3. Responsabilites</Text>
+          <Text style={styles.sectionTitle}>3. Responsabilités</Text>
           <Text style={styles.paragraph}>
-            En tant qu'utilisateur, vous etes responsable des informations fournies lors de l'inscription. Les chauffeurs sont responsables du respect du code de la route et de la validite de leurs documents professionnels.
+            En tant qu'utilisateur, vous êtes responsable des informations fournies lors de l'inscription. Les chauffeurs sont responsables du respect du code de la route et de la validité de leurs documents professionnels.
           </Text>
 
-          <Text style={styles.sectionTitle}>4. Politique de confidentialite</Text>
+          <Text style={styles.sectionTitle}>4. Politique de confidentialité</Text>
           <Text style={styles.paragraph}>
-            Vos donnees personnelles sont traitees de maniere securisee et ne sont utilisees que dans le cadre du fonctionnement de l'application (mise en relation, facturation, support).
+            Vos données personnelles sont traitées de manière sécurisée et ne sont utilisées que dans le cadre du fonctionnement de l'application (mise en relation, facturation, support).
           </Text>
           
           <Text style={styles.sectionTitle}>5. Modifications</Text>
           <Text style={styles.paragraph}>
-            Yely se reserve le droit de modifier ces conditions a tout moment. Les utilisateurs seront informes des changements majeurs.
+            Yely se réserve le droit de modifier ces conditions à tout moment. Les utilisateurs seront informés des changements majeurs.
           </Text>
         </ScrollView>
       </View>
@@ -66,12 +68,16 @@ const TermsModal = ({ visible, onClose, onAccept, isLoading }) => {
 
 const styles = StyleSheet.create({
   scrollContainer: {
-    maxHeight: 350,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
-    borderRadius: 8,
+    maxHeight: 380, // Légèrement augmenté pour confort
+    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+    borderRadius: THEME.BORDERS.radius.md,
     marginBottom: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
+    overflow: 'hidden', // Crucial pour le scroll interne
+  },
+  scrollView: {
+    flexGrow: 0, // Ne pas forcer le remplissage si peu de contenu
   },
   scrollContent: {
     padding: THEME.SPACING.md,
