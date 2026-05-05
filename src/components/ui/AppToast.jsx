@@ -62,6 +62,11 @@ const AppToast = ({
     }
   }, []);
 
+  const onHideRef = useRef(onHide);
+  useEffect(() => {
+    onHideRef.current = onHide;
+  }, [onHide]);
+
   const closeToast = useCallback(() => {
     clearTimer();
     Animated.parallel([
@@ -76,11 +81,11 @@ const AppToast = ({
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
-      if (finished && onHide) {
-        onHide();
+      if (finished && onHideRef.current) {
+        onHideRef.current();
       }
     });
-  }, [translateY, opacity, onHide, clearTimer]);
+  }, [translateY, opacity, clearTimer]);
 
   const startHideTimer = useCallback(() => {
     clearTimer();
@@ -110,7 +115,7 @@ const AppToast = ({
             duration: 200,
             useNativeDriver: true,
           }).start(() => {
-            if (onHide) onHide();
+            if (onHideRef.current) onHideRef.current();
           });
         } else {
           Animated.spring(translateX, {
@@ -125,32 +130,43 @@ const AppToast = ({
     })
   ).current;
 
-  useEffect(() => {
-    if (visible) {
-      clearTimer();
-      translateX.setValue(0);
-      translateY.setValue(-150);
-      opacity.setValue(0);
+  // Track the last shown content to allow updates but prevent unnecessary restarts
+  const lastContentRef = useRef(null);
 
-      Animated.parallel([
-        Animated.spring(translateY, {
-          toValue: 0,
-          tension: 80,
-          friction: 10,
-          useNativeDriver: true,
-        }),
-        Animated.timing(opacity, {
-          toValue: 1,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-      ]).start(() => {
-        startHideTimer();
-      });
+  useEffect(() => {
+    if (!visible) {
+      lastContentRef.current = null;
+      return;
     }
 
+    const currentContent = `${title}-${message}`;
+    if (lastContentRef.current === currentContent) return;
+
+    lastContentRef.current = currentContent;
+    
+    clearTimer();
+    translateX.setValue(0);
+    translateY.setValue(-150);
+    opacity.setValue(0);
+
+    Animated.parallel([
+      Animated.spring(translateY, {
+        toValue: 0,
+        tension: 80,
+        friction: 10,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 200,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      startHideTimer();
+    });
+
     return () => clearTimer();
-  }, [visible, startHideTimer, clearTimer, opacity, translateX, translateY]);
+  }, [visible, title, message, startHideTimer, clearTimer, opacity, translateX, translateY]);
 
   if (!visible) return null;
 
