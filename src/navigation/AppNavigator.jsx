@@ -22,7 +22,7 @@ import THEME from '../theme/theme';
 
 import DriverHome from '../screens/home/DriverHome';
 import RiderHome from '../screens/home/RiderHome';
-import ChoiceHome from '../screens/ChoiceHome';
+import SellerHome from '../screens/home/SellerHome';
 import LandingScreen from '../screens/LandingScreen';
 import LoginPage from '../screens/auth/LoginPage';
 import RegisterPage from '../screens/auth/RegisterPage';
@@ -179,9 +179,16 @@ const AppNavigator = () => {
             </Stack.Group>
           ) : (
             <Stack.Group>
-              <Stack.Screen name="ChoiceHome" component={ChoiceHome} />
+              {user?.role === 'driver' ? (
+                <Stack.Screen name="Home" component={DriverHome} />
+              ) : user?.role === 'seller' ? (
+                <Stack.Screen name="Home" component={SellerHome} />
+              ) : (
+                <Stack.Screen name="Home" component={RiderHome} />
+              )}
               <Stack.Screen name="RiderHome" component={RiderHome} />
               <Stack.Screen name="DriverHome" component={DriverHome} />
+              <Stack.Screen name="SellerHome" component={SellerHome} />
               <Stack.Screen name="MarketplaceHub" component={MarketplaceHub} />
               <Stack.Screen name="ProductList" component={ProductList} />
               <Stack.Screen name="ProductDetails" component={ProductDetails} />
