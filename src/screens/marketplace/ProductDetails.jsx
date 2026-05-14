@@ -1,52 +1,50 @@
 // src/screens/marketplace/ProductDetails.jsx
-// DETAILS PRODUIT PREMIUM - Design Cinematic & UX GTY Express
+// DETAILS PRODUIT PREMIUM - Design Minimaliste & Industriel
 // CSCSM Level: Bank Grade
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   Image, 
   Dimensions, 
-  ScrollView, 
   TouchableOpacity, 
   FlatList,
   ActivityIndicator,
-  StatusBar,
-  Animated as RNAnimated
+  StatusBar
 } from 'react-native';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Animated, { 
   useSharedValue, 
   useAnimatedScrollHandler, 
   useAnimatedStyle, 
   interpolate,
-  Extrapolate 
+  Extrapolate,
+  interpolateColor
 } from 'react-native-reanimated';
 import { useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 
-import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import GlassCard from '../../components/ui/GlassCard';
-import GoldButton from '../../components/ui/GoldButton';
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import { addToCart } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
+import GoldButton from '../../components/ui/GoldButton';
+import GlassCard from '../../components/ui/GlassCard';
 
 const { width, height } = Dimensions.get('window');
-const IMG_HEIGHT = height * 0.45;
+const IMG_HEIGHT = height * 0.5;
 
 const CATEGORY_LABELS = {
-  'Food': 'Nourriture',
-  'Supermarket': 'Supermarché',
-  'Cosmetics': 'Cosmétiques',
-  'Electronics': 'Électronique',
+  'Food': 'Gastronomie',
+  'Supermarket': 'Market',
+  'Cosmetics': 'Beauté',
+  'Electronics': 'Tech',
   'Home': 'Maison',
-  'Other': 'Autres'
+  'Other': 'Divers'
 };
 
 const ProductDetails = ({ route, navigation }) => {
@@ -57,64 +55,44 @@ const ProductDetails = ({ route, navigation }) => {
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
   
   const flatListRef = useRef(null);
-  const scrollViewRef = useRef(null);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [showScrollTop, setShowScrollTop] = useState(false);
-  const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
   const scrollY = useSharedValue(0);
 
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
 
-  // AUTO-PLAY LOGIC
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      let nextIndex = activeImage + 1;
-      if (nextIndex >= images.length) {
-        nextIndex = 0;
-      }
-      
-      flatListRef.current?.scrollToIndex({
-        index: nextIndex,
-        animated: true,
-      });
-      setActiveImage(nextIndex);
-    }, 4000); // Un peu plus lent sur les details (4s)
-
-    return () => clearInterval(interval);
-  }, [activeImage, images.length]);
-
+  // Scroll Handler pour le header dynamique
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
-      // Tracking pour ScrollToTop
-      const offsetY = event.contentOffset.y;
-      const shouldShow = offsetY > 250;
-      if (shouldShow !== showScrollTop) {
-        setShowScrollTop(shouldShow);
-        RNAnimated.timing(scrollTopOpacity, {
-          toValue: shouldShow ? 1 : 0,
-          duration: 250,
-          useNativeDriver: true,
-        }).start();
-      }
     },
   });
 
-  const scrollToTop = () => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
-
+  // Styles animés pour le header
   const headerStyle = useAnimatedStyle(() => {
-    const opacity = interpolate(scrollY.value, [0, 100], [0, 1], Extrapolate.CLAMP);
-    return { opacity, backgroundColor: THEME.COLORS.background };
+    const opacity = interpolate(scrollY.value, [IMG_HEIGHT - 100, IMG_HEIGHT - 40], [0, 1], Extrapolate.CLAMP);
+    const translateY = interpolate(scrollY.value, [IMG_HEIGHT - 100, IMG_HEIGHT - 40], [-20, 0], Extrapolate.CLAMP);
+    return { 
+      opacity, 
+      transform: [{ translateY }],
+      backgroundColor: THEME.COLORS.background,
+      borderBottomWidth: 1,
+      borderBottomColor: 'rgba(255,255,255,0.05)'
+    };
+  });
+
+  const headerIconStyle = useAnimatedStyle(() => {
+    const color = interpolateColor(
+      scrollY.value,
+      [IMG_HEIGHT - 100, IMG_HEIGHT - 40],
+      ['#FFFFFF', THEME.COLORS.textPrimary]
+    );
+    return { color };
   });
 
   const imgScaleStyle = useAnimatedStyle(() => {
-    const scale = interpolate(scrollY.value, [-100, 0], [1.3, 1], Extrapolate.CLAMP);
+    const scale = interpolate(scrollY.value, [-100, 0], [1.2, 1], Extrapolate.CLAMP);
     return { transform: [{ scale }] };
   });
 
@@ -123,7 +101,7 @@ const ProductDetails = ({ route, navigation }) => {
     dispatch(showToast({
       type: 'success',
       title: 'Panier mis à jour',
-      message: `${quantity}x ${product.name} ajouté(s) au panier.`
+      message: `${product.name} ajouté.`
     }));
   };
 
@@ -138,10 +116,8 @@ const ProductDetails = ({ route, navigation }) => {
   if (isError || !product) {
     return (
       <View style={styles.center}>
-        <Text style={styles.errorText}>Impossible de charger le produit.</Text>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.errorBtn}>
-          <Text style={styles.errorBtnText}>Retour</Text>
-        </TouchableOpacity>
+        <Text style={styles.errorText}>Produit introuvable</Text>
+        <GoldButton title="Retour" onPress={() => navigation.goBack()} variant="secondary" size="small" fullWidth={false} />
       </View>
     );
   }
@@ -150,36 +126,39 @@ const ProductDetails = ({ route, navigation }) => {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" transparent translucent />
 
-      {/* HEADER FLOTTANT ANIMÉ */}
+      {/* HEADER UNIQUE INTELLIGENT */}
       <Animated.View style={[styles.header, { paddingTop: insets.top }, headerStyle]}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.circleBtn}>
-            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
+            <Animated.Text style={headerIconStyle}>
+              <Ionicons name="arrow-back" size={24} />
+            </Animated.Text>
           </TouchableOpacity>
           <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
-          <TouchableOpacity style={styles.circleBtn} onPress={() => navigation.navigate('Cart')}>
-            <Ionicons name="cart-outline" size={24} color={THEME.COLORS.textPrimary} />
+          <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.navBtn}>
+            <Animated.Text style={headerIconStyle}>
+              <Ionicons name="cart-outline" size={24} />
+            </Animated.Text>
           </TouchableOpacity>
         </View>
       </Animated.View>
 
-      {/* HEADER TRANSPARENT (Initial) */}
-      <View style={[styles.transparentHeader, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.glassBackBtn}>
+      {/* BOUTONS FLOTTANTS (Visibles au top) */}
+      <View style={[styles.floatingNav, { top: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.glassBtn}>
           <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
-        <TouchableOpacity style={styles.glassBackBtn} onPress={() => navigation.navigate('Cart')}>
+        <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.glassBtn}>
           <Ionicons name="cart-outline" size={24} color="#FFF" />
         </TouchableOpacity>
       </View>
 
       <Animated.ScrollView
-        ref={scrollViewRef}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
       >
-        {/* CARROUSEL D'IMAGES AUTO-PLAY */}
+        {/* CARROUSEL IMAGE */}
         <View style={styles.imageWrapper}>
           <Animated.View style={[styles.imgContainer, imgScaleStyle]}>
              <FlatList 
@@ -188,10 +167,8 @@ const ProductDetails = ({ route, navigation }) => {
                 horizontal
                 pagingEnabled
                 showsHorizontalScrollIndicator={false}
-                onScrollToIndexFailed={() => {}}
                 onMomentumScrollEnd={(e) => {
-                  const index = Math.round(e.nativeEvent.contentOffset.x / width);
-                  setActiveImage(index);
+                  setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
                 }}
                 renderItem={({ item }) => (
                   <Image source={{ uri: item }} style={styles.mainImage} />
@@ -200,154 +177,126 @@ const ProductDetails = ({ route, navigation }) => {
              />
           </Animated.View>
           
+          <LinearGradient
+            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']}
+            style={styles.imageGradient}
+          />
+
           {images.length > 1 && (
-            <View style={styles.imagePagination}>
+            <View style={styles.pagination}>
               {images.map((_, i) => (
-                <View 
-                  key={i} 
-                  style={[styles.paginationDot, activeImage === i && styles.activePaginationDot]} 
-                />
+                <View key={i} style={[styles.dot, activeImage === i && styles.activeDot]} />
               ))}
             </View>
           )}
-
-          <LinearGradient
-            colors={['transparent', 'rgba(18, 20, 24, 0.8)']}
-            style={styles.gradient}
-          />
         </View>
 
         <View style={styles.content}>
           <View style={styles.mainInfo}>
-            <View style={styles.priceTag}>
-              <Text style={styles.priceText}>{product.price.toLocaleString()} FCFA</Text>
+            <View style={styles.rowBetween}>
+              <Text style={styles.category}>{CATEGORY_LABELS[product.category] || product.category}</Text>
+              {product.rating && (
+                <View style={styles.ratingBox}>
+                  <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
+                  <Text style={styles.ratingText}>{product.rating}</Text>
+                </View>
+              )}
             </View>
-            <Text style={styles.productName}>{product.name}</Text>
             
-            <View style={styles.metaRow}>
-              <View style={styles.badge}>
-                <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
-                <Text style={styles.badgeText}>{product.rating || '5.0'}</Text>
-              </View>
-              <View style={styles.badge}>
-                <Ionicons name="time-outline" size={14} color={THEME.COLORS.textSecondary} />
-                <Text style={styles.badgeText}>20-30 min</Text>
-              </View>
-              <Text style={styles.categoryBadge}>{CATEGORY_LABELS[product.category] || product.category}</Text>
-            </View>
+            <Text style={styles.productName}>{product.name}</Text>
+            <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
           </View>
 
-          <GlassCard style={styles.sellerCard}>
-            <View style={styles.sellerAvatar}>
-               <Ionicons name="person" size={24} color={THEME.COLORS.primary} />
-            </View>
-            <View style={styles.sellerInfo}>
-              <Text style={styles.sellerName}>{product.seller?.name || 'Vendeur Yély'}</Text>
-              <Text style={styles.sellerStatus}>Vendeur Vérifié</Text>
-            </View>
-            <TouchableOpacity style={styles.contactBtn}>
-               <Ionicons name="chatbubble-ellipses-outline" size={24} color={THEME.COLORS.primary} />
-            </TouchableOpacity>
-          </GlassCard>
+          <View style={styles.divider} />
 
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
-            <Text style={styles.descriptionText}>{product.description || "Pas de description disponible pour ce produit."}</Text>
+            <Text style={styles.descriptionText}>
+              {product.description || "L'excellence Yély au service de votre quotidien."}
+            </Text>
           </View>
 
-          <View style={styles.spacer} />
+          <GlassCard style={styles.sellerSection} padding={15}>
+            <View style={styles.sellerInfo}>
+              <View style={styles.sellerAvatar}>
+                 <Ionicons name="storefront-outline" size={22} color={THEME.COLORS.primary} />
+              </View>
+              <View>
+                <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
+                <Text style={styles.sellerStatus}>Partenaire Certifié</Text>
+              </View>
+            </View>
+          </GlassCard>
+
+          <View style={{ height: 140 }} />
         </View>
       </Animated.ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 10 }]}>
-        <View style={styles.quantitySelector}>
-          <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity(Math.max(1, quantity - 1))}>
-            <Ionicons name="remove" size={24} color="#FFF" />
-          </TouchableOpacity>
-          <Text style={styles.qtyText}>{quantity}</Text>
-          <TouchableOpacity style={styles.qtyBtn} onPress={() => setQuantity(quantity + 1)}>
-            <Ionicons name="add" size={24} color="#FFF" />
-          </TouchableOpacity>
-        </View>
-
-        <TouchableOpacity style={styles.addCartBtn} onPress={handleAddToCart}>
-          <Text style={styles.addCartText}>Ajouter au panier</Text>
-          <View style={styles.totalBadge}>
-            <Text style={styles.totalBadgeText}>{(product.price * quantity).toLocaleString()} F</Text>
+      {/* FOOTER FIXE ÉPURÉ */}
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
+        <View style={styles.footerRow}>
+          <View style={styles.qtyContainer}>
+            <TouchableOpacity style={styles.qtyAction} onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+              <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+            <Text style={styles.qtyValue}>{quantity}</Text>
+            <TouchableOpacity style={styles.qtyAction} onPress={() => setQuantity(quantity + 1)}>
+              <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-      </View>
 
-      {/* BOUTON SCROLL TO TOP */}
-      <RNAnimated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity, bottom: insets.bottom + 100 }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
-        <TouchableOpacity onPress={scrollToTop} style={styles.scrollTopInner}>
-          <Ionicons name="chevron-up" size={24} color={THEME.COLORS.deepAsphalt} />
-        </TouchableOpacity>
-      </RNAnimated.View>
+          <View style={{ flex: 1 }}>
+            <GoldButton 
+              title="Ajouter au panier" 
+              onPress={handleAddToCart}
+              icon="cart-outline"
+            />
+          </View>
+        </View>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.background },
-  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, height: 60 },
-  headerTitle: { flex: 1, marginHorizontal: 15, fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, textAlign: 'center' },
-  circleBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center' },
-  transparentHeader: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 90, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
-  glassBackBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center', marginTop: 10 },
-  imageWrapper: { height: IMG_HEIGHT, position: 'relative' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 },
+  headerContent: { height: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
+  headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10 },
+  navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
+  floatingNav: { position: 'absolute', left: 0, right: 0, zIndex: 90, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
+  glassBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  imageWrapper: { height: IMG_HEIGHT },
   imgContainer: { width: '100%', height: '100%' },
   mainImage: { width: width, height: IMG_HEIGHT, resizeMode: 'cover' },
-  gradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120 },
-  imagePagination: { position: 'absolute', bottom: 30, alignSelf: 'center', flexDirection: 'row', gap: 6 },
-  paginationDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.3)' },
-  activePaginationDot: { backgroundColor: THEME.COLORS.primary, width: 20 },
-  content: { marginTop: -20, backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 20, paddingTop: 30 },
-  mainInfo: { marginBottom: 25 },
-  priceTag: { backgroundColor: 'rgba(212, 175, 55, 0.1)', alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 12 },
-  priceText: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 18 },
-  productName: { fontSize: 26, fontWeight: '800', color: THEME.COLORS.textPrimary },
-  metaRow: { flexDirection: 'row', gap: 12, marginTop: 15, alignItems: 'center' },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: THEME.COLORS.glassSurface, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
-  badgeText: { fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
-  categoryBadge: { fontSize: 12, color: THEME.COLORS.primary, fontWeight: 'bold', textTransform: 'uppercase', marginLeft: 'auto' },
-  sellerCard: { flexDirection: 'row', alignItems: 'center', padding: 15, marginBottom: 25 },
-  sellerAvatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(212, 175, 55, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)' },
-  sellerInfo: { flex: 1, marginLeft: 15 },
-  sellerName: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
-  sellerStatus: { fontSize: 12, color: '#27ae60', marginTop: 2 },
-  contactBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' },
+  imageGradient: { ...StyleSheet.absoluteFillObject },
+  pagination: { position: 'absolute', bottom: 25, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  activeDot: { width: 18, backgroundColor: THEME.COLORS.primary },
+  content: { marginTop: -25, backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 30, borderTopRightRadius: 30, paddingHorizontal: 25, paddingTop: 30 },
+  mainInfo: { marginBottom: 20 },
+  rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  category: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary, textTransform: 'uppercase', letterSpacing: 1 },
+  ratingBox: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(212,175,55,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  ratingText: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary },
+  productName: { fontSize: 28, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 8 },
+  price: { fontSize: 22, fontWeight: '700', color: THEME.COLORS.primary },
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)', marginVertical: 20 },
   section: { marginBottom: 25 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 10 },
+  sectionTitle: { fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginBottom: 10 },
   descriptionText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
-  spacer: { height: 120 },
-  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: THEME.COLORS.background, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 20, paddingTop: 15, flexDirection: 'row', gap: 15 },
-  quantitySelector: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, borderRadius: 20, height: 56, paddingHorizontal: 8 },
-  qtyBtn: { width: 40, height: 40, borderRadius: 15, justifyContent: 'center', alignItems: 'center' },
-  qtyText: { color: '#FFF', fontSize: 18, fontWeight: 'bold', marginHorizontal: 15 },
-  addCartBtn: { flex: 1, height: 56, backgroundColor: THEME.COLORS.primary, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 20 },
-  addCartText: { color: THEME.COLORS.deepAsphalt, fontWeight: '800', fontSize: 16 },
-  totalBadge: { backgroundColor: 'rgba(0,0,0,0.1)', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8, marginLeft: 10 },
-  totalBadgeText: { color: THEME.COLORS.deepAsphalt, fontWeight: 'bold', fontSize: 13 },
-  errorText: { color: THEME.COLORS.textSecondary, marginBottom: 20 },
-  errorBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  errorBtnText: { color: '#000', fontWeight: 'bold' },
-  scrollTopBtn: {
-    position: 'absolute',
-    right: 20,
-    borderRadius: 20,
-    ...THEME.SHADOWS.goldSoft,
-  },
-  scrollTopInner: {
-    width: 48,
-    height: 48,
-    borderRadius: 20,
-    backgroundColor: THEME.COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-  }
+  sellerSection: { marginTop: 10 },
+  sellerInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  sellerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+  sellerName: { fontSize: 15, fontWeight: '700', color: THEME.COLORS.textPrimary },
+  sellerStatus: { fontSize: 12, color: THEME.COLORS.success, marginTop: 2 },
+  footer: { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: THEME.COLORS.background, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.05)', paddingHorizontal: 20, paddingTop: 15 },
+  footerRow: { flexDirection: 'row', gap: 15, alignItems: 'center' },
+  qtyContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 25, height: 58, paddingHorizontal: 5 },
+  qtyAction: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
+  qtyValue: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10, minWidth: 20, textAlign: 'center' },
+  errorText: { color: THEME.COLORS.textSecondary, marginBottom: 20, fontSize: 16 }
 });
 
 export default ProductDetails;

@@ -57,7 +57,6 @@ const SellerHome = ({ navigation }) => {
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
         onSearchPress={handleGoToTaxi}
-        onShoppingPress={handleGoToMarketplace}
       />
 
       <Animated.ScrollView 
@@ -110,17 +109,17 @@ const SellerHome = ({ navigation }) => {
           <View style={styles.actionsGrid}>
              <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('SellerOrders')}>
                <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
-               <Text style={styles.smallActionLabel}>Gérer mes Commandes</Text>
+               <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
              </TouchableOpacity>
 
              <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
                <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
-               <Text style={styles.smallActionLabel}>Historique des Ventes</Text>
+               <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
              </TouchableOpacity>
             
             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
               <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
-              <Text style={styles.smallActionLabel}>Commander un Taxi</Text>
+              <Text numberOfLines={1} style={styles.smallActionLabel}>Taxi</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -140,7 +139,7 @@ const SellerHome = ({ navigation }) => {
 const styles = StyleSheet.create({
   screenWrapper: { flex: 1, backgroundColor: THEME.COLORS.background },
   scrollContent: { paddingHorizontal: 20, paddingBottom: 100 },
-  spacer: { height: 160 },
+  spacer: { height: 240 },
   welcomeSection: { marginBottom: 25 },
   welcomeTitle: { fontSize: 28, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.5 },
   welcomeSubtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, marginTop: 4 },
@@ -177,12 +176,13 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: THEME.COLORS.glassSurface,
     borderRadius: 15,
-    padding: 15,
+    paddingVertical: 15,
+    paddingHorizontal: 8,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
   },
-  smallActionLabel: { fontSize: 12, fontWeight: '600', color: THEME.COLORS.textPrimary, marginTop: 8, textAlign: 'center' },
+  smallActionLabel: { fontSize: 11, fontWeight: '600', color: THEME.COLORS.textPrimary, marginTop: 8, textAlign: 'center' },
   bottomBtn: { marginTop: 10 }
 });
 

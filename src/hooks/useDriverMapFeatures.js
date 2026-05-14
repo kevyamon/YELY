@@ -16,6 +16,8 @@ const useDriverMapFeatures = (currentRide, isRideActive, dynamicHeaderHeight = 1
     const destLat = currentRide.destination?.coordinates?.[1] ?? currentRide.destination?.latitude;
     const destLng = currentRide.destination?.coordinates?.[0] ?? currentRide.destination?.longitude;
 
+    const isDelivery = currentRide.type === 'DELIVERY';
+
     if (isOngoing) {
       const markers = [];
 
@@ -25,7 +27,7 @@ const useDriverMapFeatures = (currentRide, isRideActive, dynamicHeaderHeight = 1
           type: 'destination',
           latitude: Number(destLat),
           longitude: Number(destLng),
-          title: currentRide.destination?.address || 'Destination',
+          title: isDelivery ? 'LIVRAISON CLIENT' : (currentRide.destination?.address || 'Destination'),
           iconColor: THEME.COLORS.danger,
         });
       }
@@ -39,7 +41,7 @@ const useDriverMapFeatures = (currentRide, isRideActive, dynamicHeaderHeight = 1
         type: 'pickup',
         latitude: Number(originLat),
         longitude: Number(originLng),
-        title: currentRide.origin?.address || 'Client',
+        title: isDelivery ? 'RÉCUPÉRATION COLIS (VENDEUR)' : (currentRide.origin?.address || 'Client'),
         iconColor: THEME.COLORS.info,
       }];
     }

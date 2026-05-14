@@ -29,10 +29,27 @@ const CheckoutScreen = ({ navigation }) => {
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
   
+  const user = useSelector(state => state.auth.user);
+  
   const [address, setAddress] = useState('');
-  const [phone, setPhone] = useState('');
-  const [name, setName] = useState('');
+  const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
+  const [name, setName] = useState(user?.name || '');
   const [note, setNote] = useState('');
+
+  // FORCE AUTO-FILL (Si les données arrivent après le chargement de l'écran)
+  useEffect(() => {
+    if (user) {
+      console.log('[CHECKOUT] User Data detected:', user);
+      if (!name && user.name) setName(user.name);
+      if (!phone) {
+        const p = user.phone || user.phoneNumber;
+        if (p) {
+          console.log('[CHECKOUT] Setting phone to:', p);
+          setPhone(p);
+        }
+      }
+    }
+  }, [user]);
   const [clientCoords, setClientCoords] = useState(null);
   const [deliveryPrice, setDeliveryPrice] = useState(null);
   const [distanceKm, setDistanceKm] = useState(null);
@@ -40,14 +57,6 @@ const CheckoutScreen = ({ navigation }) => {
 
   const [createOrder, { isLoading }] = useCreateOrderMutation();
 
-  const calculateDeliveryPrice = (distance) => {
-    const BASE_FEE = 100;
-    const PRICE_PER_KM = 50;
-    const MIN_PRICE = 100;
-    const MAX_PRICE = 300;
-    const rawPrice = BASE_FEE + (distance * PRICE_PER_KM);
-    return Math.max(MIN_PRICE, Math.min(MAX_PRICE, Math.round(rawPrice)));
-  };
 
   const getCurrentLocation = async () => {
     if (isLocating) return;
@@ -109,29 +118,23 @@ const CheckoutScreen = ({ navigation }) => {
     }
   }, [cartItems]);
 
+  const calculateDeliveryPrice = (nbSellers) => {
+    if (nbSellers <= 0) return 0;
+    let price = 100 + (nbSellers - 1) * 50;
+    return Math.min(300, price);
+  };
+
   useEffect(() => {
-    if (clientCoords && cartItems.length > 0) {
-      const item = cartItems[0];
-      // Récupération stricte des coordonnées du vendeur depuis le panier
-      const sellerCoords = item.sellerCoords || [0, 0];
+    if (cartItems.length > 0) {
+      // Identifier les vendeurs uniques
+      const uniqueSellersIds = new Set(cartItems.map(item => item.sellerId));
+      const nbSellers = uniqueSellersIds.size;
       
-      console.log('[CHECKOUT] Position Client:', clientCoords);
-      console.log('[CHECKOUT] Position Vendeur:', sellerCoords);
-      
-      if (sellerCoords[0] !== 0 && sellerCoords[1] !== 0) {
-        const dist = calculateHaversineDistance(clientCoords, sellerCoords);
-        console.log('[CHECKOUT] Distance réelle:', dist, 'km');
-        
-        setDistanceKm(dist);
-        const price = calculateDeliveryPrice(dist);
-        setDeliveryPrice(price);
-      } else {
-        console.warn('[CHECKOUT] Impossible de calculer le trajet: Position vendeur inconnue.');
-        // On ne met pas de prix par défaut pour forcer la précision
-        setDeliveryPrice(null); 
-      }
+      const price = calculateDeliveryPrice(nbSellers);
+      setDeliveryPrice(price);
+      console.log(`[CHECKOUT] ${nbSellers} vendeurs. Prix livraison: ${price}F`);
     }
-  }, [clientCoords, cartItems]);
+  }, [cartItems]);
 
   const handlePlaceOrder = async () => {
     if (!address || !phone || !name) {
@@ -145,7 +148,8 @@ const CheckoutScreen = ({ navigation }) => {
           product: item.id,
           name: item.name,
           quantity: item.quantity,
-          price: item.price
+          price: item.price,
+          sellerId: item.sellerId // CRUCIAL POUR LE CALCUL BACKEND
         })),
         sellerId: cartItems[0].sellerId,
         shippingAddress: {
@@ -177,175 +181,343 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#000000', '#1A1A1A', '#000000']} style={styles.container}>
+    <LinearGradient colors={['#000000', '#1A1405', '#000000']} style={styles.container}>
       <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <View style={[styles.header, { paddingTop: insets.top }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="arrow-back" size={24} color="#FFF" />
+            <Ionicons name="chevron-back" size={28} color="#D4AF37" />
           </TouchableOpacity>
-          <Text style={styles.title}>Finaliser la commande</Text>
+          <View>
+            <Text style={styles.headerSubtitle}>Marketplace</Text>
+            <Text style={styles.title}>Finalisation</Text>
+          </View>
         </View>
 
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-          {/* ... reste du contenu ... */}
-        <GlassCard style={styles.section}>
-          <Text style={styles.sectionTitle}>Infos de livraison</Text>
-          
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nom complet *</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Ex: Jean Dupont" 
-              placeholderTextColor="#666"
-              value={name}
-              onChangeText={setName}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Téléphone de contact *</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Ex: 0707070707" 
-              placeholderTextColor="#666"
-              keyboardType="phone-pad"
-              value={phone}
-              onChangeText={setPhone}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Adresse exacte / Quartier *</Text>
-            <View style={styles.addressRow}>
+          <Text style={styles.mainTitle}>Détails de livraison</Text>
+          <GlassCard style={styles.section}>
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="person-outline" size={16} color={THEME.COLORS.primary} />
+                <Text style={styles.label}>NOM COMPLET</Text>
+              </View>
               <TextInput 
-                style={[styles.input, { flex: 1 }]} 
-                placeholder="Ex: Riviera Palmeraie, Rue I32" 
-                placeholderTextColor="#666"
-                value={address}
-                onChangeText={setAddress}
-                multiline
+                style={styles.input} 
+                placeholder="Ex: Jean Dupont" 
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={name}
+                onChangeText={setName}
               />
-              <TouchableOpacity 
-                style={[styles.locateBtn, isLocating && styles.locateBtnDisabled]} 
-                onPress={getCurrentLocation}
-                disabled={isLocating}
-              >
-                {isLocating ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons name="locate" size={20} color="#FFF" />
-                )}
-              </TouchableOpacity>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="call-outline" size={16} color={THEME.COLORS.primary} />
+                <Text style={styles.label}>TÉLÉPHONE</Text>
+              </View>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Ex: 07 00 00 00 00" 
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                keyboardType="phone-pad"
+                value={phone}
+                onChangeText={setPhone}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="location-outline" size={16} color={THEME.COLORS.primary} />
+                <Text style={styles.label}>ADRESSE / QUARTIER</Text>
+              </View>
+              <View style={styles.addressWrapper}>
+                <TextInput 
+                  style={[styles.input, { flex: 1, paddingRight: 50 }]} 
+                  placeholder="Riviera, Angré..." 
+                  placeholderTextColor="rgba(255,255,255,0.4)"
+                  value={address}
+                  onChangeText={setAddress}
+                  multiline
+                />
+                <TouchableOpacity 
+                  style={styles.inlineLocateBtn} 
+                  onPress={getCurrentLocation}
+                  disabled={isLocating}
+                >
+                  {isLocating ? (
+                    <ActivityIndicator size="small" color={THEME.COLORS.primary} />
+                  ) : (
+                    <Ionicons name="locate" size={22} color={THEME.COLORS.primary} />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
+                <Ionicons name="chatbubble-ellipses-outline" size={16} color={THEME.COLORS.primary} />
+                <Text style={styles.label}>NOTE (OPTIONNEL)</Text>
+              </View>
+              <TextInput 
+                style={styles.input} 
+                placeholder="Précisions pour le livreur..." 
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                value={note}
+                onChangeText={setNote}
+              />
+            </View>
+          </GlassCard>
+
+          <View style={styles.orderHeaderRow}>
+            <Text style={styles.mainTitle}>VOTRE COMMANDE</Text>
+            <View style={styles.itemCountBadge}>
+              <Text style={styles.itemCountText}>{cartItems.length} ARTICLES</Text>
             </View>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Note pour le livreur (Optionnel)</Text>
-            <TextInput 
-              style={styles.input} 
-              placeholder="Ex: Sonner à la porte bleue" 
-              placeholderTextColor="#666"
-              value={note}
-              onChangeText={setNote}
-            />
-          </View>
-        </GlassCard>
-
-        <GlassCard style={styles.section}>
-          <Text style={styles.sectionTitle}>Résumé</Text>
-          {cartItems.map((item, idx) => (
-            <View key={idx} style={styles.summaryItem}>
-              <Text style={styles.summaryQty}>{item.quantity}x</Text>
-              <Text style={styles.summaryName}>{item.name}</Text>
-              <Text style={styles.summaryPrice}>{(item.price * item.quantity).toLocaleString()} F</Text>
+          <View style={styles.receiptSlit} />
+          
+          <View style={styles.receiptInfinity}>
+            <View style={styles.receiptTopDecorative}>
+              <View style={styles.zigzag} />
             </View>
-          ))}
-          <View style={styles.divider} />
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>Total articles</Text>
-            <Text style={styles.totalValue}>{cartTotal.toLocaleString()} F</Text>
-          </View>
-          <View style={styles.totalRow}>
-            <Text style={styles.totalLabel}>
-              Livraison {distanceKm ? `(${distanceKm} km)` : ''}
-            </Text>
-            {isLocating ? (
-              <Text style={[styles.totalValue, { color: '#F39C12' }]}>Calcul en cours...</Text>
-            ) : deliveryPrice ? (
-              <Text style={[styles.totalValue, { color: '#27AE60' }]}>{deliveryPrice.toLocaleString()} F</Text>
-            ) : (
-              <Text style={[styles.totalValue, { color: '#F39C12' }]}>Non calculé</Text>
-            )}
-          </View>
-          {deliveryPrice && (
-            <View style={styles.divider} />
-          )}
-          {deliveryPrice && (
-            <View style={styles.totalRow}>
-              <Text style={[styles.totalLabel, { fontWeight: '800', fontSize: 16, color: '#FFF' }]}>TOTAL</Text>
-              <Text style={[styles.totalValue, { color: '#D4AF37', fontSize: 20 }]}>{(cartTotal + deliveryPrice).toLocaleString()} F</Text>
-            </View>
-          )}
-        </GlassCard>
-      </ScrollView>
 
-      <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-        <GoldButton 
-          title={!deliveryPrice ? "Calcul du trajet..." : "Commander maintenant"} 
-          onPress={handlePlaceOrder}
-          loading={isLoading || isLocating}
-          disabled={!deliveryPrice || isLocating}
-        />
-      </View>
+            {cartItems.map((item, idx) => (
+              <View key={idx} style={styles.proReceiptItem}>
+                <View style={styles.proItemLead}>
+                  <View style={styles.proQtyCircle}>
+                    <Text style={styles.proQtyText}>{item.quantity}</Text>
+                  </View>
+                  <View style={styles.proItemDetails}>
+                    <Text style={styles.proItemName} numberOfLines={1}>{item.name}</Text>
+                    <Text style={styles.proItemSeller}>Chez {item.sellerName || 'Vendeur Yély'}</Text>
+                  </View>
+                </View>
+                <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} F</Text>
+              </View>
+            ))}
+            
+            <View style={styles.proDashedLine} />
+            
+            <View style={styles.proSummaryRow}>
+              <Text style={styles.proSummaryLabel}>SOUS-TOTAL</Text>
+              <Text style={styles.proSummaryValue}>{cartTotal.toLocaleString()} F</Text>
+            </View>
+
+            <View style={styles.proSummaryRow}>
+              <Text style={styles.proSummaryLabel}>FRAIS DE LIVRAISON</Text>
+              <Text style={[styles.proSummaryValue, { color: '#2ECC71' }]}>
+                {deliveryPrice ? `+ ${deliveryPrice.toLocaleString()} F` : '--'}
+              </Text>
+            </View>
+
+            <LinearGradient 
+              colors={[THEME.COLORS.primary, '#FFD700']} 
+              start={{x:0, y:0}} end={{x:1, y:1}}
+              style={styles.proTotalBlock}
+            >
+              <View>
+                <Text style={styles.proTotalLabel}>TOTAL À RÉGLER</Text>
+                <Text style={styles.proTotalSub}>Net à payer (TTC)</Text>
+              </View>
+              <Text style={styles.proTotalAmount}>
+                {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()} F
+              </Text>
+            </LinearGradient>
+
+            <View style={styles.receiptFooter}>
+              <Ionicons name="shield-checkmark" size={12} color="#AAA" />
+              <Text style={styles.receiptFooterText}>PAIEMENT SÉCURISÉ PAR YÉLY</Text>
+            </View>
+          </View>
+          <View style={{ height: 100 }} />
+        </ScrollView>
+
+        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+          <GoldButton 
+            title={!deliveryPrice ? "Calcul du trajet..." : "Confirmer la commande"} 
+            onPress={handlePlaceOrder}
+            loading={isLoading || isLocating}
+            disabled={!deliveryPrice || isLocating}
+            style={styles.confirmBtn}
+          />
+        </View>
       </ScreenWrapper>
     </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginLeft: 15 },
-  scrollContent: { padding: 20 },
-  section: { padding: 20, marginBottom: 20 },
-  sectionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.primary, marginBottom: 20 },
-  inputGroup: { marginBottom: 20 },
-  label: { color: '#D4AF37', fontSize: 14, fontWeight: '600', marginBottom: 10, letterSpacing: 0.5 },
-  addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  input: { 
-    backgroundColor: 'rgba(255,255,255,0.08)', 
-    borderRadius: 16, 
-    padding: 16, 
-    color: '#FFF', 
-    borderWidth: 1.5, 
-    borderColor: 'rgba(212, 175, 55, 0.2)',
-    fontSize: 15,
-    textAlignVertical: 'top'
+  container: { flex: 1 },
+  header: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 25, 
+    paddingBottom: 20 
   },
-  locateBtn: { 
-    width: 56, 
-    height: 56, 
-    borderRadius: 16, 
-    backgroundColor: '#D4AF37', 
+  backBtn: { 
+    width: 50, 
+    height: 50, 
+    borderRadius: 15, 
+    backgroundColor: 'rgba(212,175,55,0.1)', 
     justifyContent: 'center', 
     alignItems: 'center',
-    elevation: 4,
-    shadowColor: '#D4AF37',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8
+    marginRight: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.2)'
   },
-  locateBtnDisabled: { opacity: 0.5, backgroundColor: '#555' },
-  summaryItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  summaryQty: { color: '#D4AF37', fontWeight: '800', width: 35, fontSize: 15 },
-  summaryName: { color: '#EEE', flex: 1, fontSize: 15 },
-  summaryPrice: { color: '#FFF', fontWeight: '600', fontSize: 15 },
-  divider: { height: 1, backgroundColor: 'rgba(212, 175, 55, 0.15)', marginVertical: 20 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  totalLabel: { color: '#AAA', fontSize: 15 },
-  totalValue: { color: '#FFF', fontWeight: '700', fontSize: 17 },
-  footer: { paddingHorizontal: 20, paddingTop: 10 }
+  headerSubtitle: { color: '#AAA', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2 },
+  title: { fontSize: 24, fontWeight: '800', color: THEME.COLORS.white },
+  scrollContent: { paddingHorizontal: 25 },
+  mainTitle: { 
+    fontSize: 18, 
+    fontWeight: '700', 
+    color: THEME.COLORS.white, 
+    marginTop: 20, 
+    marginBottom: 15,
+    paddingLeft: 5
+  },
+  section: { 
+    padding: 20, 
+    borderRadius: 25, 
+    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.15)'
+  },
+  inputGroup: { marginBottom: 20 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
+  label: { color: THEME.COLORS.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+  addressWrapper: { flexDirection: 'row', alignItems: 'center' },
+  input: { 
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 15, 
+    padding: 18, 
+    color: THEME.COLORS.white,
+    fontSize: 16,
+    fontWeight: '600',
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.4)'
+  },
+  inlineLocateBtn: {
+    position: 'absolute',
+    right: 15,
+    height: 40,
+    width: 40,
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  orderHeaderRow: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginTop: 25, 
+    marginBottom: 10 
+  },
+  itemCountBadge: { 
+    backgroundColor: 'rgba(212,175,55,0.15)', 
+    paddingHorizontal: 12, 
+    paddingVertical: 4, 
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.3)'
+  },
+  itemCountText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  receiptSlit: {
+    height: 4,
+    backgroundColor: '#1A1405',
+    marginHorizontal: 10,
+    borderRadius: 2,
+    marginBottom: -2,
+    zIndex: 10
+  },
+  receiptInfinity: { 
+    backgroundColor: THEME.COLORS.white, 
+    padding: 25,
+    borderBottomLeftRadius: 30,
+    borderBottomRightRadius: 30,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 15 },
+    shadowOpacity: 0.15,
+    shadowRadius: 25,
+    elevation: 10
+  },
+  receiptTopDecorative: {
+    height: 15,
+    backgroundColor: 'transparent',
+    overflow: 'hidden',
+    marginTop: -25,
+    marginBottom: 10
+  },
+  proReceiptItem: { 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center', 
+    marginBottom: 20 
+  },
+  proItemLead: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  proQtyCircle: { 
+    width: 32, 
+    height: 32, 
+    borderRadius: 16, 
+    backgroundColor: '#F9F9F9', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    marginRight: 15,
+    borderWidth: 1,
+    borderColor: '#EEE'
+  },
+  proQtyText: { color: '#333', fontWeight: '900', fontSize: 13 },
+  proItemDetails: { flex: 1 },
+  proItemName: { color: '#222', fontSize: 16, fontWeight: '700' },
+  proItemSeller: { color: '#999', fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
+  proItemPrice: { color: '#000', fontSize: 16, fontWeight: '800', marginLeft: 10 },
+  proDashedLine: { 
+    height: 1, 
+    borderWidth: 1, 
+    borderColor: '#EEE', 
+    borderStyle: 'dashed', 
+    marginVertical: 20 
+  },
+  proSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  proSummaryLabel: { color: '#777', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  proSummaryValue: { color: '#000', fontSize: 16, fontWeight: '700' },
+  proTotalBlock: { 
+    marginTop: 20, 
+    padding: 20, 
+    borderRadius: 20, 
+    flexDirection: 'row', 
+    justifyContent: 'space-between', 
+    alignItems: 'center',
+    shadowColor: THEME.COLORS.primary,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8
+  },
+  proTotalLabel: { color: '#000', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 },
+  proTotalSub: { color: 'rgba(0,0,0,0.5)', fontSize: 10, fontWeight: '600', marginTop: 2 },
+  proTotalAmount: { color: '#000', fontSize: 24, fontWeight: '900' },
+  receiptFooter: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    marginTop: 25, 
+    gap: 6,
+    opacity: 0.5
+  },
+  receiptFooterText: { color: '#777', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  footer: { 
+    paddingHorizontal: 25, 
+    paddingBottom: 20,
+    paddingTop: 10,
+    backgroundColor: 'transparent'
+  },
+  confirmBtn: {
+    shadowColor: THEME.COLORS.primary,
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    elevation: 10
+  }
 });
 
 export default CheckoutScreen;

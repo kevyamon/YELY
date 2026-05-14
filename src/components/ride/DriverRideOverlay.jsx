@@ -146,14 +146,33 @@ const DriverRideOverlay = () => {
 
   if (!currentRide) return null;
 
-  const bannerConfig = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
+  const isDelivery = currentRide?.type === 'DELIVERY';
+
+  const bannerConfig = useMemo(() => {
+    const base = BANNER_CONFIG[driverStatus] || BANNER_CONFIG[DRIVER_STATUS.APPROACHING];
+    if (!isDelivery) return base;
+
+    // Surcharge pour la livraison
+    if (driverStatus === DRIVER_STATUS.APPROACHING) {
+      return { ...base, label: 'APPROCHE VENDEUR' };
+    }
+    if (driverStatus === DRIVER_STATUS.ARRIVED) {
+      return { ...base, label: 'COLIS RÉCUPÉRÉ ? ROULEZ', subLabel: 'La livraison démarrera automatiquement.' };
+    }
+    if (driverStatus === DRIVER_STATUS.IN_PROGRESS) {
+      return { ...base, label: 'LIVRAISON EN COURS' };
+    }
+    return base;
+  }, [driverStatus, isDelivery]);
 
   const isApproaching = driverStatus === DRIVER_STATUS.APPROACHING;
   const distanceLabel = isApproaching && distanceToTarget !== Infinity
-    ? `Validation automatique a proximite (${Math.round(distanceToTarget)}m)`
+    ? `Validation automatique à proximité (${Math.round(distanceToTarget)}m)`
     : bannerConfig.subLabel || null;
 
   const handleCallRider = () => {
+    // Si c'est une livraison et qu'on n'a pas encore le colis, on appelle peut-être le vendeur ?
+    // Mais par simplicité on garde le contact principal de la course
     const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
     Linking.openURL(phoneUrl).catch(() => {
       dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
@@ -240,7 +259,9 @@ const DriverRideOverlay = () => {
             <View style={[styles.dot, bannerConfig.dotStyle && styles[bannerConfig.dotStyle]]} />
           </View>
           <Text style={styles.statusText}>
-            {isOngoing || isArrived ? 'Direction Destination' : 'Aller chercher le client'}
+            {isOngoing || isArrived 
+              ? (isDelivery ? 'Livraison Client' : 'Direction Destination') 
+              : (isDelivery ? 'Récupérer le colis' : 'Aller chercher le client')}
           </Text>
         </View>
 

@@ -148,7 +148,7 @@ const SmartHeader = ({
                   </View>
                 )}
 
-                {!hasActiveRide && (
+                {onShoppingPress && !hasActiveRide && (
                   <View style={[styles.flexBtn, { marginLeft: 10 }]}>
                     <ActionPill mode="secondary" text="Shopping" icon="cart" onPress={onShoppingPress} />
                   </View>
