@@ -214,6 +214,7 @@ const DriverHome = ({ navigation }) => {
           userName={user?.name?.split(' ')[0] || 'Chauffeur'}
           onMenuPress={() => navigation.navigate('Menu')}
           onNotificationPress={() => navigation.navigate('Notifications')}
+          onShoppingPress={() => navigation.navigate('MarketplaceHub')}
         />
       </View>
 

@@ -174,6 +174,7 @@ const RiderHome = ({ navigation }) => {
           onMenuPress={() => navigation.navigate('Menu')}
           onNotificationPress={() => navigation.navigate('Notifications')}
           onSearchPress={() => openSearchModal()}
+          onShoppingPress={() => navigation.navigate('MarketplaceHub')}
           hasDestination={!!destination && !isRideActive} 
           onCancelDestination={handleCancelDestination}
         />

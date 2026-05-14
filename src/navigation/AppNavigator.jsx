@@ -20,17 +20,17 @@ import {
 
 import THEME from '../theme/theme';
 
-const DriverHome = React.lazy(() => import('../screens/home/DriverHome'));
-const RiderHome = React.lazy(() => import('../screens/home/RiderHome'));
-const ChoiceHome = React.lazy(() => import('../screens/ChoiceHome'));
+import DriverHome from '../screens/home/DriverHome';
+import RiderHome from '../screens/home/RiderHome';
+import ChoiceHome from '../screens/ChoiceHome';
+import LandingScreen from '../screens/LandingScreen';
+import LoginPage from '../screens/auth/LoginPage';
+import RegisterPage from '../screens/auth/RegisterPage';
+import ProfileScreen from '../screens/profile/ProfileScreen';
+import ManageProducts from '../screens/seller/ManageProducts';
+
 const NotificationsScreen = React.lazy(() => import('../screens/notifications/NotificationsScreen'));
 const MenuScreen = React.lazy(() => import('../screens/MenuScreen'));
-const ProfileScreen = React.lazy(() => import('../screens/profile/ProfileScreen'));
-const ManageProducts = React.lazy(() => import('../screens/seller/ManageProducts'));
-
-const LandingScreen = React.lazy(() => import('../screens/LandingScreen'));
-const LoginPage = React.lazy(() => import('../screens/auth/LoginPage'));
-const RegisterPage = React.lazy(() => import('../screens/auth/RegisterPage'));
 const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPasswordScreen'));
 const ResetPasswordScreen = React.lazy(() => import('../screens/auth/ResetPasswordScreen'));
 const PrivacyPolicyScreen = React.lazy(() => import('../screens/legal/PrivacyPolicyScreen'));

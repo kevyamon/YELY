@@ -29,6 +29,7 @@ const SmartHeader = ({
   onMenuPress, 
   onNotificationPress,
   onSearchPress,
+  onShoppingPress,
   hasDestination = false,
   onCancelDestination 
 }) => {
@@ -121,23 +122,40 @@ const SmartHeader = ({
              )}
           </View>
 
-          {!isRider && (
-             <View style={styles.driverGpsBadge}>
-                 <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
-                 <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
-                 <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
+          {!isRider ? (
+             <View style={styles.driverCtaRow}>
+               <View style={styles.driverGpsBadge}>
+                   <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
+                   <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
+                   <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
+               </View>
+               <TouchableOpacity style={styles.shoppingBtnSmall} onPress={onShoppingPress}>
+                  <Ionicons name="cart" size={20} color={THEME.COLORS.textPrimary} />
+               </TouchableOpacity>
              </View>
-          )}
-          
-          <View style={styles.actionPillWrapper}>
-            {isRider && !hasActiveRide && !hasDestination && (
-              <ActionPill mode="primary" text="Commander un taxi" icon="car-sport" onPress={onSearchPress} />
-            )}
+          ) : (
+            <View style={styles.actionPillWrapper}>
+              <View style={styles.riderButtonRow}>
+                {!hasActiveRide && !hasDestination && (
+                  <View style={styles.flexBtn}>
+                    <ActionPill mode="primary" text="Taxi" icon="car-sport" onPress={onSearchPress} />
+                  </View>
+                )}
 
-            {isRider && !hasActiveRide && hasDestination && (
-              <ActionPill mode="cancel" text="Annuler la destination" icon="close-circle" onPress={onCancelDestination} />
-            )}
-          </View>
+                {!hasActiveRide && hasDestination && (
+                  <View style={styles.flexBtn}>
+                    <ActionPill mode="cancel" text="Annuler" icon="close-circle" onPress={onCancelDestination} />
+                  </View>
+                )}
+
+                {!hasActiveRide && (
+                  <View style={[styles.flexBtn, { marginLeft: 10 }]}>
+                    <ActionPill mode="secondary" text="Shopping" icon="cart" onPress={onShoppingPress} />
+                  </View>
+                )}
+              </View>
+            </View>
+          )}
         </Animated.View>
       </View>
     </Animated.View>
@@ -238,17 +256,21 @@ const styles = StyleSheet.create({
     opacity: 0.9,
     flexShrink: 1,
   },
-  driverGpsBadge: {
+  driverCtaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginTop: 4,
+  },
+  driverGpsBadge: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
     backgroundColor: THEME.COLORS.glassSurface,
     paddingVertical: 10, 
     paddingHorizontal: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
-    alignSelf: 'flex-start',
     overflow: 'hidden', 
   },
   gpsText: {
@@ -258,8 +280,28 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     flex: 1, 
   },
+  shoppingBtnSmall: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 10,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.champagneGold,
+    ...THEME.SHADOWS.gold,
+  },
   actionPillWrapper: {
     paddingBottom: 4, 
+  },
+  riderButtonRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  flexBtn: {
+    flex: 1,
   }
 });
 

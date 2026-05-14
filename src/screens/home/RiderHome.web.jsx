@@ -186,6 +186,7 @@ const RiderHome = ({ navigation }) => {
           onNotificationPress={() => navigation.navigate('Notifications')}
           onSearchPress={() => openSearchModal('destination')}
           onOriginPress={() => openSearchModal('origin')}
+          onShoppingPress={() => navigation.navigate('MarketplaceHub')}
           hasDestination={!!destination && !isRideActive} 
           onCancelDestination={handleCancelDestination}
           isManualOrigin={!!manualOrigin}
