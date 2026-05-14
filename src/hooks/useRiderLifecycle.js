@@ -61,12 +61,12 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
 
       if (fetchedId) {
-        dispatch(setCurrentRide({ ...currentRide, ...ride, rideId: fetchedId }));
+        dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
       } else if (currentId && isFetchSuccess) {
         dispatch(clearCurrentRide());
       }
     }
-  }, [fetchedRideData, isFetchSuccess, currentRide, dispatch]);
+  }, [fetchedRideData, isFetchSuccess, dispatch]);
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {

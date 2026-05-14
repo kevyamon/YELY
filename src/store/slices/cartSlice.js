@@ -48,11 +48,30 @@ const cartSlice = createSlice({
     clearCart: (state) => {
       state.items = [];
       state.totalAmount = 0;
-    }
+    },
+
+    /**
+     * Met à jour les informations (prix, nom, image) d'un article déjà
+     * dans le panier lorsque le vendeur modifie le produit en temps réel.
+     */
+    updateCartItemInfo: (state, action) => {
+      const { id, changes } = action.payload;
+      const item = state.items.find(item => item.id === id);
+      if (!item) return; // Produit pas dans le panier, on ignore
+
+      if (changes.name !== undefined) item.name = changes.name;
+      if (changes.image !== undefined) item.image = changes.image;
+      if (changes.price !== undefined) item.price = changes.price;
+
+      // Recalcul du total avec le nouveau prix
+      state.totalAmount = state.items.reduce(
+        (sum, item) => sum + (item.price * item.quantity), 0
+      );
+    },
   }
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, updateCartItemInfo } = cartSlice.actions;
 
 export const selectCartItems = (state) => state.cart.items;
 export const selectCartTotal = (state) => state.cart.totalAmount;

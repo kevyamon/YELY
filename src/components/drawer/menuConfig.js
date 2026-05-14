@@ -20,8 +20,8 @@ const MENU_ITEMS = {
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   seller: [
-    { route: 'SellerDashboard', label: 'Espace Vendeur', icon: 'storefront' },
-    { route: 'ChoiceHome', label: 'Mode Passager', icon: 'walk' },
+    { route: 'SellerHome', label: 'Ma Boutique', icon: 'storefront' },
+    { route: 'RiderHome', label: 'Commander une course', icon: 'car-sport' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },

@@ -2,52 +2,68 @@
 // HOME SELLER - Orchestrateur Business & Mobilité
 // CSCSM Level: Bank Grade
 
-import React, { useRef, useState } from 'react';
-import { ScrollView, StyleSheet, View, Text, TouchableOpacity } from 'react-native';
-import { useSharedValue } from 'react-native-reanimated';
+import React, { memo } from 'react';
+import { ScrollView, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
+import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 
-import MapCard from '../../components/map/MapCard';
 import SmartHeader from '../../components/ui/SmartHeader';
-import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 
-import useGeolocation from '../../hooks/useGeolocation';
 import { selectCurrentUser } from '../../store/slices/authSlice';
+import { useGetMyProductsQuery, useGetLedgerStatsQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const SellerHome = ({ navigation }) => {
-  const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   const user = useSelector(selectCurrentUser);
-  const { location, currentAddress } = useGeolocation();
+  
+  // ─── DATA FETCHING ───
+  const { data: productsData, isLoading: isLoadingProducts, refetch: refetchProducts } = useGetMyProductsQuery();
+  const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useGetLedgerStatsQuery();
 
-  const handleGoToManageProducts = () => {
-    navigation.navigate('ManageProducts');
-  };
+  React.useEffect(() => {
+    refetchProducts();
+    refetchStats();
+  }, []);
 
-  const handleGoToMarketplace = () => {
-    navigation.navigate('MarketplaceHub');
-  };
+  if (__DEV__) {
+    console.log('[SELLER_HOME] Products Response:', JSON.stringify(productsData));
+    console.log('[SELLER_HOME] Stats Response:', JSON.stringify(statsData));
+    console.log('[SELLER_HOME] Current User:', user?._id, user?.role);
+  }
+
+  const productCount = productsData?.data?.length || productsData?.length || 0;
+  const totalSales = statsData?.data?.totalEarnings || statsData?.totalEarnings || 0;
+
+  const scrollHandler = useAnimatedScrollHandler({
+    onScroll: (event) => {
+      scrollY.value = event.contentOffset.y;
+    },
+  });
+
+  const handleGoToManageProducts = () => navigation.navigate('ManageProducts');
+  const handleGoToMarketplace = () => navigation.navigate('MarketplaceHub');
+  const handleGoToTaxi = () => navigation.navigate('RiderHome');
 
   return (
     <View style={styles.screenWrapper}>
       <SmartHeader 
         scrollY={scrollY}
-        address={currentAddress || "Chargement position..."}
+        address="Ma Boutique"
         userName={user?.name?.split(' ')[0] || "Vendeur"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={() => navigation.navigate('RiderHome')} // Un vendeur peut aussi commander une course
+        onSearchPress={handleGoToTaxi}
         onShoppingPress={handleGoToMarketplace}
       />
 
-      <ScrollView 
+      <Animated.ScrollView 
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
-        onScroll={(e) => { scrollY.value = e.nativeEvent.contentOffset.y; }}
+        onScroll={scrollHandler}
         scrollEventThrottle={16}
       >
         <View style={styles.spacer} />
@@ -60,12 +76,20 @@ const SellerHome = ({ navigation }) => {
         <View style={styles.statsRow}>
           <GlassCard style={styles.statCard}>
             <Ionicons name="cube-outline" size={24} color={THEME.COLORS.primary} />
-            <Text style={styles.statValue}>--</Text>
+            {isLoadingProducts ? (
+              <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+            ) : (
+              <Text style={styles.statValue}>{productCount}</Text>
+            )}
             <Text style={styles.statLabel}>Produits</Text>
           </GlassCard>
           <GlassCard style={styles.statCard}>
             <Ionicons name="cash-outline" size={24} color={THEME.COLORS.success || '#27ae60'} />
-            <Text style={styles.statValue}>0 FCFA</Text>
+            {isLoadingStats ? (
+              <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+            ) : (
+              <Text style={styles.statValue}>{totalSales.toLocaleString()} F</Text>
+            )}
             <Text style={styles.statLabel}>Ventes</Text>
           </GlassCard>
         </View>
@@ -81,16 +105,18 @@ const SellerHome = ({ navigation }) => {
           <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.primary} />
         </TouchableOpacity>
 
-        <View style={styles.mapPreviewContainer}>
-          <Text style={styles.sectionTitle}>Ma zone d'activité</Text>
-          <View style={styles.miniMap}>
-             <MapCard 
-               ref={mapRef}
-               location={location}
-               showUserMarker={true}
-               floating={true}
-               interactive={false}
-             />
+        <View style={styles.quickActionsContainer}>
+          <Text style={styles.sectionTitle}>Actions rapides</Text>
+          <View style={styles.actionsGrid}>
+            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
+              <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
+              <Text style={styles.smallActionLabel}>Historique des Ventes</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
+              <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
+              <Text style={styles.smallActionLabel}>Commander un Taxi</Text>
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -101,7 +127,7 @@ const SellerHome = ({ navigation }) => {
           style={styles.bottomBtn}
         />
 
-      </ScrollView>
+      </Animated.ScrollView>
     </View>
   );
 };
@@ -113,12 +139,10 @@ const styles = StyleSheet.create({
   welcomeSection: { marginBottom: 25 },
   welcomeTitle: { fontSize: 28, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.5 },
   welcomeSubtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, marginTop: 4 },
-  
   statsRow: { flexDirection: 'row', gap: 15, marginBottom: 25 },
   statCard: { flex: 1, alignItems: 'center', paddingVertical: 20 },
   statValue: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginTop: 8 },
   statLabel: { fontSize: 12, color: THEME.COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase' },
-
   mainActionCard: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -141,12 +165,20 @@ const styles = StyleSheet.create({
   actionTextContainer: { flex: 1, marginLeft: 15 },
   actionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
   actionDesc: { fontSize: 14, color: THEME.COLORS.textSecondary, marginTop: 2 },
-
-  mapPreviewContainer: { marginBottom: 25 },
+  quickActionsContainer: { marginBottom: 25 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 15 },
-  miniMap: { height: 200, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: THEME.COLORS.border },
-  
+  actionsGrid: { flexDirection: 'row', gap: 15 },
+  smallActionCard: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 15,
+    padding: 15,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+  },
+  smallActionLabel: { fontSize: 12, fontWeight: '600', color: THEME.COLORS.textPrimary, marginTop: 8, textAlign: 'center' },
   bottomBtn: { marginTop: 10 }
 });
 
-export default SellerHome;
+export default memo(SellerHome);

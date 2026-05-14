@@ -82,12 +82,9 @@ const useDriverLifecycle = ({
       } else if (currentId) {
         dispatch(clearCurrentRide());
         setIsArrivalModalVisible(false);
-        if (simulatedLocation && setSimulatedLocation) {
-          setSimulatedLocation(null);
-        }
       }
     }
-  }, [fetchedRideData, isFetchSuccess, currentRide, dispatch, simulatedLocation, setSimulatedLocation]);
+  }, [fetchedRideData, isFetchSuccess, dispatch]);
 
   useEffect(() => {
     const handleAppStateChange = (nextAppState) => {

@@ -14,12 +14,25 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProductCard from '../../components/marketplace/ProductCard';
 import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
+
+const CATEGORY_LABELS = {
+  'Food': 'Nourriture',
+  'Supermarket': 'Supermarché',
+  'Cosmetics': 'Cosmétiques',
+  'Electronics': 'Électronique',
+  'Home': 'Maison',
+  'Other': 'Autres'
+};
 
 const ProductList = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
+  useMarketplaceSocketEvents();
   const { category } = route.params || {};
   const [search, setSearch] = useState('');
+
+  const displayTitle = CATEGORY_LABELS[category] || category || 'Produits';
 
   const { data, isLoading, isError, refetch } = useGetProductsQuery({
     category,
@@ -35,7 +48,7 @@ const ProductList = ({ route, navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
-        <Text style={styles.title}>{category || 'Produits'}</Text>
+        <Text style={styles.title}>{displayTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
 

@@ -1,54 +1,48 @@
 // src/hooks/useMarketplaceSocketEvents.js
+// HOOK TEMPS RÉEL MARKETPLACE - Synchronisation complète (API Cache + Cart Redux)
+// CSCSM Level: Bank Grade
+
 import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import socketService from '../services/socketService';
 import { marketplaceApiSlice } from '../store/api/marketplaceApiSlice';
+import { updateCartItemInfo } from '../store/slices/cartSlice';
 
 const useMarketplaceSocketEvents = () => {
   const dispatch = useDispatch();
 
   useEffect(() => {
+    /**
+     * Gère la création ou la mise à jour d'un produit.
+     * Stratégie : On invalide le tag 'Product' pour forcer un re-fetch propre
+     * de TOUTES les queries (getProducts, getMyProducts, getProduct), peu importe
+     * les arguments (category, search, etc.) qui varient d'une page à l'autre.
+     * On met également à jour le panier si le produit modifié s'y trouve.
+     */
     const handleProductUpdated = (product) => {
       if (!product) return;
-      const incomingId = String(product._id || product.id);
 
-      // Mise à jour de la liste globale (Marketplace)
-      dispatch(
-        marketplaceApiSlice.util.updateQueryData('getProducts', undefined, (draft) => {
-          if (!draft || !Array.isArray(draft.data)) return;
-          
-          const index = draft.data.findIndex((p) => String(p._id || p.id) === incomingId);
-          if (index !== -1) {
-            draft.data[index] = { ...draft.data[index], ...product };
-          } else {
-            draft.data.push(product);
-          }
-        })
-      );
+      // 1. Invalider le cache RTK Query pour toutes les listes de produits
+      dispatch(marketplaceApiSlice.util.invalidateTags(['Product']));
 
-      // Mise à jour du produit spécifique si quelqu'un est sur ProductDetails
-      dispatch(
-        marketplaceApiSlice.util.updateQueryData('getProduct', incomingId, (draft) => {
-          if (draft && draft.data) {
-            draft.data = { ...draft.data, ...product };
-          }
-        })
-      );
+      // 2. Synchroniser le panier Redux avec les nouvelles infos (prix, nom, image)
+      dispatch(updateCartItemInfo({
+        id: String(product._id || product.id),
+        changes: {
+          name: product.name,
+          price: product.price,
+          image: product.images?.[0] || product.image,
+        }
+      }));
     };
 
+    /**
+     * Gère la suppression d'un produit.
+     * On invalide le tag 'Product' pour nettoyer toutes les listes.
+     */
     const handleProductDeleted = (productId) => {
       if (!productId) return;
-      const targetId = String(productId);
-
-      dispatch(
-        marketplaceApiSlice.util.updateQueryData('getProducts', undefined, (draft) => {
-          if (!draft || !Array.isArray(draft.data)) return;
-          const index = draft.data.findIndex((p) => String(p._id || p.id) === targetId);
-          if (index !== -1) {
-            draft.data.splice(index, 1);
-          }
-        })
-      );
+      dispatch(marketplaceApiSlice.util.invalidateTags(['Product']));
     };
 
     socketService.on('product_created', handleProductUpdated);

@@ -49,6 +49,7 @@ const GlobalErrorFallback = ({ error, resetError }) => (
 
 const AppContent = () => {
   const dispatch = useDispatch();
+
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);

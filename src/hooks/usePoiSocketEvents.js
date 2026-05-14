@@ -8,12 +8,12 @@ import socketService from '../services/socketService';
 import { poiApiSlice } from '../store/api/poiApiSlice';
 import { selectIsAuthenticated } from '../store/slices/authSlice';
 
-const usePoiSocketEvents = () => {
+const usePoiSocketEvents = (skip = false) => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || skip) return;
 
     const handlePoiUpdated = (payload) => {
       const { action, poi } = payload;

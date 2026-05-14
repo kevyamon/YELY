@@ -26,10 +26,15 @@ import {
   useUpdateProductMutation,
   useToggleSoldOutMutation
 } from '../../store/api/marketplaceApiSlice';
+import { showToast } from '../../store/slices/uiSlice';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
+import { useDispatch } from 'react-redux';
 import THEME from '../../theme/theme';
 
 const ManageProducts = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
+  useMarketplaceSocketEvents();
   const { data: productsData, isLoading, refetch } = useGetMyProductsQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
@@ -60,7 +65,7 @@ const ManageProducts = ({ navigation }) => {
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Désolé', 'Nous avons besoin des permissions pour accéder à vos photos.');
+      dispatch(showToast({ type: 'warning', title: 'Accès refusé', message: 'Nous avons besoin des permissions pour accéder à vos photos.' }));
       return;
     }
 
@@ -108,15 +113,17 @@ const ManageProducts = ({ navigation }) => {
 
   const handleSubmit = async () => {
     if (!form.name || !form.price || form.images.length === 0 || !form.category) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs et ajouter au moins une image.');
+      dispatch(showToast({ type: 'warning', title: 'Données manquantes', message: 'Veuillez remplir tous les champs et ajouter au moins une image.' }));
       return;
     }
 
     const formData = new FormData();
     formData.append('name', form.name);
-    formData.append('description', form.description);
-    formData.append('price', form.price);
+    formData.append('description', form.description || 'Pas de description'); // Valeur par defaut si vide
+    formData.append('price', Number(form.price)); // Forcer le type Number
     formData.append('category', form.category);
+
+    if (__DEV__) console.log('[MARKETPLACE] Submitting FormData for category:', form.category);
 
     form.images.forEach((img, index) => {
       if (img.uri && !img.uri.startsWith('http')) {
@@ -137,14 +144,14 @@ const ManageProducts = ({ navigation }) => {
     try {
       if (editingProduct) {
         await updateProduct({ id: editingProduct._id, data: formData }).unwrap();
-        Alert.alert('Succès', 'Produit mis à jour.');
+        dispatch(showToast({ type: 'success', title: 'Mis à jour', message: 'Le produit a été modifié avec succès.' }));
       } else {
         await createProduct(formData).unwrap();
-        Alert.alert('Succès', 'Produit créé.');
+        dispatch(showToast({ type: 'success', title: 'Publié', message: 'Votre produit est désormais en ligne.' }));
       }
       resetForm();
     } catch (error) {
-      Alert.alert('Erreur', error.data?.message || 'Impossible d\'enregistrer le produit.');
+      dispatch(showToast({ type: 'error', title: 'Échec', message: error.data?.message || 'Impossible d\'enregistrer le produit.' }));
     }
   };
 
@@ -171,7 +178,11 @@ const ManageProducts = ({ navigation }) => {
 
   const renderProduct = ({ item }) => (
     <View style={[styles.productCard, item.isSoldOut && styles.soldOutCard]}>
-      <Image source={{ uri: item.image }} style={styles.productImage} />
+      <Image 
+        source={{ uri: item.image || (item.images && item.images[0]) || 'https://via.placeholder.com/150' }} 
+        style={styles.productImage} 
+        resizeMode="cover"
+      />
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productPrice}>{item.price} FCFA</Text>

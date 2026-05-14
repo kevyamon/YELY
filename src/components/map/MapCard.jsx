@@ -48,6 +48,7 @@ const MapCard = forwardRef(({
   onMarkerPress,
   onRegionDidChange,
   style,
+  hidePOIs = false,
   children,
 }, ref) => {
   const cameraRef = useRef(null);
@@ -89,9 +90,10 @@ const MapCard = forwardRef(({
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
-  usePoiSocketEvents();
-  const { data: poiResponse } = useGetAllPOIsQuery();
-  const mapPOIs = poiResponse?.data || [];
+  // On ne charge les POIs que si demande (Economie de bande passante et stabilite)
+  usePoiSocketEvents(hidePOIs);
+  const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
+  const mapPOIs = hidePOIs ? [] : (poiResponse?.data || []);
 
   const handleMapInteraction = (e) => {
     const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
