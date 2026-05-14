@@ -13,35 +13,34 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetMyLedgerQuery, useClearLedgerEntryMutation } from '../../store/api/marketplaceApiSlice';
+import { useDispatch } from 'react-redux';
+import { showToast, showErrorToast } from '../../store/slices/uiSlice';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const LedgerHistory = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  const dispatch = useDispatch();
   const { data, isLoading, refetch } = useGetMyLedgerQuery();
   const [clearEntry, { isLoading: isClearing }] = useClearLedgerEntryMutation();
+  const [confirmData, setConfirmData] = React.useState({ visible: false, entryId: null, amount: 0 });
 
   const entries = data?.data || [];
 
   const handleClearPayment = (entryId, amount) => {
-    Alert.alert(
-      'Confirmer le paiement',
-      `Confirmez-vous avoir reçu ${amount} FCFA de la part du livreur ? Cette action est irréversible.`,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Confirmer', 
-          onPress: async () => {
-            try {
-              await clearEntry(entryId).unwrap();
-              Alert.alert('Succès', 'La dette a été épongée.');
-              refetch();
-            } catch (err) {
-              Alert.alert('Erreur', 'Impossible de valider le paiement.');
-            }
-          }
-        }
-      ]
-    );
+    setConfirmData({ visible: true, entryId, amount });
+  };
+
+  const confirmClear = async () => {
+    try {
+      await clearEntry(confirmData.entryId).unwrap();
+      dispatch(showToast({ type: 'success', title: 'Succès', message: 'La dette a été épongée.' }));
+      setConfirmData({ ...confirmData, visible: false });
+      refetch();
+    } catch (err) {
+      dispatch(showErrorToast({ message: 'Impossible de valider le paiement.' }));
+      setConfirmData({ ...confirmData, visible: false });
+    }
   };
 
   const renderEntry = ({ item }) => (
@@ -111,6 +110,16 @@ const LedgerHistory = ({ navigation }) => {
           )}
         />
       )}
+
+      <ConfirmModal 
+        visible={confirmData.visible}
+        onClose={() => setConfirmData({ ...confirmData, visible: false })}
+        onConfirm={confirmClear}
+        isLoading={isClearing}
+        title="Confirmer le paiement"
+        message={`Confirmez-vous avoir reçu ${confirmData.amount} FCFA ? Cette action est irréversible.`}
+        confirmText="Oui, encaissé"
+      />
     </View>
   );
 };

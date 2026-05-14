@@ -17,7 +17,8 @@ import {
   useUpdateOrderStatusMutation,
   useGetLedgerStatsQuery 
 } from '../../store/api/marketplaceApiSlice';
-import { showSuccessToast } from '../../store/slices/uiSlice';
+import { showSuccessToast, showErrorToast } from '../../store/slices/uiSlice';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const SellerDashboard = ({ navigation }) => {
@@ -26,6 +27,7 @@ const SellerDashboard = ({ navigation }) => {
   const { data: ordersData, isLoading, refetch } = useGetSellerOrdersQuery();
   const { data: ledgerData } = useGetLedgerStatsQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
+  const [confirmData, setConfirmData] = React.useState({ visible: false, orderId: null, nextStatus: '', msg: '' });
 
   const orders = ordersData?.data || [];
   const filteredOrders = orders.filter(o => o.status === activeTab);
@@ -47,25 +49,24 @@ const SellerDashboard = ({ navigation }) => {
 
     if (!nextStatus) return;
 
-    Alert.alert(
-      'Mise à jour statut',
-      confirmMsg,
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Confirmer', 
-          onPress: async () => {
-            try {
-              await updateStatus({ id: orderId, status: nextStatus }).unwrap();
-              showSuccessToast({ title: 'Succès', message: `Commande passée en : ${nextStatus}` });
-              refetch();
-            } catch (error) {
-              Alert.alert('Erreur', error.data?.message || 'Action impossible');
-            }
-          }
-        }
-      ]
-    );
+    setConfirmData({
+      visible: true,
+      orderId,
+      nextStatus,
+      msg: confirmMsg
+    });
+  };
+
+  const confirmStatusUpdate = async () => {
+    try {
+      await updateStatus({ id: confirmData.orderId, status: confirmData.nextStatus }).unwrap();
+      showSuccessToast({ title: 'Succès', message: `Commande mise à jour.` });
+      setConfirmData({ ...confirmData, visible: false });
+      refetch();
+    } catch (error) {
+      showErrorToast({ message: error.data?.message || 'Action impossible' });
+      setConfirmData({ ...confirmData, visible: false });
+    }
   };
 
   const renderOrder = ({ item }) => (
@@ -199,6 +200,15 @@ const SellerDashboard = ({ navigation }) => {
           )}
         />
       )}
+
+      <ConfirmModal 
+        visible={confirmData.visible}
+        onClose={() => setConfirmData({ ...confirmData, visible: false })}
+        onConfirm={confirmStatusUpdate}
+        isLoading={isUpdating}
+        title="Mise à jour statut"
+        message={confirmData.msg}
+      />
     </View>
   );
 };

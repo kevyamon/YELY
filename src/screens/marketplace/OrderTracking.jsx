@@ -11,10 +11,10 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetOrderQuery, useCancelOrderMutation } from '../../store/api/marketplaceApiSlice';
-import { Alert } from 'react-native';
 import socketService from '../../services/socketService';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import THEME from '../../theme/theme';
 
@@ -31,6 +31,7 @@ const STATUS_MAP = {
 const OrderTracking = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
+  const [showCancelModal, setShowCancelModal] = React.useState(false);
   const { data: orderData, isLoading, refetch } = useGetOrderQuery(orderId);
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const order = orderData?.data;
@@ -45,25 +46,13 @@ const OrderTracking = ({ route, navigation }) => {
     return () => socketService.off('order_updated');
   }, [orderId]);
 
-  const handleCancel = () => {
-    Alert.alert(
-      "Annuler la commande",
-      "Êtes-vous sûr de vouloir annuler cette commande ?",
-      [
-        { text: "Non", style: "cancel" },
-        { 
-          text: "Oui, annuler", 
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await cancelOrder(orderId).unwrap();
-            } catch (err) {
-              Alert.alert("Erreur", err.data?.message || "Impossible d'annuler la commande.");
-            }
-          }
-        }
-      ]
-    );
+  const handleCancel = async () => {
+    try {
+      await cancelOrder(orderId).unwrap();
+      setShowCancelModal(false);
+    } catch (err) {
+      setShowCancelModal(false);
+    }
   };
 
   const renderSkeleton = () => (
@@ -163,17 +152,23 @@ const OrderTracking = ({ route, navigation }) => {
         {order.status === 'pending' && (
           <TouchableOpacity 
             style={styles.cancelBtn} 
-            onPress={handleCancel}
-            disabled={isCancelling}
+            onPress={() => setShowCancelModal(true)}
           >
-            {isCancelling ? (
-              <ActivityIndicator color={THEME.COLORS.danger} />
-            ) : (
-              <Text style={styles.cancelText}>Annuler la commande</Text>
-            )}
+            <Text style={styles.cancelText}>Annuler la commande</Text>
           </TouchableOpacity>
         )}
       </ScrollView>
+
+      <ConfirmModal 
+        visible={showCancelModal}
+        onClose={() => setShowCancelModal(false)}
+        onConfirm={handleCancel}
+        isLoading={isCancelling}
+        title="Annuler la commande ?"
+        message="Cette action est irréversible. Voulez-vous vraiment annuler ?"
+        confirmText="Oui, annuler"
+        type="danger"
+      />
     </ScreenWrapper>
   );
 };

@@ -8,6 +8,7 @@ import { useDispatch } from 'react-redux';
 // AJOUT SENIOR: Mise à jour du nom de l'import pour matcher avec notre modification !
 import { useDeleteMyReportMutation, useGetMyReportsQuery } from '../../store/api/reportsApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import ConfirmModal from '../ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const ReportResolutionModal = ({ visible, onClose, reportId }) => {
@@ -19,32 +20,23 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
   
   // Utilisation de la nouvelle fonction Utilisateur
   const [deleteMyReport, { isLoading: isDeleting }] = useDeleteMyReportMutation();
+  const [showConfirm, setShowConfirm] = React.useState(false);
 
   const reports = reportsResponse?.data || [];
   const report = reports.find((r) => r._id === reportId);
 
-  const handleDelete = () => {
-    Alert.alert(
-      "Supprimer définitivement",
-      "Voulez-vous vraiment supprimer ce signalement ? Il disparaîtra de votre historique et les images seront effacées.",
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Supprimer", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              // Câblé sur la nouvelle fonction !
-              await deleteMyReport(reportId).unwrap();
-              dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement supprimé de votre dossier.' }));
-              onClose(); 
-            } catch (error) {
-              dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
-            }
-          }
-        }
-      ]
-    );
+  const handleDelete = () => setShowConfirm(true);
+
+  const confirmDelete = async () => {
+    try {
+      await deleteMyReport(reportId).unwrap();
+      dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement supprimé de votre dossier.' }));
+      setShowConfirm(false);
+      onClose(); 
+    } catch (error) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));
+      setShowConfirm(false);
+    }
   };
 
   if (!visible) return null;
@@ -118,6 +110,17 @@ const ReportResolutionModal = ({ visible, onClose, reportId }) => {
           </View>
         </View>
       </View>
+
+      <ConfirmModal 
+        visible={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmDelete}
+        isLoading={isDeleting}
+        title="Supprimer définitivement ?"
+        message="Voulez-vous vraiment supprimer ce signalement ? Il disparaîtra de votre historique."
+        confirmText="Oui, supprimer"
+        type="danger"
+      />
     </Modal>
   );
 };

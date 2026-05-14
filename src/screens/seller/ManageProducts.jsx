@@ -26,8 +26,9 @@ import {
   useUpdateProductMutation,
   useToggleSoldOutMutation
 } from '../../store/api/marketplaceApiSlice';
-import { showToast } from '../../store/slices/uiSlice';
+import { showToast, showErrorToast } from '../../store/slices/uiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import { useDispatch } from 'react-redux';
 import THEME from '../../theme/theme';
 
@@ -40,6 +41,8 @@ const ManageProducts = ({ navigation }) => {
   const [updateProduct, { isLoading: isUpdating }] = useUpdateProductMutation();
   const [deleteProduct] = useDeleteProductMutation();
   const [toggleSoldOut] = useToggleSoldOutMutation();
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [productToDelete, setProductToDelete] = useState(null);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -155,30 +158,25 @@ const ManageProducts = ({ navigation }) => {
     } catch (error) {
       console.error('[MANAGE_PRODUCTS] Submit error:', error);
       const msg = error.data?.message || error.message || 'Impossible d\'enregistrer le produit.';
-      dispatch(showToast({ type: 'error', title: 'Échec', message: msg }));
-      Alert.alert('Erreur', msg);
+      dispatch(showErrorToast({ message: msg }));
+    }
+  };
+
+  const confirmDelete = async () => {
+    if (!productToDelete) return;
+    try {
+      await deleteProduct(productToDelete).unwrap();
+      dispatch(showToast({ type: 'success', title: 'Supprimé', message: 'Produit supprimé avec succès.' }));
+      setShowDeleteModal(false);
+    } catch (error) {
+      dispatch(showErrorToast({ message: 'Impossible de supprimer ce produit.' }));
+      setShowDeleteModal(false);
     }
   };
 
   const handleDelete = (id) => {
-    Alert.alert(
-      'Supprimer',
-      'Voulez-vous vraiment supprimer ce produit ?',
-      [
-        { text: 'Annuler', style: 'cancel' },
-        { 
-          text: 'Supprimer', 
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteProduct(id).unwrap();
-            } catch (error) {
-              Alert.alert('Erreur', 'Impossible de supprimer.');
-            }
-          }
-        }
-      ]
-    );
+    setProductToDelete(id);
+    setShowDeleteModal(true);
   };
 
   const renderProduct = ({ item }) => (
@@ -368,6 +366,16 @@ const ManageProducts = ({ navigation }) => {
           </View>
         </KeyboardAvoidingView>
       </Modal>
+
+      <ConfirmModal 
+        visible={showDeleteModal}
+        onClose={() => setShowDeleteModal(false)}
+        onConfirm={confirmDelete}
+        title="Supprimer le produit ?"
+        message="Cette action est irréversible. Vos clients ne verront plus ce produit."
+        confirmText="Oui, supprimer"
+        type="danger"
+      />
     </View>
   );
 };

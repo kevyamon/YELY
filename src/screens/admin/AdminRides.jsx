@@ -5,6 +5,9 @@ import { useRef, useState } from 'react';
 import { Alert, FlatList, RefreshControl, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { useGetAllRidesQuery, useToggleRideArchiveMutation } from '../../store/api/adminApiSlice';
+import { useDispatch } from 'react-redux';
+import { showToast, showErrorToast } from '../../store/slices/uiSlice';
+import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const RideCard = ({ ride, onToggleArchive }) => {
@@ -91,6 +94,8 @@ const AdminRides = () => {
   const [page, setPage] = useState(1);
   const [isArchivedView, setIsArchivedView] = useState(false); 
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [confirmData, setConfirmData] = useState({ visible: false, rideId: null, action: '' });
+  const dispatch = useDispatch();
 
   const { data, isLoading, refetch, isFetching } = useGetAllRidesQuery({ page, limit: 50, isArchived: isArchivedView });
   const [toggleArchive] = useToggleRideArchiveMutation();
@@ -98,24 +103,22 @@ const AdminRides = () => {
   const rides = data?.data?.rides || [];
 
   const handleToggleArchive = (rideId, isArchived) => {
-    const action = isArchived ? 'desarchiver' : 'archiver';
-    Alert.alert(
-      "Confirmation",
-      `Voulez-vous vraiment ${action} cette course ?`,
-      [
-        { text: "Annuler", style: "cancel" },
-        { 
-          text: "Oui", 
-          onPress: async () => {
-            try {
-              await toggleArchive(rideId).unwrap();
-            } catch (error) {
-              Alert.alert("Erreur", "Impossible de modifier la course.");
-            }
-          } 
-        }
-      ]
-    );
+    setConfirmData({
+      visible: true,
+      rideId,
+      action: isArchived ? 'désarchiver' : 'archiver'
+    });
+  };
+
+  const confirmToggleArchive = async () => {
+    try {
+      await toggleArchive(confirmData.rideId).unwrap();
+      dispatch(showToast({ type: 'success', title: 'Succès', message: `Course ${confirmData.action}ée.` }));
+      setConfirmData({ ...confirmData, visible: false });
+    } catch (error) {
+      dispatch(showErrorToast({ message: "Impossible de modifier la course." }));
+      setConfirmData({ ...confirmData, visible: false });
+    }
   };
 
   const handleScroll = (event) => {
@@ -175,6 +178,15 @@ const AdminRides = () => {
       />
 
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
+      
+      <ConfirmModal 
+        visible={confirmData.visible}
+        onClose={() => setConfirmData({ ...confirmData, visible: false })}
+        onConfirm={confirmToggleArchive}
+        title="Confirmation"
+        message={`Voulez-vous vraiment ${confirmData.action} cette course ?`}
+        confirmText="Oui, confirmer"
+      />
     </View>
   );
 };

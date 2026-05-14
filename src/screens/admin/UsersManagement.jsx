@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
 import React, { useEffect, useRef, useState } from 'react';
 import { Alert, FlatList, StyleSheet, Text, TextInput, TouchableOpacity, useWindowDimensions, View } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
+import { showErrorToast } from '../../store/slices/uiSlice';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
@@ -26,8 +27,9 @@ const GlassCard = ({ children, style }) => (
 );
 
 const UsersManagement = ({ navigation }) => {
-  const [searchQuery, setSearchQuery] = useState('');
+  const searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const dispatch = useDispatch();
   
   const currentUser = useSelector(selectCurrentUser);
 
@@ -82,7 +84,7 @@ const UsersManagement = ({ navigation }) => {
           await toggleBan({ userId: user._id, reason: reasonPayload }).unwrap(); 
         } 
         catch (e) { 
-          Alert.alert('Echec de l\'operation', e?.data?.message || 'Le serveur a rejete la requete.'); 
+          dispatch(showErrorToast({ message: e?.data?.message || 'Le serveur a rejeté la requête.' })); 
         }
       }
     });
@@ -103,7 +105,7 @@ const UsersManagement = ({ navigation }) => {
           await updateRole({ userId: user._id, action }).unwrap(); 
         } 
         catch (e) { 
-          Alert.alert('Echec de l\'operation', e?.data?.message || 'Le serveur a rejete la requete.'); 
+          dispatch(showErrorToast({ message: e?.data?.message || 'Le serveur a rejeté la requête.' })); 
         }
       }
     });
