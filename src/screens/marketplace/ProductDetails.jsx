@@ -13,7 +13,8 @@ import {
   TouchableOpacity, 
   FlatList,
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  Animated as RNAnimated
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +34,7 @@ import GoldButton from '../../components/ui/GoldButton';
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import { addToCart } from '../../store/slices/cartSlice';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -50,12 +52,16 @@ const CATEGORY_LABELS = {
 const ProductDetails = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  useMarketplaceSocketEvents();
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
   
   const flatListRef = useRef(null);
+  const scrollViewRef = useRef(null);
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const scrollTopOpacity = useRef(new RNAnimated.Value(0)).current;
   const scrollY = useSharedValue(0);
 
   const product = productData?.data;
@@ -84,8 +90,23 @@ const ProductDetails = ({ route, navigation }) => {
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
+      // Tracking pour ScrollToTop
+      const offsetY = event.contentOffset.y;
+      const shouldShow = offsetY > 250;
+      if (shouldShow !== showScrollTop) {
+        setShowScrollTop(shouldShow);
+        RNAnimated.timing(scrollTopOpacity, {
+          toValue: shouldShow ? 1 : 0,
+          duration: 250,
+          useNativeDriver: true,
+        }).start();
+      }
     },
   });
+
+  const scrollToTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
 
   const headerStyle = useAnimatedStyle(() => {
     const opacity = interpolate(scrollY.value, [0, 100], [0, 1], Extrapolate.CLAMP);
@@ -153,6 +174,7 @@ const ProductDetails = ({ route, navigation }) => {
       </View>
 
       <Animated.ScrollView
+        ref={scrollViewRef}
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
@@ -255,6 +277,13 @@ const ProductDetails = ({ route, navigation }) => {
           </View>
         </TouchableOpacity>
       </View>
+
+      {/* BOUTON SCROLL TO TOP */}
+      <RNAnimated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity, bottom: insets.bottom + 100 }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
+        <TouchableOpacity onPress={scrollToTop} style={styles.scrollTopInner}>
+          <Ionicons name="chevron-up" size={24} color={THEME.COLORS.deepAsphalt} />
+        </TouchableOpacity>
+      </RNAnimated.View>
     </View>
   );
 };
@@ -304,7 +333,21 @@ const styles = StyleSheet.create({
   totalBadgeText: { color: THEME.COLORS.deepAsphalt, fontWeight: 'bold', fontSize: 13 },
   errorText: { color: THEME.COLORS.textSecondary, marginBottom: 20 },
   errorBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  errorBtnText: { color: '#000', fontWeight: 'bold' }
+  errorBtnText: { color: '#000', fontWeight: 'bold' },
+  scrollTopBtn: {
+    position: 'absolute',
+    right: 20,
+    borderRadius: 20,
+    ...THEME.SHADOWS.goldSoft,
+  },
+  scrollTopInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 20,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  }
 });
 
 export default ProductDetails;

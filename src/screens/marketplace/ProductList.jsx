@@ -1,5 +1,5 @@
 // src/screens/marketplace/ProductList.jsx
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   TextInput,
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  Animated
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -31,8 +32,28 @@ const ProductList = ({ route, navigation }) => {
   useMarketplaceSocketEvents();
   const { category } = route.params || {};
   const [search, setSearch] = useState('');
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const flatListRef = useRef(null);
+  const scrollTopOpacity = useRef(new Animated.Value(0)).current;
 
   const displayTitle = CATEGORY_LABELS[category] || category || 'Produits';
+
+  const handleScroll = (event) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    const shouldShow = offsetY > 200;
+    if (shouldShow !== showScrollTop) {
+      setShowScrollTop(shouldShow);
+      Animated.timing(scrollTopOpacity, {
+        toValue: shouldShow ? 1 : 0,
+        duration: 250,
+        useNativeDriver: true,
+      }).start();
+    }
+  };
+
+  const scrollToTop = () => {
+    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
 
   const { data, isLoading, isError, refetch } = useGetProductsQuery({
     category,
@@ -90,6 +111,7 @@ const ProductList = ({ route, navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={flatListRef}
           data={products}
           renderItem={({ item }) => (
             <ProductCard 
@@ -105,8 +127,17 @@ const ProductList = ({ route, navigation }) => {
           showsVerticalScrollIndicator={false}
           onRefresh={refetch}
           refreshing={isLoading}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
         />
       )}
+
+      {/* BOUTON SCROLL TO TOP */}
+      <Animated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
+        <TouchableOpacity onPress={scrollToTop} style={styles.scrollTopInner}>
+          <MaterialCommunityIcons name="chevron-up" size={24} color={THEME.COLORS.deepAsphalt} />
+        </TouchableOpacity>
+      </Animated.View>
     </View>
   );
 };
@@ -191,6 +222,21 @@ const styles = StyleSheet.create({
   refreshText: {
     color: THEME.COLORS.primary,
     fontWeight: THEME.FONTS.weights.bold,
+  },
+  scrollTopBtn: {
+    position: 'absolute',
+    bottom: 30,
+    right: 20,
+    borderRadius: 20,
+    ...THEME.SHADOWS.goldSoft,
+  },
+  scrollTopInner: {
+    width: 48,
+    height: 48,
+    borderRadius: 20,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });
 
