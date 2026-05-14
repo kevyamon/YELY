@@ -29,6 +29,14 @@ const PrivacyPolicyScreen = React.lazy(() => import('../screens/legal/PrivacyPol
 const TermsOfServiceScreen = React.lazy(() => import('../screens/legal/TermsOfServiceScreen'));
 const DriverHome = React.lazy(() => import('../screens/home/DriverHome'));
 const RiderHome = React.lazy(() => import('../screens/home/RiderHome'));
+const ChoiceHome = React.lazy(() => import('../screens/ChoiceHome'));
+const MarketplaceHub = React.lazy(() => import('../screens/marketplace/MarketplaceHub'));
+const ProductList = React.lazy(() => import('../screens/marketplace/ProductList'));
+const ProductDetails = React.lazy(() => import('../screens/marketplace/ProductDetails'));
+const Cart = React.lazy(() => import('../screens/marketplace/Cart'));
+const OrderTracking = React.lazy(() => import('../screens/marketplace/OrderTracking'));
+const SellerDashboard = React.lazy(() => import('../screens/seller/SellerDashboard'));
+const LedgerHistory = React.lazy(() => import('../screens/seller/LedgerHistory'));
 const PancarteScreen = React.lazy(() => import('../screens/ride/PancarteScreen'));
 const HistoryScreen = React.lazy(() => import('../screens/history/HistoryScreen'));
 const MenuScreen = React.lazy(() => import('../screens/MenuScreen'));
@@ -172,7 +180,17 @@ const AppNavigator = () => {
               {isDriver ? (
                 <Stack.Screen name="DriverHome" component={DriverHome} />
               ) : (
-                <Stack.Screen name="RiderHome" component={RiderHome} />
+                <>
+                  <Stack.Screen name="ChoiceHome" component={ChoiceHome} />
+                  <Stack.Screen name="RiderHome" component={RiderHome} />
+                  <Stack.Screen name="MarketplaceHub" component={MarketplaceHub} />
+                  <Stack.Screen name="ProductList" component={ProductList} />
+                  <Stack.Screen name="ProductDetails" component={ProductDetails} />
+                  <Stack.Screen name="Cart" component={Cart} />
+                  <Stack.Screen name="OrderTracking" component={OrderTracking} />
+                  <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
+                  <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
+                </>
               )}
               <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
                 <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: true, animationDuration: 100 }} />

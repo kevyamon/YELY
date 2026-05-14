@@ -90,19 +90,23 @@ const RegisterPage = ({ navigation, route }) => {
       }
     >
       <View style={styles.roleContainer}>
-        {['rider', 'driver'].map((r) => (
+        {['rider', 'driver', 'seller'].map((r) => (
           <TouchableOpacity 
             key={r}
             style={[styles.roleBtn, role === r && styles.roleBtnActive]} 
             onPress={() => handleRoleSelection(r)}
           >
             <Ionicons 
-              name={r === 'rider' ? 'person' : 'car'} 
-              size={22} 
+              name={r === 'rider' ? 'person' : r === 'driver' ? 'car' : 'storefront'} 
+              size={18} 
               color={role === r ? THEME.COLORS.textInverse : THEME.COLORS.primary} 
             />
-            <Text style={[styles.roleText, role === r && styles.roleTextActive]}>
-              {r === 'rider' ? 'Passager' : 'Chauffeur'}
+            <Text 
+              style={[styles.roleText, role === r && styles.roleTextActive]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+            >
+              {r === 'rider' ? 'Passager' : r === 'driver' ? 'Chauffeur' : 'Vendeur'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -151,13 +155,11 @@ const RegisterPage = ({ navigation, route }) => {
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Mot de passe</Text>
-          <View style={styles.goldInputContainer}>
-            <PasswordStrengthInput 
-              password={formData.password} 
-              setPassword={(t) => setFormData({ ...formData, password: t })} 
-              onStrengthChange={setPasswordScore} 
-            />
-          </View>
+          <PasswordStrengthInput 
+            password={formData.password} 
+            setPassword={(t) => setFormData({ ...formData, password: t })} 
+            onStrengthChange={setPasswordScore} 
+          />
         </View>
       </View>
 
@@ -196,7 +198,7 @@ const RegisterPage = ({ navigation, route }) => {
 const styles = StyleSheet.create({
   roleContainer: { 
     flexDirection: 'row', 
-    gap: THEME.SPACING.lg, 
+    gap: THEME.SPACING.sm, 
     marginBottom: THEME.SPACING.xxl,
     marginTop: THEME.SPACING.lg,
   },
@@ -205,7 +207,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    paddingVertical: THEME.SPACING.lg, 
+    paddingVertical: THEME.SPACING.md, 
+    paddingHorizontal: THEME.SPACING.xs,
     borderRadius: THEME.BORDERS.radius.pill, 
     borderWidth: THEME.BORDERS.width.thick, 
     borderColor: THEME.COLORS.primary, 
@@ -217,9 +220,9 @@ const styles = StyleSheet.create({
     ...THEME.SHADOWS.gold,
   },
   roleText: { 
-    marginLeft: THEME.SPACING.sm, 
+    marginLeft: 4, 
     fontWeight: THEME.FONTS.weights.bold, 
-    fontSize: THEME.FONTS.sizes.h4,
+    fontSize: THEME.FONTS.sizes.bodySmall,
     color: THEME.COLORS.primary,
   },
   roleTextActive: { 

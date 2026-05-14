@@ -52,7 +52,7 @@ const TermsModal = ({ visible, onClose, onAccept, isLoading }) => {
 
       <View style={styles.footer}>
         <GoldButton
-          title="J'ACCEPTE ET JE M'INSCRIS"
+          title="ACCEPTER ET M'INSCRIRE"
           onPress={onAccept}
           loading={isLoading}
           icon="checkmark-circle-outline"

@@ -5,6 +5,7 @@
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
 import { apiSlice } from './slices/apiSlice';
 import authReducer from './slices/authSlice';
+import cartReducer from './slices/cartSlice';
 import rideReducer from './slices/rideSlice';
 import uiReducer from './slices/uiSlice';
 
@@ -13,6 +14,7 @@ const appReducer = combineReducers({
   auth: authReducer,
   ui: uiReducer,
   ride: rideReducer,
+  cart: cartReducer,
 });
 
 // Le super-gestionnaire (Root Reducer)

@@ -7,7 +7,6 @@ import THEME from '../../theme/theme';
 import GlassInput from '../ui/GlassInput';
 
 const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
-  const [showPassword, setShowPassword] = useState(false);
   const [stats, setStats] = useState({
     length: false, number: false, special: false, score: 0
   });
@@ -57,7 +56,6 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
     }
 
     setPassword(generated.join(''));
-    setShowPassword(true);
   };
 
   const getProgressColor = (score) => {
@@ -81,38 +79,23 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.inputWrapper}>
+      <View style={styles.goldInputContainer}>
         <GlassInput
           icon="lock-closed-outline"
           placeholder="Mot de passe"
-          secureTextEntry={!showPassword}
+          secureTextEntry={true}
           value={password}
           onChangeText={setPassword}
         />
-        
-        <View style={styles.actionButtons}>
-          <TouchableOpacity 
-            style={styles.iconBtn} 
-            onPress={generateSecurePassword}
-          >
-            <Ionicons 
-              name="sparkles-outline" 
-              size={20} 
-              color={THEME.COLORS.primary} 
-            />
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={styles.iconBtn} 
-            onPress={() => setShowPassword(!showPassword)}
-          >
-            <Ionicons 
-              name={showPassword ? "eye-off-outline" : "eye-outline"} 
-              size={20} 
-              color={THEME.COLORS.textTertiary} 
-            />
-          </TouchableOpacity>
-        </View>
       </View>
+      
+      <TouchableOpacity 
+        style={styles.generateBtn} 
+        onPress={generateSecurePassword}
+      >
+        <Ionicons name="sparkles-outline" size={14} color={THEME.COLORS.primary} />
+        <Text style={styles.generateText}>Générer un mot de passe fort</Text>
+      </TouchableOpacity>
 
       {password.length > 0 && (
         <View style={styles.gaugeContainer}>
@@ -134,45 +117,48 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
 
 const styles = StyleSheet.create({
   container: { 
-    marginBottom: THEME.SPACING.md 
+    marginBottom: THEME.SPACING.xs 
   },
-  inputWrapper: { 
-    position: 'relative', 
-    justifyContent: 'center' 
+  goldInputContainer: {
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: THEME.BORDERS.radius.lg,
+    padding: THEME.BORDERS.width.thick,
   },
-  actionButtons: { 
-    position: 'absolute', 
-    right: THEME.SPACING.md, 
-    flexDirection: 'row', 
+  generateBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
-    gap: THEME.SPACING.xs,
+    marginTop: THEME.SPACING.sm,
+    marginLeft: THEME.SPACING.xs,
   },
-  iconBtn: { 
-    padding: THEME.SPACING.xs 
+  generateText: {
+    color: THEME.COLORS.primary,
+    fontSize: THEME.FONTS.sizes.caption,
+    marginLeft: 4,
+    fontWeight: THEME.FONTS.weights.medium,
   },
   gaugeContainer: { 
-    marginTop: THEME.SPACING.sm, 
+    marginTop: THEME.SPACING.md, 
     paddingHorizontal: THEME.SPACING.xs 
   },
   progressBar: { 
     borderRadius: THEME.BORDERS.radius.sm, 
     height: 4, 
-    backgroundColor: THEME.COLORS.overlay 
+    backgroundColor: THEME.COLORS.glassLight 
   },
   requirementsBox: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
     marginTop: THEME.SPACING.sm, 
-    gap: THEME.SPACING.sm 
   },
   reqRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginRight: THEME.SPACING.xs 
+    marginRight: THEME.SPACING.md,
+    marginBottom: 4,
   },
   reqText: { 
     fontSize: THEME.FONTS.sizes.caption, 
-    marginLeft: THEME.SPACING.xs 
+    marginLeft: 4 
   },
 });
 

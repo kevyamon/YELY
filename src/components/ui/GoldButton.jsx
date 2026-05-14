@@ -149,6 +149,8 @@ const GoldButton = ({
           )}
           
           <Text
+            numberOfLines={1}
+            adjustsFontSizeToFit
             style={[
               getTextStyle(),
               { fontSize: getFontSize() },
