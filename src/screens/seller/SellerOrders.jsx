@@ -7,7 +7,8 @@ import {
   FlatList, 
   TouchableOpacity, 
   ActivityIndicator,
-  RefreshControl
+  RefreshControl,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,20 +24,29 @@ import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 
 const STATUS_CONFIG = {
-  'pending': { label: 'Nouvelle', color: '#f39c12', action: 'Confirmer', next: 'confirmed' },
-  'confirmed': { label: 'En préparation', color: '#27ae60', action: 'Prêt pour livraison', next: 'searching' },
-  'searching': { label: 'Recherche livreur', color: '#3498db', action: null },
-  'picked_up': { label: 'En route', color: '#9b59b6', action: null },
-  'delivered': { label: 'Livrée', color: '#2ecc71', action: null },
-  'cancelled': { label: 'Annulée', color: '#e74c3c', action: null },
-  'rejected': { label: 'Refusée', color: '#e67e22', action: null }
+  'pending': { label: 'Nouvelle', color: THEME.COLORS.warning, action: 'Confirmer', next: 'confirmed' },
+  'confirmed': { label: 'En préparation', color: THEME.COLORS.success, action: 'Prêt pour livraison', next: 'searching' },
+  'searching': { label: 'Recherche livreur', color: THEME.COLORS.info, action: null },
+  'picked_up': { label: 'En route', color: THEME.COLORS.primary, action: null },
+  'delivered': { label: 'Livrée', color: THEME.COLORS.success, action: null },
+  'cancelled': { label: 'Annulée', color: THEME.COLORS.danger, action: null },
+  'rejected': { label: 'Refusée', color: THEME.COLORS.warning, action: null }
 };
 
 const SellerOrders = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { data: ordersData, isLoading, refetch, isFetching } = useGetSellerOrdersQuery();
+  const { data: ordersData, isLoading, refetch, isFetching, error } = useGetSellerOrdersQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
   const orders = ordersData?.data || [];
+
+  useEffect(() => {
+    if (ordersData) console.log("[DEBUG SELLER ORDERS] Data:", ordersData);
+    if (error) console.error("[DEBUG SELLER ORDERS] Error:", error);
+  }, [ordersData, error]);
+
+  useEffect(() => {
+    refetch();
+  }, []);
 
   // TEMPS RÉEL: On utilise le socket service existant
   useEffect(() => {
@@ -123,7 +133,7 @@ const SellerOrders = ({ navigation }) => {
                 onPress={() => handleUpdate(item._id, 'rejected')}
                 disabled={isUpdating}
               >
-                <Ionicons name="close" size={24} color="#FF4B4B" />
+                <Ionicons name="close" size={24} color={THEME.COLORS.danger} />
               </TouchableOpacity>
             )}
             
@@ -147,7 +157,7 @@ const SellerOrders = ({ navigation }) => {
     <ScreenWrapper style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Commandes Reçues</Text>
         <View style={{ width: 40 }} />
@@ -184,7 +194,7 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 },
   backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
-  title: { fontSize: 22, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
+  title: { fontSize: 22, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.5 },
   listContent: { padding: 20, paddingBottom: 100 },
   orderCard: { padding: 20, marginBottom: 20, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.1)' },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
@@ -194,16 +204,16 @@ const styles = StyleSheet.create({
   orderDate: { color: THEME.COLORS.textTertiary, fontSize: 11, fontWeight: '600' },
   
   customerBox: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 20 },
-  customerAvatar: { width: 45, height: 45, borderRadius: 15, backgroundColor: 'rgba(212, 175, 55, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)' },
+  customerAvatar: { width: 45, height: 45, borderRadius: 15, backgroundColor: THEME.COLORS.primary + '15', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.primary + '20' },
   avatarText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 18 },
-  customerName: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  customerName: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: '700' },
   address: { color: THEME.COLORS.textSecondary, fontSize: 13, marginTop: 2 },
   
   itemsList: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 15, padding: 15, marginBottom: 20 },
   itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  qtyBadge: { backgroundColor: 'rgba(212, 175, 55, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 12 },
+  qtyBadge: { backgroundColor: THEME.COLORS.primary + '30', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 12 },
   qtyText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 12 },
-  itemName: { color: '#EEE', flex: 1, fontSize: 14, fontWeight: '500' },
+  itemName: { color: THEME.COLORS.textPrimary, flex: 1, fontSize: 14, fontWeight: '500' },
   itemPrice: { color: THEME.COLORS.textTertiary, fontSize: 13 },
   
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
@@ -211,11 +221,11 @@ const styles = StyleSheet.create({
   totalPrice: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: '900' },
   
   actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
-  rejectBtn: { width: 45, height: 45, borderRadius: 15, backgroundColor: 'rgba(255, 75, 75, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 75, 75, 0.2)' },
+  rejectBtn: { width: 45, height: 45, borderRadius: 15, backgroundColor: THEME.COLORS.danger + '10', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.danger + '20' },
   
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
   emptyText: { color: THEME.COLORS.textSecondary, marginTop: 15, fontSize: 16, textAlign: 'center' },
-  refreshBtn: { marginTop: 20, paddingHorizontal: 25, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(212, 175, 55, 0.1)', borderWidth: 1, borderColor: THEME.COLORS.primary },
+  refreshBtn: { marginTop: 20, paddingHorizontal: 25, paddingVertical: 12, borderRadius: 20, backgroundColor: THEME.COLORS.primary + '15', borderWidth: 1, borderColor: THEME.COLORS.primary },
   refreshText: { color: THEME.COLORS.primary, fontWeight: 'bold' },
 
   skeletonContainer: { padding: 20 },

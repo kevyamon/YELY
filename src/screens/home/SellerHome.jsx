@@ -77,6 +77,7 @@ const SellerHome = ({ navigation }) => {
   });
 
   const handleGoToManageProducts = () => navigation.navigate('ManageProducts');
+  const handleGoToOrders = () => navigation.navigate('SellerOrders');
   const handleGoToMarketplace = () => navigation.navigate('MarketplaceHub');
   const handleGoToTaxi = () => navigation.navigate('RiderHome');
 
@@ -139,7 +140,7 @@ const SellerHome = ({ navigation }) => {
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Actions rapides</Text>
           <View style={styles.actionsGrid}>
-             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('SellerOrders')}>
+             <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
                <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
                <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
              </TouchableOpacity>

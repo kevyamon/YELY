@@ -5,6 +5,7 @@
 const MENU_ITEMS = {
   rider: [
     { route: 'RiderHome', label: 'Accueil', icon: 'home' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'cart' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -14,6 +15,7 @@ const MENU_ITEMS = {
     { route: 'DriverHome', label: 'Radar VTC', icon: 'car' },
     { route: 'MarketplaceHub', label: 'Achats & Repas', icon: 'cart' },
     { route: 'Subscription', label: 'Abonnement', icon: 'card' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'basket' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -22,6 +24,7 @@ const MENU_ITEMS = {
   seller: [
     { route: 'SellerHome', label: 'Ma Boutique', icon: 'storefront' },
     { route: 'RiderHome', label: 'Commander une course', icon: 'car-sport' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'basket' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },

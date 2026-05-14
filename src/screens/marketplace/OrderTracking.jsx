@@ -17,13 +17,13 @@ import GlassCard from '../../components/ui/GlassCard';
 import THEME from '../../theme/theme';
 
 const STATUS_MAP = {
-  'pending': { label: 'En attente', icon: 'clock-outline', color: '#f39c12', step: 0 },
-  'confirmed': { label: 'Confirmée', icon: 'check-circle-outline', color: '#27ae60', step: 1 },
-  'searching': { label: 'Recherche livreur', icon: 'magnify', color: '#3498db', step: 2 },
-  'picked_up': { label: 'En livraison', icon: 'bike', color: '#9b59b6', step: 3 },
-  'delivered': { label: 'Livrée', icon: 'flag-checkered', color: '#2ecc71', step: 4 },
-  'cancelled': { label: 'Annulée', icon: 'close-circle-outline', color: '#e74c3c', step: -1 },
-  'rejected': { label: 'Refusée', icon: 'alert-circle-outline', color: '#e67e22', step: -1 }
+  'pending': { label: 'En attente', icon: 'clock-outline', color: THEME.COLORS.warning, step: 0 },
+  'confirmed': { label: 'Confirmée', icon: 'check-circle-outline', color: THEME.COLORS.success, step: 1 },
+  'searching': { label: 'Recherche livreur', icon: 'magnify', color: THEME.COLORS.info, step: 2 },
+  'picked_up': { label: 'En livraison', icon: 'bike', color: THEME.COLORS.primary, step: 3 },
+  'delivered': { label: 'Livrée', icon: 'flag-checkered', color: THEME.COLORS.success, step: 4 },
+  'cancelled': { label: 'Annulée', icon: 'close-circle-outline', color: THEME.COLORS.danger, step: -1 },
+  'rejected': { label: 'Refusée', icon: 'alert-circle-outline', color: THEME.COLORS.warning, step: -1 }
 };
 
 const OrderTracking = ({ route, navigation }) => {
@@ -43,7 +43,7 @@ const OrderTracking = ({ route, navigation }) => {
   }, [orderId]);
 
   if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={THEME.COLORS.primary} /></View>;
-  if (!order) return <View style={styles.center}><Text style={{color: '#FFF'}}>Commande introuvable</Text></View>;
+  if (!order) return <View style={styles.center}><Text style={{color: THEME.COLORS.textPrimary}}>Commande introuvable</Text></View>;
 
   const currentStatus = STATUS_MAP[order.status] || STATUS_MAP['pending'];
 
@@ -51,7 +51,7 @@ const OrderTracking = ({ route, navigation }) => {
     <View style={styles.stepRow}>
       <View style={styles.stepIndicator}>
         <View style={[styles.circle, isCompleted && styles.completedCircle]}>
-          {isCompleted && <Ionicons name="checkmark" size={16} color="#000" />}
+          {isCompleted && <Ionicons name="checkmark" size={16} color={THEME.COLORS.textInverse} />}
         </View>
         {!isLast && <View style={[styles.line, isCompleted && styles.completedLine]} />}
       </View>
@@ -65,7 +65,7 @@ const OrderTracking = ({ route, navigation }) => {
     <ScreenWrapper style={styles.container}>
       <View style={[styles.header, { paddingTop: insets.top }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.title}>Suivi de commande</Text>
       </View>
@@ -117,39 +117,56 @@ const OrderTracking = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginLeft: 15 },
+  backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
+  title: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginLeft: 15 },
   scrollContent: { padding: 20 },
   statusCard: { padding: 30, alignItems: 'center', marginBottom: 20 },
   statusIconBg: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
-  statusLabel: { fontSize: 22, fontWeight: 'bold', color: '#FFF' },
-  orderNumber: { fontSize: 14, color: '#AAA', marginTop: 5 },
-  timelineCard: { padding: 20, marginBottom: 20 },
-  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.primary, marginBottom: 20 },
-  timeline: { paddingLeft: 10 },
-  stepRow: { flexDirection: 'row', minHeight: 60 },
+  statusLabel: { fontSize: 22, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  orderNumber: { fontSize: 14, color: THEME.COLORS.textTertiary, marginTop: 5 },
+  timelineCard: { padding: 25, marginBottom: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: '900', color: THEME.COLORS.primary, marginBottom: 25, letterSpacing: 1, textTransform: 'uppercase' },
+  timeline: { paddingLeft: 5 },
+  stepRow: { flexDirection: 'row', minHeight: 70 },
   stepIndicator: { alignItems: 'center', marginRight: 20 },
-  circle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#333', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
-  completedCircle: { borderColor: THEME.COLORS.primary, backgroundColor: THEME.COLORS.primary },
-  line: { width: 2, flex: 1, backgroundColor: '#333', marginVertical: 4 },
-  completedLine: { backgroundColor: THEME.COLORS.primary },
-  stepContent: { paddingTop: 2 },
-  stepTitle: { fontSize: 15, color: '#666', fontWeight: '500' },
-  completedText: { color: '#FFF' },
+  circle: { 
+    width: 26, 
+    height: 26, 
+    borderRadius: 13, 
+    borderWidth: 2, 
+    borderColor: THEME.COLORS.border, 
+    backgroundColor: 'rgba(255,255,255,0.08)', 
+    justifyContent: 'center', 
+    alignItems: 'center' 
+  },
+  completedCircle: { 
+    borderColor: THEME.COLORS.primary, 
+    backgroundColor: THEME.COLORS.primary,
+    shadowColor: THEME.COLORS.primary,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5
+  },
+  line: { width: 2, flex: 1, backgroundColor: THEME.COLORS.border, marginVertical: 4, opacity: 0.5 },
+  completedLine: { backgroundColor: THEME.COLORS.primary, opacity: 1 },
+  stepContent: { paddingTop: 3 },
+  stepTitle: { fontSize: 15, color: THEME.COLORS.textTertiary, fontWeight: '500' },
+  completedText: { color: THEME.COLORS.textPrimary, fontWeight: '700' },
   detailsCard: { padding: 20, marginBottom: 20 },
   itemRow: { flexDirection: 'row', marginBottom: 10 },
   itemQty: { color: THEME.COLORS.primary, fontWeight: 'bold', width: 30 },
-  itemName: { color: '#CCC', flex: 1 },
-  itemPrice: { color: '#FFF' },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 15 },
+  itemName: { color: THEME.COLORS.textSecondary, flex: 1 },
+  itemPrice: { color: THEME.COLORS.textPrimary },
+  divider: { height: 1, backgroundColor: THEME.COLORS.border, marginVertical: 15 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  totalLabel: { color: '#AAA' },
+  totalLabel: { color: THEME.COLORS.textSecondary },
   totalValue: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 18 },
-  cancelBtn: { padding: 15, alignItems: 'center', borderRadius: 15, borderWidth: 1, borderColor: '#e74c3c', marginBottom: 30 },
-  cancelText: { color: '#e74c3c', fontWeight: 'bold' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }
+  cancelBtn: { padding: 15, alignItems: 'center', borderRadius: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 30 },
+  cancelText: { color: THEME.COLORS.danger, fontWeight: 'bold' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.background }
 });
 
 export default OrderTracking;

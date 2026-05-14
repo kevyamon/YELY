@@ -47,7 +47,7 @@ const OrderTimeline = ({ currentStatus, history = [], driverName }) => {
                 <MaterialCommunityIcons 
                   name={config.icon} 
                   size={20} 
-                  color={isCompleted ? '#000' : THEME.COLORS.textTertiary} 
+                  color={isCompleted ? THEME.COLORS.textInverse : THEME.COLORS.textTertiary} 
                 />
               </View>
               {!isLast && <View style={[styles.line, isCompleted && { backgroundColor: config.color }]} />}
@@ -103,7 +103,7 @@ const styles = StyleSheet.create({
   },
   activePulse: {
     borderWidth: 3,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderColor: THEME.COLORS.primary + '30',
   },
   line: {
     width: 2,
@@ -142,7 +142,7 @@ const styles = StyleSheet.create({
   errorContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    backgroundColor: THEME.COLORS.danger + '15',
     padding: 15,
     borderRadius: 12,
     marginTop: 10,

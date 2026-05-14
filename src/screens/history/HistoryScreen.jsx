@@ -235,7 +235,7 @@ const styles = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 50, paddingHorizontal: 20, paddingBottom: 10 },
   backButton: { flexDirection: 'row', alignItems: 'center' },
   headerTitle: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: 'bold', marginLeft: 15 },
-  clearAllButton: { padding: 8, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderRadius: 8 },
+  clearAllButton: { padding: 8, backgroundColor: THEME.COLORS.danger + '15', borderRadius: 8 },
   listContainer: { paddingHorizontal: 20, paddingBottom: 50, paddingTop: 10 },
   emptyText: { color: THEME.COLORS.textSecondary, fontSize: 16, marginTop: 15 },
   card: { padding: 15, marginBottom: 15 },
@@ -255,7 +255,7 @@ const styles = StyleSheet.create({
   userText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginLeft: 5 },
   rightFooter: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   priceText: { color: THEME.COLORS.primary, fontSize: 16, fontWeight: 'bold' },
-  deleteBtn: { padding: 5, backgroundColor: 'rgba(255, 59, 48, 0.1)', borderRadius: 8 }
+  deleteBtn: { padding: 5, backgroundColor: THEME.COLORS.danger + '15', borderRadius: 8 }
 });
 
 export default HistoryScreen;

@@ -104,7 +104,7 @@ const styles = StyleSheet.create({
   dotActive: {
     ...THEME.SHADOWS.gold,
     borderWidth: 2,
-    borderColor: '#FFFFFF',
+    borderColor: THEME.COLORS.textInverse,
   },
   line: {
     width: 2,

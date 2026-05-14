@@ -42,6 +42,7 @@ import ProductDetails from '../screens/marketplace/ProductDetails';
 import Cart from '../screens/marketplace/Cart';
 import Checkout from '../screens/marketplace/CheckoutScreen';
 import OrderTracking from '../screens/marketplace/OrderTracking';
+import ClientOrders from '../screens/marketplace/ClientOrders';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrders from '../screens/seller/SellerOrders';
 import LedgerHistory from '../screens/seller/LedgerHistory';
@@ -211,6 +212,7 @@ const AppNavigator = () => {
             <Stack.Screen name="Cart" component={Cart} />
             <Stack.Screen name="Checkout" component={Checkout} />
             <Stack.Screen name="OrderTracking" component={OrderTracking} />
+            <Stack.Screen name="ClientOrders" component={ClientOrders} />
             <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
             <Stack.Screen name="SellerOrders" component={SellerOrders} />
             <Stack.Screen name="ManageProducts" component={ManageProducts} />
