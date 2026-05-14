@@ -20,8 +20,10 @@ import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import THEME from '../../theme/theme';
 import * as Location from 'expo-location';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const CheckoutScreen = ({ navigation }) => {
+  // ... (state reste inchangé)
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
@@ -48,35 +50,42 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   const getCurrentLocation = async () => {
+    if (isLocating) return;
     setIsLocating(true);
     try {
+      console.log('[CHECKOUT] Démarrage localisation...');
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        dispatch(showToast({ type: 'warning', title: 'Permission refusée', message: 'Veuillez activer la localisation pour une livraison précise.' }));
+        dispatch(showToast({ type: 'warning', title: 'Permission refusée', message: 'Veuillez activer la localisation pour calculer les frais.' }));
+        setIsLocating(false);
         return;
       }
 
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
+      // Utilisation d'une précision équilibrée pour plus de rapidité
+      const location = await Location.getCurrentPositionAsync({ 
+        accuracy: Location.Accuracy.Balanced,
+        timeout: 10000 
+      });
+      
       const coords = [location.coords.longitude, location.coords.latitude];
+      console.log('[CHECKOUT] Coords obtenues:', coords);
       setClientCoords(coords);
 
-      const sellerCoords = cartItems[0]?.sellerCoords || [0, 0];
-      if (sellerCoords[0] !== 0 && sellerCoords[1] !== 0) {
-        const dist = calculateHaversineDistance(coords, sellerCoords);
-        setDistanceKm(dist);
-        const price = calculateDeliveryPrice(dist);
-        setDeliveryPrice(price);
-      }
-      
-      const reverseGeocode = await Location.reverseGeocodeAsync({ longitude: location.coords.longitude, latitude: location.coords.latitude });
-      if (reverseGeocode.length > 0) {
-        const addr = reverseGeocode[0];
-        const addressStr = [addr.streetNumber, addr.street, addr.subregion, addr.region].filter(Boolean).join(', ');
-        if (addressStr && !address) setAddress(addressStr);
-      }
+      // On tente de récupérer l'adresse textuelle en parallèle
+      Location.reverseGeocodeAsync({ 
+        longitude: location.coords.longitude, 
+        latitude: location.coords.latitude 
+      }).then(reverseGeocode => {
+        if (reverseGeocode.length > 0) {
+          const addr = reverseGeocode[0];
+          const addressStr = [addr.streetNumber, addr.street, addr.subregion, addr.region].filter(Boolean).join(', ');
+          if (addressStr && !address) setAddress(addressStr);
+        }
+      }).catch(err => console.warn('[CHECKOUT] Reverse geocode failed:', err));
+
     } catch (error) {
       console.error('[CHECKOUT] Location error:', error);
-      dispatch(showToast({ type: 'error', title: 'Erreur', message: 'Impossible d\'obtenir votre position.' }));
+      dispatch(showToast({ type: 'error', title: 'Erreur GPS', message: 'Impossible de capter votre position. Réessayez.' }));
     } finally {
       setIsLocating(false);
     }
@@ -99,6 +108,30 @@ const CheckoutScreen = ({ navigation }) => {
       getCurrentLocation();
     }
   }, [cartItems]);
+
+  useEffect(() => {
+    if (clientCoords && cartItems.length > 0) {
+      const item = cartItems[0];
+      // Récupération stricte des coordonnées du vendeur depuis le panier
+      const sellerCoords = item.sellerCoords || [0, 0];
+      
+      console.log('[CHECKOUT] Position Client:', clientCoords);
+      console.log('[CHECKOUT] Position Vendeur:', sellerCoords);
+      
+      if (sellerCoords[0] !== 0 && sellerCoords[1] !== 0) {
+        const dist = calculateHaversineDistance(clientCoords, sellerCoords);
+        console.log('[CHECKOUT] Distance réelle:', dist, 'km');
+        
+        setDistanceKm(dist);
+        const price = calculateDeliveryPrice(dist);
+        setDeliveryPrice(price);
+      } else {
+        console.warn('[CHECKOUT] Impossible de calculer le trajet: Position vendeur inconnue.');
+        // On ne met pas de prix par défaut pour forcer la précision
+        setDeliveryPrice(null); 
+      }
+    }
+  }, [clientCoords, cartItems]);
 
   const handlePlaceOrder = async () => {
     if (!address || !phone || !name) {
@@ -144,15 +177,17 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   return (
-    <ScreenWrapper style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <Text style={styles.title}>Finaliser la commande</Text>
-      </View>
+    <LinearGradient colors={['#000000', '#1A1A1A', '#000000']} style={styles.container}>
+      <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
+        <View style={[styles.header, { paddingTop: insets.top }]}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+            <Ionicons name="arrow-back" size={24} color="#FFF" />
+          </TouchableOpacity>
+          <Text style={styles.title}>Finaliser la commande</Text>
+        </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          {/* ... reste du contenu ... */}
         <GlassCard style={styles.section}>
           <Text style={styles.sectionTitle}>Infos de livraison</Text>
           
@@ -256,38 +291,61 @@ const CheckoutScreen = ({ navigation }) => {
 
       <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
         <GoldButton 
-          title="Commander maintenant" 
+          title={!deliveryPrice ? "Calcul du trajet..." : "Commander maintenant"} 
           onPress={handlePlaceOrder}
-          loading={isLoading}
+          loading={isLoading || isLocating}
+          disabled={!deliveryPrice || isLocating}
         />
       </View>
-    </ScreenWrapper>
+      </ScreenWrapper>
+    </LinearGradient>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: 'transparent' },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
   backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
   title: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginLeft: 15 },
   scrollContent: { padding: 20 },
   section: { padding: 20, marginBottom: 20 },
   sectionTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.primary, marginBottom: 20 },
-  inputGroup: { marginBottom: 15 },
-  label: { color: '#AAA', fontSize: 13, marginBottom: 8 },
-  addressRow: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  input: { backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 12, padding: 15, color: '#FFF', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)' },
-  locateBtn: { width: 50, height: 50, borderRadius: 12, backgroundColor: '#D4AF37', justifyContent: 'center', alignItems: 'center' },
-  locateBtnDisabled: { opacity: 0.6 },
-  summaryItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
-  summaryQty: { color: THEME.COLORS.primary, fontWeight: 'bold', width: 30 },
-  summaryName: { color: '#FFF', flex: 1 },
-  summaryPrice: { color: '#FFF', fontWeight: 'bold' },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 15 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  totalLabel: { color: '#AAA' },
-  totalValue: { color: '#FFF', fontWeight: 'bold', fontSize: 16 },
-  footer: { paddingHorizontal: 20 }
+  inputGroup: { marginBottom: 20 },
+  label: { color: '#D4AF37', fontSize: 14, fontWeight: '600', marginBottom: 10, letterSpacing: 0.5 },
+  addressRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
+  input: { 
+    backgroundColor: 'rgba(255,255,255,0.08)', 
+    borderRadius: 16, 
+    padding: 16, 
+    color: '#FFF', 
+    borderWidth: 1.5, 
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+    fontSize: 15,
+    textAlignVertical: 'top'
+  },
+  locateBtn: { 
+    width: 56, 
+    height: 56, 
+    borderRadius: 16, 
+    backgroundColor: '#D4AF37', 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    elevation: 4,
+    shadowColor: '#D4AF37',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8
+  },
+  locateBtnDisabled: { opacity: 0.5, backgroundColor: '#555' },
+  summaryItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  summaryQty: { color: '#D4AF37', fontWeight: '800', width: 35, fontSize: 15 },
+  summaryName: { color: '#EEE', flex: 1, fontSize: 15 },
+  summaryPrice: { color: '#FFF', fontWeight: '600', fontSize: 15 },
+  divider: { height: 1, backgroundColor: 'rgba(212, 175, 55, 0.15)', marginVertical: 20 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
+  totalLabel: { color: '#AAA', fontSize: 15 },
+  totalValue: { color: '#FFF', fontWeight: '700', fontSize: 17 },
+  footer: { paddingHorizontal: 20, paddingTop: 10 }
 });
 
 export default CheckoutScreen;
