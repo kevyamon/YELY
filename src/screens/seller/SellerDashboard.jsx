@@ -84,6 +84,13 @@ const SellerDashboard = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.title}>Dashboard</Text>
         </View>
+        <TouchableOpacity 
+          style={styles.manageProductsBtn} 
+          onPress={() => navigation.navigate('ManageProducts')}
+        >
+          <MaterialCommunityIcons name="package-variant-closed" size={24} color={THEME.COLORS.primary} />
+          <Text style={styles.manageBtnText}>Produits</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Stats Ledger */}
@@ -184,6 +191,22 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.h2,
     fontWeight: THEME.FONTS.weights.bold,
     color: THEME.COLORS.textPrimary,
+  },
+  manageProductsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: THEME.BORDERS.radius.pill,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+  },
+  manageBtnText: {
+    color: THEME.COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold',
+    marginLeft: 6,
   },
   ledgerCard: {
     marginHorizontal: THEME.SPACING.xl,

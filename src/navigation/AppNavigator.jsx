@@ -26,6 +26,7 @@ import ChoiceHome from '../screens/ChoiceHome';
 import NotificationsScreen from '../screens/notifications/NotificationsScreen';
 import MenuScreen from '../screens/MenuScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import ManageProducts from '../screens/seller/ManageProducts';
 
 const LandingScreen = React.lazy(() => import('../screens/LandingScreen'));
 const LoginPage = React.lazy(() => import('../screens/auth/LoginPage'));
@@ -187,6 +188,7 @@ const AppNavigator = () => {
               <Stack.Screen name="Cart" component={Cart} />
               <Stack.Screen name="OrderTracking" component={OrderTracking} />
               <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
+              <Stack.Screen name="ManageProducts" component={ManageProducts} />
               <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
               
               <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>

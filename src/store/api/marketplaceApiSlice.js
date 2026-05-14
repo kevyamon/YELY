@@ -15,6 +15,10 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       query: (id) => `/products/${id}`,
       providesTags: ['Product'],
     }),
+    getMyProducts: builder.query({
+      query: () => '/products/my-products',
+      providesTags: ['Product'],
+    }),
     createProduct: builder.mutation({
       query: (data) => ({
         url: '/products',
@@ -24,10 +28,17 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Product'],
     }),
     updateProduct: builder.mutation({
-      query: ({ id, ...data }) => ({
+      query: ({ id, data }) => ({
         url: `/products/${id}`,
         method: 'PATCH',
         body: data,
+      }),
+      invalidatesTags: ['Product'],
+    }),
+    deleteProduct: builder.mutation({
+      query: (id) => ({
+        url: `/products/${id}`,
+        method: 'DELETE',
       }),
       invalidatesTags: ['Product'],
     }),
@@ -88,8 +99,10 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetProductsQuery,
   useGetProductQuery,
+  useGetMyProductsQuery,
   useCreateProductMutation,
   useUpdateProductMutation,
+  useDeleteProductMutation,
   useToggleSoldOutMutation,
   useCreateOrderMutation,
   useGetMyOrdersQuery,

@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
@@ -27,6 +28,7 @@ const CATEGORIES = [
 
 const MarketplaceHub = ({ navigation }) => {
   const insets = useSafeAreaInsets();
+  useMarketplaceSocketEvents();
   
   const renderCategory = ({ item }) => (
     <TouchableOpacity 
