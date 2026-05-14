@@ -11,8 +11,17 @@ const MENU_ITEMS = {
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   driver: [
-    { route: 'DriverHome', label: 'Accueil', icon: 'car' },
+    { route: 'DriverHome', label: 'Radar VTC', icon: 'car' },
+    { route: 'MarketplaceHub', label: 'Achats & Repas', icon: 'cart' },
     { route: 'Subscription', label: 'Abonnement', icon: 'card' },
+    { route: 'History', label: 'Historique', icon: 'time' },
+    { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
+    { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
+    { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
+  ],
+  seller: [
+    { route: 'SellerDashboard', label: 'Espace Vendeur', icon: 'storefront' },
+    { route: 'ChoiceHome', label: 'Mode Passager', icon: 'walk' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -44,6 +53,7 @@ export const getMenuItems = (role) => {
 
 export const getRoleLabel = (role) => {
   switch (role) {
+    case 'seller': return 'Vendeur';
     case 'driver': return 'Chauffeur';
     case 'admin': return 'Administrateur';
     case 'superadmin': return 'Super Admin';

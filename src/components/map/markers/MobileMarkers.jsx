@@ -3,7 +3,13 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let MapLibreGL = null;
+if (!isExpoGo) {
+  MapLibreGL = require('@maplibre/maplibre-react-native').default;
+}
 import { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../../theme/theme';
@@ -17,6 +23,7 @@ export const TrackedMarker = ({
   visible = true,
 }) => {
   if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
+  if (isExpoGo) return null;
 
   return (
     <MapLibreGL.MarkerView
@@ -39,6 +46,7 @@ export const AnimatedTrackedMarker = ({
   visible = true,
 }) => {
   if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
+  if (isExpoGo) return null;
 
   return (
     <MapLibreGL.MarkerView
@@ -141,6 +149,7 @@ export const AnimatedDestinationMarker = ({ color }) => {
 
 export const SmoothDriverMarker = ({ coordinate }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
+  if (isExpoGo) return null;
 
   return (
     <MapLibreGL.MarkerView
@@ -172,6 +181,7 @@ const getShortName = (text) => {
 
 export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
+  if (isExpoGo) return null;
 
   const shortName = getShortName(name);
 

@@ -3,8 +3,14 @@
 // CSCSM Level: Bank Grade (Avec Cinematic Focus UX)
 
 import { Ionicons } from '@expo/vector-icons';
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let MapLibreGL = null;
+if (!isExpoGo) {
+  MapLibreGL = require('@maplibre/maplibre-react-native').default;
+}
 import { Animated, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import useMapFitter from '../../hooks/useMapFitter';
@@ -171,6 +177,18 @@ const MapCard = forwardRef(({
     setIsMapReady(true);
     if (onMapReady) onMapReady();
   };
+
+  if (isExpoGo) {
+    return (
+      <View style={[styles.container, floating && styles.floating, style, { backgroundColor: THEME.COLORS.glassDark, justifyContent: 'center', alignItems: 'center' }]}>
+        <Ionicons name="map-outline" size={64} color={THEME.COLORS.champagneGold} />
+        <Text style={{ color: THEME.COLORS.textSecondary, marginTop: 16, textAlign: 'center', paddingHorizontal: 20 }}>
+          Carte désactivée dans Expo Go.{'\n'}
+          Mode Développement
+        </Text>
+      </View>
+    );
+  }
 
   return (
     <View style={[styles.container, floating && styles.floating, style, { backgroundColor: mapBackgroundColor }]}>

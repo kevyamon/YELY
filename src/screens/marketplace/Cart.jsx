@@ -6,10 +6,11 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  SafeAreaView, 
   Image,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { 
@@ -23,6 +24,7 @@ import { useCreateOrderMutation } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const Cart = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const items = useSelector(selectCartItems);
   const totalAmount = useSelector(selectCartTotal);
@@ -88,13 +90,18 @@ const Cart = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
+    <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Mon Panier</Text>
+        </View>
+        <TouchableOpacity onPress={() => dispatch(clearCart())}>
+          <Text style={styles.clearText}>Vider</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Mon Panier</Text>
-        <View style={{ width: 40 }} />
       </View>
 
       <FlatList
@@ -140,7 +147,7 @@ const Cart = ({ navigation }) => {
           </TouchableOpacity>
         </View>
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

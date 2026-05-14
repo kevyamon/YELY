@@ -2,7 +2,13 @@
 // COMPOSANT MARQUEUR UTILISATEUR - Localisation Precise et Animee
 // CSCSM Level: Bank Grade
 
-import MapLibreGL from '@maplibre/maplibre-react-native';
+import Constants, { ExecutionEnvironment } from 'expo-constants';
+
+const isExpoGo = Constants.executionEnvironment === ExecutionEnvironment.StoreClient;
+let MapLibreGL = null;
+if (!isExpoGo) {
+  MapLibreGL = require('@maplibre/maplibre-react-native').default;
+}
 import React, { useEffect, useRef } from 'react';
 import { Animated, Easing, StyleSheet, View } from 'react-native';
 import THEME from '../../../theme/theme';
@@ -38,6 +44,7 @@ const UserLocationMarker = ({ coordinate, identifier = "user_loc", visible = tru
   }, [pulseAnim, visible]);
 
   if (!visible || !coordinate?.latitude || !coordinate?.longitude) return null;
+  if (isExpoGo) return null;
 
   const scale = pulseAnim.interpolate({
     inputRange: [0, 1],

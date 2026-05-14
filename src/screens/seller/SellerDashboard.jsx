@@ -1,4 +1,3 @@
-// src/screens/seller/SellerDashboard.jsx
 import React, { useState } from 'react';
 import { 
   View, 
@@ -6,11 +5,13 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  SafeAreaView,
   ActivityIndicator,
-  Alert
+  Alert,
+  StatusBar,
+  ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
   useGetSellerOrdersQuery, 
   useUpdateOrderStatusMutation,
@@ -19,6 +20,7 @@ import {
 import THEME from '../../theme/theme';
 
 const SellerDashboard = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('pending');
   const { data: ordersData, isLoading, refetch } = useGetSellerOrdersQuery();
   const { data: ledgerData } = useGetLedgerStatsQuery();
@@ -68,16 +70,20 @@ const SellerDashboard = ({ navigation }) => {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </View>
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Dashboard Vendeur</Text>
-        <TouchableOpacity style={styles.statsBtn}>
-          <MaterialCommunityIcons name="chart-bar" size={24} color={THEME.COLORS.primary} />
-        </TouchableOpacity>
+    <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
+      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
+        <View style={styles.headerLeft}>
+          <TouchableOpacity onPress={() => navigation.navigate('Menu')} style={styles.menuBtn}>
+            <MaterialCommunityIcons name="menu" size={28} color={THEME.COLORS.textPrimary} />
+          </TouchableOpacity>
+          <Text style={styles.title}>Dashboard</Text>
+        </View>
       </View>
 
       {/* Stats Ledger */}
@@ -91,19 +97,45 @@ const SellerDashboard = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabs}>
-        {['pending', 'confirmed', 'picked_up', 'delivered'].map(tab => (
-          <TouchableOpacity 
-            key={tab} 
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}
-          >
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'pending' ? 'Nouvelles' : tab === 'confirmed' ? 'En prépa' : tab === 'picked_up' ? 'En route' : 'Livrées'}
-            </Text>
-          </TouchableOpacity>
-        ))}
+      {/* Tabs / Filter Navigation */}
+      <View style={styles.tabsContainer}>
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.tabsScroll}
+        >
+          {[
+            { id: 'pending', label: 'Nouvelles', icon: 'bell-outline' },
+            { id: 'confirmed', label: 'En prépa', icon: 'stove' },
+            { id: 'picked_up', label: 'En route', icon: 'moped' },
+            { id: 'delivered', label: 'Livrées', icon: 'check-all' }
+          ].map(tab => {
+            const count = orders.filter(o => o.status === tab.id).length;
+            const isActive = activeTab === tab.id;
+
+            return (
+              <TouchableOpacity 
+                key={tab.id} 
+                style={[styles.tabPill, isActive && styles.activeTabPill]}
+                onPress={() => setActiveTab(tab.id)}
+              >
+                <MaterialCommunityIcons 
+                  name={tab.icon} 
+                  size={16} 
+                  color={isActive ? THEME.COLORS.deepAsphalt : THEME.COLORS.textTertiary} 
+                />
+                <Text style={[styles.tabLabel, isActive && styles.activeTabLabel]}>
+                  {tab.label}
+                </Text>
+                {count > 0 && (
+                  <View style={[styles.badge, isActive && styles.activeBadge]}>
+                    <Text style={[styles.badgeText, isActive && styles.activeBadgeText]}>{count}</Text>
+                  </View>
+                )}
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
       </View>
 
       {isLoading ? (
@@ -115,7 +147,7 @@ const SellerDashboard = ({ navigation }) => {
           data={filteredOrders}
           renderItem={renderOrder}
           keyExtractor={item => item._id}
-          contentContainerStyle={styles.listContent}
+          contentContainerStyle={[styles.listContent, { paddingBottom: insets.bottom + 20 }]}
           onRefresh={refetch}
           refreshing={isLoading}
           ListEmptyComponent={() => (
@@ -126,21 +158,27 @@ const SellerDashboard = ({ navigation }) => {
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: THEME.COLORS.background,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: THEME.SPACING.xl,
-    paddingVertical: THEME.SPACING.lg,
+    paddingBottom: THEME.SPACING.md,
+  },
+  headerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  menuBtn: {
+    marginRight: THEME.SPACING.md,
   },
   title: {
     fontSize: THEME.FONTS.sizes.h2,
@@ -162,37 +200,60 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.micro,
     textTransform: 'uppercase',
   },
-  ledgerValue: {
-    color: '#FFFFFF',
-    fontSize: THEME.FONTS.sizes.h3,
-    fontWeight: THEME.FONTS.weights.bold,
+  tabsContainer: {
+    marginVertical: THEME.SPACING.lg,
   },
-  tabs: {
-    flexDirection: 'row',
+  tabsScroll: {
     paddingHorizontal: THEME.SPACING.xl,
-    marginVertical: THEME.SPACING.xl,
+    gap: THEME.SPACING.sm,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
+  tabPill: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderBottomWidth: 2,
-    borderBottomColor: 'transparent',
+    backgroundColor: THEME.COLORS.glassSurface,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
   },
-  activeTab: {
-    borderBottomColor: THEME.COLORS.primary,
+  activeTabPill: {
+    backgroundColor: THEME.COLORS.primary,
+    borderColor: THEME.COLORS.primary,
+    ...THEME.SHADOWS.gold,
   },
-  tabText: {
-    fontSize: 11,
+  tabLabel: {
+    fontSize: 13,
     color: THEME.COLORS.textTertiary,
-    fontWeight: THEME.FONTS.weights.bold,
+    fontWeight: 'bold',
+    marginLeft: 8,
   },
-  activeTabText: {
-    color: THEME.COLORS.primary,
+  activeTabLabel: {
+    color: THEME.COLORS.deepAsphalt,
+  },
+  badge: {
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    minWidth: 18,
+    height: 18,
+    borderRadius: 9,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: 8,
+    paddingHorizontal: 4,
+  },
+  activeBadge: {
+    backgroundColor: 'rgba(0,0,0,0.1)',
+  },
+  badgeText: {
+    fontSize: 10,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: 'bold',
+  },
+  activeBadgeText: {
+    color: THEME.COLORS.deepAsphalt,
   },
   listContent: {
     paddingHorizontal: THEME.SPACING.xl,
-    paddingBottom: 40,
   },
   orderCard: {
     backgroundColor: THEME.COLORS.glassSurface,

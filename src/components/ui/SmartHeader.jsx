@@ -38,7 +38,7 @@ const SmartHeader = ({
   const isRefreshing = useSelector(selectIsRefreshing);
   const currentRide = useSelector(selectCurrentRide);
 
-  const isRider = user?.role === 'rider';
+  const isRider = user?.role === 'rider' || user?.role === 'passenger' || user?.role === 'seller';
   const hasActiveRide = !!currentRide;
 
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;

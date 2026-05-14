@@ -4,9 +4,9 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
-import { Dimensions, SafeAreaView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
-
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { selectCurrentRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
@@ -14,6 +14,7 @@ import THEME from '../../theme/theme';
 const { width } = Dimensions.get('window');
 
 const PancarteScreen = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   
@@ -30,7 +31,7 @@ const PancarteScreen = ({ navigation }) => {
   }, [currentRide?.status, navigation]);
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={[styles.container, { paddingTop: insets.top, paddingBottom: insets.bottom }]}>
       <TouchableOpacity 
         style={styles.closeButton} 
         onPress={() => navigation.goBack()}
@@ -61,7 +62,7 @@ const PancarteScreen = ({ navigation }) => {
 
         <Text style={styles.footerText}>Cet ecran se fermera automatiquement une fois le client a bord.</Text>
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 

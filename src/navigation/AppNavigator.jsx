@@ -20,6 +20,13 @@ import {
 
 import THEME from '../theme/theme';
 
+import DriverHome from '../screens/home/DriverHome';
+import RiderHome from '../screens/home/RiderHome';
+import ChoiceHome from '../screens/ChoiceHome';
+import NotificationsScreen from '../screens/notifications/NotificationsScreen';
+import MenuScreen from '../screens/MenuScreen';
+import ProfileScreen from '../screens/profile/ProfileScreen';
+
 const LandingScreen = React.lazy(() => import('../screens/LandingScreen'));
 const LoginPage = React.lazy(() => import('../screens/auth/LoginPage'));
 const RegisterPage = React.lazy(() => import('../screens/auth/RegisterPage'));
@@ -27,9 +34,6 @@ const ForgotPasswordScreen = React.lazy(() => import('../screens/auth/ForgotPass
 const ResetPasswordScreen = React.lazy(() => import('../screens/auth/ResetPasswordScreen'));
 const PrivacyPolicyScreen = React.lazy(() => import('../screens/legal/PrivacyPolicyScreen'));
 const TermsOfServiceScreen = React.lazy(() => import('../screens/legal/TermsOfServiceScreen'));
-const DriverHome = React.lazy(() => import('../screens/home/DriverHome'));
-const RiderHome = React.lazy(() => import('../screens/home/RiderHome'));
-const ChoiceHome = React.lazy(() => import('../screens/ChoiceHome'));
 const MarketplaceHub = React.lazy(() => import('../screens/marketplace/MarketplaceHub'));
 const ProductList = React.lazy(() => import('../screens/marketplace/ProductList'));
 const ProductDetails = React.lazy(() => import('../screens/marketplace/ProductDetails'));
@@ -39,9 +43,6 @@ const SellerDashboard = React.lazy(() => import('../screens/seller/SellerDashboa
 const LedgerHistory = React.lazy(() => import('../screens/seller/LedgerHistory'));
 const PancarteScreen = React.lazy(() => import('../screens/ride/PancarteScreen'));
 const HistoryScreen = React.lazy(() => import('../screens/history/HistoryScreen'));
-const MenuScreen = React.lazy(() => import('../screens/MenuScreen'));
-const NotificationsScreen = React.lazy(() => import('../screens/notifications/NotificationsScreen'));
-const ProfileScreen = React.lazy(() => import('../screens/profile/ProfileScreen'));
 const ReportScreen = React.lazy(() => import('../screens/report/ReportScreen'));
 const SplashScreenComponent = React.lazy(() => import('../screens/SplashScreen'));
 const AdminDashboard = React.lazy(() => import('../screens/admin/AdminDashboard'));
@@ -177,21 +178,17 @@ const AppNavigator = () => {
             </Stack.Group>
           ) : (
             <Stack.Group>
-              {isDriver ? (
-                <Stack.Screen name="DriverHome" component={DriverHome} />
-              ) : (
-                <>
-                  <Stack.Screen name="ChoiceHome" component={ChoiceHome} />
-                  <Stack.Screen name="RiderHome" component={RiderHome} />
-                  <Stack.Screen name="MarketplaceHub" component={MarketplaceHub} />
-                  <Stack.Screen name="ProductList" component={ProductList} />
-                  <Stack.Screen name="ProductDetails" component={ProductDetails} />
-                  <Stack.Screen name="Cart" component={Cart} />
-                  <Stack.Screen name="OrderTracking" component={OrderTracking} />
-                  <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
-                  <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
-                </>
-              )}
+              <Stack.Screen name="ChoiceHome" component={ChoiceHome} />
+              <Stack.Screen name="RiderHome" component={RiderHome} />
+              <Stack.Screen name="DriverHome" component={DriverHome} />
+              <Stack.Screen name="MarketplaceHub" component={MarketplaceHub} />
+              <Stack.Screen name="ProductList" component={ProductList} />
+              <Stack.Screen name="ProductDetails" component={ProductDetails} />
+              <Stack.Screen name="Cart" component={Cart} />
+              <Stack.Screen name="OrderTracking" component={OrderTracking} />
+              <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
+              <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
+              
               <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
                 <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: true, animationDuration: 100 }} />
                 <Stack.Screen name="Pancarte" component={PancarteScreen} options={{ animation: 'slide_from_bottom' }} />

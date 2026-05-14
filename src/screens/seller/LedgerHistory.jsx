@@ -6,15 +6,17 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  SafeAreaView,
   ActivityIndicator,
-  Alert
+  Alert,
+  StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetMyLedgerQuery, useClearLedgerEntryMutation } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const LedgerHistory = ({ navigation }) => {
+  const insets = useSafeAreaInsets();
   const { data, isLoading, refetch } = useGetMyLedgerQuery();
   const [clearEntry, { isLoading: isClearing }] = useClearLedgerEntryMutation();
 
@@ -78,8 +80,10 @@ const LedgerHistory = ({ navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      
+      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
@@ -107,7 +111,7 @@ const LedgerHistory = ({ navigation }) => {
           )}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

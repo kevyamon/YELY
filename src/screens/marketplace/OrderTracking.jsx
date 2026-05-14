@@ -1,20 +1,20 @@
-// src/screens/marketplace/OrderTracking.jsx
-import React from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ScrollView, 
   TouchableOpacity, 
-  SafeAreaView,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import OrderStatusTimeline from '../../components/marketplace/OrderStatusTimeline';
 import { marketplaceApiSlice } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const OrderTracking = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   
   // Utilisation de useGetMyOrdersQuery pour trouver la commande spécifique
@@ -41,8 +41,9 @@ const OrderTracking = ({ route, navigation }) => {
   }
 
   return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
           <MaterialCommunityIcons name="close" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
@@ -52,7 +53,7 @@ const OrderTracking = ({ route, navigation }) => {
         </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}>
         <View style={styles.card}>
           <View style={styles.orderHeader}>
             <View>
@@ -102,7 +103,7 @@ const OrderTracking = ({ route, navigation }) => {
           <Text style={styles.supportBtnText}>Besoin d'aide ? Contacter le support</Text>
         </TouchableOpacity>
       </ScrollView>
-    </SafeAreaView>
+    </View>
   );
 };
 

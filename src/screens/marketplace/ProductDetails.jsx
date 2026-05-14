@@ -1,5 +1,3 @@
-// src/screens/marketplace/ProductDetails.jsx
-import React, { useState } from 'react';
 import { 
   View, 
   Text, 
@@ -7,16 +5,18 @@ import {
   ScrollView, 
   Image, 
   TouchableOpacity, 
-  SafeAreaView,
-  Dimensions
+  Dimensions,
+  StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
 
 const ProductDetails = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const { productId } = route.params;
   const [quantity, setQuantity] = useState(1);
 
@@ -38,6 +38,7 @@ const ProductDetails = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
       <ScrollView showsVerticalScrollIndicator={false}>
         <View style={styles.imageContainer}>
           {product.images && product.images[0] ? (
@@ -48,14 +49,14 @@ const ProductDetails = ({ route, navigation }) => {
             </View>
           )}
           
-          <SafeAreaView style={styles.headerOverlay}>
+          <View style={[styles.headerOverlay, { paddingTop: insets.top + THEME.SPACING.sm }]}>
             <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
               <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
             <TouchableOpacity style={styles.iconButton}>
               <MaterialCommunityIcons name="share-variant" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
-          </SafeAreaView>
+          </View>
         </View>
 
         <View style={styles.content}>

@@ -12,39 +12,51 @@ import { LinearGradient } from 'expo-linear-gradient';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = width * 0.85;
 
 const SelectionCard = ({ title, subtitle, icon, onPress, gradientColors }) => {
   return (
     <TouchableOpacity 
-      activeOpacity={0.8} 
+      activeOpacity={0.85} 
       onPress={onPress} 
-      style={styles.container}
+      style={styles.wrapper}
     >
       <LinearGradient
-        colors={gradientColors || [THEME.COLORS.glassSurface, THEME.COLORS.glassSurface]}
-        style={styles.gradient}
+        colors={gradientColors || [THEME.COLORS.glassSurface, 'rgba(255,255,255,0.02)']}
+        style={styles.container}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
         <View style={styles.content}>
-          <View style={styles.iconContainer}>
-            <MaterialCommunityIcons 
-              name={icon} 
-              size={48} 
-              color={THEME.COLORS.primary} 
-            />
+          <View style={styles.leftSection}>
+            <View style={styles.iconContainer}>
+              <MaterialCommunityIcons 
+                name={icon} 
+                size={32} 
+                color={THEME.COLORS.primary} 
+              />
+            </View>
           </View>
           
           <View style={styles.textContainer}>
-            <Text style={styles.title}>{title}</Text>
-            <Text style={styles.subtitle}>{subtitle}</Text>
+            <Text 
+              style={styles.title} 
+              numberOfLines={1} 
+              adjustsFontSizeToFit
+            >
+              {title}
+            </Text>
+            <Text 
+              style={styles.subtitle} 
+              numberOfLines={2}
+            >
+              {subtitle}
+            </Text>
           </View>
 
           <View style={styles.arrowContainer}>
             <MaterialCommunityIcons 
               name="chevron-right" 
-              size={24} 
+              size={20} 
               color={THEME.COLORS.primary} 
             />
           </View>
@@ -55,54 +67,57 @@ const SelectionCard = ({ title, subtitle, icon, onPress, gradientColors }) => {
 };
 
 const styles = StyleSheet.create({
-  container: {
-    width: CARD_WIDTH,
-    height: 140,
-    marginBottom: THEME.SPACING.xl,
+  wrapper: {
+    width: '100%',
+    marginBottom: THEME.SPACING.lg,
     borderRadius: THEME.BORDERS.radius.xl,
-    ...THEME.SHADOWS.medium,
     backgroundColor: THEME.COLORS.glassSurface,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    ...THEME.SHADOWS.soft,
   },
-  gradient: {
-    flex: 1,
-    borderRadius: THEME.BORDERS.radius.xl,
+  container: {
     padding: THEME.SPACING.lg,
+    borderRadius: THEME.BORDERS.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.15)',
   },
   content: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
   },
+  leftSection: {
+    marginRight: THEME.SPACING.md,
+  },
   iconContainer: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: 'rgba(212, 175, 55, 0.1)',
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
   },
   textContainer: {
     flex: 1,
-    marginLeft: THEME.SPACING.lg,
+    paddingRight: THEME.SPACING.sm,
   },
   title: {
-    fontSize: THEME.FONTS.sizes.h3,
-    fontWeight: THEME.FONTS.weights.bold,
+    fontSize: 18,
+    fontWeight: 'bold',
     color: THEME.COLORS.textPrimary,
-    marginBottom: THEME.SPACING.xs,
+    marginBottom: 4,
   },
   subtitle: {
-    fontSize: THEME.FONTS.sizes.bodySmall,
+    fontSize: 12,
     color: THEME.COLORS.textSecondary,
-    lineHeight: 18,
+    lineHeight: 16,
+    opacity: 0.8,
   },
   arrowContainer: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
     justifyContent: 'center',
     alignItems: 'center',
   }

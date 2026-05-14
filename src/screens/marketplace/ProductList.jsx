@@ -6,16 +6,18 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity, 
-  SafeAreaView, 
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  StatusBar
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProductCard from '../../components/marketplace/ProductCard';
 import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
 const ProductList = ({ route, navigation }) => {
+  const insets = useSafeAreaInsets();
   const { category } = route.params || {};
   const [search, setSearch] = useState('');
 
@@ -27,7 +29,8 @@ const ProductList = ({ route, navigation }) => {
   const products = data?.data || [];
 
   const renderHeader = () => (
-    <View style={styles.header}>
+    <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
+      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
@@ -65,7 +68,7 @@ const ProductList = ({ route, navigation }) => {
   );
 
   return (
-    <SafeAreaView style={styles.container}>
+    <View style={styles.container}>
       {renderHeader()}
 
       {isLoading ? (
@@ -91,7 +94,7 @@ const ProductList = ({ route, navigation }) => {
           refreshing={isLoading}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 };
 

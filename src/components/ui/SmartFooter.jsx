@@ -20,7 +20,7 @@ const SmartFooter = ({
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
-  const isRider = user?.role === 'rider';
+  const isRider = user?.role === 'rider' || user?.role === 'passenger' || user?.role === 'seller';
 
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
 
