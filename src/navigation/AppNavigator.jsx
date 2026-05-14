@@ -20,13 +20,13 @@ import {
 
 import THEME from '../theme/theme';
 
-import DriverHome from '../screens/home/DriverHome';
-import RiderHome from '../screens/home/RiderHome';
-import ChoiceHome from '../screens/ChoiceHome';
-import NotificationsScreen from '../screens/notifications/NotificationsScreen';
-import MenuScreen from '../screens/MenuScreen';
-import ProfileScreen from '../screens/profile/ProfileScreen';
-import ManageProducts from '../screens/seller/ManageProducts';
+const DriverHome = React.lazy(() => import('../screens/home/DriverHome'));
+const RiderHome = React.lazy(() => import('../screens/home/RiderHome'));
+const ChoiceHome = React.lazy(() => import('../screens/ChoiceHome'));
+const NotificationsScreen = React.lazy(() => import('../screens/notifications/NotificationsScreen'));
+const MenuScreen = React.lazy(() => import('../screens/MenuScreen'));
+const ProfileScreen = React.lazy(() => import('../screens/profile/ProfileScreen'));
+const ManageProducts = React.lazy(() => import('../screens/seller/ManageProducts'));
 
 const LandingScreen = React.lazy(() => import('../screens/LandingScreen'));
 const LoginPage = React.lazy(() => import('../screens/auth/LoginPage'));

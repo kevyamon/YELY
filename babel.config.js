@@ -4,10 +4,9 @@ module.exports = function(api) {
   
   const plugins = [];
 
-  // DÉSACTIVÉ TEMPORAIREMENT POUR DÉBLOQUER LE BUILD PRODUCTION
-  // if (process.env.NODE_ENV === 'production' || process.env.BABEL_ENV === 'production') {
-  //   plugins.push(['transform-remove-console', { exclude: ['error', 'warn'] }]);
-  // }
+  if (process.env.NODE_ENV === 'production' || process.env.BABEL_ENV === 'production') {
+    plugins.push(['transform-remove-console', { exclude: ['error', 'warn'] }]);
+  }
 
   // ATTENTION : Le plugin reanimated DOIT ABSOLUMENT etre le dernier de la liste.
   // Ne jamais rien push apres cette ligne.
