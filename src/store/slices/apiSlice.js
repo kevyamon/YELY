@@ -196,6 +196,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
 export const apiSlice = createApi({
   reducerPath: 'api',
   baseQuery: baseQueryWithReauth,
-  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog', 'Report', 'POI', 'Product', 'Order', 'Ledger'],
+  tagTypes: ['User', 'Ride', 'Subscription', 'Transaction', 'Stats', 'MapSettings', 'Notification', 'AuditLog', 'Report', 'POI', 'Product', 'Order', 'Ledger', 'SystemConfig'],
   endpoints: () => ({}),
 });
+// Re-build forced by Antigravity - SystemConfig tag verified.

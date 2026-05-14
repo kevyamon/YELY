@@ -9,8 +9,11 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import OrderStatusTimeline from '../../components/marketplace/OrderStatusTimeline';
+import React, { useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import OrderTimeline from '../../components/marketplace/OrderTimeline';
 import { marketplaceApiSlice } from '../../store/api/marketplaceApiSlice';
+import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 
 const OrderTracking = ({ route, navigation }) => {
@@ -67,7 +70,11 @@ const OrderTracking = ({ route, navigation }) => {
 
           <View style={styles.divider} />
 
-          <OrderStatusTimeline currentStatus={order.status} />
+          <OrderTimeline 
+            currentStatus={order.status} 
+            history={order.history}
+            driverName={order.driver?.name}
+          />
         </View>
 
         <View style={styles.card}>

@@ -42,8 +42,18 @@ const ManageProducts = ({ navigation }) => {
     name: '',
     description: '',
     price: '',
-    image: null,
+    category: 'Food',
+    images: [], // Tableau d'images
   });
+
+  const CATEGORIES = [
+    { label: 'Nourriture', value: 'Food' },
+    { label: 'Supermarché', value: 'Supermarket' },
+    { label: 'Cosmétiques', value: 'Cosmetics' },
+    { label: 'Électronique', value: 'Electronics' },
+    { label: 'Maison', value: 'Home' },
+    { label: 'Autres', value: 'Other' },
+  ];
 
   const products = productsData?.data || [];
 
@@ -55,37 +65,50 @@ const ManageProducts = ({ navigation }) => {
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: true,
-      aspect: [4, 3],
-      quality: 0.7,
+      mediaTypes: 'images',
+      allowsMultipleSelection: true,
+      selectionLimit: 10 - form.images.length, // Limite dynamique
+      quality: 0.6,
     });
 
     if (!result.canceled) {
-      setForm({ ...form, image: result.assets[0] });
+      const newImages = [...form.images, ...result.assets];
+      setForm({ ...form, images: newImages.slice(0, 10) });
     }
   };
 
+  const removeImage = (index) => {
+    const newImages = [...form.images];
+    newImages.splice(index, 1);
+    setForm({ ...form, images: newImages });
+  };
+
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', image: null });
+    setForm({ name: '', description: '', price: '', category: 'Food', images: [] });
     setEditingProduct(null);
     setModalVisible(false);
   };
 
   const handleEdit = (product) => {
     setEditingProduct(product);
+    // On transforme l'image unique (ou le tableau d'images existant) en format compatible
+    const existingImages = Array.isArray(product.images) 
+      ? product.images.map(img => ({ uri: img })) 
+      : (product.image ? [{ uri: product.image }] : []);
+
     setForm({
       name: product.name,
-      description: product.description,
+      description: product.description || '',
       price: product.price.toString(),
-      image: { uri: product.image },
+      category: product.category || 'Food',
+      images: existingImages,
     });
     setModalVisible(true);
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.price || !form.image) {
-      Alert.alert('Erreur', 'Veuillez remplir tous les champs obligatoires.');
+    if (!form.name || !form.price || form.images.length === 0 || !form.category) {
+      Alert.alert('Erreur', 'Veuillez remplir tous les champs et ajouter au moins une image.');
       return;
     }
 
@@ -93,18 +116,23 @@ const ManageProducts = ({ navigation }) => {
     formData.append('name', form.name);
     formData.append('description', form.description);
     formData.append('price', form.price);
+    formData.append('category', form.category);
 
-    // Si c'est une nouvelle image (objet asset)
-    if (form.image.uri && !form.image.uri.startsWith('http')) {
-      const filename = form.image.uri.split('/').pop();
-      const match = /\.(\w+)$/.exec(filename);
-      const type = match ? `image/${match[1]}` : `image/jpeg`;
-      formData.append('image', {
-        uri: form.image.uri,
-        name: filename,
-        type: type,
-      });
-    }
+    form.images.forEach((img, index) => {
+      if (img.uri && !img.uri.startsWith('http')) {
+        const filename = img.uri.split('/').pop();
+        const match = /\.(\w+)$/.exec(filename);
+        const type = match ? `image/${match[1]}` : `image/jpeg`;
+        formData.append('images', {
+          uri: img.uri,
+          name: filename || `image_${index}.jpg`,
+          type: type,
+        });
+      } else {
+        // Pour les images déjà sur le serveur
+        formData.append('existingImages', img.uri);
+      }
+    });
 
     try {
       if (editingProduct) {
@@ -230,16 +258,43 @@ const ManageProducts = ({ navigation }) => {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false}>
-              <TouchableOpacity style={styles.imagePicker} onPress={handlePickImage}>
-                {form.image ? (
-                  <Image source={{ uri: form.image.uri }} style={styles.previewImage} />
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <MaterialCommunityIcons name="camera-plus" size={40} color={THEME.COLORS.textTertiary} />
-                    <Text style={styles.imagePlaceholderText}>Ajouter une photo</Text>
+              <View style={styles.imagesGrid}>
+                {form.images.map((img, index) => (
+                  <View key={index} style={styles.imageWrapper}>
+                    <Image source={{ uri: img.uri }} style={styles.gridImage} />
+                    <TouchableOpacity 
+                      style={styles.removeImageBtn} 
+                      onPress={() => removeImage(index)}
+                    >
+                      <MaterialCommunityIcons name="close-circle" size={24} color={THEME.COLORS.danger} />
+                    </TouchableOpacity>
                   </View>
+                ))}
+                
+                {form.images.length < 10 && (
+                  <TouchableOpacity style={styles.addImageCard} onPress={handlePickImage}>
+                    <MaterialCommunityIcons name="camera-plus" size={32} color={THEME.COLORS.primary} />
+                    <Text style={styles.addImageText}>{form.images.length}/10</Text>
+                  </TouchableOpacity>
                 )}
-              </TouchableOpacity>
+              </View>
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>Catégorie *</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
+                  {CATEGORIES.map((cat) => (
+                    <TouchableOpacity 
+                      key={cat.value} 
+                      style={[styles.catPill, form.category === cat.value && styles.catPillActive]}
+                      onPress={() => setForm({...form, category: cat.value})}
+                    >
+                      <Text style={[styles.catPillText, form.category === cat.value && styles.catPillTextActive]}>
+                        {cat.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Nom du produit *</Text>
@@ -357,12 +412,21 @@ const styles = StyleSheet.create({
   modalContent: { backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '90%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
-  imagePicker: { width: '100%', height: 180, borderRadius: 16, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', marginBottom: 24, overflow: 'hidden' },
-  previewImage: { width: '100%', height: '100%' },
-  imagePlaceholder: { alignItems: 'center' },
-  imagePlaceholderText: { color: THEME.COLORS.textTertiary, marginTop: 8 },
+  
+  imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
+  imageWrapper: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: THEME.COLORS.glassSurface },
+  gridImage: { width: '100%', height: '100%' },
+  removeImageBtn: { position: 'absolute', top: 2, right: 2, zIndex: 5 },
+  addImageCard: { width: '31%', aspectRatio: 1, borderRadius: 12, borderWhidth: 1, borderColor: THEME.COLORS.primary, borderStyle: 'dashed', justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(212, 175, 55, 0.05)', borderWidth: 1 },
+  addImageText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: 'bold', marginTop: 4 },
+  
   formGroup: { marginBottom: 20 },
   label: { color: THEME.COLORS.textSecondary, marginBottom: 8, fontSize: 14, fontWeight: '600' },
+  catScroll: { gap: 10, paddingBottom: 10 },
+  catPill: { paddingHorizontal: 16, paddingVertical: 8, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.border },
+  catPillActive: { backgroundColor: THEME.COLORS.primary, borderColor: THEME.COLORS.primary },
+  catPillText: { color: THEME.COLORS.textTertiary, fontSize: 12, fontWeight: '600' },
+  catPillTextActive: { color: THEME.COLORS.deepAsphalt },
   input: { backgroundColor: THEME.COLORS.glassSurface, borderRadius: 12, padding: 14, color: THEME.COLORS.textPrimary, borderWidth: 1, borderColor: THEME.COLORS.border },
   textArea: { height: 100, textAlignVertical: 'top' },
   submitBtn: { backgroundColor: THEME.COLORS.primary, paddingVertical: 18, borderRadius: THEME.BORDERS.radius.pill, alignItems: 'center', marginTop: 10, ...THEME.SHADOWS.gold },

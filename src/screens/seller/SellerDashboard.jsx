@@ -17,6 +17,7 @@ import {
   useUpdateOrderStatusMutation,
   useGetLedgerStatsQuery 
 } from '../../store/api/marketplaceApiSlice';
+import { showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const SellerDashboard = ({ navigation }) => {
@@ -29,45 +30,78 @@ const SellerDashboard = ({ navigation }) => {
   const orders = ordersData?.data || [];
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
-  const handleUpdateStatus = async (orderId, newStatus) => {
-    try {
-      await updateStatus({ id: orderId, status: newStatus }).unwrap();
-      Alert.alert('Succès', 'Statut mis à jour');
-      refetch();
-    } catch (error) {
-      Alert.alert('Erreur', error.data?.message || 'Action impossible');
+  const handleUpdateStatus = async (orderId, currentStatus) => {
+    let nextStatus = '';
+    let confirmMsg = '';
+
+    if (currentStatus === 'pending') {
+      nextStatus = 'confirmed';
+      confirmMsg = 'Voulez-vous confirmer cette commande et commencer la préparation ?';
+    } else if (currentStatus === 'confirmed') {
+      nextStatus = 'picked_up';
+      confirmMsg = 'Le colis a-t-il été remis au livreur ?';
+    } else if (currentStatus === 'picked_up') {
+      nextStatus = 'delivered';
+      confirmMsg = 'Confirmez-vous que la commande a été livrée et payée ?';
     }
+
+    if (!nextStatus) return;
+
+    Alert.alert(
+      'Mise à jour statut',
+      confirmMsg,
+      [
+        { text: 'Annuler', style: 'cancel' },
+        { 
+          text: 'Confirmer', 
+          onPress: async () => {
+            try {
+              await updateStatus({ id: orderId, status: nextStatus }).unwrap();
+              showSuccessToast({ title: 'Succès', message: `Commande passée en : ${nextStatus}` });
+              refetch();
+            } catch (error) {
+              Alert.alert('Erreur', error.data?.message || 'Action impossible');
+            }
+          }
+        }
+      ]
+    );
   };
 
   const renderOrder = ({ item }) => (
     <View style={styles.orderCard}>
       <View style={styles.orderHeader}>
-        <Text style={styles.orderId}>#{item._id.slice(-6).toUpperCase()}</Text>
+        <View>
+          <Text style={styles.orderId}>#{item._id.slice(-6).toUpperCase()}</Text>
+          <Text style={styles.orderTime}>{new Date(item.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+        </View>
         <Text style={styles.orderTotal}>{item.totalPrice} FCFA</Text>
       </View>
       
       <View style={styles.itemsList}>
         {item.items.map((it, idx) => (
-          <Text key={idx} style={styles.itemText}>{it.quantity}x {it.product?.name}</Text>
+          <Text key={idx} style={styles.itemText}>{it.quantity}x {it.product?.name || it.name}</Text>
         ))}
       </View>
 
       <View style={styles.orderFooter}>
-        <Text style={styles.customerName}>{item.rider?.name || 'Client Yely'}</Text>
-        {item.status === 'pending' && (
+        <View style={styles.customerBox}>
+          <MaterialCommunityIcons name="account-outline" size={14} color={THEME.COLORS.textTertiary} />
+          <Text style={styles.customerName}>{item.customer?.name || 'Client Yely'}</Text>
+        </View>
+
+        {item.status !== 'delivered' && item.status !== 'cancelled' && (
           <TouchableOpacity 
-            style={styles.confirmBtn} 
-            onPress={() => handleUpdateStatus(item._id, 'confirmed')}
+            style={[styles.statusBtn, { backgroundColor: item.status === 'pending' ? THEME.COLORS.primary : THEME.COLORS.success }]} 
+            onPress={() => handleUpdateStatus(item._id, item.status)}
             disabled={isUpdating}
           >
-            <Text style={styles.confirmBtnText}>Confirmer</Text>
+            <Text style={styles.statusBtnText}>
+              {item.status === 'pending' ? 'PRÉPARER' : 
+               item.status === 'confirmed' ? 'REMIS AU LIVREUR' : 
+               item.status === 'picked_up' ? 'MARQUER LIVRÉ' : 'OK'}
+            </Text>
           </TouchableOpacity>
-        )}
-        {item.status === 'confirmed' && (
-          <View style={styles.waitBadge}>
-            <MaterialCommunityIcons name="clock-outline" size={14} color={THEME.COLORS.warning} />
-            <Text style={styles.waitText}>Attente Livreur</Text>
-          </View>
         )}
       </View>
     </View>
@@ -308,42 +342,41 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.bodySmall,
     color: THEME.COLORS.textSecondary,
   },
+  orderTime: {
+    fontSize: 10,
+    color: THEME.COLORS.textTertiary,
+    marginTop: 2,
+  },
   orderFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: THEME.COLORS.border,
-    paddingTop: THEME.SPACING.sm,
+    paddingTop: THEME.SPACING.md,
+  },
+  customerBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
   },
   customerName: {
     fontSize: THEME.FONTS.sizes.caption,
-    color: THEME.COLORS.textTertiary,
+    color: THEME.COLORS.textSecondary,
+    marginLeft: 6,
+    fontWeight: '500',
   },
-  confirmBtn: {
-    backgroundColor: THEME.COLORS.success,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
+  statusBtn: {
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 8,
+    ...THEME.SHADOWS.soft,
   },
-  confirmBtnText: {
-    color: '#FFFFFF',
-    fontSize: 12,
+  statusBtnText: {
+    color: '#000',
+    fontSize: 11,
     fontWeight: 'bold',
-  },
-  waitBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(243, 156, 18, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  waitText: {
-    fontSize: 10,
-    color: THEME.COLORS.warning,
-    marginLeft: 4,
-    fontWeight: 'bold',
+    letterSpacing: 0.5,
   },
   center: {
     flex: 1,
