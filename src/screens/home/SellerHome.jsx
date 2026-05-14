@@ -108,10 +108,15 @@ const SellerHome = ({ navigation }) => {
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Actions rapides</Text>
           <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
-              <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
-              <Text style={styles.smallActionLabel}>Historique des Ventes</Text>
-            </TouchableOpacity>
+             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('SellerOrders')}>
+               <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
+               <Text style={styles.smallActionLabel}>Gérer mes Commandes</Text>
+             </TouchableOpacity>
+
+             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
+               <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
+               <Text style={styles.smallActionLabel}>Historique des Ventes</Text>
+             </TouchableOpacity>
             
             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
               <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />

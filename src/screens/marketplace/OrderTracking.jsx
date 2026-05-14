@@ -1,274 +1,155 @@
+// src/screens/marketplace/OrderTracking.jsx
+import React, { useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
   ScrollView, 
-  TouchableOpacity, 
-  ActivityIndicator,
-  StatusBar
+  TouchableOpacity,
+  ActivityIndicator
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import React, { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
-import OrderTimeline from '../../components/marketplace/OrderTimeline';
-import { marketplaceApiSlice } from '../../store/api/marketplaceApiSlice';
+import { useGetOrderQuery } from '../../store/api/marketplaceApiSlice';
 import socketService from '../../services/socketService';
+import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import GlassCard from '../../components/ui/GlassCard';
 import THEME from '../../theme/theme';
+
+const STATUS_MAP = {
+  'pending': { label: 'En attente', icon: 'clock-outline', color: '#f39c12', step: 0 },
+  'confirmed': { label: 'Confirmée', icon: 'check-circle-outline', color: '#27ae60', step: 1 },
+  'searching': { label: 'Recherche livreur', icon: 'magnify', color: '#3498db', step: 2 },
+  'picked_up': { label: 'En livraison', icon: 'bike', color: '#9b59b6', step: 3 },
+  'delivered': { label: 'Livrée', icon: 'flag-checkered', color: '#2ecc71', step: 4 },
+  'cancelled': { label: 'Annulée', icon: 'close-circle-outline', color: '#e74c3c', step: -1 },
+  'rejected': { label: 'Refusée', icon: 'alert-circle-outline', color: '#e67e22', step: -1 }
+};
 
 const OrderTracking = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
-  
-  // Utilisation de useGetMyOrdersQuery pour trouver la commande spécifique
-  const { data, isLoading } = marketplaceApiSlice.useGetMyOrdersQuery();
-  const order = data?.data?.find(o => o._id === orderId);
+  const { data: orderData, isLoading, refetch } = useGetOrderQuery(orderId);
+  const order = orderData?.data;
 
-  if (isLoading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={THEME.COLORS.primary} />
-      </View>
-    );
-  }
+  // TEMPS RÉEL: Ecouter les mises à jour de statut
+  useEffect(() => {
+    socketService.on('order_updated', (updatedOrder) => {
+      if (updatedOrder._id === orderId) {
+        refetch();
+      }
+    });
+    return () => socketService.off('order_updated');
+  }, [orderId]);
 
-  if (!order) {
-    return (
-      <View style={styles.center}>
-        <Text style={styles.errorText}>Commande introuvable</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
-          <Text style={styles.backBtnText}>Retour</Text>
-        </TouchableOpacity>
+  if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={THEME.COLORS.primary} /></View>;
+  if (!order) return <View style={styles.center}><Text style={{color: '#FFF'}}>Commande introuvable</Text></View>;
+
+  const currentStatus = STATUS_MAP[order.status] || STATUS_MAP['pending'];
+
+  const renderStep = (step, title, isCompleted, isLast = false) => (
+    <View style={styles.stepRow}>
+      <View style={styles.stepIndicator}>
+        <View style={[styles.circle, isCompleted && styles.completedCircle]}>
+          {isCompleted && <Ionicons name="checkmark" size={16} color="#000" />}
+        </View>
+        {!isLast && <View style={[styles.line, isCompleted && styles.completedLine]} />}
       </View>
-    );
-  }
+      <View style={styles.stepContent}>
+        <Text style={[styles.stepTitle, isCompleted && styles.completedText]}>{title}</Text>
+      </View>
+    </View>
+  );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
-      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.iconButton}>
-          <MaterialCommunityIcons name="close" size={24} color={THEME.COLORS.textPrimary} />
+    <ScreenWrapper style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color="#FFF" />
         </TouchableOpacity>
         <Text style={styles.title}>Suivi de commande</Text>
-        <TouchableOpacity style={styles.iconButton}>
-          <MaterialCommunityIcons name="help-circle-outline" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={[styles.scrollContent, { paddingBottom: insets.bottom + 20 }]}>
-        <View style={styles.card}>
-          <View style={styles.orderHeader}>
-            <View>
-              <Text style={styles.orderNumber}>Commande #{order._id.slice(-6).toUpperCase()}</Text>
-              <Text style={styles.orderDate}>{new Date(order.createdAt).toLocaleDateString()}</Text>
-            </View>
-            <View style={[styles.statusBadge, order.status === 'cancelled' && styles.statusBadgeError]}>
-              <Text style={styles.statusText}>{order.status.toUpperCase()}</Text>
-            </View>
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <GlassCard style={styles.statusCard}>
+          <View style={[styles.statusIconBg, { backgroundColor: currentStatus.color + '20' }]}>
+            <MaterialCommunityIcons name={currentStatus.icon} size={40} color={currentStatus.color} />
           </View>
+          <Text style={styles.statusLabel}>{currentStatus.label}</Text>
+          <Text style={styles.orderNumber}>Commande #{order._id.slice(-6).toUpperCase()}</Text>
+        </GlassCard>
 
-          <View style={styles.divider} />
+        <GlassCard style={styles.timelineCard}>
+          <Text style={styles.sectionTitle}>Progression</Text>
+          <View style={styles.timeline}>
+            {renderStep(0, "Commande passée", true)}
+            {renderStep(1, "Confirmation vendeur", order.confirmedAt)}
+            {renderStep(2, "Attribution livreur", order.driver)}
+            {renderStep(3, "En cours de livraison", order.pickedUpAt)}
+            {renderStep(4, "Livré", order.deliveredAt, true)}
+          </View>
+        </GlassCard>
 
-          <OrderTimeline 
-            currentStatus={order.status} 
-            history={order.history}
-            driverName={order.driver?.name}
-          />
-        </View>
-
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Récapitulatif</Text>
-          {order.items.map((item, index) => (
-            <View key={index} style={styles.itemRow}>
+        <GlassCard style={styles.detailsCard}>
+          <Text style={styles.sectionTitle}>Détails</Text>
+          {order.items.map((item, idx) => (
+            <View key={idx} style={styles.itemRow}>
               <Text style={styles.itemQty}>{item.quantity}x</Text>
-              <Text style={styles.itemName}>{item.product?.name || 'Produit'}</Text>
-              <Text style={styles.itemPrice}>{item.priceAtPurchase * item.quantity} FCFA</Text>
+              <Text style={styles.itemName}>{item.name}</Text>
+              <Text style={styles.itemPrice}>{(item.price * item.quantity).toLocaleString()} F</Text>
             </View>
           ))}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total payé (Cash)</Text>
-            <Text style={styles.totalValue}>{order.totalPrice} FCFA</Text>
+            <Text style={styles.totalValue}>{order.totalPrice.toLocaleString()} F</Text>
           </View>
-        </View>
+        </GlassCard>
 
-        <View style={styles.card}>
-          <Text style={styles.sectionTitle}>Infos Livraison</Text>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="map-marker" size={20} color={THEME.COLORS.primary} />
-            <Text style={styles.infoText}>{order.deliveryAddress?.address || 'Adresse de livraison'}</Text>
-          </View>
-          <View style={styles.infoRow}>
-            <MaterialCommunityIcons name="store" size={20} color={THEME.COLORS.primary} />
-            <Text style={styles.infoText}>Vendeur: {order.seller?.name || 'Partenaire Yély'}</Text>
-          </View>
-        </View>
-
-        <TouchableOpacity style={styles.supportBtn}>
-          <MaterialCommunityIcons name="chat-outline" size={20} color={THEME.COLORS.primary} />
-          <Text style={styles.supportBtnText}>Besoin d'aide ? Contacter le support</Text>
-        </TouchableOpacity>
+        {order.status === 'pending' && (
+          <TouchableOpacity style={styles.cancelBtn}>
+            <Text style={styles.cancelText}>Annuler la commande</Text>
+          </TouchableOpacity>
+        )}
       </ScrollView>
-    </View>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: THEME.COLORS.background,
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: THEME.SPACING.xl,
-    paddingVertical: THEME.SPACING.md,
-  },
-  iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.COLORS.glassSurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: THEME.FONTS.sizes.h3,
-    fontWeight: THEME.FONTS.weights.bold,
-    color: THEME.COLORS.textPrimary,
-  },
-  scrollContent: {
-    padding: THEME.SPACING.xl,
-  },
-  card: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: THEME.BORDERS.radius.xl,
-    padding: THEME.SPACING.xl,
-    marginBottom: THEME.SPACING.lg,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    ...THEME.SHADOWS.soft,
-  },
-  orderHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  orderNumber: {
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.bold,
-    color: THEME.COLORS.textPrimary,
-  },
-  orderDate: {
-    fontSize: THEME.FONTS.sizes.caption,
-    color: THEME.COLORS.textTertiary,
-  },
-  statusBadge: {
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  statusBadgeError: {
-    backgroundColor: 'rgba(192, 57, 43, 0.15)',
-  },
-  statusText: {
-    color: THEME.COLORS.primary,
-    fontSize: 10,
-    fontWeight: THEME.FONTS.weights.bold,
-  },
-  divider: {
-    height: 1,
-    backgroundColor: THEME.COLORS.border,
-    marginVertical: THEME.SPACING.lg,
-  },
-  sectionTitle: {
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.bold,
-    color: THEME.COLORS.textPrimary,
-    marginBottom: THEME.SPACING.md,
-  },
-  itemRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.sm,
-  },
-  itemQty: {
-    width: 30,
-    fontSize: THEME.FONTS.sizes.bodySmall,
-    color: THEME.COLORS.primary,
-    fontWeight: THEME.FONTS.weights.bold,
-  },
-  itemName: {
-    flex: 1,
-    fontSize: THEME.FONTS.sizes.bodySmall,
-    color: THEME.COLORS.textSecondary,
-  },
-  itemPrice: {
-    fontSize: THEME.FONTS.sizes.bodySmall,
-    color: THEME.COLORS.textPrimary,
-    fontWeight: THEME.FONTS.weights.medium,
-  },
-  totalRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  totalLabel: {
-    fontSize: THEME.FONTS.sizes.body,
-    fontWeight: THEME.FONTS.weights.bold,
-    color: THEME.COLORS.textPrimary,
-  },
-  totalValue: {
-    fontSize: THEME.FONTS.sizes.h3,
-    fontWeight: THEME.FONTS.weights.bold,
-    color: THEME.COLORS.primary,
-  },
-  infoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.sm,
-  },
-  infoText: {
-    marginLeft: THEME.SPACING.md,
-    fontSize: THEME.FONTS.sizes.bodySmall,
-    color: THEME.COLORS.textSecondary,
-    flex: 1,
-  },
-  supportBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: THEME.SPACING.lg,
-  },
-  supportBtnText: {
-    marginLeft: 8,
-    color: THEME.COLORS.primary,
-    fontWeight: THEME.FONTS.weights.bold,
-    fontSize: THEME.FONTS.sizes.bodySmall,
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.background,
-  },
-  errorText: {
-    color: THEME.COLORS.textSecondary,
-    marginBottom: THEME.SPACING.lg,
-  },
-  backBtn: {
-    paddingHorizontal: 20,
-    paddingVertical: 10,
-    backgroundColor: THEME.COLORS.primary,
-    borderRadius: 20,
-  },
-  backBtnText: {
-    color: THEME.COLORS.textInverse,
-    fontWeight: 'bold',
-  }
+  container: { flex: 1, backgroundColor: '#000' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20, paddingBottom: 20 },
+  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
+  title: { fontSize: 20, fontWeight: 'bold', color: '#FFF', marginLeft: 15 },
+  scrollContent: { padding: 20 },
+  statusCard: { padding: 30, alignItems: 'center', marginBottom: 20 },
+  statusIconBg: { width: 80, height: 80, borderRadius: 40, justifyContent: 'center', alignItems: 'center', marginBottom: 15 },
+  statusLabel: { fontSize: 22, fontWeight: 'bold', color: '#FFF' },
+  orderNumber: { fontSize: 14, color: '#AAA', marginTop: 5 },
+  timelineCard: { padding: 20, marginBottom: 20 },
+  sectionTitle: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.primary, marginBottom: 20 },
+  timeline: { paddingLeft: 10 },
+  stepRow: { flexDirection: 'row', minHeight: 60 },
+  stepIndicator: { alignItems: 'center', marginRight: 20 },
+  circle: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#333', backgroundColor: '#000', justifyContent: 'center', alignItems: 'center' },
+  completedCircle: { borderColor: THEME.COLORS.primary, backgroundColor: THEME.COLORS.primary },
+  line: { width: 2, flex: 1, backgroundColor: '#333', marginVertical: 4 },
+  completedLine: { backgroundColor: THEME.COLORS.primary },
+  stepContent: { paddingTop: 2 },
+  stepTitle: { fontSize: 15, color: '#666', fontWeight: '500' },
+  completedText: { color: '#FFF' },
+  detailsCard: { padding: 20, marginBottom: 20 },
+  itemRow: { flexDirection: 'row', marginBottom: 10 },
+  itemQty: { color: THEME.COLORS.primary, fontWeight: 'bold', width: 30 },
+  itemName: { color: '#CCC', flex: 1 },
+  itemPrice: { color: '#FFF' },
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 15 },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between' },
+  totalLabel: { color: '#AAA' },
+  totalValue: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 18 },
+  cancelBtn: { padding: 15, alignItems: 'center', borderRadius: 15, borderWidth: 1, borderColor: '#e74c3c', marginBottom: 30 },
+  cancelText: { color: '#e74c3c', fontWeight: 'bold' },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000' }
 });
 
 export default OrderTracking;

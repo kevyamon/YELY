@@ -40,8 +40,10 @@ import MarketplaceHub from '../screens/marketplace/MarketplaceHub';
 import ProductList from '../screens/marketplace/ProductList';
 import ProductDetails from '../screens/marketplace/ProductDetails';
 import Cart from '../screens/marketplace/Cart';
+import Checkout from '../screens/marketplace/CheckoutScreen';
 import OrderTracking from '../screens/marketplace/OrderTracking';
 import SellerDashboard from '../screens/seller/SellerDashboard';
+import SellerOrders from '../screens/seller/SellerOrders';
 import LedgerHistory from '../screens/seller/LedgerHistory';
 import PancarteScreen from '../screens/ride/PancarteScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
@@ -207,8 +209,10 @@ const AppNavigator = () => {
             <Stack.Screen name="ProductList" component={ProductList} />
             <Stack.Screen name="ProductDetails" component={ProductDetails} />
             <Stack.Screen name="Cart" component={Cart} />
+            <Stack.Screen name="Checkout" component={Checkout} />
             <Stack.Screen name="OrderTracking" component={OrderTracking} />
             <Stack.Screen name="SellerDashboard" component={SellerDashboard} />
+            <Stack.Screen name="SellerOrders" component={SellerOrders} />
             <Stack.Screen name="ManageProducts" component={ManageProducts} />
             <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
             

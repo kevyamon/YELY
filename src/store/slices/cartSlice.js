@@ -24,6 +24,7 @@ const cartSlice = createSlice({
           image: product.images?.[0],
           sellerId: product.seller?._id,
           sellerName: product.seller?.name,
+          sellerCoords: product.seller?.currentLocation?.coordinates || [0, 0],
           quantity: quantity
         });
       }

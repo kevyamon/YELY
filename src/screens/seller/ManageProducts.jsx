@@ -126,18 +126,20 @@ const ManageProducts = ({ navigation }) => {
     if (__DEV__) console.log('[MARKETPLACE] Submitting FormData for category:', form.category);
 
     form.images.forEach((img, index) => {
-      if (img.uri && !img.uri.startsWith('http')) {
-        const filename = img.uri.split('/').pop();
-        const match = /\.(\w+)$/.exec(filename);
-        const type = match ? `image/${match[1]}` : `image/jpeg`;
-        formData.append('images', {
-          uri: img.uri,
-          name: filename || `image_${index}.jpg`,
-          type: type,
-        });
-      } else {
-        // Pour les images déjà sur le serveur
-        formData.append('existingImages', img.uri);
+      if (img.uri) {
+        if (!img.uri.startsWith('http')) {
+          const filename = img.uri.split('/').pop();
+          const match = /\.(\w+)$/.exec(filename);
+          const type = match ? `image/${match[1]}` : `image/jpeg`;
+          formData.append('images', {
+            uri: img.uri,
+            name: filename || `image_${index}.jpg`,
+            type: type,
+          });
+        } else {
+          // Pour les images déjà sur le serveur
+          formData.append('existingImages', img.uri);
+        }
       }
     });
 
@@ -151,7 +153,10 @@ const ManageProducts = ({ navigation }) => {
       }
       resetForm();
     } catch (error) {
-      dispatch(showToast({ type: 'error', title: 'Échec', message: error.data?.message || 'Impossible d\'enregistrer le produit.' }));
+      console.error('[MANAGE_PRODUCTS] Submit error:', error);
+      const msg = error.data?.message || error.message || 'Impossible d\'enregistrer le produit.';
+      dispatch(showToast({ type: 'error', title: 'Échec', message: msg }));
+      Alert.alert('Erreur', msg);
     }
   };
 
@@ -217,7 +222,10 @@ const ManageProducts = ({ navigation }) => {
         <Text style={styles.title}>Mes Produits</Text>
         <TouchableOpacity 
           style={styles.addBtn}
-          onPress={() => setModalVisible(true)}
+          onPress={() => {
+            resetForm();
+            setModalVisible(true);
+          }}
         >
           <MaterialCommunityIcons name="plus" size={24} color={THEME.COLORS.textInverse} />
         </TouchableOpacity>

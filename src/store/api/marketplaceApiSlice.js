@@ -63,6 +63,10 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       query: () => '/orders/my-orders',
       providesTags: ['Order'],
     }),
+    getOrder: builder.query({
+      query: (id) => `/orders/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Order', id }],
+    }),
     getSellerOrders: builder.query({
       query: () => '/orders/seller-orders',
       providesTags: ['Order'],
@@ -106,6 +110,7 @@ export const {
   useToggleSoldOutMutation,
   useCreateOrderMutation,
   useGetMyOrdersQuery,
+  useGetOrderQuery,
   useGetSellerOrdersQuery,
   useUpdateOrderStatusMutation,
   useGetMyLedgerQuery,
