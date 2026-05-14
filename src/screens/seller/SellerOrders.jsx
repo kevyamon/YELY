@@ -18,7 +18,9 @@ import {
 import socketService from '../../services/socketService';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import THEME from '../../theme/theme';
+import GoldButton from '../../components/ui/GoldButton';
 
 const STATUS_CONFIG = {
   'pending': { label: 'Nouvelle', color: '#f39c12', action: 'Confirmer', next: 'confirmed' },
@@ -32,23 +34,38 @@ const STATUS_CONFIG = {
 
 const SellerOrders = ({ navigation }) => {
   const insets = useSafeAreaInsets();
-  const { data: ordersData, isLoading, refetch } = useGetSellerOrdersQuery();
+  const { data: ordersData, isLoading, refetch, isFetching } = useGetSellerOrdersQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
   const orders = ordersData?.data || [];
 
-  // TEMPS RÉEL: Nouvelles commandes
+  // TEMPS RÉEL: On utilise le socket service existant
   useEffect(() => {
-    socketService.on('new_order', (order) => {
-      refetch();
-    });
-    socketService.on('order_updated', (order) => {
-      refetch();
-    });
+    const handleNewOrder = () => refetch();
+    const handleOrderUpdate = () => refetch();
+
+    socketService.on('new_order', handleNewOrder);
+    socketService.on('order_updated', handleOrderUpdate);
+
     return () => {
-      socketService.off('new_order');
-      socketService.off('order_updated');
+      socketService.off('new_order', handleNewOrder);
+      socketService.off('order_updated', handleOrderUpdate);
     };
-  }, []);
+  }, [refetch]);
+
+  const renderSkeleton = () => (
+    <View style={styles.skeletonContainer}>
+      {[1, 2, 3].map(i => (
+        <View key={i} style={styles.skeletonCard}>
+          <SkeletonBone width="40%" height={20} borderRadius={10} />
+          <SkeletonBone width="100%" height={100} borderRadius={15} style={{ marginTop: 15 }} />
+          <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 15 }}>
+            <SkeletonBone width="30%" height={40} borderRadius={20} />
+            <SkeletonBone width="30%" height={40} borderRadius={20} />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
 
   const handleUpdate = async (id, status) => {
     try {
@@ -64,44 +81,61 @@ const SellerOrders = ({ navigation }) => {
     return (
       <GlassCard style={styles.orderCard}>
         <View style={styles.orderHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: config.color + '20' }]}>
-            <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
+          <View style={[styles.statusBadge, { backgroundColor: config.color + '15' }]}>
+            <View style={[styles.statusDot, { backgroundColor: config.color }]} />
+            <Text style={[styles.statusText, { color: config.color }]}>{config.label.toUpperCase()}</Text>
           </View>
-          <Text style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString()}</Text>
+          <Text style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}</Text>
         </View>
 
-        <Text style={styles.customerName}>{item.customer?.name || 'Client'}</Text>
-        <Text style={styles.address} numberOfLines={1}>📍 {item.shippingAddress.address}</Text>
-
-        <View style={styles.divider} />
-        
-        {item.items.map((prod, idx) => (
-          <View key={idx} style={styles.itemRow}>
-            <Text style={styles.itemQty}>{prod.quantity}x</Text>
-            <Text style={styles.itemName}>{prod.name}</Text>
+        <View style={styles.customerBox}>
+          <View style={styles.customerAvatar}>
+            <Text style={styles.avatarText}>{(item.customer?.name || 'C').charAt(0)}</Text>
           </View>
-        ))}
+          <View>
+            <Text style={styles.customerName}>{item.customer?.name || 'Client Inconnu'}</Text>
+            <Text style={styles.address} numberOfLines={1}>📍 {item.shippingAddress.address}</Text>
+          </View>
+        </View>
+
+        <View style={styles.itemsList}>
+          {item.items.map((prod, idx) => (
+            <View key={idx} style={styles.itemRow}>
+              <View style={styles.qtyBadge}>
+                <Text style={styles.qtyText}>{prod.quantity}</Text>
+              </View>
+              <Text style={styles.itemName}>{prod.name}</Text>
+              <Text style={styles.itemPrice}>{(prod.price * prod.quantity).toLocaleString()} F</Text>
+            </View>
+          ))}
+        </View>
 
         <View style={styles.footer}>
-          <Text style={styles.totalPrice}>{item.totalPrice.toLocaleString()} F</Text>
+          <View>
+            <Text style={styles.totalLabel}>Total à percevoir</Text>
+            <Text style={styles.totalPrice}>{item.totalPrice.toLocaleString()} FCFA</Text>
+          </View>
           
           <View style={styles.actions}>
-            {config.action && (
-              <TouchableOpacity 
-                style={[styles.actionBtn, { backgroundColor: config.color }]}
-                onPress={() => handleUpdate(item._id, config.next)}
-                disabled={isUpdating}
-              >
-                <Text style={styles.actionBtnText}>{config.action}</Text>
-              </TouchableOpacity>
-            )}
             {item.status === 'pending' && (
               <TouchableOpacity 
                 style={styles.rejectBtn}
                 onPress={() => handleUpdate(item._id, 'rejected')}
+                disabled={isUpdating}
               >
-                <Ionicons name="close" size={20} color="#e74c3c" />
+                <Ionicons name="close" size={24} color="#FF4B4B" />
               </TouchableOpacity>
+            )}
+            
+            {config.action && (
+              <GoldButton 
+                title={config.action}
+                onPress={() => handleUpdate(item._id, config.next)}
+                loading={isUpdating}
+                fullWidth={false}
+                size="small"
+                style={{ paddingHorizontal: 20 }}
+              />
             )}
           </View>
         </View>
@@ -124,43 +158,68 @@ const SellerOrders = ({ navigation }) => {
         renderItem={renderOrderItem}
         keyExtractor={item => item._id}
         contentContainerStyle={styles.listContent}
-        refreshControl={<RefreshControl refreshing={isLoading} onRefresh={refetch} tintColor={THEME.COLORS.primary} />}
-        ListEmptyComponent={
-          <View style={styles.empty}>
-            <MaterialCommunityIcons name="clipboard-text-outline" size={60} color="#333" />
-            <Text style={styles.emptyText}>Aucune commande pour le moment</Text>
-          </View>
+        refreshControl={
+          <RefreshControl 
+            refreshing={isFetching} 
+            onRefresh={refetch} 
+            tintColor={THEME.COLORS.primary} 
+            colors={[THEME.COLORS.primary]}
+          />
         }
+        ListEmptyComponent={isLoading ? renderSkeleton() : (
+          <View style={styles.empty}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={80} color="rgba(212, 175, 55, 0.1)" />
+            <Text style={styles.emptyText}>Aucune commande pour le moment</Text>
+            <TouchableOpacity onPress={refetch} style={styles.refreshBtn}>
+              <Text style={styles.refreshText}>Actualiser</Text>
+            </TouchableOpacity>
+          </View>
+        )}
       />
     </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
+  container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 20 },
-  backBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(255,255,255,0.1)', justifyContent: 'center', alignItems: 'center' },
-  title: { fontSize: 20, fontWeight: 'bold', color: '#FFF' },
-  listContent: { padding: 20 },
-  orderCard: { padding: 20, marginBottom: 20 },
-  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 },
-  statusBadge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 8 },
-  statusText: { fontSize: 12, fontWeight: 'bold' },
-  orderDate: { color: '#666', fontSize: 12 },
-  customerName: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  address: { color: '#AAA', fontSize: 13, marginTop: 5 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.1)', marginVertical: 15 },
-  itemRow: { flexDirection: 'row', marginBottom: 5 },
-  itemQty: { color: THEME.COLORS.primary, fontWeight: 'bold', width: 30 },
-  itemName: { color: '#CCC' },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 15 },
-  totalPrice: { color: '#FFF', fontSize: 18, fontWeight: 'bold' },
-  actions: { flexDirection: 'row', gap: 10 },
-  actionBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 10 },
-  actionBtnText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
-  rejectBtn: { width: 40, height: 40, borderRadius: 10, borderWidth: 1, borderColor: '#e74c3c', justifyContent: 'center', alignItems: 'center' },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 100 },
-  emptyText: { color: '#666', marginTop: 15 }
+  backBtn: { width: 44, height: 44, borderRadius: 15, backgroundColor: THEME.COLORS.glassSurface, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border },
+  title: { fontSize: 22, fontWeight: '800', color: '#FFF', letterSpacing: 0.5 },
+  listContent: { padding: 20, paddingBottom: 100 },
+  orderCard: { padding: 20, marginBottom: 20, borderRadius: 24, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.1)' },
+  orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 },
+  statusBadge: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 10, gap: 6 },
+  statusDot: { width: 6, height: 6, borderRadius: 3 },
+  statusText: { fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  orderDate: { color: THEME.COLORS.textTertiary, fontSize: 11, fontWeight: '600' },
+  
+  customerBox: { flexDirection: 'row', alignItems: 'center', gap: 15, marginBottom: 20 },
+  customerAvatar: { width: 45, height: 45, borderRadius: 15, backgroundColor: 'rgba(212, 175, 55, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.2)' },
+  avatarText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 18 },
+  customerName: { color: '#FFF', fontSize: 18, fontWeight: '700' },
+  address: { color: THEME.COLORS.textSecondary, fontSize: 13, marginTop: 2 },
+  
+  itemsList: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 15, padding: 15, marginBottom: 20 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  qtyBadge: { backgroundColor: 'rgba(212, 175, 55, 0.2)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, marginRight: 12 },
+  qtyText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 12 },
+  itemName: { color: '#EEE', flex: 1, fontSize: 14, fontWeight: '500' },
+  itemPrice: { color: THEME.COLORS.textTertiary, fontSize: 13 },
+  
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-end' },
+  totalLabel: { color: THEME.COLORS.textTertiary, fontSize: 10, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 4 },
+  totalPrice: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: '900' },
+  
+  actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  rejectBtn: { width: 45, height: 45, borderRadius: 15, backgroundColor: 'rgba(255, 75, 75, 0.1)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(255, 75, 75, 0.2)' },
+  
+  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
+  emptyText: { color: THEME.COLORS.textSecondary, marginTop: 15, fontSize: 16, textAlign: 'center' },
+  refreshBtn: { marginTop: 20, paddingHorizontal: 25, paddingVertical: 12, borderRadius: 20, backgroundColor: 'rgba(212, 175, 55, 0.1)', borderWidth: 1, borderColor: THEME.COLORS.primary },
+  refreshText: { color: THEME.COLORS.primary, fontWeight: 'bold' },
+
+  skeletonContainer: { padding: 20 },
+  skeletonCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }
 });
 
 export default SellerOrders;

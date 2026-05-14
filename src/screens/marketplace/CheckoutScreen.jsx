@@ -35,6 +35,7 @@ const CheckoutScreen = ({ navigation }) => {
   const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
   const [name, setName] = useState(user?.name || '');
   const [note, setNote] = useState('');
+  const [deliveryMode, setDeliveryMode] = useState('current'); // 'current' or 'other'
 
   // FORCE AUTO-FILL (Si les données arrivent après le chargement de l'écran)
   useEffect(() => {
@@ -113,10 +114,10 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   useEffect(() => {
-    if (cartItems.length > 0 && !clientCoords) {
+    if (cartItems.length > 0 && !clientCoords && deliveryMode === 'current') {
       getCurrentLocation();
     }
-  }, [cartItems]);
+  }, [cartItems, deliveryMode]);
 
   const calculateDeliveryPrice = (nbSellers) => {
     if (nbSellers <= 0) return 0;
@@ -227,8 +228,40 @@ const CheckoutScreen = ({ navigation }) => {
 
             <View style={styles.inputGroup}>
               <View style={styles.labelRow}>
+                <Ionicons name="bicycle-outline" size={16} color={THEME.COLORS.primary} />
+                <Text style={styles.label}>MODE DE LIVRAISON</Text>
+              </View>
+              
+              <View style={styles.deliveryToggleRow}>
+                <TouchableOpacity 
+                  style={[styles.toggleBtn, deliveryMode === 'current' && styles.toggleBtnActive]}
+                  onPress={() => {
+                    setDeliveryMode('current');
+                    getCurrentLocation();
+                  }}
+                >
+                  <Ionicons name="locate" size={18} color={deliveryMode === 'current' ? '#000' : '#AAA'} />
+                  <Text style={[styles.toggleText, deliveryMode === 'current' && styles.toggleTextActive]}>Ma position</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  style={[styles.toggleBtn, deliveryMode === 'other' && styles.toggleBtnActive]}
+                  onPress={() => {
+                    setDeliveryMode('other');
+                    setAddress('');
+                    setClientCoords(null);
+                  }}
+                >
+                  <Ionicons name="map" size={18} color={deliveryMode === 'other' ? '#000' : '#AAA'} />
+                  <Text style={[styles.toggleText, deliveryMode === 'other' && styles.toggleTextActive]}>Ailleurs</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.labelRow}>
                 <Ionicons name="location-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>ADRESSE / QUARTIER</Text>
+                <Text style={styles.label}>{deliveryMode === 'current' ? 'VOTRE POSITION ACTUELLE' : 'ADRESSE DE LIVRAISON'}</Text>
               </View>
               <View style={styles.addressWrapper}>
                 <TextInput 
@@ -406,6 +439,26 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center'
   },
+  deliveryToggleRow: { 
+    flexDirection: 'row', 
+    backgroundColor: 'rgba(255,255,255,0.05)', 
+    borderRadius: 12, 
+    padding: 4, 
+    gap: 4,
+    marginBottom: 10
+  },
+  toggleBtn: { 
+    flex: 1, 
+    flexDirection: 'row',
+    height: 40, 
+    borderRadius: 10, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    gap: 8
+  },
+  toggleBtnActive: { backgroundColor: THEME.COLORS.primary },
+  toggleText: { color: '#AAA', fontSize: 13, fontWeight: '700' },
+  toggleTextActive: { color: '#000' },
   orderHeaderRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 

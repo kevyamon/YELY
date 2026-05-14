@@ -7,6 +7,8 @@ import * as TaskManager from 'expo-task-manager';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { BACKGROUND_LOCATION_TASK } from '../tasks/backgroundLocationTask';
 import { isLocationInMafereZone } from '../utils/mafereZone';
+import { useDispatch } from 'react-redux';
+import { updateCoords, setGpsStatus } from '../store/slices/locationSlice';
 
 const MAX_RETRIES = 3;
 
@@ -34,6 +36,7 @@ const useGeolocation = (options = {}) => {
   const [location, setLocation] = useState(null);
   const [error, setError] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const dispatch = useDispatch();
   
   const watchRef = useRef(null);
   const retryTimeoutRef = useRef(null);
@@ -96,6 +99,7 @@ const useGeolocation = (options = {}) => {
 
       lastValidLocationRef.current = coords;
       setLocation(coords);
+      dispatch(updateCoords(coords));
       setIsLoading(false);
       retryCountRef.current = 0; 
       return coords;
@@ -167,6 +171,7 @@ const useGeolocation = (options = {}) => {
 
             lastValidLocationRef.current = newCoords;
             setLocation(newCoords);
+            dispatch(updateCoords(newCoords));
             retryCountRef.current = 0; 
           }
         );

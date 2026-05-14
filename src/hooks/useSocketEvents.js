@@ -55,12 +55,28 @@ const useSocketEvents = () => {
       dispatch(logout({ reason: 'RIGHTS_REVOKED_BY_ADMIN' }));
     };
 
+    const handleNewOrder = (data) => {
+      console.info("[SOCKET] Nouvelle commande recue:", data);
+      dispatch(showSuccessToast({ 
+        title: "Nouvelle Commande ! 🛍️", 
+        message: `Vous avez reçu une commande de ${data?.totalPrice?.toLocaleString() || '...'} F.` 
+      }));
+      dispatch(apiSlice.util.invalidateTags(['Notification', 'Order', 'Stats']));
+    };
+
+    const handleNotificationReceived = (data) => {
+      console.info("[SOCKET] Notification recue:", data);
+      dispatch(apiSlice.util.invalidateTags(['Notification']));
+    };
+
     socketService.on('PROMO_MODE_CHANGED', handlePromoModeChange);
     socketService.on('promo_updated', handlePromoUpdated);
     socketService.on('subscription_rejected', handleSubscriptionRejected);
     socketService.on('subscription_validated', handleSubscriptionValidated);
     socketService.on('user_banned', handleUserBanned);
     socketService.on('force_logout', handleForceLogout);
+    socketService.on('new_order', handleNewOrder);
+    socketService.on('notification_received', handleNotificationReceived);
 
     return () => {
       socketService.off('PROMO_MODE_CHANGED', handlePromoModeChange);
@@ -69,6 +85,8 @@ const useSocketEvents = () => {
       socketService.off('subscription_validated', handleSubscriptionValidated);
       socketService.off('user_banned', handleUserBanned);
       socketService.off('force_logout', handleForceLogout);
+      socketService.off('new_order', handleNewOrder);
+      socketService.off('notification_received', handleNotificationReceived);
     };
   }, [dispatch]);
 

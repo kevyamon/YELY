@@ -5,7 +5,7 @@
 import React, { memo } from 'react';
 import { ScrollView, StyleSheet, View, Text, TouchableOpacity, ActivityIndicator } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons } from '@expo/vector-icons';
 
 import SmartHeader from '../../components/ui/SmartHeader';
@@ -15,25 +15,57 @@ import GoldButton from '../../components/ui/GoldButton';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { useGetMyProductsQuery, useGetLedgerStatsQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
+import useGeolocation from '../../hooks/useGeolocation';
+import MapService from '../../services/mapService';
+import { selectLastAddress, updateAddress } from '../../store/slices/locationSlice';
 
 const SellerHome = ({ navigation }) => {
   const scrollY = useSharedValue(0);
   const user = useSelector(selectCurrentUser);
+  const lastKnownAddress = useSelector(selectLastAddress);
+  const dispatch = useDispatch();
   
-  // ─── DATA FETCHING ───
-  const { data: productsData, isLoading: isLoadingProducts, refetch: refetchProducts } = useGetMyProductsQuery();
-  const { data: statsData, isLoading: isLoadingStats, refetch: refetchStats } = useGetLedgerStatsQuery();
+  // ─── GEOLOCATION LOGIC ───
+  const { location } = useGeolocation();
+  const [currentAddress, setCurrentAddress] = React.useState(lastKnownAddress || 'Recherche...');
+  const lastGeocodedLocationRef = React.useRef(null);
 
   React.useEffect(() => {
-    refetchProducts();
-    refetchStats();
-  }, []);
+    if (location) {
+      let shouldFetch = false;
 
-  if (__DEV__) {
-    console.log('[SELLER_HOME] Products Response:', JSON.stringify(productsData));
-    console.log('[SELLER_HOME] Stats Response:', JSON.stringify(statsData));
-    console.log('[SELLER_HOME] Current User:', user?._id, user?.role);
-  }
+      if (!lastGeocodedLocationRef.current) {
+        shouldFetch = true;
+      } else {
+        const distance = MapService.calculateDistance(
+          { latitude: location.latitude, longitude: location.longitude },
+          lastGeocodedLocationRef.current
+        );
+        // On ne recalcule l'adresse que si on a bougé de plus de 50m
+        if (distance > 50) {
+          shouldFetch = true;
+        }
+      }
+
+      if (shouldFetch) {
+        lastGeocodedLocationRef.current = { 
+          latitude: location.latitude, 
+          longitude: location.longitude 
+        };
+        
+        MapService.getAddressFromCoordinates(location.latitude, location.longitude)
+          .then(addr => {
+            setCurrentAddress(addr);
+            dispatch(updateAddress(addr));
+          })
+          .catch(() => setCurrentAddress('Position inconnue'));
+      }
+    }
+  }, [location, dispatch]);
+  
+  // ─── DATA FETCHING ───
+  const { data: productsData, isLoading: isLoadingProducts } = useGetMyProductsQuery();
+  const { data: statsData, isLoading: isLoadingStats } = useGetLedgerStatsQuery();
 
   const productCount = productsData?.data?.length || productsData?.length || 0;
   const totalSales = statsData?.data?.totalEarnings || statsData?.totalEarnings || 0;
@@ -52,7 +84,7 @@ const SellerHome = ({ navigation }) => {
     <View style={styles.screenWrapper}>
       <SmartHeader 
         scrollY={scrollY}
-        address="Ma Boutique"
+        address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Vendeur"}
         onMenuPress={() => navigation.navigate('Menu')}
         onNotificationPress={() => navigation.navigate('Notifications')}

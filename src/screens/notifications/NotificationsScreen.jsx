@@ -22,6 +22,8 @@ const NOTIF_ICONS = {
   RIDE: { icon: 'car', color: THEME.COLORS.info },
   SYSTEM: { icon: 'notifications', color: THEME.COLORS.textSecondary },
   PAYMENT: { icon: 'cash', color: THEME.COLORS.success },
+  NEW_ORDER: { icon: 'cart', color: THEME.COLORS.primary },
+  ORDER_UPDATE: { icon: 'receipt', color: THEME.COLORS.info },
 };
 
 const NotificationsScreen = ({ navigation, route }) => {
@@ -72,6 +74,15 @@ const NotificationsScreen = ({ navigation, route }) => {
     if (item.metadata && item.metadata.reportId) {
       setSelectedReportId(item.metadata.reportId);
       setIsReportModalVisible(true);
+    } else if (item.metadata && (item.type === 'NEW_ORDER' || item.type === 'ORDER_UPDATE')) {
+      const orderId = item.metadata.orderId;
+      if (orderId) {
+        if (item.type === 'NEW_ORDER') {
+          navigation.navigate('SellerOrders', { orderId });
+        } else {
+          navigation.navigate('OrderTracking', { orderId });
+        }
+      }
     } else if (item.metadata && item.metadata.updateUrl) {
       let finalUrl = item.metadata.updateUrl.trim();
       if (!finalUrl.startsWith('http://') && !finalUrl.startsWith('https://')) {
@@ -150,31 +161,29 @@ const NotificationsScreen = ({ navigation, route }) => {
         )}
       </View>
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-        </View>
-      ) : notifications.length === 0 ? (
-        <View style={styles.center}>
-          <Ionicons name="notifications-off-outline" size={64} color={THEME.COLORS.textTertiary} />
-          <Text style={styles.emptyText}>Aucune notification pour le moment.</Text>
-        </View>
-      ) : (
-        <>
-          <FlatList
-            ref={flatListRef}
-            data={notifications}
-            keyExtractor={item => item._id}
-            renderItem={renderItem}
-            contentContainerStyle={styles.list}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-            onRefresh={refetch}
-            refreshing={isFetching}
-          />
-          <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
-        </>
-      )}
+      <FlatList
+        ref={flatListRef}
+        data={notifications}
+        keyExtractor={item => item._id}
+        renderItem={renderItem}
+        contentContainerStyle={[styles.list, notifications.length === 0 && { flex: 1 }]}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        onRefresh={refetch}
+        refreshing={isFetching}
+        ListEmptyComponent={isLoading ? (
+          <View style={styles.centerSkeleton}>
+            <GlobalSkeleton visible={true} fullScreen={false} />
+          </View>
+        ) : (
+          <View style={styles.emptyCenter}>
+            <Ionicons name="notifications-off-outline" size={64} color={THEME.COLORS.textTertiary} />
+            <Text style={styles.emptyText}>Aucune notification pour le moment.</Text>
+            <Text style={styles.pullHint}>Tirez pour rafraîchir</Text>
+          </View>
+        )}
+      />
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       <ConfirmModal 
         visible={!!notifToDelete}
@@ -215,7 +224,10 @@ const styles = StyleSheet.create({
   footerRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 8 },
   time: { color: THEME.COLORS.textTertiary, fontSize: 11 },
   deleteBtn: { padding: 4 },
-  emptyText: { color: THEME.COLORS.textSecondary, marginTop: 20, fontSize: 16 }
+  emptyText: { color: THEME.COLORS.textSecondary, marginTop: 20, fontSize: 16 },
+  pullHint: { color: THEME.COLORS.textTertiary, fontSize: 12, marginTop: 10, fontStyle: 'italic' },
+  emptyCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
+  centerSkeleton: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
 });
 
 export default NotificationsScreen;

@@ -165,6 +165,14 @@ const usePushNotifications = () => {
               navigate('RiderHome', { rideId });
             }
             break;
+            
+          case 'NEW_ORDER':
+            navigate('SellerOrders', { orderId: pendingRouting.orderId });
+            break;
+          case 'ORDER_UPDATE':
+            navigate('OrderTracking', { orderId: pendingRouting.orderId });
+            break;
+
           default:
             navigate('Notifications');
             break;

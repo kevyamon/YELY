@@ -9,7 +9,8 @@ import {
   TextInput,
   ActivityIndicator,
   StatusBar,
-  Animated
+  Animated,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import ProductCard from '../../components/marketplace/ProductCard';
 import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -101,36 +103,46 @@ const ProductList = ({ route, navigation }) => {
     </View>
   );
 
+  const renderSkeleton = () => (
+    <View style={styles.skeletonGrid}>
+      {[1, 2, 3, 4, 5, 6].map((i) => (
+        <View key={i} style={styles.skeletonCard}>
+          <SkeletonBone width="100%" height={150} borderRadius={20} />
+          <SkeletonBone width="80%" height={20} style={{ marginTop: 15 }} />
+          <SkeletonBone width="40%" height={15} style={{ marginTop: 8 }} />
+        </View>
+      ))}
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       {renderHeader()}
 
-      {isLoading ? (
-        <View style={styles.center}>
-          <ActivityIndicator size="large" color={THEME.COLORS.primary} />
-        </View>
-      ) : (
-        <FlatList
-          ref={flatListRef}
-          data={products}
-          renderItem={({ item }) => (
-            <ProductCard 
-              product={item} 
-              onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
-            />
-          )}
-          keyExtractor={item => item._id}
-          numColumns={2}
-          contentContainerStyle={styles.listContent}
-          columnWrapperStyle={styles.columnWrapper}
-          ListEmptyComponent={renderEmpty}
-          showsVerticalScrollIndicator={false}
-          onRefresh={refetch}
-          refreshing={isLoading}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
-        />
-      )}
+      <GlobalSkeleton visible={isLoading}>
+        {isLoading ? renderSkeleton() : (
+          <FlatList
+            ref={flatListRef}
+            data={products}
+            renderItem={({ item }) => (
+              <ProductCard 
+                product={item} 
+                onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
+              />
+            )}
+            keyExtractor={item => item._id}
+            numColumns={2}
+            contentContainerStyle={styles.listContent}
+            columnWrapperStyle={styles.columnWrapper}
+            ListEmptyComponent={renderEmpty}
+            showsVerticalScrollIndicator={false}
+            onRefresh={refetch}
+            refreshing={isLoading}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
+          />
+        )}
+      </GlobalSkeleton>
 
       {/* BOUTON SCROLL TO TOP */}
       <Animated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
@@ -198,6 +210,17 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  skeletonGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    paddingHorizontal: THEME.SPACING.xl,
+    paddingTop: THEME.SPACING.md,
+  },
+  skeletonCard: {
+    width: (Dimensions.get('window').width - THEME.SPACING.xl * 2 - THEME.SPACING.md) / 2,
+    marginBottom: THEME.SPACING.xl,
   },
   emptyContainer: {
     flex: 1,

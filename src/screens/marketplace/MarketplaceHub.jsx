@@ -12,6 +12,7 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { Animated } from 'react-native';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 
@@ -30,20 +31,46 @@ const MarketplaceHub = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
   
-  const renderCategory = ({ item }) => (
-    <TouchableOpacity 
-      style={styles.categoryCard}
-      onPress={() => navigation.navigate('ProductList', { category: item.type })}
-      activeOpacity={0.8}
-    >
-      <View style={[styles.iconWrapper, { backgroundColor: item.color + '15' }]}>
-        <MaterialCommunityIcons name={item.icon} size={32} color={item.color} />
-      </View>
-      <View style={styles.categoryTextWrapper}>
-        <Text style={styles.categoryName} numberOfLines={1} adjustsFontSizeToFit>{item.name}</Text>
-        <Text style={styles.categoryDesc} numberOfLines={1}>{item.desc}</Text>
-      </View>
-    </TouchableOpacity>
+  // ANIMATION STAGGERED
+  const animatedValues = React.useRef(CATEGORIES.map(() => new Animated.Value(0))).current;
+
+  React.useEffect(() => {
+    const animations = CATEGORIES.map((_, i) => {
+      return Animated.timing(animatedValues[i], {
+        toValue: 1,
+        duration: 500,
+        delay: i * 80,
+        useNativeDriver: true,
+      });
+    });
+    Animated.stagger(80, animations).start();
+  }, []);
+
+  const renderCategory = ({ item, index }) => (
+    <Animated.View style={{ 
+      flex: 1, 
+      opacity: animatedValues[index],
+      transform: [{
+        translateY: animatedValues[index].interpolate({
+          inputRange: [0, 1],
+          outputRange: [20, 0]
+        })
+      }]
+    }}>
+      <TouchableOpacity 
+        style={styles.categoryCard}
+        onPress={() => navigation.navigate('ProductList', { category: item.type })}
+        activeOpacity={0.8}
+      >
+        <View style={[styles.iconWrapper, { backgroundColor: item.color + '15' }]}>
+          <MaterialCommunityIcons name={item.icon} size={32} color={item.color} />
+        </View>
+        <View style={styles.categoryTextWrapper}>
+          <Text style={styles.categoryName} numberOfLines={1} adjustsFontSizeToFit>{item.name}</Text>
+          <Text style={styles.categoryDesc} numberOfLines={1}>{item.desc}</Text>
+        </View>
+      </TouchableOpacity>
+    </Animated.View>
   );
 
   return (
@@ -247,7 +274,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
   },
   categoryCard: {
-    width: (width - THEME.SPACING.lg * 2 - THEME.SPACING.md) / 2,
+    width: '95%',
     backgroundColor: THEME.COLORS.glassSurface,
     borderRadius: THEME.BORDERS.radius.lg,
     padding: THEME.SPACING.lg,

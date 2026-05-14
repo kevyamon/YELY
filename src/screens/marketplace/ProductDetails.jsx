@@ -97,7 +97,19 @@ const ProductDetails = ({ route, navigation }) => {
   });
 
   const handleAddToCart = () => {
-    dispatch(addToCart({ product, quantity }));
+    if (!product) return;
+
+    // Normalisation pour garantir que l'ID est présent (support _id et id)
+    const normalizedProduct = {
+      ...product,
+      _id: product._id || product.id
+    };
+
+    dispatch(addToCart({ 
+      product: normalizedProduct, 
+      quantity: parseInt(quantity) || 1 
+    }));
+
     dispatch(showToast({
       type: 'success',
       title: 'Panier mis à jour',

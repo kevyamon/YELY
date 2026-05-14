@@ -4,13 +4,13 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
-import { useDispatch } from 'react-redux';
-
+import { useDispatch, useSelector } from 'react-redux';
 import MapService from '../services/mapService';
 import { useGetCurrentRideQuery, useLazyEstimateRideQuery, useRequestRideMutation } from '../store/api/ridesApiSlice';
 import { clearCurrentRide, setCurrentRide } from '../store/slices/rideSlice';
 import { showErrorToast } from '../store/slices/uiSlice';
 import { isLocationInMafereZone } from '../utils/mafereZone';
+import { selectLastAddress, updateAddress } from '../store/slices/locationSlice';
 
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Echo', duration: '5' },
@@ -31,10 +31,11 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
 
 const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
+  const lastKnownAddress = useSelector(selectLastAddress);
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined); 
 
-  const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
+  const [currentAddress, setCurrentAddress] = useState(lastKnownAddress || 'Recherche GPS...');
   const [destination, setDestination] = useState(null);
   
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
@@ -110,6 +111,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
             const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
             if (isMounted) {
               setCurrentAddress(addr);
+              dispatch(updateAddress(addr));
               lastGeocodedLocationRef.current = location;
             }
           } catch (error) {
