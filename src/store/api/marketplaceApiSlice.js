@@ -79,6 +79,13 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Order'],
     }),
+    cancelOrder: builder.mutation({
+      query: (id) => ({
+        url: `/orders/${id}/cancel`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Order'],
+    }),
 
     // Ledger
     getMyLedger: builder.query({
@@ -113,6 +120,7 @@ export const {
   useGetOrderQuery,
   useGetSellerOrdersQuery,
   useUpdateOrderStatusMutation,
+  useCancelOrderMutation,
   useGetMyLedgerQuery,
   useGetLedgerStatsQuery,
   useClearLedgerEntryMutation,

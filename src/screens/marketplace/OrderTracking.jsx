@@ -10,10 +10,12 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useGetOrderQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetOrderQuery, useCancelOrderMutation } from '../../store/api/marketplaceApiSlice';
+import { Alert } from 'react-native';
 import socketService from '../../services/socketService';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import THEME from '../../theme/theme';
 
 const STATUS_MAP = {
@@ -30,6 +32,7 @@ const OrderTracking = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { orderId } = route.params;
   const { data: orderData, isLoading, refetch } = useGetOrderQuery(orderId);
+  const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const order = orderData?.data;
 
   // TEMPS RÉEL: Ecouter les mises à jour de statut
@@ -42,7 +45,58 @@ const OrderTracking = ({ route, navigation }) => {
     return () => socketService.off('order_updated');
   }, [orderId]);
 
-  if (isLoading) return <View style={styles.center}><ActivityIndicator size="large" color={THEME.COLORS.primary} /></View>;
+  const handleCancel = () => {
+    Alert.alert(
+      "Annuler la commande",
+      "Êtes-vous sûr de vouloir annuler cette commande ?",
+      [
+        { text: "Non", style: "cancel" },
+        { 
+          text: "Oui, annuler", 
+          style: "destructive",
+          onPress: async () => {
+            try {
+              await cancelOrder(orderId).unwrap();
+            } catch (err) {
+              Alert.alert("Erreur", err.data?.message || "Impossible d'annuler la commande.");
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const renderSkeleton = () => (
+    <ScrollView contentContainerStyle={styles.scrollContent}>
+      <View style={styles.skeletonCard}>
+        <SkeletonBone width={80} height={80} borderRadius={40} style={{ alignSelf: 'center' }} />
+        <SkeletonBone width="60%" height={24} borderRadius={10} style={{ alignSelf: 'center', marginTop: 20 }} />
+        <SkeletonBone width="40%" height={16} borderRadius={8} style={{ alignSelf: 'center', marginTop: 10 }} />
+      </View>
+      <View style={styles.skeletonCard}>
+        <SkeletonBone width="30%" height={20} borderRadius={10} style={{ marginBottom: 20 }} />
+        {[1, 2, 3, 4].map(i => (
+          <View key={i} style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
+            <SkeletonBone width={24} height={24} borderRadius={12} />
+            <SkeletonBone width="70%" height={16} borderRadius={8} style={{ marginLeft: 15 }} />
+          </View>
+        ))}
+      </View>
+    </ScrollView>
+  );
+
+  if (isLoading) return (
+    <ScreenWrapper style={styles.container}>
+      <View style={[styles.header, { paddingTop: insets.top }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+        </TouchableOpacity>
+        <Text style={styles.title}>Suivi de commande</Text>
+      </View>
+      {renderSkeleton()}
+    </ScreenWrapper>
+  );
+
   if (!order) return <View style={styles.center}><Text style={{color: THEME.COLORS.textPrimary}}>Commande introuvable</Text></View>;
 
   const currentStatus = STATUS_MAP[order.status] || STATUS_MAP['pending'];
@@ -107,8 +161,16 @@ const OrderTracking = ({ route, navigation }) => {
         </GlassCard>
 
         {order.status === 'pending' && (
-          <TouchableOpacity style={styles.cancelBtn}>
-            <Text style={styles.cancelText}>Annuler la commande</Text>
+          <TouchableOpacity 
+            style={styles.cancelBtn} 
+            onPress={handleCancel}
+            disabled={isCancelling}
+          >
+            {isCancelling ? (
+              <ActivityIndicator color={THEME.COLORS.danger} />
+            ) : (
+              <Text style={styles.cancelText}>Annuler la commande</Text>
+            )}
           </TouchableOpacity>
         )}
       </ScrollView>
@@ -166,7 +228,15 @@ const styles = StyleSheet.create({
   totalValue: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 18 },
   cancelBtn: { padding: 15, alignItems: 'center', borderRadius: 15, borderWidth: 1, borderColor: THEME.COLORS.danger, marginBottom: 30 },
   cancelText: { color: THEME.COLORS.danger, fontWeight: 'bold' },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.background }
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.background },
+  skeletonCard: { 
+    padding: 25, 
+    backgroundColor: THEME.COLORS.glassSurface, 
+    borderRadius: 25, 
+    marginBottom: 20, 
+    borderWidth: 1, 
+    borderColor: THEME.COLORS.border 
+  }
 });
 
 export default OrderTracking;
