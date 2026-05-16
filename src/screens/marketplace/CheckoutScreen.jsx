@@ -21,9 +21,9 @@ import GoldButton from '../../components/ui/GoldButton';
 import THEME from '../../theme/theme';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
+import GlassModal from '../../components/ui/GlassModal';
 
 const CheckoutScreen = ({ navigation }) => {
-  // ... (state reste inchangé)
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
@@ -36,6 +36,8 @@ const CheckoutScreen = ({ navigation }) => {
   const [name, setName] = useState(user?.name || '');
   const [note, setNote] = useState('');
   const [deliveryMode, setDeliveryMode] = useState('current'); // 'current' or 'other'
+  const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
+  const [tempAddress, setTempAddress] = useState('');
 
   // FORCE AUTO-FILL (Si les données arrivent après le chargement de l'écran)
   useEffect(() => {
@@ -58,7 +60,6 @@ const CheckoutScreen = ({ navigation }) => {
 
   const [createOrder, { isLoading }] = useCreateOrderMutation();
 
-
   const getCurrentLocation = async () => {
     if (isLocating) return;
     setIsLocating(true);
@@ -71,31 +72,66 @@ const CheckoutScreen = ({ navigation }) => {
         return;
       }
 
-      // Utilisation d'une précision équilibrée pour plus de rapidité
-      const location = await Location.getCurrentPositionAsync({ 
-        accuracy: Location.Accuracy.Balanced,
-        timeout: 10000 
-      });
+      // 1. Tenter d'abord la position rapide du cache
+      console.log('[CHECKOUT] Recherche cache GPS...');
+      let location = await Location.getLastKnownPositionAsync({});
       
+      // 2. Si le cache est vide, interroger le GPS en direct
+      if (!location) {
+        console.log('[CHECKOUT] Cache vide, calcul position temps réel...');
+        location = await Location.getCurrentPositionAsync({ 
+          accuracy: Location.Accuracy.Balanced,
+          timeout: 8000 
+        });
+      }
+      
+      if (!location) {
+        throw new Error('Impossible de capter la position GPS');
+      }
+
       const coords = [location.coords.longitude, location.coords.latitude];
       console.log('[CHECKOUT] Coords obtenues:', coords);
       setClientCoords(coords);
 
-      // On tente de récupérer l'adresse textuelle en parallèle
-      Location.reverseGeocodeAsync({ 
-        longitude: location.coords.longitude, 
-        latitude: location.coords.latitude 
-      }).then(reverseGeocode => {
-        if (reverseGeocode.length > 0) {
+      // On tente de récupérer l'adresse textuelle en parallèle de manière robuste
+      try {
+        const reverseGeocode = await Location.reverseGeocodeAsync({ 
+          longitude: location.coords.longitude, 
+          latitude: location.coords.latitude 
+        });
+
+        if (reverseGeocode && reverseGeocode.length > 0) {
           const addr = reverseGeocode[0];
-          const addressStr = [addr.streetNumber, addr.street, addr.subregion, addr.region].filter(Boolean).join(', ');
-          if (addressStr && !address) setAddress(addressStr);
+          console.log('[CHECKOUT] Reverse geocode:', addr);
+          const parts = [
+            addr.name,
+            addr.streetNumber,
+            addr.street,
+            addr.district,
+            addr.subregion,
+            addr.city,
+            addr.region
+          ].filter(Boolean);
+          
+          // Déduplication des segments d'adresse
+          const uniqueParts = [...new Set(parts)];
+          const addressStr = uniqueParts.join(', ');
+          if (addressStr) {
+            setAddress(addressStr);
+          } else {
+            setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
+          }
+        } else {
+          setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
         }
-      }).catch(err => console.warn('[CHECKOUT] Reverse geocode failed:', err));
+      } catch (err) {
+        console.warn('[CHECKOUT] Reverse geocode failed:', err);
+        setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
+      }
 
     } catch (error) {
       console.error('[CHECKOUT] Location error:', error);
-      dispatch(showToast({ type: 'error', title: 'Erreur GPS', message: 'Impossible de capter votre position. Réessayez.' }));
+      dispatch(showToast({ type: 'error', title: 'Erreur GPS', message: 'Impossible de capter votre position automatiquement. Saisissez-la.' }));
     } finally {
       setIsLocating(false);
     }
@@ -248,8 +284,8 @@ const CheckoutScreen = ({ navigation }) => {
                   style={[styles.toggleBtn, deliveryMode === 'other' && styles.toggleBtnActive]}
                   onPress={() => {
                     setDeliveryMode('other');
-                    setAddress('');
-                    setClientCoords(null);
+                    setTempAddress(address === 'Position GPS...' || address.startsWith('Position GPS:') ? '' : address);
+                    setIsAddressModalVisible(true);
                   }}
                 >
                   <Ionicons name="map" size={18} color={deliveryMode === 'other' ? '#000' : '#AAA'} />
@@ -264,25 +300,48 @@ const CheckoutScreen = ({ navigation }) => {
                 <Text style={styles.label}>{deliveryMode === 'current' ? 'VOTRE POSITION ACTUELLE' : 'ADRESSE DE LIVRAISON'}</Text>
               </View>
               <View style={styles.addressWrapper}>
-                <TextInput 
-                  style={[styles.input, { flex: 1, paddingRight: 50 }]} 
-                  placeholder="Riviera, Angré..." 
-                  placeholderTextColor="rgba(255,255,255,0.4)"
-                  value={address}
-                  onChangeText={setAddress}
-                  multiline
-                />
-                <TouchableOpacity 
-                  style={styles.inlineLocateBtn} 
-                  onPress={getCurrentLocation}
-                  disabled={isLocating}
-                >
-                  {isLocating ? (
-                    <ActivityIndicator size="small" color={THEME.COLORS.primary} />
-                  ) : (
-                    <Ionicons name="locate" size={22} color={THEME.COLORS.primary} />
-                  )}
-                </TouchableOpacity>
+                {deliveryMode === 'other' ? (
+                  <TouchableOpacity 
+                    style={{ flex: 1 }}
+                    onPress={() => {
+                      setTempAddress(address);
+                      setIsAddressModalVisible(true);
+                    }}
+                  >
+                    <View pointerEvents="none" style={{ flex: 1 }}>
+                      <TextInput 
+                        style={[styles.input, { flex: 1, paddingRight: 50 }]} 
+                        placeholder="Cliquez pour saisir l'adresse..." 
+                        placeholderTextColor="rgba(255,255,255,0.4)"
+                        value={address}
+                        editable={false}
+                        multiline
+                      />
+                    </View>
+                  </TouchableOpacity>
+                ) : (
+                  <TextInput 
+                    style={[styles.input, { flex: 1, paddingRight: 50 }]} 
+                    placeholder="Riviera, Angré..." 
+                    placeholderTextColor="rgba(255,255,255,0.4)"
+                    value={address}
+                    onChangeText={setAddress}
+                    multiline
+                  />
+                )}
+                {deliveryMode === 'current' && (
+                  <TouchableOpacity 
+                    style={styles.inlineLocateBtn} 
+                    onPress={getCurrentLocation}
+                    disabled={isLocating}
+                  >
+                    {isLocating ? (
+                      <ActivityIndicator size="small" color={THEME.COLORS.primary} />
+                    ) : (
+                      <Ionicons name="locate" size={22} color={THEME.COLORS.primary} />
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
 
@@ -365,6 +424,62 @@ const CheckoutScreen = ({ navigation }) => {
           </View>
           <View style={{ height: 100 }} />
         </ScrollView>
+
+        <GlassModal
+          visible={isAddressModalVisible}
+          onClose={() => {
+            setIsAddressModalVisible(false);
+            if (!address) setDeliveryMode('current');
+          }}
+          position="center"
+          closeOnBackdrop={false}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="map-outline" size={28} color={THEME.COLORS.primary} />
+              <Text style={styles.modalTitle}>Adresse de livraison</Text>
+              <Text style={styles.modalSubtitle}>Saisissez l'adresse de destination pour votre livraison.</Text>
+            </View>
+            
+            <TextInput
+              style={styles.modalInput}
+              placeholder="Ex: Cocody Riviera 3, Cité de l'Or, Villa 12..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              value={tempAddress}
+              onChangeText={setTempAddress}
+              multiline
+              numberOfLines={4}
+            />
+            
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.modalBtnCancel]} 
+                onPress={() => {
+                  setIsAddressModalVisible(false);
+                  if (!address) setDeliveryMode('current');
+                }}
+              >
+                <Text style={styles.modalBtnCancelText}>Annuler</Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[styles.modalBtn, styles.modalBtnConfirm]} 
+                onPress={() => {
+                  if (!tempAddress.trim()) {
+                    dispatch(showToast({ type: 'warning', title: 'Champ requis', message: 'Veuillez saisir une adresse valide.' }));
+                    return;
+                  }
+                  setAddress(tempAddress);
+                  setClientCoords([0, 0]); // Mettre des coords non-nulles
+                  setIsAddressModalVisible(false);
+                  dispatch(showToast({ type: 'success', title: 'Adresse enregistrée', message: 'Votre adresse a été enregistrée avec succès.' }));
+                }}
+              >
+                <Text style={styles.modalBtnConfirmText}>Valider</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </GlassModal>
 
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
           <GoldButton 
@@ -570,6 +685,67 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     elevation: 10
+  },
+  modalContent: {
+    padding: 5,
+  },
+  modalHeader: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+    marginTop: 10,
+    marginBottom: 5,
+  },
+  modalSubtitle: {
+    fontSize: 13,
+    color: '#AAA',
+    textAlign: 'center',
+    paddingHorizontal: 10,
+  },
+  modalInput: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 15,
+    padding: 15,
+    color: '#FFFFFF',
+    fontSize: 16,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  modalBtn: {
+    flex: 1,
+    height: 50,
+    borderRadius: 25,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalBtnCancel: {
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.1)',
+  },
+  modalBtnCancelText: {
+    color: '#AAA',
+    fontWeight: '600',
+    fontSize: 15,
+  },
+  modalBtnConfirm: {
+    backgroundColor: THEME.COLORS.primary,
+  },
+  modalBtnConfirmText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 15,
   }
 });
 

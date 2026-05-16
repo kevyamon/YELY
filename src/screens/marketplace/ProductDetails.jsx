@@ -12,7 +12,8 @@ import {
   TouchableOpacity, 
   FlatList,
   ActivityIndicator,
-  StatusBar
+  StatusBar,
+  useColorScheme
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -34,17 +35,19 @@ import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
+import GlassModal from '../../components/ui/GlassModal';
 
 const { width, height } = Dimensions.get('window');
 const IMG_HEIGHT = height * 0.5;
 
+// Exact Category Mapping matching ProductList.jsx
 const CATEGORY_LABELS = {
-  'Food': 'Gastronomie',
-  'Supermarket': 'Market',
-  'Cosmetics': 'Beauté',
-  'Electronics': 'Tech',
+  'Food': 'Nourriture',
+  'Supermarket': 'Supermarché',
+  'Cosmetics': 'Cosmétiques',
+  'Electronics': 'Électronique',
   'Home': 'Maison',
-  'Other': 'Divers'
+  'Other': 'Autres'
 };
 
 const ProductDetails = ({ route, navigation }) => {
@@ -53,10 +56,18 @@ const ProductDetails = ({ route, navigation }) => {
   useMarketplaceSocketEvents();
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
+  const colorScheme = useColorScheme();
+  
+  const isDarkMode = colorScheme === 'dark';
   
   const flatListRef = useRef(null);
+  const modalScrollViewRef = useRef(null);
+  
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
+  const [isDescModalVisible, setIsDescModalVisible] = useState(false);
+  const [showModalScrollTop, setShowModalScrollTop] = useState(false);
+  
   const scrollY = useSharedValue(0);
 
   const product = productData?.data;
@@ -69,16 +80,49 @@ const ProductDetails = ({ route, navigation }) => {
     },
   });
 
-  // Styles animés pour le header
-  const headerStyle = useAnimatedStyle(() => {
+  // Styles animés pour le header unifié
+  const headerContainerStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      scrollY.value,
+      [IMG_HEIGHT - 100, IMG_HEIGHT - 40],
+      ['transparent', THEME.COLORS.background]
+    );
+    const borderBottomColor = interpolateColor(
+      scrollY.value,
+      [IMG_HEIGHT - 100, IMG_HEIGHT - 40],
+      ['transparent', isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.05)']
+    );
+    return {
+      backgroundColor,
+      borderBottomColor,
+      borderBottomWidth: 1,
+    };
+  });
+
+  const headerTitleStyle = useAnimatedStyle(() => {
     const opacity = interpolate(scrollY.value, [IMG_HEIGHT - 100, IMG_HEIGHT - 40], [0, 1], Extrapolate.CLAMP);
-    const translateY = interpolate(scrollY.value, [IMG_HEIGHT - 100, IMG_HEIGHT - 40], [-20, 0], Extrapolate.CLAMP);
+    const translateY = interpolate(scrollY.value, [IMG_HEIGHT - 100, IMG_HEIGHT - 40], [-10, 0], Extrapolate.CLAMP);
     return { 
       opacity, 
-      transform: [{ translateY }],
-      backgroundColor: THEME.COLORS.background,
-      borderBottomWidth: 1,
-      borderBottomColor: 'rgba(255,255,255,0.05)'
+      transform: [{ translateY }]
+    };
+  });
+
+  const headerBtnStyle = useAnimatedStyle(() => {
+    const backgroundColor = interpolateColor(
+      scrollY.value,
+      [IMG_HEIGHT - 100, IMG_HEIGHT - 40],
+      ['rgba(0, 0, 0, 0.4)', 'transparent']
+    );
+    const borderColor = interpolateColor(
+      scrollY.value,
+      [IMG_HEIGHT - 100, IMG_HEIGHT - 40],
+      ['rgba(255, 255, 255, 0.15)', 'transparent']
+    );
+    return {
+      backgroundColor,
+      borderColor,
+      borderWidth: 1,
     };
   });
 
@@ -134,41 +178,54 @@ const ProductDetails = ({ route, navigation }) => {
     );
   }
 
+  const description = product.description || "L'excellence Yély au service de votre quotidien.";
+  const isLongDescription = description.length > 180;
+  const displayDescription = isLongDescription 
+    ? `${description.slice(0, 180)}...` 
+    : description;
+
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" transparent translucent />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
 
       {/* HEADER UNIQUE INTELLIGENT */}
-      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerStyle]}>
+      <Animated.View style={[styles.header, { paddingTop: insets.top }, headerContainerStyle]}>
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBtn}>
-            <Animated.Text style={headerIconStyle}>
-              <Ionicons name="arrow-back" size={24} />
-            </Animated.Text>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()} 
+            style={styles.navBtnWrapper}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Animated.View style={[styles.navBtn, headerBtnStyle]}>
+              <Animated.Text style={headerIconStyle}>
+                <Ionicons name="arrow-back" size={24} />
+              </Animated.Text>
+            </Animated.View>
           </TouchableOpacity>
-          <Text style={styles.headerTitle} numberOfLines={1}>{product.name}</Text>
-          <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.navBtn}>
-            <Animated.Text style={headerIconStyle}>
-              <Ionicons name="cart-outline" size={24} />
-            </Animated.Text>
+          
+          <Animated.Text style={[styles.headerTitle, headerTitleStyle]} numberOfLines={1}>
+            {product.name}
+          </Animated.Text>
+          
+          <TouchableOpacity 
+            onPress={() => navigation.navigate('Cart')} 
+            style={styles.navBtnWrapper}
+            hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+          >
+            <Animated.View style={[styles.navBtn, headerBtnStyle]}>
+              <Animated.Text style={headerIconStyle}>
+                <Ionicons name="cart-outline" size={24} />
+              </Animated.Text>
+            </Animated.View>
           </TouchableOpacity>
         </View>
       </Animated.View>
-
-      {/* BOUTONS FLOTTANTS (Visibles au top) */}
-      <View style={[styles.floatingNav, { top: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.glassBtn}>
-          <Ionicons name="arrow-back" size={24} color="#FFF" />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => navigation.navigate('Cart')} style={styles.glassBtn}>
-          <Ionicons name="cart-outline" size={24} color="#FFF" />
-        </TouchableOpacity>
-      </View>
 
       <Animated.ScrollView
         onScroll={scrollHandler}
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
+        scrollEnabled={!isDescModalVisible}
       >
         {/* CARROUSEL IMAGE */}
         <View style={styles.imageWrapper}>
@@ -190,7 +247,7 @@ const ProductDetails = ({ route, navigation }) => {
           </Animated.View>
           
           <LinearGradient
-            colors={['rgba(0,0,0,0.4)', 'transparent', 'rgba(0,0,0,0.8)']}
+            colors={['rgba(0,0,0,0.4)', 'transparent', isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(248,249,250,0.8)']}
             style={styles.imageGradient}
           />
 
@@ -224,8 +281,18 @@ const ProductDetails = ({ route, navigation }) => {
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Description</Text>
             <Text style={styles.descriptionText}>
-              {product.description || "L'excellence Yély au service de votre quotidien."}
+              {displayDescription}
             </Text>
+            {isLongDescription && (
+              <TouchableOpacity 
+                style={styles.readMoreBtn} 
+                onPress={() => setIsDescModalVisible(true)}
+                hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              >
+                <Text style={styles.readMoreText}>Lire plus</Text>
+                <Ionicons name="chevron-forward" size={14} color={THEME.COLORS.primary} />
+              </TouchableOpacity>
+            )}
           </View>
 
           <GlassCard style={styles.sellerSection} padding={15}>
@@ -243,6 +310,55 @@ const ProductDetails = ({ route, navigation }) => {
           <View style={{ height: 140 }} />
         </View>
       </Animated.ScrollView>
+
+      {/* MODALE DE DESCRIPTION COMPLÈTE */}
+      <GlassModal
+        visible={isDescModalVisible}
+        onClose={() => setIsDescModalVisible(false)}
+        position="center"
+        closeOnBackdrop={true}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Ionicons name="document-text-outline" size={28} color={THEME.COLORS.primary} />
+            <Text style={styles.modalTitle}>Description complète</Text>
+          </View>
+          
+          <Animated.ScrollView 
+            ref={modalScrollViewRef}
+            style={styles.modalScroll}
+            contentContainerStyle={styles.modalScrollContent}
+            onScroll={(e) => {
+              const offsetY = e.nativeEvent.contentOffset.y;
+              setShowModalScrollTop(offsetY > 120);
+            }}
+            scrollEventThrottle={16}
+            showsVerticalScrollIndicator={false}
+          >
+            <Text style={styles.modalDescText}>{description}</Text>
+          </Animated.ScrollView>
+          
+          <View style={styles.modalFooter}>
+            <TouchableOpacity 
+              style={styles.modalCloseBtn}
+              onPress={() => setIsDescModalVisible(false)}
+            >
+              <Text style={styles.modalCloseText}>Fermer</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* BOUTON INTERNE SCROLL TO TOP */}
+          {showModalScrollTop && (
+            <TouchableOpacity 
+              style={styles.modalScrollTopBtn}
+              onPress={() => modalScrollViewRef.current?.scrollTo({ y: 0, animated: true })}
+              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+            >
+              <Ionicons name="arrow-up" size={18} color="#000" />
+            </TouchableOpacity>
+          )}
+        </View>
+      </GlassModal>
 
       {/* FOOTER FIXE ÉPURÉ */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 20) }]}>
@@ -273,12 +389,40 @@ const ProductDetails = ({ route, navigation }) => {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100 },
-  headerContent: { height: 60, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 20 },
-  headerTitle: { flex: 1, textAlign: 'center', fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10 },
-  navBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  floatingNav: { position: 'absolute', left: 0, right: 0, zIndex: 90, flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 20 },
-  glassBtn: { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.3)', justifyContent: 'center', alignItems: 'center' },
+  header: { 
+    position: 'absolute', 
+    top: 0, 
+    left: 0, 
+    right: 0, 
+    zIndex: 100,
+  },
+  headerContent: { 
+    height: 60, 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 20 
+  },
+  headerTitle: { 
+    flex: 1, 
+    textAlign: 'center', 
+    fontSize: 16, 
+    fontWeight: '700', 
+    color: THEME.COLORS.textPrimary, 
+    marginHorizontal: 10 
+  },
+  navBtnWrapper: {
+    width: 48,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  navBtn: { 
+    width: 40, 
+    height: 40, 
+    borderRadius: 20, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+  },
   imageWrapper: { height: IMG_HEIGHT },
   imgContainer: { width: '100%', height: '100%' },
   mainImage: { width: width, height: IMG_HEIGHT, resizeMode: 'cover' },
@@ -308,7 +452,82 @@ const styles = StyleSheet.create({
   qtyContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 25, height: 58, paddingHorizontal: 5 },
   qtyAction: { width: 44, height: 44, justifyContent: 'center', alignItems: 'center' },
   qtyValue: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10, minWidth: 20, textAlign: 'center' },
-  errorText: { color: THEME.COLORS.textSecondary, marginBottom: 20, fontSize: 16 }
+  errorText: { color: THEME.COLORS.textSecondary, marginBottom: 20, fontSize: 16 },
+  
+  // Modale description styles
+  readMoreBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+    gap: 4,
+  },
+  readMoreText: {
+    color: THEME.COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalContent: {
+    maxHeight: height * 0.6,
+    padding: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.08)',
+    paddingBottom: 15,
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    color: '#FFFFFF',
+  },
+  modalScroll: {
+    maxHeight: height * 0.4,
+  },
+  modalScrollContent: {
+    paddingBottom: 20,
+  },
+  modalDescText: {
+    fontSize: 15,
+    color: 'rgba(255, 255, 255, 0.85)',
+    lineHeight: 24,
+  },
+  modalFooter: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 15,
+    alignItems: 'center',
+  },
+  modalCloseBtn: {
+    backgroundColor: THEME.COLORS.primary,
+    paddingHorizontal: 30,
+    paddingVertical: 12,
+    borderRadius: 20,
+  },
+  modalCloseText: {
+    color: '#000',
+    fontWeight: 'bold',
+    fontSize: 14,
+  },
+  modalScrollTopBtn: {
+    position: 'absolute',
+    bottom: 80,
+    right: 15,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 5,
+    elevation: 5,
+  },
 });
 
 export default ProductDetails;

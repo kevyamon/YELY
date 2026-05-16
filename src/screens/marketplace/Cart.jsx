@@ -8,7 +8,7 @@ import {
   TouchableOpacity, 
   Image,
   Dimensions,
-  StatusBar
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +32,27 @@ const Cart = ({ navigation }) => {
   const dispatch = useDispatch();
   const items = useSelector(selectCartItems);
   const totalAmount = useSelector(selectCartTotal);
+  const colorScheme = useColorScheme();
+  
+  const isDarkMode = colorScheme === 'dark';
+  const dynamicBg = isDarkMode ? '#000000' : '#F8F9FA';
+  const dynamicTextColor = isDarkMode ? '#FFFFFF' : '#1A1A1A';
+  const dynamicTextColorSec = isDarkMode ? '#CCCCCC' : '#555555';
+  
+  const dynamicItemStyle = {
+    backgroundColor: isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+    borderColor: isDarkMode ? 'rgba(212, 175, 55, 0.25)' : 'rgba(212, 175, 55, 0.4)',
+  };
+
+  const dynamicSummaryCardStyle = {
+    backgroundColor: isDarkMode ? 'rgba(30, 30, 30, 0.95)' : 'rgba(255, 255, 255, 0.95)',
+    borderColor: isDarkMode ? 'rgba(212, 175, 55, 0.25)' : 'rgba(212, 175, 55, 0.4)',
+  };
+
+  const dynamicBackBtnStyle = {
+    backgroundColor: isDarkMode ? 'rgba(18, 18, 18, 0.85)' : 'rgba(255, 255, 255, 0.85)',
+    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+  };
 
   const handleCheckout = () => {
     if (items.length === 0) return;
@@ -39,12 +60,12 @@ const Cart = ({ navigation }) => {
   };
 
   const renderItem = ({ item }) => (
-    <GlassCard style={styles.cartItem}>
+    <GlassCard style={[styles.cartItem, dynamicItemStyle]}>
       <Image source={{ uri: item.image }} style={styles.itemImage} />
       <View style={styles.itemInfo}>
-        <Text style={styles.itemName} numberOfLines={1}>{item.name}</Text>
-        <Text style={styles.itemSeller} numberOfLines={1}>Vendu par {item.sellerName || 'Boutique'}</Text>
-        <Text style={styles.itemPrice}>{item.price.toLocaleString()} F</Text>
+        <Text style={[styles.itemName, { color: dynamicTextColor, textShadowColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'transparent' }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.itemSeller, { color: dynamicTextColorSec }]} numberOfLines={1}>Vendu par {item.sellerName || 'Boutique'}</Text>
+        <Text style={[styles.itemPrice, { color: THEME.COLORS.primary, textShadowColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'transparent' }]}>{item.price.toLocaleString()} F</Text>
         
         <View style={styles.quantityRow}>
           <View style={styles.quantitySelector}>
@@ -54,7 +75,7 @@ const Cart = ({ navigation }) => {
             >
               <Ionicons name="remove" size={18} color={THEME.COLORS.primary} />
             </TouchableOpacity>
-            <Text style={styles.qtyText}>{item.quantity}</Text>
+            <Text style={[styles.qtyText, { color: dynamicTextColor }]}>{item.quantity}</Text>
             <TouchableOpacity 
               style={styles.qtyBtn} 
               onPress={() => dispatch(updateQuantity({ id: item.id, quantity: item.quantity + 1 }))}
@@ -79,8 +100,8 @@ const Cart = ({ navigation }) => {
       <View style={styles.emptyIconBg}>
         <MaterialCommunityIcons name="cart-off" size={64} color={THEME.COLORS.primary} />
       </View>
-      <Text style={styles.emptyTitle}>Votre panier est vide</Text>
-      <Text style={styles.emptySubtitle}>Découvrez nos meilleurs produits et faites-vous plaisir !</Text>
+      <Text style={[styles.emptyTitle, { color: dynamicTextColor }]}>Votre panier est vide</Text>
+      <Text style={[styles.emptySubtitle, { color: dynamicTextColorSec }]}>Découvrez nos meilleurs produits et faites-vous plaisir !</Text>
       <TouchableOpacity 
         style={styles.exploreBtn}
         onPress={() => navigation.navigate('MarketplaceHub')}
@@ -91,13 +112,15 @@ const Cart = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" />
-      <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="chevron-back" size={24} color={THEME.COLORS.textPrimary} />
+    <ScreenWrapper 
+      backgroundColor={dynamicBg}
+      style={{ flex: 1 }}
+    >
+      <View style={[styles.header, { paddingTop: 10, backgroundColor: dynamicBg }]}>
+        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, dynamicBackBtnStyle]}>
+          <Ionicons name="chevron-back" size={24} color={dynamicTextColor} />
         </TouchableOpacity>
-        <Text style={styles.title}>Mon Panier</Text>
+        <Text style={[styles.title, { color: dynamicTextColor }]}>Mon Panier</Text>
         {items.length > 0 ? (
           <TouchableOpacity onPress={() => dispatch(clearCart())}>
             <Text style={styles.clearText}>Vider</Text>
@@ -116,19 +139,19 @@ const Cart = ({ navigation }) => {
 
       {items.length > 0 && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-          <GlassCard style={styles.summaryCard}>
+          <GlassCard style={[styles.summaryCard, dynamicSummaryCardStyle]}>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Total Articles</Text>
-              <Text style={styles.summaryValue}>{totalAmount.toLocaleString()} F</Text>
+              <Text style={[styles.summaryLabel, { color: dynamicTextColorSec }]}>Total Articles</Text>
+              <Text style={[styles.summaryValue, { color: dynamicTextColor }]}>{totalAmount.toLocaleString()} F</Text>
             </View>
             <View style={styles.summaryRow}>
-              <Text style={styles.summaryLabel}>Livraison</Text>
-              <Text style={[styles.summaryValue, { color: '#27ae60' }]}>Calculé au checkout</Text>
+              <Text style={[styles.summaryLabel, { color: dynamicTextColorSec }]}>Livraison</Text>
+              <Text style={[styles.summaryValue, { color: THEME.COLORS.success }]}>Calculé au checkout</Text>
             </View>
-            <View style={styles.divider} />
+            <View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(212, 175, 55, 0.2)' : 'rgba(212, 175, 55, 0.35)' }]} />
             <View style={styles.summaryRow}>
-              <Text style={styles.totalLabel}>TOTAL ESTIMÉ</Text>
-              <Text style={styles.totalValue}>{totalAmount.toLocaleString()} F</Text>
+              <Text style={[styles.totalLabel, { color: dynamicTextColor }]}>TOTAL ESTIMÉ</Text>
+              <Text style={[styles.totalValue, { color: THEME.COLORS.primary }]}>{totalAmount.toLocaleString()} F</Text>
             </View>
           </GlassCard>
           
@@ -139,31 +162,27 @@ const Cart = ({ navigation }) => {
           />
         </View>
       )}
-    </View>
+    </ScreenWrapper>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: THEME.COLORS.background },
   header: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
     paddingHorizontal: 20, 
     paddingBottom: 20,
-    backgroundColor: THEME.COLORS.background
   },
   backBtn: { 
     width: 40, 
     height: 40, 
     borderRadius: 12, 
-    backgroundColor: THEME.COLORS.glassSurface, 
     justifyContent: 'center', 
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: THEME.COLORS.border
   },
-  title: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  title: { fontSize: 20, fontWeight: 'bold' },
   clearText: { color: THEME.COLORS.danger, fontSize: 14, fontWeight: '600' },
   listContent: { padding: 20 },
   cartItem: { 
@@ -172,14 +191,12 @@ const styles = StyleSheet.create({
     marginBottom: 15, 
     borderRadius: 18,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-    backgroundColor: 'rgba(30, 30, 30, 0.9)',
   },
   itemImage: { width: 90, height: 90, borderRadius: 12, backgroundColor: THEME.COLORS.overlay },
   itemInfo: { flex: 1, marginLeft: 15, justifyContent: 'center' },
-  itemName: { color: '#FFFFFF', fontSize: 16, fontWeight: 'bold', textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: {width: 0, height: 1}, textShadowRadius: 2 },
-  itemSeller: { color: '#CCCCCC', fontSize: 12, marginTop: 2 },
-  itemPrice: { color: '#D4AF37', fontSize: 17, fontWeight: '800', marginTop: 4, textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: {width: 0, height: 1}, textShadowRadius: 2 },
+  itemName: { fontSize: 16, fontWeight: 'bold', textShadowOffset: {width: 0, height: 1}, textShadowRadius: 2 },
+  itemSeller: { fontSize: 12, marginTop: 2 },
+  itemPrice: { fontSize: 17, fontWeight: '800', marginTop: 4, textShadowOffset: {width: 0, height: 1}, textShadowRadius: 2 },
   quantityRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginTop: 8 },
   quantitySelector: { 
     flexDirection: 'row', 
@@ -191,7 +208,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212, 175, 55, 0.4)'
   },
   qtyBtn: { width: 32, height: 32, justifyContent: 'center', alignItems: 'center' },
-  qtyText: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', marginHorizontal: 10, fontSize: 16 },
+  qtyText: { fontWeight: 'bold', marginHorizontal: 10, fontSize: 16 },
   removeBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   footer: { 
     position: 'absolute',
@@ -205,16 +222,14 @@ const styles = StyleSheet.create({
     padding: 20, 
     marginBottom: 15,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-    backgroundColor: 'rgba(30, 30, 30, 0.9)',
     ...THEME.SHADOWS.goldSoft
   },
   summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  summaryLabel: { color: '#BBBBBB', fontSize: 14 },
-  summaryValue: { color: '#FFFFFF', fontSize: 14, fontWeight: 'bold' },
-  divider: { height: 1, backgroundColor: 'rgba(212, 175, 55, 0.3)', marginVertical: 12 },
-  totalLabel: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
-  totalValue: { color: '#D4AF37', fontSize: 22, fontWeight: '900' },
+  summaryLabel: { fontSize: 14 },
+  summaryValue: { fontSize: 14, fontWeight: 'bold' },
+  divider: { height: 1, marginVertical: 12 },
+  totalLabel: { fontSize: 15, fontWeight: '800' },
+  totalValue: { fontSize: 22, fontWeight: '900' },
   emptyContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 120 },
   emptyIconBg: { 
     width: 140, 
@@ -227,8 +242,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.1)'
   },
-  emptyTitle: { color: THEME.COLORS.textPrimary, fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
-  emptySubtitle: { color: THEME.COLORS.textSecondary, textAlign: 'center', paddingHorizontal: 50, lineHeight: 22, marginBottom: 35 },
+  emptyTitle: { fontSize: 22, fontWeight: 'bold', marginBottom: 12 },
+  emptySubtitle: { textAlign: 'center', paddingHorizontal: 50, lineHeight: 22, marginBottom: 35 },
   exploreBtn: { 
     backgroundColor: THEME.COLORS.primary, 
     paddingHorizontal: 35, 
