@@ -33,7 +33,7 @@ const getItemWithRetry = async (key, maxRetries = 3) => {
 const SecureStorageAdapter = {
   getItem: async (key) => {
     try {
-      if (isWeb || key === 'userInfo') {
+      if (isWeb || key === 'userInfo' || key === 'cart') {
         return await AsyncStorage.getItem(key);
       }
       return await getItemWithRetry(key);
@@ -45,7 +45,7 @@ const SecureStorageAdapter = {
 
   setItem: async (key, value) => {
     try {
-      if (isWeb || key === 'userInfo') {
+      if (isWeb || key === 'userInfo' || key === 'cart') {
         await AsyncStorage.setItem(key, value);
       } else {
         await SecureStore.setItemAsync(key, value);
@@ -57,7 +57,7 @@ const SecureStorageAdapter = {
 
   removeItem: async (key) => {
     try {
-      if (isWeb || key === 'userInfo') {
+      if (isWeb || key === 'userInfo' || key === 'cart') {
         await AsyncStorage.removeItem(key);
       } else {
         await SecureStore.deleteItemAsync(key);

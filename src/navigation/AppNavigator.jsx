@@ -115,6 +115,18 @@ const AppNavigator = () => {
   useEffect(() => {
     const verifyAndRestoreSession = async () => {
       try {
+        // Restauration asynchrone du panier au demarrage
+        const storedCartStr = await SecureStorageAdapter.getItem('cart');
+        if (storedCartStr) {
+          try {
+            const storedCart = JSON.parse(storedCartStr);
+            const { hydrateCart } = require('../store/slices/cartSlice');
+            dispatch(hydrateCart(storedCart));
+          } catch (e) {
+            // Ignorer l'erreur de parsing pour preserver le boot
+          }
+        }
+
         const storedUserStr = await SecureStorageAdapter.getItem('userInfo');
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');

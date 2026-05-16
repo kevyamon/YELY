@@ -51,6 +51,11 @@ const cartSlice = createSlice({
       state.totalAmount = 0;
     },
 
+    hydrateCart: (state, action) => {
+      state.items = action.payload || [];
+      state.totalAmount = state.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+    },
+
     /**
      * Met à jour les informations (prix, nom, image) d'un article déjà
      * dans le panier lorsque le vendeur modifie le produit en temps réel.
@@ -72,7 +77,7 @@ const cartSlice = createSlice({
   }
 });
 
-export const { addToCart, removeFromCart, updateQuantity, clearCart, updateCartItemInfo } = cartSlice.actions;
+export const { addToCart, removeFromCart, updateQuantity, clearCart, updateCartItemInfo, hydrateCart } = cartSlice.actions;
 
 export const selectCartItems = (state) => state.cart.items;
 export const selectCartTotal = (state) => state.cart.totalAmount;

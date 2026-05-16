@@ -13,6 +13,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
 import { selectCartItems, selectCartTotal, clearCart } from '../../store/slices/cartSlice';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import { useCreateOrderMutation } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
@@ -24,6 +25,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import GlassModal from '../../components/ui/GlassModal';
 
 const CheckoutScreen = ({ navigation }) => {
+  useMarketplaceSocketEvents();
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);

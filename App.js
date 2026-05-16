@@ -1,5 +1,6 @@
 import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
+import * as Updates from 'expo-updates';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
@@ -105,8 +106,14 @@ const App = () => {
   }, []);
 
   useEffect(() => {
-    const subscription = Appearance.addChangeListener((preferences) => {
-      setThemeChanged(preferences.colorScheme !== initialTheme.current);
+    const subscription = Appearance.addChangeListener(async (preferences) => {
+      if (preferences.colorScheme !== initialTheme.current) {
+        try {
+          await Updates.reloadAsync();
+        } catch (error) {
+          setThemeChanged(true);
+        }
+      }
     });
     return () => subscription.remove();
   }, []);

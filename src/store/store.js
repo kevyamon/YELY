@@ -3,6 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { combineReducers, configureStore } from '@reduxjs/toolkit';
+import SecureStorageAdapter from './secureStoreAdapter';
 import { apiSlice } from './slices/apiSlice';
 import authReducer from './slices/authSlice';
 import cartReducer from './slices/cartSlice';
@@ -28,12 +29,25 @@ const rootReducer = (state, action) => {
   return appReducer(state, action);
 };
 
+const cartPersistenceMiddleware = (store) => (next) => (action) => {
+  const result = next(action);
+  if (action.type.startsWith('cart/')) {
+    try {
+      const cartItems = store.getState().cart.items;
+      SecureStorageAdapter.setItem('cart', JSON.stringify(cartItems));
+    } catch (error) {
+      // Ignorer les erreurs d'ecriture pour eviter les crashs
+    }
+  }
+  return result;
+};
+
 const store = configureStore({
   reducer: rootReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
       serializableCheck: false,
-    }).concat(apiSlice.middleware),
+    }).concat(apiSlice.middleware, cartPersistenceMiddleware),
   devTools: __DEV__,
 });
 

@@ -20,6 +20,7 @@ import {
   updateQuantity,
   clearCart
 } from '../../store/slices/cartSlice';
+import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
@@ -28,6 +29,7 @@ import THEME from '../../theme/theme';
 const { width } = Dimensions.get('window');
 
 const Cart = ({ navigation }) => {
+  useMarketplaceSocketEvents();
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const items = useSelector(selectCartItems);
