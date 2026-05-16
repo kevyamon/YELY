@@ -127,8 +127,8 @@ const AdminDashboard = () => {
       badge: !seenReports && unresolvedReportsCount > 0 ? unresolvedReportsCount : undefined, 
       allowed: true 
     },
-    // NOUVEAU : Le bouton pour voir toutes les courses
     { id: 'rides', title: 'Historique Courses', icon: 'car-sport-outline', route: 'AdminRides', allowed: true },
+    { id: 'marketplace', title: 'Marketplace Yély', icon: 'basket-outline', route: 'AdminMarketplace', allowed: true },
     { id: 'journal', title: 'Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },

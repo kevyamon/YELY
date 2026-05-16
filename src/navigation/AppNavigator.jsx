@@ -52,6 +52,7 @@ import ReportScreen from '../screens/report/ReportScreen';
 import SplashScreenComponent from '../screens/SplashScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
 import AdminJournal from '../screens/admin/AdminJournal';
+import AdminMarketplace from '../screens/admin/AdminMarketplace';
 import AdminReports from '../screens/admin/AdminReports';
 import AdminRides from '../screens/admin/AdminRides';
 import FinanceConfig from '../screens/admin/FinanceConfig';
@@ -180,6 +181,7 @@ const AppNavigator = () => {
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />
             <Stack.Screen name="AdminRides" component={AdminRides} />
+            <Stack.Screen name="AdminMarketplace" component={AdminMarketplace} />
             <Stack.Screen name="FinanceConfig" component={FinanceConfig} />
             <Stack.Screen name="SystemConfig" component={SystemConfig} /> 
             <Stack.Screen name="AdminJournal" component={AdminJournal} />

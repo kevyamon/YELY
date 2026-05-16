@@ -161,6 +161,49 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Stats'],
     }),
+
+    getMarketplaceStats: builder.query({
+      query: () => '/admin/marketplace/stats',
+      providesTags: ['MarketplaceStats'],
+    }),
+
+    getMarketplaceOrders: builder.query({
+      query: ({ page = 1, status, search }) => {
+        let url = `/admin/marketplace/orders?page=${page}`;
+        if (status) url += `&status=${status}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        return url;
+      },
+      providesTags: ['MarketplaceOrders'],
+    }),
+
+    overrideMarketplaceOrder: builder.mutation({
+      query: ({ orderId, status, driverId, cancelRide, reason }) => ({
+        url: `/admin/marketplace/orders/${orderId}/override`,
+        method: 'PUT',
+        body: { status, driverId, cancelRide, reason },
+      }),
+      invalidatesTags: ['MarketplaceOrders', 'MarketplaceStats', 'AuditLog'],
+    }),
+
+    getMarketplaceLedgers: builder.query({
+      query: ({ page = 1, status, search }) => {
+        let url = `/admin/marketplace/ledgers?page=${page}`;
+        if (status) url += `&status=${status}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        return url;
+      },
+      providesTags: ['MarketplaceLedgers'],
+    }),
+
+    forceClearLedger: builder.mutation({
+      query: ({ ledgerId, reason }) => ({
+        url: `/admin/marketplace/ledgers/${ledgerId}/force-clear`,
+        method: 'PUT',
+        body: { reason },
+      }),
+      invalidatesTags: ['MarketplaceLedgers', 'MarketplaceStats', 'AuditLog'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -186,4 +229,9 @@ export const {
   useUpdateAppVersionMutation,
   useGetAllRidesQuery,
   useToggleRideArchiveMutation,
+  useGetMarketplaceStatsQuery,
+  useGetMarketplaceOrdersQuery,
+  useOverrideMarketplaceOrderMutation,
+  useGetMarketplaceLedgersQuery,
+  useForceClearLedgerMutation,
 } = adminApiSlice;
