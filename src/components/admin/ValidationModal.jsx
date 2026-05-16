@@ -64,7 +64,7 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
 
             <View style={styles.infoSection}>
               <Text style={styles.infoText}>
-                <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200F)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000F)' : 'INCONNU'}
+                <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200 FCFA)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000 FCFA)' : 'INCONNU'}
               </Text>
               <Text style={styles.infoText}>
                 <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}

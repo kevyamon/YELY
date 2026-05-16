@@ -166,7 +166,7 @@ const AdminMarketplace = () => {
       dispatch(showToast({
         type: 'success',
         title: 'Reconciliation Validée 💰',
-        message: `L'ardoise de ${selectedLedger.amount} FG a été soldée de force.`
+        message: `L'ardoise de ${selectedLedger.amount} FCFA a été soldée de force.`
       }));
 
       setClearLedgerModalVisible(false);
@@ -336,7 +336,7 @@ const AdminMarketplace = () => {
 
                 <View style={styles.cardFooter}>
                   <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
-                  <Text style={styles.priceText}>{item.itemsPrice + (item.deliveryPrice || 0)} FG</Text>
+                  <Text style={styles.priceText}>{item.itemsPrice + (item.deliveryPrice || 0)} FCFA</Text>
                 </View>
               </TouchableOpacity>
             )}
@@ -442,7 +442,7 @@ const AdminMarketplace = () => {
                 </View>
 
                 <View style={styles.ledgerFooter}>
-                  <Text style={styles.ledgerAmount}>{item.amount} FG</Text>
+                  <Text style={styles.ledgerAmount}>{item.amount} FCFA</Text>
                   {item.status === 'pending' && isSuperAdmin && (
                     <TouchableOpacity
                       style={styles.forceClearButton}
@@ -488,7 +488,7 @@ const AdminMarketplace = () => {
               <GlassCard>
                 <Ionicons name="cash-outline" size={28} color={THEME.COLORS.success} />
                 <Text style={styles.statLabel}>Chiffre d'Affaires</Text>
-                <Text style={styles.statValue}>{stats.totalSales} FG</Text>
+                <Text style={styles.statValue}>{stats.totalSales} FCFA</Text>
                 <Text style={styles.statSubText}>Cumul des commandes</Text>
               </GlassCard>
             </View>
@@ -497,7 +497,7 @@ const AdminMarketplace = () => {
               <GlassCard>
                 <Ionicons name="wallet-outline" size={28} color={THEME.COLORS.danger} />
                 <Text style={styles.statLabel}>Encours Cash Livreur</Text>
-                <Text style={styles.statValue}>{stats.totalLedgerDebt} FG</Text>
+                <Text style={styles.statValue}>{stats.totalLedgerDebt} FCFA</Text>
                 <Text style={styles.statSubText}>Dettes en attente</Text>
               </GlassCard>
             </View>
@@ -626,7 +626,7 @@ const AdminMarketplace = () => {
         onClose={() => setClearLedgerModalVisible(false)}
         onConfirm={handleApplyForceClear}
         title="Override Financier Absolu"
-        message={selectedLedger ? `ATTENTION ! Vous allez forcer unilatéralement la réconciliation de la dette de ${selectedLedger.amount} FG due par le livreur ${selectedLedger.driver?.name} au vendeur ${selectedLedger.seller?.name}. Le livreur verra sa dette globale instantanément déduite. Continuer ?` : ''}
+        message={selectedLedger ? `ATTENTION ! Vous allez forcer unilatéralement la réconciliation de la dette de ${selectedLedger.amount} FCFA due par le livreur ${selectedLedger.driver?.name} au vendeur ${selectedLedger.seller?.name}. Le livreur verra sa dette globale instantanément déduite. Continuer ?` : ''}
         confirmText="Oui, Solder la Dette"
         isDestructive={true}
       />

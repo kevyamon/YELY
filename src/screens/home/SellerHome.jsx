@@ -120,7 +120,7 @@ const SellerHome = ({ navigation }) => {
             {isLoadingStats ? (
               <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
             ) : (
-              <Text style={styles.statValue}>{totalSales.toLocaleString()} F</Text>
+              <Text style={styles.statValue}>{totalSales.toLocaleString()} FCFA</Text>
             )}
             <Text style={styles.statLabel}>Ventes</Text>
           </GlassCard>

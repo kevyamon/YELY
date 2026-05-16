@@ -171,7 +171,7 @@ const RiderRideOverlay = () => {
         <View style={styles.priceContainer}>
           <Text style={styles.priceLabel}>Montant Final</Text>
           <Text style={styles.priceValue}>
-            {currentRide.proposedPrice || currentRide.price} F
+            {currentRide.proposedPrice || currentRide.price} FCFA
           </Text>
         </View>
       </View>

@@ -141,13 +141,13 @@ const OrderTracking = ({ route, navigation }) => {
             <View key={idx} style={styles.itemRow}>
               <Text style={styles.itemQty}>{item.quantity}x</Text>
               <Text style={styles.itemName}>{item.name}</Text>
-              <Text style={styles.itemPrice}>{(item.price * item.quantity).toLocaleString()} F</Text>
+              <Text style={styles.itemPrice}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
             </View>
           ))}
           <View style={styles.divider} />
           <View style={styles.totalRow}>
             <Text style={styles.totalLabel}>Total payé (Cash)</Text>
-            <Text style={styles.totalValue}>{order.totalPrice.toLocaleString()} F</Text>
+            <Text style={styles.totalValue}>{order.totalPrice.toLocaleString()} FCFA</Text>
           </View>
         </GlassCard>
 

@@ -387,7 +387,7 @@ const CheckoutScreen = ({ navigation }) => {
                     <Text style={styles.proItemSeller}>Chez {item.sellerName || 'Vendeur Yély'}</Text>
                   </View>
                 </View>
-                <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} F</Text>
+                <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
               </View>
             ))}
             
@@ -395,13 +395,13 @@ const CheckoutScreen = ({ navigation }) => {
             
             <View style={styles.proSummaryRow}>
               <Text style={styles.proSummaryLabel}>SOUS-TOTAL</Text>
-              <Text style={styles.proSummaryValue}>{cartTotal.toLocaleString()} F</Text>
+              <Text style={styles.proSummaryValue}>{cartTotal.toLocaleString()} FCFA</Text>
             </View>
 
             <View style={styles.proSummaryRow}>
               <Text style={styles.proSummaryLabel}>FRAIS DE LIVRAISON</Text>
               <Text style={[styles.proSummaryValue, { color: '#2ECC71' }]}>
-                {deliveryPrice ? `+ ${deliveryPrice.toLocaleString()} F` : '--'}
+                {deliveryPrice ? `+ ${deliveryPrice.toLocaleString()} FCFA` : '--'}
               </Text>
             </View>
 
@@ -415,7 +415,7 @@ const CheckoutScreen = ({ navigation }) => {
                 <Text style={styles.proTotalSub}>Net à payer (TTC)</Text>
               </View>
               <Text style={styles.proTotalAmount}>
-                {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()} F
+                {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()} FCFA
               </Text>
             </LinearGradient>
 

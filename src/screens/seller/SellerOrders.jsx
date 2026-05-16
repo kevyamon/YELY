@@ -117,7 +117,7 @@ const SellerOrders = ({ navigation }) => {
                 <Text style={styles.qtyText}>{prod.quantity}</Text>
               </View>
               <Text style={styles.itemName}>{prod.name}</Text>
-              <Text style={styles.itemPrice}>{(prod.price * prod.quantity).toLocaleString()} F</Text>
+              <Text style={styles.itemPrice}>{(prod.price * prod.quantity).toLocaleString()} FCFA</Text>
             </View>
           ))}
         </View>

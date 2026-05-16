@@ -59,7 +59,7 @@ const useSocketEvents = () => {
       console.info("[SOCKET] Nouvelle commande recue:", data);
       dispatch(showSuccessToast({ 
         title: "Nouvelle Commande ! 🛍️", 
-        message: `Vous avez reçu une commande de ${data?.totalPrice?.toLocaleString() || '...'} F.` 
+        message: `Vous avez reçu une commande de ${data?.totalPrice?.toLocaleString() || '...'} FCFA.` 
       }));
       dispatch(apiSlice.util.invalidateTags(['Notification', 'Order', 'Stats']));
     };

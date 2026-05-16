@@ -106,7 +106,7 @@ const SmartFooter = ({
           <View style={styles.statsContainer}>
             <StatBox icon="car-sport" value={user?.totalRides || 0} label="Courses" />
             <StatBox icon="star" value={user?.rating?.toFixed(1) || "5.0"} label="Note" />
-            <StatBox icon="wallet" value={`${user?.totalEarnings || 0} F`} label="Gains" isGold />
+            <StatBox icon="wallet" value={`${user?.totalEarnings || 0} FCFA`} label="Gains" isGold />
           </View>
         </>
       )}

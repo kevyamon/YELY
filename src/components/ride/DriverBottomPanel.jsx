@@ -36,7 +36,7 @@ const DriverBottomPanel = () => {
       <View style={styles.statsContainer}>
         <StatBox icon="car-sport" value="0" label="Courses" />
         <StatBox icon="time" value="0h" label="Heures" />
-        <StatBox icon="wallet" value="0 F" label="Gains" isGold />
+        <StatBox icon="wallet" value="0 FCFA" label="Gains" isGold />
       </View>
 
     </View>

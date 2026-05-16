@@ -186,7 +186,7 @@ const DriverRequestModal = () => {
                     isSelected && styles.textSelected,
                     isSmallScreen ? { fontSize: 14 } : (isNarrowScreen ? { fontSize: 15 } : { fontSize: 17 })
                   ]}>
-                    {option.amount} F
+                    {option.amount} FCFA
                   </Text>
                 </TouchableOpacity>
               );

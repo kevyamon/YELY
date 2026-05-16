@@ -139,7 +139,7 @@ const ProductCard = ({ product, onPress }) => {
       </View>
 
       <View style={styles.infoContainer}>
-        <Text style={styles.price}>{product.price.toLocaleString()} F</Text>
+        <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         
         <View style={styles.footer}>

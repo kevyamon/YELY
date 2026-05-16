@@ -67,7 +67,7 @@ const Cart = ({ navigation }) => {
       <View style={styles.itemInfo}>
         <Text style={[styles.itemName, { color: dynamicTextColor, textShadowColor: isDarkMode ? 'rgba(0,0,0,0.5)' : 'transparent' }]} numberOfLines={1}>{item.name}</Text>
         <Text style={[styles.itemSeller, { color: dynamicTextColorSec }]} numberOfLines={1}>Vendu par {item.sellerName || 'Boutique'}</Text>
-        <Text style={[styles.itemPrice, { color: THEME.COLORS.primary, textShadowColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'transparent' }]}>{item.price.toLocaleString()} F</Text>
+        <Text style={[styles.itemPrice, { color: THEME.COLORS.primary, textShadowColor: isDarkMode ? 'rgba(0,0,0,0.3)' : 'transparent' }]}>{item.price.toLocaleString()} FCFA</Text>
         
         <View style={styles.quantityRow}>
           <View style={styles.quantitySelector}>
@@ -144,7 +144,7 @@ const Cart = ({ navigation }) => {
           <GlassCard style={[styles.summaryCard, dynamicSummaryCardStyle]}>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: dynamicTextColorSec }]}>Total Articles</Text>
-              <Text style={[styles.summaryValue, { color: dynamicTextColor }]}>{totalAmount.toLocaleString()} F</Text>
+              <Text style={[styles.summaryValue, { color: dynamicTextColor }]}>{totalAmount.toLocaleString()} FCFA</Text>
             </View>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: dynamicTextColorSec }]}>Livraison</Text>
@@ -153,7 +153,7 @@ const Cart = ({ navigation }) => {
             <View style={[styles.divider, { backgroundColor: isDarkMode ? 'rgba(212, 175, 55, 0.2)' : 'rgba(212, 175, 55, 0.35)' }]} />
             <View style={styles.summaryRow}>
               <Text style={[styles.totalLabel, { color: dynamicTextColor }]}>TOTAL ESTIMÉ</Text>
-              <Text style={[styles.totalValue, { color: THEME.COLORS.primary }]}>{totalAmount.toLocaleString()} F</Text>
+              <Text style={[styles.totalValue, { color: THEME.COLORS.primary }]}>{totalAmount.toLocaleString()} FCFA</Text>
             </View>
           </GlassCard>
           
