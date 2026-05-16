@@ -27,9 +27,11 @@ const STATUS_CONFIG = {
   'pending': { label: 'Nouvelle', color: THEME.COLORS.warning, action: 'Confirmer', next: 'confirmed' },
   'confirmed': { label: 'En préparation', color: THEME.COLORS.success, action: 'Prêt pour livraison', next: 'searching' },
   'searching': { label: 'Recherche livreur', color: THEME.COLORS.info, action: null },
+  'searching_delivery_retry': { label: 'Relance recherche...', color: THEME.COLORS.info, action: 'Relancer la recherche', next: 'confirmed' },
   'picked_up': { label: 'En route', color: THEME.COLORS.primary, action: null },
   'delivered': { label: 'Livrée', color: THEME.COLORS.success, action: null },
   'cancelled': { label: 'Annulée', color: THEME.COLORS.danger, action: null },
+  'cancelled_no_driver': { label: 'Annulée (Pas de livreur)', color: THEME.COLORS.danger, action: 'Relancer la recherche', next: 'confirmed' },
   'rejected': { label: 'Refusée', color: THEME.COLORS.warning, action: null }
 };
 

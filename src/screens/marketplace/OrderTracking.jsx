@@ -22,9 +22,11 @@ const STATUS_MAP = {
   'pending': { label: 'En attente', icon: 'clock-outline', color: THEME.COLORS.warning, step: 0 },
   'confirmed': { label: 'Confirmée', icon: 'check-circle-outline', color: THEME.COLORS.success, step: 1 },
   'searching': { label: 'Recherche livreur', icon: 'magnify', color: THEME.COLORS.info, step: 2 },
+  'searching_delivery_retry': { label: 'Recherche élargie (Livreur)...', icon: 'magnify', color: THEME.COLORS.info, step: 2 },
   'picked_up': { label: 'En livraison', icon: 'bike', color: THEME.COLORS.primary, step: 3 },
   'delivered': { label: 'Livrée', icon: 'flag-checkered', color: THEME.COLORS.success, step: 4 },
   'cancelled': { label: 'Annulée', icon: 'close-circle-outline', color: THEME.COLORS.danger, step: -1 },
+  'cancelled_no_driver': { label: 'Annulée (Pas de livreur disponible)', icon: 'close-circle-outline', color: THEME.COLORS.danger, step: -1 },
   'rejected': { label: 'Refusée', icon: 'alert-circle-outline', color: THEME.COLORS.warning, step: -1 }
 };
 

@@ -27,7 +27,7 @@ const GlassCard = ({ children, style }) => (
 );
 
 const UsersManagement = ({ navigation }) => {
-  const searchQuery, setSearchQuery] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const dispatch = useDispatch();
   
