@@ -218,15 +218,15 @@ const SubscriptionScreen = ({ navigation }) => {
         <View style={styles.content}>
           {currentStep === STEPS.DASHBOARD && (
             <SubscriptionDashboard 
-              status={statusData.data} 
+              status={statusData?.data} 
               onProlong={handleProlong} 
             />
           )}
 
           {currentStep === STEPS.CHOOSE_PLAN && (
             <PlanSelection 
-              config={configData.data} 
-              status={statusData.data}
+              config={configData?.data} 
+              status={statusData?.data}
               onSelectPlan={handleSelectPlan}
               onBack={() => setCurrentStep(STEPS.DASHBOARD)}
               onLogout={() => dispatch(logout())}
