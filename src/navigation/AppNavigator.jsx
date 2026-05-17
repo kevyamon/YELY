@@ -167,6 +167,17 @@ const AppNavigator = () => {
 
   const { isDriver, isAdmin, isSubscriptionRejected, isSubscriptionPending, isDriverBlocked } = routingStatus;
 
+  if (!isAuthReady) {
+    return (
+      <View style={styles.rootContainer}>
+        <SplashScreenComponent 
+          isServerReady={false} 
+          onFinish={() => {}} 
+        />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.rootContainer}>
       <Stack.Navigator

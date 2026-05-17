@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
 import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassModal from '../../components/ui/GlassModal';
@@ -92,15 +92,31 @@ const ProfileScreen = ({ navigation }) => {
 
   const submitPhoto = async (imageAsset) => {
     const formData = new FormData();
-    const filename = imageAsset.uri.split('/').pop();
+    const filename = imageAsset.uri.split('/').pop() || 'profile.jpg';
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-    formData.append('profilePicture', {
-      uri: imageAsset.uri,
-      name: filename || 'profile.jpg',
-      type: type,
-    });
+    if (Platform.OS === 'web') {
+      try {
+        const response = await fetch(imageAsset.uri);
+        const blob = await response.blob();
+        formData.append('profilePicture', blob, filename);
+      } catch (err) {
+        console.error('[PROFILE] Web image conversion error:', err);
+        // Fallback
+        formData.append('profilePicture', {
+          uri: imageAsset.uri,
+          name: filename,
+          type: type,
+        });
+      }
+    } else {
+      formData.append('profilePicture', {
+        uri: imageAsset.uri,
+        name: filename,
+        type: type,
+      });
+    }
 
     try {
       const res = await uploadPhoto(formData).unwrap();

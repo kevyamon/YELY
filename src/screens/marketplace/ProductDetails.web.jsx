@@ -13,10 +13,10 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
-import { addToCart } from '../../store/slices/cartSlice';
+import { addToCart, selectCartItems } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
@@ -35,6 +35,7 @@ const ProductDetails = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   useMarketplaceSocketEvents();
+  const cartItems = useSelector(selectCartItems);
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
   const colorScheme = useColorScheme();
@@ -102,7 +103,7 @@ const ProductDetails = ({ route, navigation }) => {
         {/* Bouton Panier */}
         <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
           <Ionicons name="cart-outline" size={24} color={THEME.COLORS.primary} />
-          <View style={styles.cartBadge} />
+          {cartItems.length > 0 && <View style={styles.cartBadge} />}
         </TouchableOpacity>
       </View>
 

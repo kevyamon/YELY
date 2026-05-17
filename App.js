@@ -36,6 +36,60 @@ import { hideToast, selectAppUpdate, selectLoading, selectToast } from './src/st
 
 import './src/tasks/backgroundLocationTask';
 
+const linking = {
+  prefixes: [
+    'http://localhost:19006',
+    'https://yely-backend-production-ac7b.up.railway.app',
+    'https://yely.io',
+    'yely://',
+  ],
+  config: {
+    screens: {
+      Home: 'home',
+      RiderHome: 'rider-home',
+      DriverHome: 'driver-home',
+      SellerHome: 'seller-home',
+      MarketplaceHub: 'marketplace',
+      ProductList: 'products',
+      ProductDetails: 'product/:productId',
+      Cart: 'cart',
+      Checkout: 'checkout',
+      OrderTracking: 'order-tracking/:orderId',
+      ClientOrders: 'client-orders',
+      SellerDashboard: 'seller-dashboard',
+      SellerOrders: 'seller-orders',
+      ManageProducts: 'manage-products',
+      LedgerHistory: 'ledger-history',
+      Profile: 'profile',
+      Menu: 'menu',
+      Pancarte: 'pancarte',
+      History: 'history',
+      Report: 'report',
+      Notifications: 'notifications',
+      Subscription: 'subscription',
+      WaitSubscription: 'wait-subscription',
+      PaymentFailure: 'payment-failure',
+      Landing: 'landing',
+      Login: 'login',
+      Register: 'register',
+      ForgotPassword: 'forgot-password',
+      ResetPassword: 'reset-password',
+      PrivacyPolicy: 'privacy-policy',
+      TermsOfService: 'terms-of-service',
+      AdminDashboard: 'admin-dashboard',
+      ValidationCenter: 'validation-center',
+      UsersManagement: 'users-management',
+      AdminRides: 'admin-rides',
+      AdminMarketplace: 'admin-marketplace',
+      FinanceConfig: 'finance-config',
+      SystemConfig: 'system-config',
+      AdminJournal: 'admin-journal',
+      AdminReports: 'admin-reports',
+      MapManagement: 'map-management',
+    },
+  },
+};
+
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
@@ -62,7 +116,7 @@ const AppContent = () => {
 
   return (
     <>
-      <NavigationContainer ref={navigationRef} documentTitle={{ formatter: () => 'Yely' }}>
+      <NavigationContainer ref={navigationRef} linking={linking} documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
           <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
           <AppNavigator />

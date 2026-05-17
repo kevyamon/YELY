@@ -140,23 +140,37 @@ const ManageProducts = ({ navigation }) => {
 
     if (__DEV__) console.log('[MARKETPLACE] Submitting FormData for category:', form.category);
 
-    form.images.forEach((img, index) => {
+    for (let index = 0; index < form.images.length; index++) {
+      const img = form.images[index];
       if (img.uri) {
         if (!img.uri.startsWith('http')) {
-          const filename = img.uri.split('/').pop();
+          const filename = img.uri.split('/').pop() || `image_${index}.jpg`;
           const match = /\.(\w+)$/.exec(filename);
           const type = match ? `image/${match[1]}` : `image/jpeg`;
-          formData.append('images', {
-            uri: img.uri,
-            name: filename || `image_${index}.jpg`,
-            type: type,
-          });
+
+          if (Platform.OS === 'web') {
+            try {
+              const response = await fetch(img.uri);
+              const blob = await response.blob();
+              formData.append('images', blob, filename);
+            } catch (err) {
+              console.error('[MARKETPLACE] Web image conversion error:', err);
+              // Fallback
+              formData.append('images', { uri: img.uri, name: filename, type: type });
+            }
+          } else {
+            formData.append('images', {
+              uri: img.uri,
+              name: filename,
+              type: type,
+            });
+          }
         } else {
           // Pour les images déjà sur le serveur
           formData.append('existingImages', img.uri);
         }
       }
-    });
+    }
 
     try {
       if (editingProduct) {

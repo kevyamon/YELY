@@ -1,5 +1,5 @@
 // src/screens/marketplace/ProductList.jsx
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -11,7 +11,8 @@ import {
   StatusBar,
   Animated,
   Dimensions,
-  Platform
+  Platform,
+  ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,11 +37,12 @@ const ProductList = ({ route, navigation }) => {
   useMarketplaceSocketEvents();
   const { category, search: initialSearch } = route.params || {};
   const [search, setSearch] = useState(initialSearch || '');
+  const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'priceAsc' | 'priceDesc'
   const [showScrollTop, setShowScrollTop] = useState(false);
   const flatListRef = useRef(null);
   const scrollTopOpacity = useRef(new Animated.Value(0)).current;
 
-  const displayTitle = CATEGORY_LABELS[category] || category || 'Produits';
+  const displayTitle = category === 'All' ? 'Tous les produits' : (CATEGORY_LABELS[category] || category || 'Produits');
 
   const handleScroll = (event) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -60,11 +62,23 @@ const ProductList = ({ route, navigation }) => {
   };
 
   const { data, isLoading, isError, refetch, isFetching } = useGetProductsQuery({
-    category,
+    category: category === 'All' ? undefined : category,
     search: search.length > 1 ? search : undefined
   });
 
   const products = data?.data || [];
+
+  const sortedProducts = useMemo(() => {
+    let result = [...products];
+    if (sortBy === 'recent') {
+      result.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    } else if (sortBy === 'priceAsc') {
+      result.sort((a, b) => a.price - b.price);
+    } else if (sortBy === 'priceDesc') {
+      result.sort((a, b) => b.price - a.price);
+    }
+    return result;
+  }, [products, sortBy]);
 
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
@@ -84,6 +98,49 @@ const ProductList = ({ route, navigation }) => {
         isSearching={isFetching}
         style={{ marginTop: THEME.SPACING.sm }}
       />
+
+      <ScrollView 
+        horizontal 
+        showsHorizontalScrollIndicator={false} 
+        style={styles.sortBar}
+        contentContainerStyle={styles.sortBarContent}
+      >
+        <TouchableOpacity 
+          style={[styles.sortChip, sortBy === 'recent' && styles.sortChipActive]}
+          onPress={() => setSortBy('recent')}
+        >
+          <MaterialCommunityIcons 
+            name="clock-outline" 
+            size={16} 
+            color={sortBy === 'recent' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+          />
+          <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>Plus récents</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.sortChip, sortBy === 'priceAsc' && styles.sortChipActive]}
+          onPress={() => setSortBy('priceAsc')}
+        >
+          <MaterialCommunityIcons 
+            name="arrow-up" 
+            size={16} 
+            color={sortBy === 'priceAsc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+          />
+          <Text style={[styles.sortText, sortBy === 'priceAsc' && styles.sortTextActive]}>Prix croissant</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity 
+          style={[styles.sortChip, sortBy === 'priceDesc' && styles.sortChipActive]}
+          onPress={() => setSortBy('priceDesc')}
+        >
+          <MaterialCommunityIcons 
+            name="arrow-down" 
+            size={16} 
+            color={sortBy === 'priceDesc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+          />
+          <Text style={[styles.sortText, sortBy === 'priceDesc' && styles.sortTextActive]}>Prix décroissant</Text>
+        </TouchableOpacity>
+      </ScrollView>
     </View>
   );
 
@@ -121,7 +178,7 @@ const ProductList = ({ route, navigation }) => {
             {showSkeleton ? renderSkeleton() : (
               <FlatList
                 ref={flatListRef}
-                data={products}
+                data={sortedProducts}
                 renderItem={({ item }) => (
                   <ProductCard 
                     product={item} 
@@ -260,7 +317,39 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',
-  }
+  },
+  sortBar: {
+    marginTop: THEME.SPACING.md,
+    flexDirection: 'row',
+  },
+  sortBarContent: {
+    paddingRight: THEME.SPACING.xl,
+    gap: THEME.SPACING.sm,
+  },
+  sortChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: THEME.BORDERS.radius.pill,
+    paddingVertical: THEME.SPACING.xs + 2,
+    paddingHorizontal: THEME.SPACING.md,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    gap: 6,
+  },
+  sortChipActive: {
+    backgroundColor: THEME.COLORS.primary,
+    borderColor: THEME.COLORS.primary,
+  },
+  sortText: {
+    fontSize: 13,
+    fontWeight: THEME.FONTS.weights.medium,
+    color: THEME.COLORS.textSecondary,
+  },
+  sortTextActive: {
+    color: THEME.COLORS.deepAsphalt,
+    fontWeight: THEME.FONTS.weights.bold,
+  },
 });
 
 export default ProductList;

@@ -25,12 +25,12 @@ import Animated, {
   Extrapolate,
   interpolateColor
 } from 'react-native-reanimated';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
-import { addToCart } from '../../store/slices/cartSlice';
+import { addToCart, selectCartItems } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
@@ -54,6 +54,7 @@ const ProductDetails = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   useMarketplaceSocketEvents();
+  const cartItems = useSelector(selectCartItems);
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
   const colorScheme = useColorScheme();
@@ -216,6 +217,7 @@ const ProductDetails = ({ route, navigation }) => {
               <Animated.Text style={headerIconStyle}>
                 <Ionicons name="cart-outline" size={24} />
               </Animated.Text>
+              {cartItems.length > 0 && <View style={styles.cartBadge} />}
             </Animated.View>
           </TouchableOpacity>
         </View>
@@ -527,6 +529,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 5,
     elevation: 5,
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: 6,
+    right: 6,
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: THEME.COLORS.danger,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.4)',
   },
 });
 

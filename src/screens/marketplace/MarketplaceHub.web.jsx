@@ -17,6 +17,8 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import MarketplaceSearchBar from '../../components/marketplace/MarketplaceSearchBar';
+import { useSelector } from 'react-redux';
+import { selectCartItems } from '../../store/slices/cartSlice';
 
 const CATEGORIES = [
   { id: '1', name: 'Nourriture', icon: 'food-apple', color: '#E67E22', type: 'Food', desc: 'Repas & Fast Food' },
@@ -35,6 +37,7 @@ const GRID_GAP = isLargeScreen ? 24 : THEME.SPACING.md;
 const MarketplaceHub = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
+  const cartItems = useSelector(selectCartItems);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollRef = useRef(null);
@@ -124,7 +127,7 @@ const MarketplaceHub = ({ navigation }) => {
         {/* Panier */}
         <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
           <MaterialCommunityIcons name="shopping-outline" size={24} color={THEME.COLORS.primary} />
-          <View style={styles.cartBadge} />
+          {cartItems.length > 0 && <View style={styles.cartBadge} />}
         </TouchableOpacity>
       </View>
 
@@ -160,6 +163,39 @@ const MarketplaceHub = ({ navigation }) => {
                 </Text>
               </View>
               <MaterialCommunityIcons name="moped-electric-outline" size={80} color={THEME.COLORS.primary} style={styles.promoIcon} />
+            </LinearGradient>
+          </TouchableOpacity>
+
+          {/* HERO ALL PRODUCTS CARD */}
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            style={styles.allProductsHero}
+            onPress={() => navigation.navigate('ProductList', { category: 'All' })}
+          >
+            <LinearGradient
+              colors={['rgba(212, 175, 55, 0.15)', 'rgba(0, 0, 0, 0.4)']}
+              style={styles.allProductsGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+            >
+              <View style={styles.allProductsContent}>
+                <View style={styles.allProductsHeader}>
+                  <View style={styles.allProductsIconBg}>
+                    <MaterialCommunityIcons name="storefront" size={24} color={THEME.COLORS.primary} />
+                  </View>
+                  <Text style={styles.allProductsBadge}>COMPLET</Text>
+                </View>
+                <View style={{ marginTop: THEME.SPACING.md }}>
+                  <Text style={styles.allProductsTitle}>Tous les produits</Text>
+                  <Text style={styles.allProductsDesc}>Explorez l'intégralité de notre catalogue en un seul endroit.</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons 
+                name="chevron-right" 
+                size={32} 
+                color={THEME.COLORS.primary} 
+                style={styles.allProductsChevron} 
+              />
             </LinearGradient>
           </TouchableOpacity>
 
@@ -327,7 +363,62 @@ const styles = StyleSheet.create({
   categoryDesc: {
     fontSize: 12,
     color: THEME.COLORS.textTertiary,
-  }
+  },
+  allProductsHero: {
+    borderRadius: THEME.BORDERS.radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    marginBottom: THEME.SPACING.xl,
+    backgroundColor: THEME.COLORS.glassSurface,
+    cursor: 'pointer',
+    width: '100%',
+  },
+  allProductsGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.lg,
+  },
+  allProductsContent: {
+    flex: 1,
+  },
+  allProductsHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.SPACING.sm,
+  },
+  allProductsIconBg: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  allProductsBadge: {
+    fontSize: 11,
+    fontWeight: THEME.FONTS.weights.bold,
+    color: THEME.COLORS.primary,
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+    borderRadius: THEME.BORDERS.radius.pill,
+    letterSpacing: 0.5,
+  },
+  allProductsTitle: {
+    fontSize: 22,
+    fontWeight: THEME.FONTS.weights.bold,
+    color: THEME.COLORS.textPrimary,
+  },
+  allProductsDesc: {
+    fontSize: 14,
+    color: THEME.COLORS.textSecondary,
+    marginTop: 2,
+  },
+  allProductsChevron: {
+    marginLeft: THEME.SPACING.md,
+  },
 });
 
 export default MarketplaceHub;
