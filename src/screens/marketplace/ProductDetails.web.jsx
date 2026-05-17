@@ -94,17 +94,21 @@ const ProductDetails = ({ route, navigation }) => {
       {/* HEADER DE NAVIGATION PREMIUM */}
       <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <View style={styles.headerLeft}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-          </TouchableOpacity>
+          <View style={styles.backButtonWrapper}>
+            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+              <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
           <Text style={styles.headerTitle}>Détails du Produit</Text>
         </View>
 
         {/* Bouton Panier */}
-        <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
-          <Ionicons name="cart-outline" size={24} color={THEME.COLORS.primary} />
-          {cartItems.length > 0 && <View style={styles.cartBadge} />}
-        </TouchableOpacity>
+        <View style={styles.cartButtonWrapper}>
+          <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
+            <Ionicons name="cart-outline" size={24} color={THEME.COLORS.primary} />
+            {cartItems.length > 0 && <View style={styles.cartBadge} />}
+          </TouchableOpacity>
+        </View>
       </View>
 
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
@@ -260,6 +264,9 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255, 255, 255, 0.05)',
     cursor: 'pointer',
   },
+  backButtonWrapper: {
+    zIndex: 999,
+  },
   headerTitle: {
     fontSize: 20,
     fontWeight: THEME.FONTS.weights.bold,
@@ -274,6 +281,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.2)',
+  },
+  cartButtonWrapper: {
+    zIndex: 999,
   },
   cartBadge: {
     position: 'absolute',

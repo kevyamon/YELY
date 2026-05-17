@@ -98,9 +98,11 @@ const ProductList = ({ route, navigation }) => {
     <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
       <View style={styles.topRow}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
+        <View style={styles.backButtonWrapper}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
+          </TouchableOpacity>
+        </View>
         <Text style={styles.title}>{displayTitle}</Text>
         <View style={{ width: 40 }} />
       </View>
@@ -255,6 +257,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
     cursor: 'pointer',
+  },
+  backButtonWrapper: {
+    zIndex: 999,
   },
   title: {
     fontSize: 24,
