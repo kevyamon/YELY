@@ -1,5 +1,5 @@
-// src/screens/marketplace/Cart.jsx
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -35,6 +35,17 @@ const Cart = ({ navigation }) => {
   const items = useSelector(selectCartItems);
   const totalAmount = useSelector(selectCartTotal);
   const colorScheme = useColorScheme();
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef(null);
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
   
   const isDarkMode = colorScheme === 'dark';
   const dynamicBg = isDarkMode ? '#000000' : '#F8F9FA';
@@ -131,6 +142,9 @@ const Cart = ({ navigation }) => {
       </View>
 
       <FlatList
+        ref={listRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={items}
         renderItem={renderItem}
         keyExtractor={item => item.id}
@@ -138,6 +152,8 @@ const Cart = ({ navigation }) => {
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
+
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       {items.length > 0 && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>

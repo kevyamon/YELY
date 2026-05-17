@@ -1,5 +1,6 @@
 // src/screens/marketplace/MarketplaceHub.jsx
-import React from 'react';
+import React, { useState, useRef } from 'react';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -7,7 +8,8 @@ import {
   FlatList, 
   TouchableOpacity, 
   Dimensions,
-  StatusBar
+  StatusBar,
+  TextInput
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,6 +32,24 @@ const CATEGORIES = [
 const MarketplaceHub = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
+
+  const handleSearchSubmit = () => {
+    if (searchQuery.trim().length > 0) {
+      navigation.navigate('ProductList', { search: searchQuery.trim(), category: undefined });
+    }
+  };
   
   // ANIMATION STAGGERED
   const animatedValues = React.useRef(CATEGORIES.map(() => new Animated.Value(0))).current;
@@ -83,13 +103,7 @@ const MarketplaceHub = ({ navigation }) => {
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
             <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerSubtitle}>Livraison vers</Text>
-            <View style={styles.locationRow}>
-              <Text style={styles.headerTitle}>Votre Position</Text>
-              <Ionicons name="chevron-down" size={16} color={THEME.COLORS.primary} style={{marginLeft: 4}}/>
-            </View>
-          </View>
+          <Text style={styles.headerTitle}>Marketplace</Text>
         </View>
         <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
           <MaterialCommunityIcons name="shopping-outline" size={24} color={THEME.COLORS.primary} />
@@ -98,6 +112,9 @@ const MarketplaceHub = ({ navigation }) => {
       </View>
 
       <FlatList
+        ref={listRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={CATEGORIES}
         renderItem={renderCategory}
         keyExtractor={item => item.id}
@@ -108,11 +125,30 @@ const MarketplaceHub = ({ navigation }) => {
         ListHeaderComponent={() => (
           <View style={styles.listHeader}>
             
-            {/* SEARCH BAR MOCK */}
-            <TouchableOpacity style={styles.searchBar} activeOpacity={0.9}>
+            {/* REAL SEARCH BAR */}
+            <View style={styles.searchBar}>
               <Ionicons name="search" size={20} color={THEME.COLORS.textTertiary} />
-              <Text style={styles.searchText}>Rechercher un plat, un produit...</Text>
-            </TouchableOpacity>
+              <TextInput
+                style={{
+                  flex: 1,
+                  marginLeft: THEME.SPACING.md,
+                  color: THEME.COLORS.textPrimary,
+                  fontSize: THEME.FONTS.sizes.body,
+                  paddingVertical: 0,
+                }}
+                placeholder="Rechercher un plat, un produit..."
+                placeholderTextColor={THEME.COLORS.textTertiary}
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+                onSubmitEditing={handleSearchSubmit}
+                returnKeyType="search"
+              />
+              {searchQuery.length > 0 && (
+                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
+                  <MaterialCommunityIcons name="close-circle" size={18} color={THEME.COLORS.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
 
             {/* BANNER PROMO */}
             <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer}>
@@ -135,6 +171,7 @@ const MarketplaceHub = ({ navigation }) => {
           </View>
         )}
       />
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </View>
   );
 };
@@ -173,7 +210,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   headerTitle: {
-    fontSize: THEME.FONTS.sizes.body,
+    fontSize: THEME.FONTS.sizes.h3,
     fontWeight: THEME.FONTS.weights.bold,
     color: THEME.COLORS.textPrimary,
   },

@@ -32,8 +32,8 @@ const CATEGORY_LABELS = {
 const ProductList = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
-  const { category } = route.params || {};
-  const [search, setSearch] = useState('');
+  const { category, search: initialSearch } = route.params || {};
+  const [search, setSearch] = useState(initialSearch || '');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const flatListRef = useRef(null);
   const scrollTopOpacity = useRef(new Animated.Value(0)).current;
@@ -57,9 +57,9 @@ const ProductList = ({ route, navigation }) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
-  const { data, isLoading, isError, refetch } = useGetProductsQuery({
+  const { data, isLoading, isError, refetch, isFetching } = useGetProductsQuery({
     category,
-    search: search.length > 2 ? search : undefined
+    search: search.length > 1 ? search : undefined
   });
 
   const products = data?.data || [];
@@ -119,8 +119,8 @@ const ProductList = ({ route, navigation }) => {
     <View style={styles.container}>
       {renderHeader()}
 
-      <GlobalSkeleton visible={isLoading}>
-        {isLoading ? renderSkeleton() : (
+      <GlobalSkeleton visible={isLoading || isFetching}>
+        {(isLoading || isFetching) ? renderSkeleton() : (
           <FlatList
             ref={flatListRef}
             data={products}
@@ -137,7 +137,7 @@ const ProductList = ({ route, navigation }) => {
             ListEmptyComponent={renderEmpty}
             showsVerticalScrollIndicator={false}
             onRefresh={refetch}
-            refreshing={isLoading}
+            refreshing={isFetching}
             onScroll={handleScroll}
             scrollEventThrottle={16}
           />

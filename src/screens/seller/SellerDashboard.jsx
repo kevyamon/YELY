@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -24,6 +25,17 @@ import THEME from '../../theme/theme';
 const SellerDashboard = ({ navigation }) => {
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('pending');
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef(null);
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
   const { data: ordersData, isLoading, refetch } = useGetSellerOrdersQuery();
   const { data: ledgerData } = useGetLedgerStatsQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
@@ -186,6 +198,9 @@ const SellerDashboard = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           data={filteredOrders}
           renderItem={renderOrder}
           keyExtractor={item => item._id}
@@ -200,6 +215,8 @@ const SellerDashboard = ({ navigation }) => {
           )}
         />
       )}
+
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       <ConfirmModal 
         visible={confirmData.visible}

@@ -1,5 +1,6 @@
 // src/screens/seller/SellerOrders.jsx
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -40,6 +41,17 @@ const SellerOrders = ({ navigation }) => {
   const { data: ordersData, isLoading, refetch, isFetching, error } = useGetSellerOrdersQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
   const orders = ordersData?.data || [];
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef(null);
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
 
   useEffect(() => {
     if (ordersData) console.log("[DEBUG SELLER ORDERS] Data:", ordersData);
@@ -166,6 +178,9 @@ const SellerOrders = ({ navigation }) => {
       </View>
 
       <FlatList
+        ref={listRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         data={orders}
         renderItem={renderOrderItem}
         keyExtractor={item => item._id}
@@ -188,6 +203,7 @@ const SellerOrders = ({ navigation }) => {
           </View>
         )}
       />
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </ScreenWrapper>
   );
 };

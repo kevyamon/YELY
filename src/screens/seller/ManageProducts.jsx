@@ -1,7 +1,8 @@
 // src/screens/seller/ManageProducts.jsx
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
+import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   ActivityIndicator, 
   Alert, 
@@ -43,6 +44,17 @@ const ManageProducts = ({ navigation }) => {
   const [toggleSoldOut] = useToggleSoldOutMutation();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [productToDelete, setProductToDelete] = useState(null);
+
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const listRef = useRef(null);
+
+  const handleScroll = (event) => {
+    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
+  };
+
+  const scrollToTop = () => {
+    listRef.current?.scrollToOffset({ offset: 0, animated: true });
+  };
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
@@ -235,6 +247,9 @@ const ManageProducts = ({ navigation }) => {
         </View>
       ) : (
         <FlatList
+          ref={listRef}
+          onScroll={handleScroll}
+          scrollEventThrottle={16}
           data={products}
           renderItem={renderProduct}
           keyExtractor={item => item._id}
@@ -252,6 +267,8 @@ const ManageProducts = ({ navigation }) => {
           )}
         />
       )}
+
+      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       {/* MODAL AJOUT/EDITION */}
       <Modal

@@ -31,12 +31,20 @@ const GlobalSkeleton = ({ visible, children, style }) => {
 
   useEffect(() => {
     if (visible) {
+      translateX.setValue(-SCREEN_WIDTH);
       const shimmerAnim = Animated.loop(
-        Animated.timing(translateX, {
-          toValue: SCREEN_WIDTH,
-          duration: 1200,
-          useNativeDriver: true,
-        })
+        Animated.sequence([
+          Animated.timing(translateX, {
+            toValue: SCREEN_WIDTH,
+            duration: 1200,
+            useNativeDriver: true,
+          }),
+          Animated.timing(translateX, {
+            toValue: -SCREEN_WIDTH,
+            duration: 0,
+            useNativeDriver: true,
+          })
+        ])
       );
       shimmerAnim.start();
       return () => shimmerAnim.stop();
