@@ -47,6 +47,7 @@ const ManageProducts = ({ navigation }) => {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
+  const modalScrollRef = useRef(null);
 
   const handleScroll = (event) => {
     setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
@@ -305,26 +306,29 @@ const ManageProducts = ({ navigation }) => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false}>
-              <View style={styles.imagesGrid}>
-                {form.images.map((img, index) => (
-                  <View key={index} style={styles.imageWrapper}>
-                    <Image source={{ uri: img.uri }} style={styles.gridImage} />
-                    <TouchableOpacity 
-                      style={styles.removeImageBtn} 
-                      onPress={() => removeImage(index)}
-                    >
-                      <MaterialCommunityIcons name="close-circle" size={24} color={THEME.COLORS.danger} />
+            <ScrollView ref={modalScrollRef} showsVerticalScrollIndicator={false}>
+              <View style={[styles.formGroup, { marginTop: THEME.SPACING.xs }]}>
+                <Text style={styles.label}>Photos du produit * <Text style={styles.subLabel}>(au moins 1 obligatoire)</Text></Text>
+                <View style={styles.imagesGrid}>
+                  {form.images.map((img, index) => (
+                    <View key={index} style={styles.imageWrapper}>
+                      <Image source={{ uri: img.uri }} style={styles.gridImage} />
+                      <TouchableOpacity 
+                        style={styles.removeImageBtn} 
+                        onPress={() => removeImage(index)}
+                      >
+                        <MaterialCommunityIcons name="close-circle" size={24} color={THEME.COLORS.danger} />
+                      </TouchableOpacity>
+                    </View>
+                  ))}
+                  
+                  {form.images.length < 10 && (
+                    <TouchableOpacity style={styles.addImageCard} onPress={handlePickImage}>
+                      <MaterialCommunityIcons name="camera-plus" size={32} color={THEME.COLORS.primary} />
+                      <Text style={styles.addImageText}>{form.images.length}/10</Text>
                     </TouchableOpacity>
-                  </View>
-                ))}
-                
-                {form.images.length < 10 && (
-                  <TouchableOpacity style={styles.addImageCard} onPress={handlePickImage}>
-                    <MaterialCommunityIcons name="camera-plus" size={32} color={THEME.COLORS.primary} />
-                    <Text style={styles.addImageText}>{form.images.length}/10</Text>
-                  </TouchableOpacity>
-                )}
+                  )}
+                </View>
               </View>
 
               <View style={styles.formGroup}>
@@ -352,6 +356,7 @@ const ManageProducts = ({ navigation }) => {
                   placeholderTextColor={THEME.COLORS.textTertiary}
                   value={form.name}
                   onChangeText={(t) => setForm({...form, name: t})}
+                  onFocus={() => setTimeout(() => modalScrollRef.current?.scrollTo({ y: 140, animated: true }), 100)}
                 />
               </View>
 
@@ -364,6 +369,7 @@ const ManageProducts = ({ navigation }) => {
                   keyboardType="numeric"
                   value={form.price}
                   onChangeText={(t) => setForm({...form, price: t})}
+                  onFocus={() => setTimeout(() => modalScrollRef.current?.scrollTo({ y: 240, animated: true }), 100)}
                 />
               </View>
 
@@ -377,6 +383,7 @@ const ManageProducts = ({ navigation }) => {
                   numberOfLines={3}
                   value={form.description}
                   onChangeText={(t) => setForm({...form, description: t})}
+                  onFocus={() => setTimeout(() => modalScrollRef.current?.scrollTo({ y: 340, animated: true }), 100)}
                 />
               </View>
 
@@ -466,10 +473,21 @@ const styles = StyleSheet.create({
   emptyText: { color: THEME.COLORS.textTertiary, marginTop: 15 },
   shopBtn: { marginTop: 20, backgroundColor: THEME.COLORS.primary, paddingHorizontal: 20, paddingVertical: 12, borderRadius: 25 },
   shopBtnText: { color: THEME.COLORS.textInverse, fontWeight: 'bold' },
-  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.8)', justifyContent: 'flex-end' },
-  modalContent: { backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, padding: 24, maxHeight: '90%' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.85)', justifyContent: 'center', alignItems: 'center' },
+  modalContent: { 
+    backgroundColor: THEME.COLORS.background, 
+    borderRadius: 28, 
+    padding: 24, 
+    maxHeight: '85%',
+    width: '92%',
+    maxWidth: 550,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    ...THEME.SHADOWS.strong,
+  },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 },
   modalTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  subLabel: { fontSize: 11, fontWeight: 'normal', color: THEME.COLORS.textTertiary },
   
   imagesGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 24 },
   imageWrapper: { width: '31%', aspectRatio: 1, borderRadius: 12, overflow: 'hidden', position: 'relative', backgroundColor: THEME.COLORS.glassSurface },
