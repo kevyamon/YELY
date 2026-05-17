@@ -333,28 +333,29 @@ const ProductDetails = ({ route, navigation }) => {
         </View>
       </GlassModal>
 
-      {/* FOOTER FIXE AVEC COMPTEUR REDUX */}
+      {/* FOOTER FIXE AVEC BOUTON DE CONTRÔLE PANIER UNIFIÉ */}
       <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 15) }]}>
-        <View style={styles.footerRow}>
-          <View style={styles.qtyContainer}>
-            <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
-              <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
+        {quantityInCart === 0 ? (
+          <GoldButton 
+            title="Ajouter au panier"
+            onPress={handleAddToCart}
+            icon="cart-outline"
+          />
+        ) : (
+          <View style={styles.unifiedQtyContainer}>
+            <TouchableOpacity style={styles.unifiedQtyAction} onPress={handleRemove}>
+              <Ionicons name="remove" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
-            <Text style={styles.qtyValue}>{displayQuantity}</Text>
-            <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
-              <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
+            
+            <Text style={styles.unifiedQtyText}>
+              {quantityInCart} dans le panier
+            </Text>
+            
+            <TouchableOpacity style={styles.unifiedQtyAction} onPress={handleAdd}>
+              <Ionicons name="add" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
-
-          <View style={styles.btnWrapper}>
-            <GoldButton 
-              title={quantityInCart > 0 ? "Dans le panier" : "Ajouter au panier"} 
-              onPress={handleAddToCart}
-              icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
-              disabled={quantityInCart > 0}
-            />
-          </View>
-        </View>
+        )}
       </View>
     </View>
   );
@@ -472,6 +473,28 @@ const styles = StyleSheet.create({
   qtyAction: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   qtyValue: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10, minWidth: 20, textAlign: 'center' },
   btnWrapper: { flex: 1 },
+  unifiedQtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 30,
+    height: 52,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.25)',
+  },
+  unifiedQtyAction: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  unifiedQtyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME.COLORS.primary,
+  },
 
   // Modal Styles
   modalContent: { maxHeight: height * 0.6, padding: 5 },

@@ -1,8 +1,8 @@
 // src/screens/marketplace/ProductDetails.web.jsx
-// DETAILS PRODUIT PREMIUM ADAPTATIF - Design Minimaliste & Industriel
+// DETAILS PRODUIT RESPONSIVE PWA - Design Premium Minimaliste
 // CSCSM Level: Bank Grade
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -14,14 +14,11 @@ import {
   StatusBar,
   useColorScheme,
   useWindowDimensions,
-  FlatList,
-  Dimensions
+  FlatList
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { LinearGradient } from 'expo-linear-gradient';
-
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import { addToCart, selectCartItems, removeFromCart, updateQuantity } from '../../store/slices/cartSlice';
@@ -29,20 +26,19 @@ import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
-import GlassModal from '../../components/ui/GlassModal';
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
-  'Supermarket': 'Supermarche',
-  'Cosmetics': 'Cosmetiques',
-  'Electronics': 'Electronique',
+  'Supermarket': 'Supermarché',
+  'Cosmetics': 'Cosmétiques',
+  'Electronics': 'Électronique',
   'Home': 'Maison',
   'Other': 'Autres'
 };
 
 const ProductDetails = ({ route, navigation }) => {
   const { width, height } = useWindowDimensions();
-  const isMobile = width < 768;
+  const isLargeScreen = width > 600;
 
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
@@ -55,12 +51,10 @@ const ProductDetails = ({ route, navigation }) => {
   const isDarkMode = colorScheme === 'dark';
   
   const flatListRef = useRef(null);
-  const modalScrollViewRef = useRef(null);
-
+  
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [isDescModalVisible, setIsDescModalVisible] = useState(false);
-  const [showModalScrollTop, setShowModalScrollTop] = useState(false);
+  const [isDescExpanded, setIsDescExpanded] = useState(false);
   
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
@@ -68,9 +62,9 @@ const ProductDetails = ({ route, navigation }) => {
   const cartItem = cartItems.find(item => item.id === productId);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
 
-  // Diaporama automatique toutes les 5 secondes (uniquement sur mobile/PWA)
+  // Diaporama automatique toutes les 5 secondes en vue mobile
   useEffect(() => {
-    if (!isMobile || images.length <= 1) return;
+    if (isLargeScreen || images.length <= 1) return;
 
     const interval = setInterval(() => {
       let nextIndex = activeImage + 1;
@@ -89,7 +83,7 @@ const ProductDetails = ({ route, navigation }) => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeImage, images.length, isMobile]);
+  }, [activeImage, images.length, isLargeScreen]);
 
   const handleAdd = () => {
     if (quantityInCart > 0) {
@@ -154,45 +148,181 @@ const ProductDetails = ({ route, navigation }) => {
     );
   }
 
-  const description = product.description || "L'excellence Yely au service de votre quotidien.";
-  const displayQuantity = quantityInCart > 0 ? quantityInCart : quantity;
+  const description = product.description || "L'excellence Yély au service de votre quotidien.";
 
-  // --- RENDU MOBILE / PWA PHONE (< 768px) ---
-  if (isMobile) {
-    const isLongDescription = description.length > 180;
-    const displayDescription = isLongDescription 
-      ? `${description.slice(0, 180)}...` 
-      : description;
-
-    const IMG_HEIGHT = height * 0.42;
-
+  // RENDER DESKTOP LAYOUT (PC)
+  const renderDesktopLayout = () => {
     return (
       <View style={styles.container}>
         <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
 
+        {/* HEADER DE NAVIGATION PREMIUM */}
+        <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
+          <View style={styles.headerLeft}>
+            <View style={styles.backButtonWrapper}>
+              <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+                <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.headerTitle}>Détails du Produit</Text>
+          </View>
+
+          {/* Bouton Panier */}
+          <View style={styles.cartButtonWrapper}>
+            <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
+              <Ionicons name="cart-outline" size={24} color={THEME.COLORS.primary} />
+              {cartItems.length > 0 && <View style={styles.cartBadge} />}
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
+          <View style={styles.innerContainer}>
+            
+            {/* LAYOUT DEUX COLONNES PREMIUM POUR DESKTOP */}
+            <View style={styles.splitLayout}>
+              
+              {/* COLONNE GAUCHE : GALERIE D'IMAGES */}
+              <View style={styles.leftColumn}>
+                <View style={styles.mainImageWrapper}>
+                  {images.length > 0 ? (
+                    <Image source={{ uri: images[activeImage] }} style={styles.mainImage} />
+                  ) : (
+                    <View style={styles.placeholderImage}>
+                      <Ionicons name="image-outline" size={80} color={THEME.COLORS.textTertiary} />
+                    </View>
+                  )}
+                </View>
+
+                {/* VIGNETTES THUMBNAILS */}
+                {images.length > 1 && (
+                  <View style={styles.thumbnailGrid}>
+                    {images.map((img, i) => (
+                      <TouchableOpacity 
+                        key={i} 
+                        onPress={() => setActiveImage(i)}
+                        style={[
+                          styles.thumbnailWrapper,
+                          activeImage === i && styles.activeThumbnailWrapper
+                        ]}
+                        activeOpacity={0.8}
+                      >
+                        <Image source={{ uri: img }} style={styles.thumbnail} />
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+              </View>
+
+              {/* COLONNE DROITE : METADATA & ACTIONS */}
+              <View style={styles.rightColumn}>
+                
+                {/* Badge Catégorie & Note */}
+                <View style={styles.metadataRow}>
+                  <Text style={styles.categoryBadge}>
+                    {CATEGORY_LABELS[product.category] || product.category}
+                  </Text>
+                  {product.rating && (
+                    <View style={styles.ratingBox}>
+                      <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
+                      <Text style={styles.ratingText}>{product.rating}</Text>
+                    </View>
+                  )}
+                </View>
+
+                {/* Titre & Prix */}
+                <Text style={styles.productName}>{product.name}</Text>
+                <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
+
+                <View style={styles.divider} />
+
+                {/* Description */}
+                <View style={styles.section}>
+                  <Text style={styles.sectionTitle}>Description</Text>
+                  <Text style={styles.descriptionText}>{description}</Text>
+                </View>
+
+                {/* Vendeur Certifié */}
+                <GlassCard style={styles.sellerSection} padding={20}>
+                  <View style={styles.sellerInfo}>
+                    <View style={styles.sellerAvatar}>
+                      <Ionicons name="storefront-outline" size={24} color={THEME.COLORS.primary} />
+                    </View>
+                    <View>
+                      <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
+                      <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
+                    </View>
+                  </View>
+                </GlassCard>
+
+                <View style={styles.divider} />
+
+                {/* CONTRÔLEUR DE QUANTITÉ & BOUTON PANIER INTÉGRÉS */}
+                <View style={styles.actionBlock}>
+                  <View style={styles.qtyContainer}>
+                    <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
+                      <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
+                    </TouchableOpacity>
+                    <Text style={styles.qtyValue}>{quantityInCart > 0 ? quantityInCart : quantity}</Text>
+                    <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
+                      <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
+                    </TouchableOpacity>
+                  </View>
+
+                  <View style={styles.btnWrapper}>
+                    <GoldButton 
+                      title={quantityInCart > 0 ? "Dans le panier" : "Ajouter au panier"} 
+                      onPress={handleAddToCart}
+                      icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
+                      disabled={quantityInCart > 0}
+                    />
+                  </View>
+                </View>
+
+              </View>
+
+            </View>
+
+          </View>
+        </ScrollView>
+      </View>
+    );
+  };
+
+  // RENDER MOBILE LAYOUT (TELEPHONE)
+  const renderMobileLayout = () => {
+    const isLongDescription = description.length > 180;
+    const displayDescription = isLongDescription && !isDescExpanded
+      ? `${description.slice(0, 180)}...`
+      : description;
+
+    return (
+      <View style={styles.mobileContainer}>
+        <StatusBar barStyle="light-content" transparent translucent />
+
         {/* HEADER DE NAVIGATION EN OVERLAY */}
-        <View style={[styles.headerOverlay, { paddingTop: Math.max(insets.top, 15) }]}>
+        <View style={[styles.mobileHeaderOverlay, { paddingTop: Math.max(insets.top, 15) }]}>
           <TouchableOpacity 
             onPress={() => navigation.goBack()} 
-            style={styles.circularBtn}
+            style={styles.mobileCircularBtn}
             activeOpacity={0.8}
           >
             <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
           </TouchableOpacity>
           
-          <Text style={styles.headerOverlayTitle} numberOfLines={1}>
-            Details du Produit
+          <Text style={styles.mobileHeaderOverlayTitle} numberOfLines={1}>
+            Détails du Produit
           </Text>
           
           <TouchableOpacity 
             onPress={() => navigation.navigate('Cart')} 
-            style={styles.circularBtn}
+            style={styles.mobileCircularBtn}
             activeOpacity={0.8}
           >
             <Ionicons name="cart" size={24} color={THEME.COLORS.primary} />
             {cartItems.length > 0 && (
-              <View style={styles.cartBadgeOverlay}>
-                <Text style={styles.cartBadgeOverlayText}>
+              <View style={styles.mobileCartBadgeOverlay}>
+                <Text style={styles.mobileCartBadgeOverlayText}>
                   {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
                 </Text>
               </View>
@@ -205,301 +335,131 @@ const ProductDetails = ({ route, navigation }) => {
           contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
         >
           {/* CARROUSEL IMAGE AUTO-DEFILANT */}
-          <View style={[styles.imageWrapper, { height: IMG_HEIGHT }]}>
-            <FlatList 
-              ref={flatListRef}
-              data={images}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onMomentumScrollEnd={(e) => {
-                setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
-              }}
-              renderItem={({ item }) => (
-                <Image source={{ uri: item }} style={[styles.mainImageMobile, { width, height: IMG_HEIGHT }]} />
-              )}
-              keyExtractor={(_, i) => `img-${i}`}
-            />
+          <View style={styles.mobileImageWrapper}>
+            {images.length > 0 ? (
+              <FlatList 
+                ref={flatListRef}
+                data={images}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                onMomentumScrollEnd={(e) => {
+                  setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
+                }}
+                renderItem={({ item }) => (
+                  <Image source={{ uri: item }} style={[styles.mobileMainImage, { width }]} />
+                )}
+                keyExtractor={(_, i) => `img-${i}`}
+              />
+            ) : (
+              <View style={styles.mobilePlaceholderImage}>
+                <Ionicons name="image-outline" size={80} color={THEME.COLORS.textTertiary} />
+              </View>
+            )}
             
-            <LinearGradient
-              colors={['rgba(0,0,0,0.5)', 'transparent', isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(248,249,250,0.8)']}
-              style={styles.imageGradient}
-            />
-
             {images.length > 1 && (
-              <View style={styles.pagination}>
+              <View style={styles.mobilePagination}>
                 {images.map((_, i) => (
-                  <View key={i} style={[styles.dot, activeImage === i && styles.activeDot]} />
+                  <View key={i} style={[styles.mobileDot, activeImage === i && styles.mobileActiveDot]} />
                 ))}
               </View>
             )}
           </View>
 
           {/* SECTION CENTER : INFORMATIONS DU PRODUIT */}
-          <View style={styles.contentCardMobile}>
-            <View style={styles.mainInfoMobile}>
-              <View style={styles.rowBetweenMobile}>
-                <Text style={styles.categoryMobile}>
+          <View style={styles.mobileContentCard}>
+            <View style={styles.mobileMainInfo}>
+              <View style={styles.mobileRowBetween}>
+                <Text style={styles.mobileCategory}>
                   {CATEGORY_LABELS[product.category] || product.category}
                 </Text>
                 {product.rating && (
-                  <View style={styles.ratingBoxMobile}>
+                  <View style={styles.mobileRatingBox}>
                     <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
-                    <Text style={styles.ratingTextMobile}>{product.rating}</Text>
+                    <Text style={styles.mobileRatingText}>{product.rating}</Text>
                   </View>
                 )}
               </View>
               
-              <Text style={styles.productNameMobile}>{product.name}</Text>
-              <Text style={styles.priceMobile}>{product.price.toLocaleString()} FCFA</Text>
+              <Text style={styles.mobileProductName}>{product.name}</Text>
+              <Text style={styles.mobilePrice}>{product.price.toLocaleString()} FCFA</Text>
             </View>
 
-            <View style={styles.dividerMobile} />
+            <View style={styles.mobileDivider} />
 
             {/* DESCRIPTION */}
-            <View style={styles.sectionMobile}>
-              <Text style={styles.sectionTitleMobile}>Description</Text>
-              <Text style={styles.descriptionTextMobile}>
+            <View style={styles.mobileSection}>
+              <Text style={styles.mobileSectionTitle}>Description</Text>
+              <Text style={styles.mobileDescriptionText}>
                 {displayDescription}
               </Text>
               {isLongDescription && (
                 <TouchableOpacity 
-                  style={styles.readMoreBtnMobile} 
-                  onPress={() => setIsDescModalVisible(true)}
-                  hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+                  style={styles.mobileReadMoreBtn} 
+                  onPress={() => setIsDescExpanded(!isDescExpanded)}
+                  activeOpacity={0.7}
                 >
-                  <Text style={styles.readMoreTextMobile}>Lire plus</Text>
-                  <Ionicons name="chevron-forward" size={14} color={THEME.COLORS.primary} />
+                  <Text style={styles.mobileReadMoreText}>
+                    {isDescExpanded ? "Lire moins" : "Lire plus"}
+                  </Text>
+                  <Ionicons 
+                    name={isDescExpanded ? "chevron-up" : "chevron-forward"} 
+                    size={14} 
+                    color={THEME.COLORS.primary} 
+                  />
                 </TouchableOpacity>
               )}
             </View>
 
             {/* VENDEUR CERTIFIE */}
-            <GlassCard style={styles.sellerSectionMobile} padding={15}>
-              <View style={styles.sellerInfoMobile}>
-                <View style={styles.sellerAvatarMobile}>
+            <GlassCard style={styles.mobileSellerSection} padding={15}>
+              <View style={styles.mobileSellerInfo}>
+                <View style={styles.mobileSellerAvatar}>
                    <Ionicons name="storefront-outline" size={22} color={THEME.COLORS.primary} />
                 </View>
-                <View style={styles.sellerDetailsMobile}>
-                  <Text style={styles.sellerNameMobile}>{product.seller?.name || 'Boutique Yely'}</Text>
-                  <Text style={styles.sellerStatusMobile}>Partenaire Certifie Yely</Text>
+                <View style={styles.mobileSellerDetails}>
+                  <Text style={styles.mobileSellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
+                  <Text style={styles.mobileSellerStatus}>Partenaire Certifié Yély</Text>
                 </View>
               </View>
             </GlassCard>
           </View>
         </ScrollView>
 
-        {/* DESCRIPTION MODAL */}
-        <GlassModal
-          visible={isDescModalVisible}
-          onClose={() => setIsDescModalVisible(false)}
-          position="center"
-          closeOnBackdrop={true}
-        >
-          <View style={styles.modalContentMobile}>
-            <View style={styles.modalHeaderMobile}>
-              <Ionicons name="document-text-outline" size={28} color={THEME.COLORS.primary} />
-              <Text style={styles.modalTitleMobile}>Description complete</Text>
-            </View>
-            
-            <ScrollView 
-              ref={modalScrollViewRef}
-              style={styles.modalScrollMobile}
-              contentContainerStyle={styles.modalScrollContentMobile}
-              onScroll={(e) => {
-                const offsetY = e.nativeEvent.contentOffset.y;
-                setShowModalScrollTop(offsetY > 120);
-              }}
-              scrollEventThrottle={16}
-              showsVerticalScrollIndicator={false}
-            >
-              <Text style={styles.modalDescTextMobile}>{description}</Text>
-            </ScrollView>
-            
-            <View style={styles.modalFooterMobile}>
-              <TouchableOpacity 
-                style={styles.modalCloseBtnMobile}
-                onPress={() => setIsDescModalVisible(false)}
-              >
-                <Text style={styles.modalCloseTextMobile}>Fermer</Text>
+        {/* FOOTER FIXE AVEC BOUTON DE CONTRÔLE PANIER UNIFIÉ */}
+        <View style={[styles.mobileFooter, { paddingBottom: Math.max(insets.bottom, 15) }]}>
+          {quantityInCart === 0 ? (
+            <GoldButton 
+              title="Ajouter au panier"
+              onPress={handleAddToCart}
+              icon="cart-outline"
+            />
+          ) : (
+            <View style={styles.mobileUnifiedQtyContainer}>
+              <TouchableOpacity style={styles.mobileUnifiedQtyAction} onPress={handleRemove}>
+                <Ionicons name="remove" size={24} color={THEME.COLORS.textPrimary} />
+              </TouchableOpacity>
+              
+              <Text style={styles.mobileUnifiedQtyText}>
+                {quantityInCart} dans le panier
+              </Text>
+              
+              <TouchableOpacity style={styles.mobileUnifiedQtyAction} onPress={handleAdd}>
+                <Ionicons name="add" size={24} color={THEME.COLORS.textPrimary} />
               </TouchableOpacity>
             </View>
-
-            {showModalScrollTop && (
-              <TouchableOpacity 
-                style={styles.modalScrollTopBtnMobile}
-                onPress={() => modalScrollViewRef.current?.scrollTo({ y: 0, animated: true })}
-                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-              >
-                <Ionicons name="arrow-up" size={18} color="#000" />
-              </TouchableOpacity>
-            )}
-          </View>
-        </GlassModal>
-
-        {/* FOOTER FIXE AVEC COMPTEUR REDUX */}
-        <View style={[styles.footerMobile, { paddingBottom: Math.max(insets.bottom, 15) }]}>
-          <View style={styles.footerRowMobile}>
-            <View style={styles.qtyContainerMobile}>
-              <TouchableOpacity style={styles.qtyActionMobile} onPress={handleRemove}>
-                <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
-              </TouchableOpacity>
-              <Text style={styles.qtyValueMobile}>{displayQuantity}</Text>
-              <TouchableOpacity style={styles.qtyActionMobile} onPress={handleAdd}>
-                <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            <View style={styles.btnWrapperMobile}>
-              <GoldButton 
-                title={quantityInCart > 0 ? "Dans le panier" : "Ajouter au panier"} 
-                onPress={handleAddToCart}
-                icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
-                disabled={quantityInCart > 0}
-              />
-            </View>
-          </View>
+          )}
         </View>
       </View>
     );
+  };
+
+  // SWITCH RESPONSIVE
+  if (isLargeScreen) {
+    return renderDesktopLayout();
+  } else {
+    return renderMobileLayout();
   }
-
-  // --- RENDU D'ORIGINE PC / DESKTOP (>= 768px) ---
-  return (
-    <View style={styles.container}>
-      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
-
-      {/* HEADER DE NAVIGATION PREMIUM */}
-      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
-        <View style={styles.headerLeft}>
-          <View style={styles.backButtonWrapper}>
-            <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-              <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-            </TouchableOpacity>
-          </View>
-          <Text style={styles.headerTitle}>Details du Produit</Text>
-        </View>
-
-        {/* Bouton Panier */}
-        <View style={styles.cartButtonWrapper}>
-          <TouchableOpacity style={styles.cartButton} onPress={() => navigation.navigate('Cart')}>
-            <Ionicons name="cart-outline" size={24} color={THEME.COLORS.primary} />
-            {cartItems.length > 0 && <View style={styles.cartBadge} />}
-          </TouchableOpacity>
-        </View>
-      </View>
-
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
-        <View style={styles.innerContainer}>
-          
-          {/* LAYOUT DEUX COLONNES PREMIUM POUR DESKTOP */}
-          <View style={styles.splitLayout}>
-            
-            {/* COLONNE GAUCHE : GALERIE D'IMAGES */}
-            <View style={styles.leftColumn}>
-              <View style={styles.mainImageWrapper}>
-                {images.length > 0 ? (
-                  <Image source={{ uri: images[activeImage] }} style={styles.mainImage} />
-                ) : (
-                  <View style={styles.placeholderImage}>
-                    <Ionicons name="image-outline" size={80} color={THEME.COLORS.textTertiary} />
-                  </View>
-                )}
-              </View>
-
-              {/* VIGNETTES THUMBNAILS (Uniquement si plusieurs images) */}
-              {images.length > 1 && (
-                <View style={styles.thumbnailGrid}>
-                  {images.map((img, i) => (
-                    <TouchableOpacity 
-                      key={i} 
-                      onPress={() => setActiveImage(i)}
-                      style={[
-                        styles.thumbnailWrapper,
-                        activeImage === i && styles.activeThumbnailWrapper
-                      ]}
-                      activeOpacity={0.8}
-                    >
-                      <Image source={{ uri: img }} style={styles.thumbnail} />
-                    </TouchableOpacity>
-                  ))}
-                </View>
-              )}
-            </View>
-
-            {/* COLONNE DROITE : METADATA & ACTIONS */}
-            <View style={styles.rightColumn}>
-              
-              {/* Badge Categorie & Note */}
-              <View style={styles.metadataRow}>
-                <Text style={styles.categoryBadge}>
-                  {CATEGORY_LABELS[product.category] || product.category}
-                </Text>
-                {product.rating && (
-                  <View style={styles.ratingBox}>
-                    <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
-                    <Text style={styles.ratingText}>{product.rating}</Text>
-                  </View>
-                )}
-              </View>
-
-              {/* Titre & Prix */}
-              <Text style={styles.productName}>{product.name}</Text>
-              <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
-
-              <View style={styles.divider} />
-
-              {/* Description */}
-              <View style={styles.section}>
-                <Text style={styles.sectionTitle}>Description</Text>
-                <Text style={styles.descriptionText}>{description}</Text>
-              </View>
-
-              {/* Fiche Vendeur */}
-              <GlassCard style={styles.sellerSection} padding={20}>
-                <View style={styles.sellerInfo}>
-                  <View style={styles.sellerAvatar}>
-                    <Ionicons name="storefront-outline" size={24} color={THEME.COLORS.primary} />
-                  </View>
-                  <View>
-                    <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yely'}</Text>
-                    <Text style={styles.sellerStatus}>Partenaire Certifie Yely</Text>
-                  </View>
-                </View>
-              </GlassCard>
-
-              <View style={styles.divider} />
-
-              {/* CONTROLEUR DE QUANTITE & BOUTON PANIER INTEGRES */}
-              <View style={styles.actionBlock}>
-                <View style={styles.qtyContainer}>
-                  <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
-                    <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
-                  </TouchableOpacity>
-                  <Text style={styles.qtyValue}>{quantityInCart > 0 ? quantityInCart : quantity}</Text>
-                  <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
-                    <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
-                  </TouchableOpacity>
-                </View>
-
-                <View style={styles.btnWrapper}>
-                  <GoldButton 
-                    title={quantityInCart > 0 ? "Dans le panier" : "Ajouter au panier"} 
-                    onPress={handleAddToCart}
-                    icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
-                    disabled={quantityInCart > 0}
-                  />
-                </View>
-              </View>
-
-            </View>
-
-          </View>
-          
-        </View>
-      </ScrollView>
-    </View>
-  );
 };
 
 const styles = StyleSheet.create({
@@ -511,7 +471,6 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: THEME.COLORS.background,
   },
   errorText: {
     color: THEME.COLORS.textSecondary,
@@ -758,8 +717,9 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
-  // --- STYLES MOBILE RESPONSIVE PWA (< 768px) ---
-  headerOverlay: {
+  // MOBILE RESPONSIVE STYLES
+  mobileContainer: { flex: 1, backgroundColor: THEME.COLORS.background },
+  mobileHeaderOverlay: {
     position: 'absolute',
     top: 0,
     left: 0,
@@ -769,8 +729,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    paddingBottom: 15,
+    backgroundColor: 'rgba(0, 0, 0, 0.40)',
   },
-  circularBtn: {
+  mobileCircularBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
@@ -778,9 +740,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
-  headerOverlayTitle: {
+  mobileHeaderOverlayTitle: {
     color: '#FFFFFF',
     fontSize: 18,
     fontWeight: 'bold',
@@ -788,7 +750,7 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
   },
-  cartBadgeOverlay: {
+  mobileCartBadgeOverlay: {
     position: 'absolute',
     top: -4,
     right: -4,
@@ -800,18 +762,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 4,
   },
-  cartBadgeOverlayText: {
+  mobileCartBadgeOverlayText: {
     color: '#FFFFFF',
     fontSize: 10,
     fontWeight: 'bold',
   },
-  imageWrapper: { width: '100%', position: 'relative' },
-  mainImageMobile: { resizeMode: 'cover' },
-  imageGradient: { ...StyleSheet.absoluteFillObject },
-  pagination: { position: 'absolute', bottom: 35, alignSelf: 'center', flexDirection: 'row', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
-  activeDot: { width: 18, backgroundColor: THEME.COLORS.primary },
-  contentCardMobile: { 
+  mobileImageWrapper: { height: 380, width: '100%', position: 'relative' },
+  mobileMainImage: { height: 380, resizeMode: 'cover' },
+  mobilePlaceholderImage: { height: 380, width: '100%', justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface },
+  mobilePagination: { position: 'absolute', bottom: 35, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  mobileDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
+  mobileActiveDot: { width: 18, backgroundColor: THEME.COLORS.primary },
+  mobileContentCard: { 
     marginTop: -25, 
     backgroundColor: THEME.COLORS.background, 
     borderTopLeftRadius: 30, 
@@ -820,26 +782,26 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     flex: 1
   },
-  mainInfoMobile: { marginBottom: 15 },
-  rowBetweenMobile: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  categoryMobile: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary, textTransform: 'uppercase', letterSpacing: 1 },
-  ratingBoxMobile: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(212,175,55,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  ratingTextMobile: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary },
-  productNameMobile: { fontSize: 26, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 8 },
-  priceMobile: { fontSize: 22, fontWeight: '700', color: THEME.COLORS.primary },
-  dividerMobile: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 20 },
-  sectionMobile: { marginBottom: 25 },
-  sectionTitleMobile: { fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginBottom: 10 },
-  descriptionTextMobile: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
-  readMoreBtnMobile: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
-  readMoreTextMobile: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 14 },
-  sellerSectionMobile: { marginTop: 5 },
-  sellerInfoMobile: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  sellerAvatarMobile: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
-  sellerDetailsMobile: { flex: 1 },
-  sellerNameMobile: { fontSize: 15, fontWeight: '700', color: THEME.COLORS.textPrimary },
-  sellerStatusMobile: { fontSize: 12, color: THEME.COLORS.success, marginTop: 2 },
-  footerMobile: { 
+  mobileMainInfo: { marginBottom: 15 },
+  mobileRowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  mobileCategory: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary, textTransform: 'uppercase', letterSpacing: 1 },
+  mobileRatingBox: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(212,175,55,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  mobileRatingText: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary },
+  mobileProductName: { fontSize: 26, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 8 },
+  mobilePrice: { fontSize: 22, fontWeight: '700', color: THEME.COLORS.primary },
+  mobileDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 20 },
+  mobileSection: { marginBottom: 25 },
+  mobileSectionTitle: { fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginBottom: 10 },
+  mobileDescriptionText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
+  mobileReadMoreBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
+  mobileReadMoreText: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 14 },
+  mobileSellerSection: { marginTop: 5 },
+  mobileSellerInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
+  mobileSellerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+  mobileSellerDetails: { flex: 1 },
+  mobileSellerName: { fontSize: 15, fontWeight: '700', color: THEME.COLORS.textPrimary },
+  mobileSellerStatus: { fontSize: 12, color: THEME.COLORS.success, marginTop: 2 },
+  mobileFooter: { 
     position: 'absolute', 
     bottom: 0, 
     left: 0, 
@@ -850,21 +812,28 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, 
     paddingTop: 15 
   },
-  footerRowMobile: { flexDirection: 'row', gap: 15, alignItems: 'center' },
-  qtyContainerMobile: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 25, height: 50, paddingHorizontal: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  qtyActionMobile: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  qtyValueMobile: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10, minWidth: 20, textAlign: 'center' },
-  btnWrapperMobile: { flex: 1 },
-  modalContentMobile: { maxHeight: 400, padding: 5 },
-  modalHeaderMobile: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)', paddingBottom: 15, marginBottom: 15 },
-  modalTitleMobile: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
-  modalScrollMobile: { maxHeight: 250 },
-  modalScrollContentMobile: { paddingBottom: 20 },
-  modalDescTextMobile: { fontSize: 15, color: 'rgba(255, 255, 255, 0.85)', lineHeight: 24 },
-  modalFooterMobile: { borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)', paddingTop: 15, alignItems: 'center' },
-  modalCloseBtnMobile: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 },
-  modalCloseTextMobile: { color: '#000', fontWeight: 'bold', fontSize: 14 },
-  modalScrollTopBtnMobile: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 }
+  mobileUnifiedQtyContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 30,
+    height: 52,
+    paddingHorizontal: 12,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.25)',
+  },
+  mobileUnifiedQtyAction: {
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mobileUnifiedQtyText: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    color: THEME.COLORS.primary,
+  },
 });
 
 export default ProductDetails;

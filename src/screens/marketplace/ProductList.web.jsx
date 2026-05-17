@@ -285,19 +285,14 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: gridGap,
-    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: gridGap,
-    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   skeletonCard: {
-    width: cardWidth,
     marginBottom: THEME.SPACING.xl,
   },
   emptyContainer: {

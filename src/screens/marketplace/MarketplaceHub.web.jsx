@@ -1,4 +1,3 @@
-// src/screens/marketplace/MarketplaceHub.web.jsx
 import React, { useState, useRef, useEffect } from 'react';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
@@ -157,7 +156,7 @@ const MarketplaceHub = ({ navigation }) => {
             style={styles.allProductsHero}
             onPress={() => navigation.navigate('ProductList', { category: 'All' })}
           >
-            <LinearGradient
+             <LinearGradient
               colors={['rgba(212, 175, 55, 0.15)', 'rgba(0, 0, 0, 0.4)']}
               style={[styles.allProductsGradient, { padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.lg }]}
               start={{ x: 0, y: 0 }}
