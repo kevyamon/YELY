@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   ActivityIndicator, 
   StatusBar,
-  Animated
+  Animated,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +28,11 @@ const CATEGORY_LABELS = {
   'Home': 'Maison',
   'Other': 'Autres'
 };
+
+const { width } = Dimensions.get('window');
+const isLargeScreen = width > 600;
+const cardWidth = isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2;
+const gridGap = isLargeScreen ? 24 : 16;
 
 const ProductList = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
@@ -100,7 +106,7 @@ const ProductList = ({ route, navigation }) => {
     <View style={styles.skeletonGrid}>
       {[1, 2, 3, 4, 5, 6, 7, 8].map(key => (
         <View key={key} style={styles.skeletonCard}>
-          <SkeletonBone width="100%" height={220} borderRadius={16} />
+          <SkeletonBone width="100%" height={cardWidth} borderRadius={16} />
           <SkeletonBone width="60%" height={20} borderRadius={4} style={{ marginTop: 8 }} />
           <SkeletonBone width="40%" height={15} borderRadius={4} style={{ marginTop: 8 }} />
         </View>
@@ -217,19 +223,19 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
-    justifyContent: 'flex-start',
+    gap: gridGap,
+    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
-    justifyContent: 'flex-start',
+    gap: gridGap,
+    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   skeletonCard: {
-    width: 220,
+    width: cardWidth,
     marginBottom: THEME.SPACING.xl,
   },
   emptyContainer: {

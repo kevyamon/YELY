@@ -20,7 +20,7 @@ import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = Platform.OS === 'web' ? 220 : (width - THEME.SPACING.xl * 3) / 2;
+const CARD_WIDTH = width > 600 ? 220 : (width - THEME.SPACING.xl * 3) / 2;
 
 const ProductCard = ({ product, onPress }) => {
   const isSoldOut = product.isSoldOut;

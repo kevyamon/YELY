@@ -8,7 +8,8 @@ import {
   ScrollView, 
   TouchableOpacity, 
   StatusBar,
-  Animated
+  Animated,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,6 +26,11 @@ const CATEGORIES = [
   { id: '5', name: 'Maison', icon: 'home-variant', color: '#F1C40F', type: 'Home', desc: 'Déco & Entretien' },
   { id: '6', name: 'Autres', icon: 'dots-horizontal', color: '#95A5A6', type: 'Other', desc: 'Divers' },
 ];
+
+const { width } = Dimensions.get('window');
+const isLargeScreen = width > 600;
+const CATEGORY_CARD_WIDTH = isLargeScreen ? 250 : (width - THEME.SPACING.xl * 3) / 2;
+const GRID_GAP = isLargeScreen ? 24 : THEME.SPACING.md;
 
 const MarketplaceHub = ({ navigation }) => {
   const insets = useSafeAreaInsets();
@@ -287,15 +293,15 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 24,
-    justifyContent: 'flex-start',
+    gap: GRID_GAP,
+    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   categoryCard: {
-    width: 250,
+    width: CATEGORY_CARD_WIDTH,
     backgroundColor: THEME.COLORS.glassSurface,
     borderRadius: THEME.BORDERS.radius.lg,
-    padding: THEME.SPACING.xl,
+    padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.md,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
     alignItems: 'flex-start',
