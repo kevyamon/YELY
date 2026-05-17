@@ -16,7 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
-import { addToCart, selectCartItems } from '../../store/slices/cartSlice';
+import { addToCart, selectCartItems, removeFromCart, updateQuantity } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
@@ -48,6 +48,35 @@ const ProductDetails = ({ route, navigation }) => {
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
 
+  const cartItem = cartItems.find(item => item.id === productId);
+  const quantityInCart = cartItem ? cartItem.quantity : 0;
+
+  const handleAdd = () => {
+    if (quantityInCart > 0) {
+      dispatch(updateQuantity({ id: productId, quantity: quantityInCart + 1 }));
+    } else {
+      setQuantity(q => q + 1);
+    }
+  };
+
+  const handleRemove = () => {
+    if (quantityInCart > 0) {
+      if (quantityInCart > 1) {
+        dispatch(updateQuantity({ id: productId, quantity: quantityInCart - 1 }));
+      } else {
+        dispatch(removeFromCart(productId));
+        setQuantity(1);
+        dispatch(showToast({
+          type: 'info',
+          title: 'Retire',
+          message: `${product?.name || 'Produit'} retire du panier.`
+        }));
+      }
+    } else {
+      setQuantity(q => Math.max(1, q - 1));
+    }
+  };
+
   const handleAddToCart = () => {
     if (!product) return;
 
@@ -58,13 +87,13 @@ const ProductDetails = ({ route, navigation }) => {
 
     dispatch(addToCart({ 
       product: normalizedProduct, 
-      quantity: parseInt(quantity) || 1 
+      quantity: quantityInCart > 0 ? 0 : quantity 
     }));
 
     dispatch(showToast({
       type: 'success',
-      title: 'Panier mis à jour',
-      message: `${product.name} ajouté.`
+      title: 'Panier mis a jour',
+      message: `${product.name} ajoute.`
     }));
   };
 
@@ -195,20 +224,21 @@ const ProductDetails = ({ route, navigation }) => {
               {/* CONTRÔLEUR DE QUANTITÉ & BOUTON PANIER INTÉGRÉS */}
               <View style={styles.actionBlock}>
                 <View style={styles.qtyContainer}>
-                  <TouchableOpacity style={styles.qtyAction} onPress={() => setQuantity(Math.max(1, quantity - 1))}>
+                  <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
                     <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
                   </TouchableOpacity>
-                  <Text style={styles.qtyValue}>{quantity}</Text>
-                  <TouchableOpacity style={styles.qtyAction} onPress={() => setQuantity(quantity + 1)}>
+                  <Text style={styles.qtyValue}>{quantityInCart > 0 ? quantityInCart : quantity}</Text>
+                  <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
                     <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
                   </TouchableOpacity>
                 </View>
 
                 <View style={styles.btnWrapper}>
                   <GoldButton 
-                    title="Ajouter au panier" 
+                    title={quantityInCart > 0 ? "Dans le panier" : "Ajouter au panier"} 
                     onPress={handleAddToCart}
-                    icon="cart-outline"
+                    icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
+                    disabled={quantityInCart > 0}
                   />
                 </View>
               </View>
