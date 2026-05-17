@@ -9,7 +9,8 @@ import {
   TouchableOpacity, 
   Dimensions,
   StatusBar,
-  TextInput
+  TextInput,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -122,7 +123,7 @@ const MarketplaceHub = ({ navigation }) => {
         contentContainerStyle={styles.listContent}
         columnWrapperStyle={styles.columnWrapper}
         showsVerticalScrollIndicator={false}
-        ListHeaderComponent={() => (
+        ListHeaderComponent={
           <View style={styles.listHeader}>
             
             {/* REAL SEARCH BAR */}
@@ -169,7 +170,7 @@ const MarketplaceHub = ({ navigation }) => {
 
             <Text style={styles.sectionTitle}>Que cherchez-vous ?</Text>
           </View>
-        )}
+        }
       />
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </View>
@@ -180,6 +181,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 800 : '100%',
+    alignSelf: 'center',
   },
   header: {
     flexDirection: 'row',

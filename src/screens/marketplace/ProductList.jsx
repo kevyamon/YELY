@@ -10,7 +10,8 @@ import {
   ActivityIndicator,
   StatusBar,
   Animated,
-  Dimensions
+  Dimensions,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -76,7 +77,11 @@ const ProductList = ({ route, navigation }) => {
       </View>
 
       <View style={styles.searchBar}>
-        <MaterialCommunityIcons name="magnify" size={20} color={THEME.COLORS.textTertiary} />
+        {isFetching ? (
+          <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginRight: THEME.SPACING.sm }} />
+        ) : (
+          <MaterialCommunityIcons name="magnify" size={20} color={THEME.COLORS.textTertiary} />
+        )}
         <TextInput
           style={styles.searchInput}
           placeholder="Rechercher un produit..."
@@ -119,30 +124,36 @@ const ProductList = ({ route, navigation }) => {
     <View style={styles.container}>
       {renderHeader()}
 
-      <GlobalSkeleton visible={isLoading || isFetching}>
-        {(isLoading || isFetching) ? renderSkeleton() : (
-          <FlatList
-            ref={flatListRef}
-            data={products}
-            renderItem={({ item }) => (
-              <ProductCard 
-                product={item} 
-                onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
+      {/* SMART SKELETON DISPLAY THRESHOLD (Prevents FlatList unmounting / Keyboard focus loss) */}
+      {(() => {
+        const showSkeleton = isLoading || (isFetching && products.length === 0);
+        return (
+          <GlobalSkeleton visible={showSkeleton}>
+            {showSkeleton ? renderSkeleton() : (
+              <FlatList
+                ref={flatListRef}
+                data={products}
+                renderItem={({ item }) => (
+                  <ProductCard 
+                    product={item} 
+                    onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
+                  />
+                )}
+                keyExtractor={item => item._id}
+                numColumns={2}
+                contentContainerStyle={styles.listContent}
+                columnWrapperStyle={styles.columnWrapper}
+                ListEmptyComponent={renderEmpty}
+                showsVerticalScrollIndicator={false}
+                onRefresh={refetch}
+                refreshing={isFetching}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
               />
             )}
-            keyExtractor={item => item._id}
-            numColumns={2}
-            contentContainerStyle={styles.listContent}
-            columnWrapperStyle={styles.columnWrapper}
-            ListEmptyComponent={renderEmpty}
-            showsVerticalScrollIndicator={false}
-            onRefresh={refetch}
-            refreshing={isFetching}
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
-          />
-        )}
-      </GlobalSkeleton>
+          </GlobalSkeleton>
+        );
+      })()}
 
       {/* BOUTON SCROLL TO TOP */}
       <Animated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
@@ -158,6 +169,9 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+    width: '100%',
+    maxWidth: Platform.OS === 'web' ? 800 : '100%',
+    alignSelf: 'center',
   },
   header: {
     paddingHorizontal: THEME.SPACING.xl,
