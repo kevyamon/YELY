@@ -32,8 +32,9 @@ const CATEGORY_LABELS = {
 const ProductList = ({ route, navigation }) => {
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 600;
-  const cardWidth = isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2;
   const gridGap = isLargeScreen ? 24 : 16;
+  const paddingValue = width * 0.06;
+  const cardWidth = isLargeScreen ? 220 : (width - paddingValue * 2 - gridGap) / 2;
 
   const insets = useSafeAreaInsets();
   const { category, search: initialSearch } = route.params || {};
@@ -210,6 +211,7 @@ const ProductList = ({ route, navigation }) => {
                   <ProductCard 
                     key={item._id}
                     product={item} 
+                    cardWidth={cardWidth}
                     onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
                   />
                 ))}
@@ -233,6 +235,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+    overflowX: 'hidden',
+    maxWidth: '100%',
   },
   header: {
     paddingHorizontal: '6%',

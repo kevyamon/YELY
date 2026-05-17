@@ -32,8 +32,9 @@ const CATEGORIES = [
 const MarketplaceHub = ({ navigation }) => {
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 600;
-  const categoryCardWidth = isLargeScreen ? 250 : (width - THEME.SPACING.xl * 3) / 2;
   const gridGap = isLargeScreen ? 24 : THEME.SPACING.md;
+  const paddingValue = width * 0.06;
+  const categoryCardWidth = isLargeScreen ? 250 : (width - paddingValue * 2 - gridGap) / 2;
 
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
@@ -201,6 +202,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+    overflowX: 'hidden',
+    maxWidth: '100%',
   },
   header: {
     flexDirection: 'row',

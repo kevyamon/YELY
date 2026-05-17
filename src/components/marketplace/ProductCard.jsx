@@ -19,10 +19,10 @@ import { addToCart, removeFromCart, updateQuantity, selectCartItems } from '../.
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-const ProductCard = ({ product, onPress }) => {
+const ProductCard = ({ product, onPress, cardWidth }) => {
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 600;
-  const dynamicCardWidth = isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2;
+  const dynamicCardWidth = cardWidth || (isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2);
 
   const isSoldOut = product.isSoldOut;
   const dispatch = useDispatch();

@@ -466,6 +466,8 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: THEME.COLORS.background,
+    overflowX: 'hidden',
+    maxWidth: '100%',
   },
   center: {
     flex: 1,
@@ -718,7 +720,7 @@ const styles = StyleSheet.create({
   },
 
   // MOBILE RESPONSIVE STYLES
-  mobileContainer: { flex: 1, backgroundColor: THEME.COLORS.background },
+  mobileContainer: { flex: 1, backgroundColor: THEME.COLORS.background, overflowX: 'hidden', maxWidth: '100%' },
   mobileHeaderOverlay: {
     position: 'absolute',
     top: 0,
