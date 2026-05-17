@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Animated } from 'react-native';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
+import MarketplaceSearchBar from '../../components/marketplace/MarketplaceSearchBar';
 
 const { width } = Dimensions.get('window');
 
@@ -127,29 +128,12 @@ const MarketplaceHub = ({ navigation }) => {
           <View style={styles.listHeader}>
             
             {/* REAL SEARCH BAR */}
-            <View style={styles.searchBar}>
-              <Ionicons name="search" size={20} color={THEME.COLORS.textTertiary} />
-              <TextInput
-                style={{
-                  flex: 1,
-                  marginLeft: THEME.SPACING.md,
-                  color: THEME.COLORS.textPrimary,
-                  fontSize: THEME.FONTS.sizes.body,
-                  paddingVertical: 0,
-                }}
-                placeholder="Rechercher un plat, un produit..."
-                placeholderTextColor={THEME.COLORS.textTertiary}
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-                onSubmitEditing={handleSearchSubmit}
-                returnKeyType="search"
-              />
-              {searchQuery.length > 0 && (
-                <TouchableOpacity onPress={() => setSearchQuery('')} style={{ padding: 4 }}>
-                  <MaterialCommunityIcons name="close-circle" size={18} color={THEME.COLORS.textTertiary} />
-                </TouchableOpacity>
-              )}
-            </View>
+            <MarketplaceSearchBar 
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              onSubmitEditing={handleSearchSubmit}
+              style={{ marginTop: THEME.SPACING.md, marginBottom: THEME.SPACING.xl }}
+            />
 
             {/* BANNER PROMO */}
             <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer}>

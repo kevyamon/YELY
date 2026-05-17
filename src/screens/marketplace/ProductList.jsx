@@ -20,6 +20,7 @@ import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
+import MarketplaceSearchBar from '../../components/marketplace/MarketplaceSearchBar';
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -76,25 +77,13 @@ const ProductList = ({ route, navigation }) => {
         <View style={{ width: 40 }} />
       </View>
 
-      <View style={styles.searchBar}>
-        {isFetching ? (
-          <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginRight: THEME.SPACING.sm }} />
-        ) : (
-          <MaterialCommunityIcons name="magnify" size={20} color={THEME.COLORS.textTertiary} />
-        )}
-        <TextInput
-          style={styles.searchInput}
-          placeholder="Rechercher un produit..."
-          placeholderTextColor={THEME.COLORS.textTertiary}
-          value={search}
-          onChangeText={setSearch}
-        />
-        {search.length > 0 && (
-          <TouchableOpacity onPress={() => setSearch('')}>
-            <MaterialCommunityIcons name="close-circle" size={18} color={THEME.COLORS.textTertiary} />
-          </TouchableOpacity>
-        )}
-      </View>
+      <MarketplaceSearchBar 
+        value={search}
+        onChangeText={setSearch}
+        placeholder="Rechercher un produit..."
+        isSearching={isFetching}
+        style={{ marginTop: THEME.SPACING.sm }}
+      />
     </View>
   );
 
