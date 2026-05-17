@@ -154,19 +154,22 @@ const AppNavigator = () => {
   // Memoization des statuts pour stabilite maximale
   const routingStatus = useMemo(() => {
     const isDriver = userRole === 'driver';
+    const isSeller = userRole === 'seller';
     const isAdmin = userRole === 'admin' || userRole === 'superadmin';
     const hasValidAccess = subStatus?.isActive || promoMode?.isActive;
     
     return {
       isDriver,
+      isSeller,
       isAdmin,
-      isSubscriptionRejected: isDriver && subStatus?.isRejected && !hasValidAccess,
-      isSubscriptionPending: isDriver && subStatus?.isPending && !subStatus?.isRejected && !hasValidAccess,
-      isDriverBlocked: isDriver && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected
+      isSubscriptionRejected: (isDriver || isSeller) && subStatus?.isRejected && !hasValidAccess,
+      isSubscriptionPending: (isDriver || isSeller) && subStatus?.isPending && !subStatus?.isRejected && !hasValidAccess,
+      isDriverBlocked: isDriver && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected,
+      isSellerBlocked: isSeller && !hasValidAccess && !subStatus?.isPending && !subStatus?.isRejected
     };
   }, [userRole, subStatus?.isActive, subStatus?.isPending, subStatus?.isRejected, promoMode?.isActive]);
 
-  const { isDriver, isAdmin, isSubscriptionRejected, isSubscriptionPending, isDriverBlocked } = routingStatus;
+  const { isDriver, isSeller, isAdmin, isSubscriptionRejected, isSubscriptionPending, isDriverBlocked, isSellerBlocked } = routingStatus;
 
   if (!isAuthReady) {
     return (
@@ -222,7 +225,7 @@ const AppNavigator = () => {
           <Stack.Group>
             <Stack.Screen name="WaitSubscription" component={WaitScreen} />
           </Stack.Group>
-        ) : isDriverBlocked ? (  
+        ) : (isDriverBlocked || isSellerBlocked) ? (  
           <Stack.Group>
             <Stack.Screen name="SubscriptionBlocker" component={SubscriptionScreen} />
           </Stack.Group>

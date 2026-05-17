@@ -8,15 +8,18 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const PaymentFailureScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
+  const user = useSelector(selectCurrentUser);
+  const userRole = user?.role;
 
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
+  const homeScreen = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
 
   const handleLogout = () => {
     dispatch(logout());
@@ -30,7 +33,7 @@ const PaymentFailureScreen = ({ navigation }) => {
 
   const handleDashboard = () => {
     dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
-    navigation.navigate('DriverHome');
+    navigation.navigate(homeScreen);
   };
 
   return (
@@ -45,11 +48,11 @@ const PaymentFailureScreen = ({ navigation }) => {
           )}
 
           <Ionicons name="close-circle" size={80} color={THEME.COLORS.error} style={{ marginTop: 20 }} />
-          <Text style={styles.title}>Paiement Refuse</Text>
+          <Text style={styles.title}>Paiement Refusé</Text>
           
           <Text style={styles.reasonTitle}>Motif du refus :</Text>
           <Text style={styles.reasonText}>
-            {subStatus?.rejectionReason || "La capture d'ecran fournie est invalide ou illisible. Veuillez soumettre une preuve conforme."}
+            {subStatus?.rejectionReason || "La capture d'écran fournie est invalide ou illisible. Veuillez soumettre une preuve conforme."}
           </Text>
 
           <View style={styles.actions}>
@@ -69,7 +72,7 @@ const PaymentFailureScreen = ({ navigation }) => {
             )}
 
             <GoldButton 
-              title="Se deconnecter" 
+              title="Se déconnecter" 
               onPress={handleLogout} 
               style={[styles.btn, styles.logoutBtn]} 
               textStyle={{ color: THEME.COLORS.error }} 

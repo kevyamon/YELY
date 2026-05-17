@@ -24,6 +24,7 @@ const MENU_ITEMS = {
   seller: [
     { route: 'SellerHome', label: 'Ma Boutique', icon: 'storefront' },
     { route: 'RiderHome', label: 'Commander une course', icon: 'car-sport' },
+    { route: 'Subscription', label: 'Abonnement', icon: 'card' },
     { route: 'ClientOrders', label: 'Mes commandes', icon: 'basket' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },

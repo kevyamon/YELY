@@ -7,16 +7,20 @@ import PricingCard from './PricingCard';
 
 const PLAN_TYPES = { MONTHLY: 'MONTHLY' };
 
-const PlanSelection = ({ config, status, onSelectPlan, onBack, onLogout }) => {
+const PlanSelection = ({ config, status, onSelectPlan, onBack, onLogout, userRole }) => {
   const isPioneer = config?.isPioneer || false;
+  const isSeller = userRole === 'seller';
 
   return (
     <View style={styles.stepContainer}>
       <Text style={styles.title}>Forfait Unique Yély</Text>
       <Text style={styles.subtitle}>
         {isPioneer 
-          ? "👑 Tarif Spécial Pionnier activé à vie sur votre compte !" 
-          : "Activez votre forfait mensuel pour commencer à rouler."}
+          ? "Tarif Spécial Pionnier activé à vie sur votre compte !" 
+          : (isSeller 
+              ? "Activez votre forfait mensuel pour vendre vos produits sur Yély." 
+              : "Activez votre forfait mensuel pour commencer à rouler.")
+        }
       </Text>
 
       <PricingCard 
@@ -25,7 +29,7 @@ const PlanSelection = ({ config, status, onSelectPlan, onBack, onLogout }) => {
         originalPrice={config?.monthly?.originalPrice || 2000}
         isPromo={config?.isPromoActive}
         description={isPioneer ? "Paiement Wave - Caisse Pionnier" : "Paiement Wave - Caisse Partenaire"}
-        onPress={() => onSelectPlan(PLAN_TYPES.MONTHLY, config?.monthly?.link, config?.monthly?.price)}
+        onPress={() => onSelectPlan({ id: PLAN_TYPES.MONTHLY, link: config?.monthly?.link, price: config?.monthly?.price })}
       />
 
       {status?.isActive ? (

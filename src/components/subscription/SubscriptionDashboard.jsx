@@ -57,12 +57,11 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
   }, [status?.expiresAt, status?.isActive, promoMode?.isActive]);
 
   const padZero = (num) => String(num || 0).padStart(2, '0');
-
   const formatExpirationDate = (dateString) => {
     if (!dateString) return 'Calcul en cours...';
     const date = new Date(dateString);
-    const mois = ['janvier', 'fevrier', 'mars', 'avril', 'mai', 'juin', 'juillet', 'aout', 'septembre', 'octobre', 'novembre', 'decembre'];
-    return `${date.getDate()} ${mois[date.getMonth()]} ${date.getFullYear()} a ${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
+    const mois = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+    return `${date.getDate()} ${mois[date.getMonth()]} ${date.getFullYear()} à ${String(date.getHours()).padStart(2, '0')}h${String(date.getMinutes()).padStart(2, '0')}`;
   };
 
   return (
@@ -75,7 +74,7 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
             <View style={[styles.iconContainerActive, { backgroundColor: 'rgba(212, 175, 55, 0.15)' }]}>
               <Ionicons name="gift" size={50} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.title, { color: THEME.COLORS.champagneGold }]}>Acces VIP Offert</Text>
+            <Text style={[styles.title, { color: THEME.COLORS.champagneGold }]}>Accès VIP Offert</Text>
             <Text style={styles.promoDesc}>
               {promoMode.message}
             </Text>
@@ -91,11 +90,11 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
             </View>
             <Text style={styles.title}>Traitement en cours</Text>
             <Text style={styles.dashTextDesc}>
-              Votre capture d'ecran a bien ete recue. Un administrateur verifie actuellement votre paiement.
+              Votre capture d'écran a bien été reçue. Un administrateur vérifie actuellement votre paiement.
             </Text>
             <View style={styles.infoBox}>
               <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.infoText}>Activation estimee : moins de 15 minutes.</Text>
+              <Text style={styles.infoText}>Activation estimée : moins de 15 minutes.</Text>
             </View>
           </View>
         ) 
@@ -110,12 +109,12 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
                 <View style={[styles.iconContainerActive, { backgroundColor: 'rgba(52, 152, 219, 0.15)' }]}>
                   <Ionicons name="snow-outline" size={50} color="#3498db" />
                 </View>
-                <Text style={styles.title}>Abonnement Gele</Text>
+                <Text style={styles.title}>Abonnement Gelé</Text>
                 <Text style={styles.dashTextDesc}>
-                  Le mode VIP est active sur le reseau. Le temps de votre abonnement est mis en pause et n'est plus decompté.
+                  Le mode VIP est activé sur le réseau. Le temps de votre abonnement est mis en pause et n'est plus décompté.
                 </Text>
                 <Text style={[styles.dashTextDesc, { fontWeight: 'bold', color: THEME.COLORS.champagneGold }]}>
-                  Il reprendra et sera prolonge automatiquement a la fin de la promotion.
+                  Il reprendra et sera prolongé automatiquement à la fin de la promotion.
                 </Text>
               </>
             ) : (
@@ -147,7 +146,7 @@ const SubscriptionDashboard = ({ status, onProlong, onExpired }) => {
                     <Text style={styles.timeLabel}>Sec</Text>
                   </View>
                 </View>
-
+ 
                 <View style={styles.dateBox}>
                   <Ionicons name="calendar-outline" size={24} color={THEME.COLORS.champagneGold} style={styles.calendarIcon} />
                   <View style={styles.dateTextContainer}>

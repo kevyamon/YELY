@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const WaitScreen = ({ navigation }) => {
@@ -19,17 +19,20 @@ const WaitScreen = ({ navigation }) => {
   
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
+  const user = useSelector(selectCurrentUser);
+  const userRole = user?.role;
 
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
+  const homeScreen = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
 
   // AJOUT : Écoute en temps réel de la réponse Socket pour rediriger instantanément
   useEffect(() => {
     if (subStatus?.isRejected) {
       navigation.replace('PaymentFailure');
     } else if (subStatus?.isActive && !subStatus?.isPending) {
-      navigation.replace('DriverHome');
+      navigation.replace(homeScreen);
     }
-  }, [subStatus?.isRejected, subStatus?.isActive, subStatus?.isPending, navigation]);
+  }, [subStatus?.isRejected, subStatus?.isActive, subStatus?.isPending, navigation, homeScreen]);
 
   const handleLogout = () => {
     dispatch(logout());
@@ -37,7 +40,7 @@ const WaitScreen = ({ navigation }) => {
 
   const handleClose = () => {
     dispatch(updateSubscriptionStatus({ isPending: false }));
-    navigation.navigate('DriverHome');
+    navigation.navigate(homeScreen);
   };
 
   return (
@@ -63,19 +66,19 @@ const WaitScreen = ({ navigation }) => {
           <Text style={styles.title}>Traitement en cours</Text>
           
           <Text style={styles.description}>
-            Ta capture d'ecran a bien ete recue par nos services. Un administrateur verifie actuellement ton paiement.
+            Ta capture d'écran a bien été reçue par nos services. Un administrateur vérifie actuellement ton paiement.
           </Text>
 
           <View style={styles.infoBox}>
             <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.textSecondary} />
             <Text style={styles.infoText}>
-              Activation estimee : moins de 15 minutes.
+              Activation estimée : moins de 15 minutes.
             </Text>
           </View>
 
           <View style={styles.buttonContainer}>
             <GoldButton 
-              title="SE DECONNECTER"
+              title="SE DÉCONNECTER"
               onPress={handleLogout}
               style={styles.button}
             />

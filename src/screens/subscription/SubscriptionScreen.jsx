@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
-import { Linking, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -50,6 +50,8 @@ const formatImageForUpload = (imageAsset, prefix = 'proof') => {
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const promoMode = useSelector(selectPromoMode);
+  const user = useSelector(selectCurrentUser);
+  const userRole = user?.role;
   
   const { data: configData, isLoading: isConfigLoading, isError: isConfigError, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, isError: isStatusError, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
@@ -100,99 +102,77 @@ const SubscriptionScreen = ({ navigation }) => {
       } else {
         setCurrentStep(STEPS.CHOOSE_PLAN);
       }
-    } else if (isStatusError || !statusData) {
+    } else {
       setCurrentStep(STEPS.CHOOSE_PLAN);
     }
-  }, [statusData, isStatusLoading, isConfigLoading, isStatusError, promoMode?.isActive]);
+  }, [statusData, isStatusLoading, isConfigLoading, promoMode?.isActive]);
 
-  const handleProlong = useCallback(() => {
+  const handleSelectPlan = (plan) => {
+    setSelectedPlan(plan);
+    setCurrentStep(STEPS.UPLOAD_PROOF);
+  };
+
+  const handleProlong = () => {
     setCurrentStep(STEPS.CHOOSE_PLAN);
-  }, []);
-
-  const handleSelectPlan = async (planType, paymentLink, price) => {
-    if (!paymentLink) {
-      dispatch(showErrorToast({ title: "Erreur", message: "Le lien de paiement n'est pas configure." }));
-      return;
-    }
-    try {
-      const separator = paymentLink.includes('?') ? '&' : '?';
-      const finalLink = `${paymentLink}${separator}amount=${price}`;
-      await Linking.openURL(finalLink);
-      
-      setSelectedPlan(planType);
-      setCurrentStep(STEPS.UPLOAD_PROOF);
-    } catch (error) {
-      dispatch(showErrorToast({ title: "Application requise", message: "Veuillez installer Wave." }));
-      const storeUrl = Platform.OS === 'ios' 
-        ? 'https://apps.apple.com/app/wave-mobile-money/id1486476483' 
-        : 'https://play.google.com/store/apps/details?id=com.wave.personal';
-      setTimeout(() => Linking.openURL(storeUrl).catch(() => {}), 1500);
-    }
   };
 
   const pickImage = async () => {
-    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (permissionResult.granted === false) {
-      dispatch(showErrorToast({ title: "Permission requise", message: "Acces a la galerie requis." }));
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      dispatch(showErrorToast({ message: "Permission d'accès aux photos requise." }));
       return;
     }
+
     const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ['images'],
-      allowsEditing: false,
-      quality: 0.8, 
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      quality: 0.8,
     });
+
     if (!result.canceled && result.assets && result.assets.length > 0) {
       setProofImage(result.assets[0]);
     }
   };
 
   const handleSubmitProof = async () => {
-    const phoneRegex = /^\+?[0-9\s]{8,20}$/;
-    if (!senderPhone || !phoneRegex.test(senderPhone)) {
-      dispatch(showErrorToast({ title: "Format invalide", message: "Entrez un numero valide." }));
+    if (!senderPhone || !proofImage) {
+      dispatch(showErrorToast({ message: "Veuillez remplir le numéro expéditeur et choisir une image." }));
       return;
     }
-    if (!proofImage) {
-      dispatch(showErrorToast({ title: "Capture manquante", message: "Joignez la capture d'ecran." }));
-      return;
-    }
-
-    const formData = new FormData();
-    formData.append('planId', selectedPlan);
-    formData.append('senderPhone', senderPhone.replace(/[\s-]/g, ''));
-    
-    const formattedProof = formatImageForUpload(proofImage, 'proof');
-    formData.append('proofImage', formattedProof);
 
     try {
+      const formattedFile = formatImageForUpload(proofImage);
+      
+      const formData = new FormData();
+      formData.append('planId', selectedPlan.id);
+      formData.append('senderPhone', senderPhone);
+      formData.append('file', formattedFile);
+
       await submitProof(formData).unwrap();
       
-      dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
-      dispatch(showSuccessToast({ title: "Transmission reussie", message: "Verification en cours." }));
-      setCurrentStep(STEPS.DASHBOARD); 
-    } catch (error) {
-      if (error?.status === 'FETCH_ERROR' || error?.status === 'TIMEOUT_ERROR') {
-        dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false, rejectionReason: null }));
-        dispatch(showSuccessToast({ 
-          title: "Envoi en cours", 
-          message: "Le fichier est lourd, traitement en arriere-plan..." 
-        }));
-        setCurrentStep(STEPS.DASHBOARD);
-      } else {
-        dispatch(showErrorToast({ title: "Echec", message: error?.data?.message || "Erreur reseau inattendue." }));
-      }
+      dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false }));
+      dispatch(showSuccessToast({ message: "Preuve soumise avec succès." }));
+      
+      setProofImage(null);
+      setSenderPhone('');
+      
+      navigation.replace('WaitSubscription');
+
+    } catch (err) {
+      dispatch(showErrorToast({ message: err?.data?.message || "Erreur lors de la soumission de la preuve." }));
     }
   };
 
   const renderHeader = () => {
-    const isActive = statusData?.data?.isActive;
-    const isNavigationAllowed = isActive || promoMode?.isActive;
+    const isBackVisible = currentStep !== STEPS.DASHBOARD && 
+                          statusData?.data && 
+                          (statusData.data.isActive || promoMode?.isActive);
 
     return (
       <View style={styles.header}>
-        {isNavigationAllowed ? (
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.headerButton}>
-            <Ionicons name="close" size={28} color={THEME.COLORS.textPrimary} />
+        {isBackVisible ? (
+          <TouchableOpacity onPress={() => setCurrentStep(STEPS.DASHBOARD)} style={styles.headerButton}>
+            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
         ) : (
           <View style={styles.headerSpacer} />
@@ -250,6 +230,7 @@ const SubscriptionScreen = ({ navigation }) => {
               onSelectPlan={handleSelectPlan}
               onBack={() => setCurrentStep(STEPS.DASHBOARD)}
               onLogout={() => dispatch(logout())}
+              userRole={userRole}
             />
           )}
 
