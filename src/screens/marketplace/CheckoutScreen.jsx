@@ -1,5 +1,5 @@
 // src/screens/marketplace/CheckoutScreen.jsx
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   View, 
   Text, 
@@ -32,6 +32,14 @@ const CheckoutScreen = ({ navigation }) => {
   const cartTotal = useSelector(selectCartTotal);
   
   const user = useSelector(state => state.auth.user);
+  
+  const scrollRef = useRef(null);
+
+  const handleInputFocus = (offset) => {
+    setTimeout(() => {
+      scrollRef.current?.scrollTo({ y: offset, animated: true });
+    }, 150);
+  };
   
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
@@ -232,7 +240,12 @@ const CheckoutScreen = ({ navigation }) => {
           </View>
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          ref={scrollRef}
+          contentContainerStyle={styles.scrollContent} 
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
           <Text style={styles.mainTitle}>Détails de livraison</Text>
           <GlassCard style={styles.section}>
             <View style={styles.inputGroup}>
@@ -246,6 +259,7 @@ const CheckoutScreen = ({ navigation }) => {
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 value={name}
                 onChangeText={setName}
+                onFocus={() => handleInputFocus(0)}
               />
             </View>
 
@@ -261,6 +275,7 @@ const CheckoutScreen = ({ navigation }) => {
                 keyboardType="phone-pad"
                 value={phone}
                 onChangeText={setPhone}
+                onFocus={() => handleInputFocus(80)}
               />
             </View>
 
@@ -329,6 +344,7 @@ const CheckoutScreen = ({ navigation }) => {
                     value={address}
                     onChangeText={setAddress}
                     multiline
+                    onFocus={() => handleInputFocus(180)}
                   />
                 )}
                 {deliveryMode === 'current' && (
@@ -358,6 +374,7 @@ const CheckoutScreen = ({ navigation }) => {
                 placeholderTextColor="rgba(255,255,255,0.4)"
                 value={note}
                 onChangeText={setNote}
+                onFocus={() => handleInputFocus(260)}
               />
             </View>
           </GlassCard>
@@ -537,7 +554,7 @@ const styles = StyleSheet.create({
   inputGroup: { marginBottom: 20 },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
   label: { color: THEME.COLORS.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
-  addressWrapper: { flexDirection: 'row', alignItems: 'center' },
+  addressWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', position: 'relative' },
   input: { 
     backgroundColor: 'rgba(255,255,255,0.15)',
     borderRadius: 15, 
