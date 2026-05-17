@@ -17,7 +17,8 @@ import {
   Dimensions,
   Image,
   KeyboardAvoidingView,
-  ScrollView
+  ScrollView,
+  RefreshControl
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
