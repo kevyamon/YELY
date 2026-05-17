@@ -51,6 +51,7 @@ import HistoryScreen from '../screens/history/HistoryScreen';
 import ReportScreen from '../screens/report/ReportScreen';
 import SplashScreenComponent from '../screens/SplashScreen';
 import AdminDashboard from '../screens/admin/AdminDashboard';
+import AdminBanners from '../screens/admin/AdminBanners';
 import AdminJournal from '../screens/admin/AdminJournal';
 import AdminMarketplace from '../screens/admin/AdminMarketplace';
 import AdminReports from '../screens/admin/AdminReports';
@@ -200,6 +201,7 @@ const AppNavigator = () => {
         ) : isAdmin ? (
           <Stack.Group>
             <Stack.Screen name="AdminDashboard" component={AdminDashboard} />
+            <Stack.Screen name="AdminBanners" component={AdminBanners} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />

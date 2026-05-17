@@ -103,6 +103,46 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Ledger'],
     }),
+
+    // Bannières
+    getBanners: builder.query({
+      query: () => '/banners',
+      providesTags: ['Banner'],
+    }),
+    getAllBannersAdmin: builder.query({
+      query: () => '/banners/admin',
+      providesTags: ['Banner'],
+    }),
+    createBanner: builder.mutation({
+      query: (data) => ({
+        url: '/banners',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Banner'],
+    }),
+    updateBanner: builder.mutation({
+      query: ({ id, data }) => ({
+        url: `/banners/${id}`,
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['Banner'],
+    }),
+    toggleBannerStatus: builder.mutation({
+      query: (id) => ({
+        url: `/banners/${id}/toggle`,
+        method: 'PATCH',
+      }),
+      invalidatesTags: ['Banner'],
+    }),
+    deleteBanner: builder.mutation({
+      query: (id) => ({
+        url: `/banners/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Banner'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -124,4 +164,10 @@ export const {
   useGetMyLedgerQuery,
   useGetLedgerStatsQuery,
   useClearLedgerEntryMutation,
+  useGetBannersQuery,
+  useGetAllBannersAdminQuery,
+  useCreateBannerMutation,
+  useUpdateBannerMutation,
+  useToggleBannerStatusMutation,
+  useDeleteBannerMutation,
 } = marketplaceApiSlice;

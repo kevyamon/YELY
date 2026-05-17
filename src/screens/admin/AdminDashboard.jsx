@@ -130,6 +130,7 @@ const AdminDashboard = () => {
     { id: 'rides', title: 'Historique Courses', icon: 'car-sport-outline', route: 'AdminRides', allowed: true },
     { id: 'marketplace', title: 'Marketplace Yély', icon: 'basket-outline', route: 'AdminMarketplace', allowed: true },
     { id: 'journal', title: 'Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
+    { id: 'banners', title: 'Bannières Live', icon: 'images-outline', route: 'AdminBanners', allowed: isSuperAdmin },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },
     { id: 'systemConfig', title: 'Configuration', icon: 'settings-outline', route: 'SystemConfig', allowed: isSuperAdmin }

@@ -45,14 +45,20 @@ const useMarketplaceSocketEvents = () => {
       dispatch(marketplaceApiSlice.util.invalidateTags(['Product']));
     };
 
+    const handleBannersUpdated = () => {
+      dispatch(marketplaceApiSlice.util.invalidateTags(['Banner']));
+    };
+
     socketService.on('product_created', handleProductUpdated);
     socketService.on('product_updated', handleProductUpdated);
     socketService.on('product_deleted', handleProductDeleted);
+    socketService.on('banners_updated', handleBannersUpdated);
 
     return () => {
       socketService.off('product_created', handleProductUpdated);
       socketService.off('product_updated', handleProductUpdated);
       socketService.off('product_deleted', handleProductDeleted);
+      socketService.off('banners_updated', handleBannersUpdated);
     };
   }, [dispatch]);
 };

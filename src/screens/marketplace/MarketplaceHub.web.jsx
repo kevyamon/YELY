@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import MarketplaceSearchBar from '../../components/marketplace/MarketplaceSearchBar';
+import MarketplaceBanner from '../../components/marketplace/MarketplaceBanner';
 import { useSelector } from 'react-redux';
 import { selectCartItems } from '../../store/slices/cartSlice';
 
@@ -147,24 +148,8 @@ const MarketplaceHub = ({ navigation }) => {
             style={styles.searchBar}
           />
 
-          {/* BANNER PROMO DESKTOP */}
-          <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer}>
-            <LinearGradient
-              colors={['rgba(212, 175, 55, 0.15)', 'rgba(212, 175, 55, 0.03)']}
-              style={styles.promoGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-            >
-              <View style={styles.promoContent}>
-                <Text style={styles.promoBadge}>NOUVEAU</Text>
-                <Text style={styles.promoTitle}>Livraison Yély Express</Text>
-                <Text style={styles.promoDesc}>
-                  Faites vos courses en ligne en toute simplicité. Nos chauffeurs s'occupent de récupérer et livrer vos produits en temps réel à votre porte.
-                </Text>
-              </View>
-              <MaterialCommunityIcons name="moped-electric-outline" size={80} color={THEME.COLORS.primary} style={styles.promoIcon} />
-            </LinearGradient>
-          </TouchableOpacity>
+          {/* BANNER PROMO DYNAMIQUE EN TEMPS RÉEL */}
+          <MarketplaceBanner navigation={navigation} />
 
           {/* HERO ALL PRODUCTS CARD */}
           <TouchableOpacity 

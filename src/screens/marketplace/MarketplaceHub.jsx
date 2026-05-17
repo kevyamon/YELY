@@ -19,6 +19,7 @@ import { Animated } from 'react-native';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import MarketplaceSearchBar from '../../components/marketplace/MarketplaceSearchBar';
+import MarketplaceBanner from '../../components/marketplace/MarketplaceBanner';
 import { useSelector } from 'react-redux';
 import { selectCartItems } from '../../store/slices/cartSlice';
 
@@ -145,21 +146,8 @@ const MarketplaceHub = ({ navigation }) => {
               style={{ marginTop: THEME.SPACING.md, marginBottom: THEME.SPACING.xl }}
             />
 
-            {/* BANNER PROMO */}
-            <TouchableOpacity activeOpacity={0.9} style={styles.promoContainer}>
-              <LinearGradient
-                colors={['rgba(212, 175, 55, 0.2)', 'rgba(212, 175, 55, 0.05)']}
-                style={styles.promoGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={styles.promoContent}>
-                  <Text style={styles.promoBadge}>NOUVEAU</Text>
-                  <Text style={styles.promoTitle}>Livraison Yély Express</Text>
-                  <Text style={styles.promoDesc}>Faites vos courses sans bouger. Nos chauffeurs s'occupent de tout.</Text>
-                </View>
-                <MaterialCommunityIcons name="moped-electric-outline" size={64} color={THEME.COLORS.primary} style={styles.promoIcon} />
-              </LinearGradient>
+            {/* BANNER PROMO DYNAMIQUE EN TEMPS RÉEL */}
+            <MarketplaceBanner navigation={navigation} />
             {/* HERO ALL PRODUCTS CARD */}
             <TouchableOpacity 
               activeOpacity={0.8} 
