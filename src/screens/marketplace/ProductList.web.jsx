@@ -1,17 +1,14 @@
-// src/screens/marketplace/ProductList.jsx
-import React, { useState, useRef } from 'react';
+// src/screens/marketplace/ProductList.web.jsx
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   View, 
   Text, 
   StyleSheet, 
-  FlatList, 
+  ScrollView, 
   TouchableOpacity, 
-  TextInput,
-  ActivityIndicator,
+  ActivityIndicator, 
   StatusBar,
-  Animated,
-  Dimensions,
-  Platform
+  Animated
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,14 +30,26 @@ const CATEGORY_LABELS = {
 
 const ProductList = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
-  useMarketplaceSocketEvents();
   const { category, search: initialSearch } = route.params || {};
   const [search, setSearch] = useState(initialSearch || '');
   const [showScrollTop, setShowScrollTop] = useState(false);
-  const flatListRef = useRef(null);
+  const scrollRef = useRef(null);
   const scrollTopOpacity = useRef(new Animated.Value(0)).current;
 
+  useMarketplaceSocketEvents();
+
   const displayTitle = CATEGORY_LABELS[category] || category || 'Produits';
+
+  // Navigation listener pour effacer la barre si on revient/quitte l'écran de recherche
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('focus', () => {
+      // Préserver le terme si on vient directement du Hub, sinon vider si c'est un nouvel accès
+      if (!route.params?.search) {
+        setSearch('');
+      }
+    });
+    return unsubscribe;
+  }, [navigation, route.params]);
 
   const handleScroll = (event) => {
     const offsetY = event.nativeEvent.contentOffset.y;
@@ -56,7 +65,7 @@ const ProductList = ({ route, navigation }) => {
   };
 
   const scrollToTop = () => {
-    flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
+    scrollRef.current?.scrollTo({ y: 0, animated: true });
   };
 
   const { data, isLoading, isError, refetch, isFetching } = useGetProductsQuery({
@@ -82,8 +91,20 @@ const ProductList = ({ route, navigation }) => {
         onChangeText={setSearch}
         placeholder="Rechercher un produit..."
         isSearching={isFetching}
-        style={{ marginTop: THEME.SPACING.sm }}
+        style={styles.searchBar}
       />
+    </View>
+  );
+
+  const renderSkeleton = () => (
+    <View style={styles.skeletonGrid}>
+      {[1, 2, 3, 4, 5, 6, 7, 8].map(key => (
+        <View key={key} style={styles.skeletonCard}>
+          <SkeletonBone width="100%" height={220} borderRadius={16} />
+          <SkeletonBone width="60%" height={20} borderRadius={4} style={{ marginTop: 8 }} />
+          <SkeletonBone width="40%" height={15} borderRadius={4} style={{ marginTop: 8 }} />
+        </View>
+      ))}
     </View>
   );
 
@@ -97,54 +118,44 @@ const ProductList = ({ route, navigation }) => {
     </View>
   );
 
-  const renderSkeleton = () => (
-    <View style={styles.skeletonGrid}>
-      {[1, 2, 3, 4, 5, 6].map((i) => (
-        <View key={i} style={styles.skeletonCard}>
-          <SkeletonBone width="100%" height={150} borderRadius={20} />
-          <SkeletonBone width="80%" height={20} style={{ marginTop: 15 }} />
-          <SkeletonBone width="40%" height={15} style={{ marginTop: 8 }} />
-        </View>
-      ))}
-    </View>
-  );
-
   return (
     <View style={styles.container}>
       {renderHeader()}
 
-      {/* SMART SKELETON DISPLAY THRESHOLD (Prevents FlatList unmounting / Keyboard focus loss) */}
-      {(() => {
-        const showSkeleton = isLoading || (isFetching && products.length === 0);
-        return (
-          <GlobalSkeleton visible={showSkeleton}>
-            {showSkeleton ? renderSkeleton() : (
-              <FlatList
-                ref={flatListRef}
-                data={products}
-                renderItem={({ item }) => (
+      <ScrollView
+        ref={scrollRef}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        showsVerticalScrollIndicator={true}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <View style={styles.innerContainer}>
+          {(() => {
+            const showSkeleton = isLoading || (isFetching && products.length === 0);
+            if (showSkeleton) {
+              return renderSkeleton();
+            }
+
+            if (products.length === 0) {
+              return renderEmpty();
+            }
+
+            return (
+              <View style={styles.productsGrid}>
+                {products.map(item => (
                   <ProductCard 
+                    key={item._id}
                     product={item} 
                     onPress={() => navigation.navigate('ProductDetails', { productId: item._id })}
                   />
-                )}
-                keyExtractor={item => item._id}
-                numColumns={2}
-                contentContainerStyle={styles.listContent}
-                columnWrapperStyle={styles.columnWrapper}
-                ListEmptyComponent={renderEmpty}
-                showsVerticalScrollIndicator={false}
-                onRefresh={refetch}
-                refreshing={isFetching}
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-              />
-            )}
-          </GlobalSkeleton>
-        );
-      })()}
+                ))}
+              </View>
+            );
+          })()}
+        </View>
+      </ScrollView>
 
-      {/* BOUTON SCROLL TO TOP */}
+      {/* SCROLL TO TOP */}
       <Animated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
         <TouchableOpacity onPress={scrollToTop} style={styles.scrollTopInner}>
           <MaterialCommunityIcons name="chevron-up" size={24} color={THEME.COLORS.deepAsphalt} />
@@ -160,76 +171,75 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.background,
   },
   header: {
-    paddingHorizontal: THEME.SPACING.xl,
+    paddingHorizontal: '6%',
     paddingVertical: THEME.SPACING.md,
     backgroundColor: THEME.COLORS.background,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255, 255, 255, 0.03)',
   },
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: THEME.SPACING.lg,
+    marginBottom: THEME.SPACING.md,
   },
   backButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     backgroundColor: THEME.COLORS.glassSurface,
     justifyContent: 'center',
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
   },
   title: {
-    fontSize: THEME.FONTS.sizes.h3,
+    fontSize: 24,
     fontWeight: THEME.FONTS.weights.bold,
     color: THEME.COLORS.textPrimary,
   },
   searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: THEME.BORDERS.radius.lg,
-    paddingHorizontal: THEME.SPACING.md,
-    height: 48,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    marginTop: THEME.SPACING.xs,
   },
-  searchInput: {
-    flex: 1,
-    marginLeft: THEME.SPACING.sm,
-    color: THEME.COLORS.textPrimary,
-    fontSize: THEME.FONTS.sizes.body,
-  },
-  listContent: {
-    paddingHorizontal: THEME.SPACING.xl,
+  scrollContent: {
     paddingBottom: THEME.SPACING.xxl,
   },
-  columnWrapper: {
-    justifyContent: 'space-between',
+  innerContainer: {
+    width: '100%',
+    maxWidth: 1200,
+    alignSelf: 'center',
+    paddingHorizontal: '6%',
+    paddingTop: THEME.SPACING.xl,
   },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+  productsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 24,
+    justifyContent: 'flex-start',
+    width: '100%',
   },
   skeletonGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    paddingHorizontal: THEME.SPACING.xl,
-    paddingTop: THEME.SPACING.md,
+    gap: 24,
+    justifyContent: 'flex-start',
+    width: '100%',
   },
   skeletonCard: {
-    width: (Dimensions.get('window').width - THEME.SPACING.xl * 2 - THEME.SPACING.md) / 2,
+    width: 220,
     marginBottom: THEME.SPACING.xl,
   },
   emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 100,
+    justifyContent: 'center',
+    marginTop: 120,
+    width: '100%',
   },
   emptyText: {
-    fontSize: THEME.FONTS.sizes.body,
+    fontSize: 16,
     color: THEME.COLORS.textSecondary,
     marginTop: THEME.SPACING.md,
   },
@@ -241,6 +251,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(212, 175, 55, 0.1)',
     borderWidth: 1,
     borderColor: THEME.COLORS.primary,
+    cursor: 'pointer',
   },
   refreshText: {
     color: THEME.COLORS.primary,
@@ -249,14 +260,15 @@ const styles = StyleSheet.create({
   scrollTopBtn: {
     position: 'absolute',
     bottom: 30,
-    right: 20,
-    borderRadius: 20,
+    right: 30,
+    borderRadius: 24,
     ...THEME.SHADOWS.goldSoft,
+    zIndex: 99,
   },
   scrollTopInner: {
     width: 48,
     height: 48,
-    borderRadius: 20,
+    borderRadius: 24,
     backgroundColor: THEME.COLORS.primary,
     justifyContent: 'center',
     alignItems: 'center',

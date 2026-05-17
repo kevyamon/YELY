@@ -10,7 +10,8 @@ import {
   TouchableOpacity, 
   Image, 
   Dimensions,
-  FlatList
+  FlatList,
+  Platform
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -19,7 +20,7 @@ import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - THEME.SPACING.xl * 3) / 2;
+const CARD_WIDTH = Platform.OS === 'web' ? 220 : (width - THEME.SPACING.xl * 3) / 2;
 
 const ProductCard = ({ product, onPress }) => {
   const isSoldOut = product.isSoldOut;
