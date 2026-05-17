@@ -254,6 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
+    cursor: 'pointer',
   },
   title: {
     fontSize: 24,

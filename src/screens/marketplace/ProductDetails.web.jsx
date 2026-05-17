@@ -258,6 +258,7 @@ const styles = StyleSheet.create({
     marginRight: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.05)',
+    cursor: 'pointer',
   },
   headerTitle: {
     fontSize: 20,

@@ -228,6 +228,7 @@ const ProductDetails = ({ route, navigation }) => {
         scrollEventThrottle={16}
         showsVerticalScrollIndicator={false}
         scrollEnabled={!isDescModalVisible}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 180 }}
       >
         {/* CARROUSEL IMAGE */}
         <View style={styles.imageWrapper}>
