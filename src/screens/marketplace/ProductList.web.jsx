@@ -9,7 +9,7 @@ import {
   ActivityIndicator, 
   StatusBar,
   Animated,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -29,12 +29,12 @@ const CATEGORY_LABELS = {
   'Other': 'Autres'
 };
 
-const { width } = Dimensions.get('window');
-const isLargeScreen = width > 600;
-const cardWidth = isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2;
-const gridGap = isLargeScreen ? 24 : 16;
-
 const ProductList = ({ route, navigation }) => {
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width > 600;
+  const cardWidth = isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2;
+  const gridGap = isLargeScreen ? 24 : 16;
+
   const insets = useSafeAreaInsets();
   const { category, search: initialSearch } = route.params || {};
   const [search, setSearch] = useState(initialSearch || '');
@@ -161,9 +161,9 @@ const ProductList = ({ route, navigation }) => {
   );
 
   const renderSkeleton = () => (
-    <View style={styles.skeletonGrid}>
+    <View style={[styles.skeletonGrid, { gap: gridGap, justifyContent: isLargeScreen ? 'flex-start' : 'space-between' }]}>
       {[1, 2, 3, 4, 5, 6, 7, 8].map(key => (
-        <View key={key} style={styles.skeletonCard}>
+        <View key={key} style={[styles.skeletonCard, { width: cardWidth }]}>
           <SkeletonBone width="100%" height={cardWidth} borderRadius={16} />
           <SkeletonBone width="60%" height={20} borderRadius={4} style={{ marginTop: 8 }} />
           <SkeletonBone width="40%" height={15} borderRadius={4} style={{ marginTop: 8 }} />
@@ -205,7 +205,7 @@ const ProductList = ({ route, navigation }) => {
             }
 
             return (
-              <View style={styles.productsGrid}>
+              <View style={[styles.productsGrid, { gap: gridGap, justifyContent: isLargeScreen ? 'flex-start' : 'space-between' }]}>
                 {sortedProducts.map(item => (
                   <ProductCard 
                     key={item._id}

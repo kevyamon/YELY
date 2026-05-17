@@ -9,7 +9,7 @@ import {
   TouchableOpacity, 
   StatusBar,
   Animated,
-  Dimensions
+  useWindowDimensions
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -30,12 +30,12 @@ const CATEGORIES = [
   { id: '6', name: 'Autres', icon: 'dots-horizontal', color: '#95A5A6', type: 'Other', desc: 'Divers' },
 ];
 
-const { width } = Dimensions.get('window');
-const isLargeScreen = width > 600;
-const CATEGORY_CARD_WIDTH = isLargeScreen ? 250 : (width - THEME.SPACING.xl * 3) / 2;
-const GRID_GAP = isLargeScreen ? 24 : THEME.SPACING.md;
-
 const MarketplaceHub = ({ navigation }) => {
+  const { width } = useWindowDimensions();
+  const isLargeScreen = width > 600;
+  const categoryCardWidth = isLargeScreen ? 250 : (width - THEME.SPACING.xl * 3) / 2;
+  const gridGap = isLargeScreen ? 24 : THEME.SPACING.md;
+
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
   const cartItems = useSelector(selectCartItems);
@@ -96,7 +96,7 @@ const MarketplaceHub = ({ navigation }) => {
         }}
       >
         <TouchableOpacity 
-          style={styles.categoryCard}
+          style={[styles.categoryCard, { width: categoryCardWidth, padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.md }]}
           onPress={() => navigation.navigate('ProductList', { category: item.type })}
           activeOpacity={0.8}
         >
@@ -159,7 +159,7 @@ const MarketplaceHub = ({ navigation }) => {
           >
             <LinearGradient
               colors={['rgba(212, 175, 55, 0.15)', 'rgba(0, 0, 0, 0.4)']}
-              style={styles.allProductsGradient}
+              style={[styles.allProductsGradient, { padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.lg }]}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
             >
@@ -187,7 +187,7 @@ const MarketplaceHub = ({ navigation }) => {
           <Text style={styles.sectionTitle}>Que cherchez-vous aujourd'hui ?</Text>
 
           {/* GRID RESPONSIVE DE CATÉGORIES (Wrapping Flexbox pour PC) */}
-          <View style={styles.categoriesGrid}>
+          <View style={[styles.categoriesGrid, { gap: gridGap, justifyContent: isLargeScreen ? 'flex-start' : 'space-between' }]}>
             {CATEGORIES.map((item, index) => renderCategory(item, index))}
           </View>
         </View>
@@ -314,15 +314,11 @@ const styles = StyleSheet.create({
   categoriesGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: GRID_GAP,
-    justifyContent: isLargeScreen ? 'flex-start' : 'space-between',
     width: '100%',
   },
   categoryCard: {
-    width: CATEGORY_CARD_WIDTH,
     backgroundColor: THEME.COLORS.glassSurface,
     borderRadius: THEME.BORDERS.radius.lg,
-    padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.md,
     borderWidth: 1,
     borderColor: THEME.COLORS.border,
     alignItems: 'flex-start',
@@ -363,7 +359,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    padding: isLargeScreen ? THEME.SPACING.xl : THEME.SPACING.lg,
   },
   allProductsContent: {
     flex: 1,
