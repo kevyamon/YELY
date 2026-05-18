@@ -327,7 +327,7 @@ const MarketplaceBanner = ({ navigation }) => {
       style={styles.bannerContainer}
     >
       <LinearGradient
-        colors={['rgba(212, 175, 55, 0.22)', 'rgba(212, 175, 55, 0.05)']}
+        colors={['#F5D142', '#EBB02D']}
         style={styles.gradientContainer}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -341,10 +341,10 @@ const MarketplaceBanner = ({ navigation }) => {
             <View style={styles.badgeRow}>
               <Text style={styles.badgeText}>{activeSlide.badge}</Text>
             </View>
-            <Text style={styles.titleText} numberOfLines={1}>
+            <Text style={styles.titleText} numberOfLines={2}>
               {activeSlide.title}
             </Text>
-            <Text style={styles.bodyText} numberOfLines={3}>
+            <Text style={styles.bodyText} numberOfLines={2}>
               {activeSlide.body}
             </Text>
           </View>
@@ -384,9 +384,7 @@ const styles = StyleSheet.create({
     height: 160,
     borderRadius: THEME.BORDERS.radius.xl,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.15)',
-    backgroundColor: THEME.COLORS.cardBg || 'rgba(20, 20, 20, 0.95)',
+    backgroundColor: '#F5D142',
     marginBottom: THEME.SPACING.md,
     ...THEME.SHADOWS.strong
   },
@@ -411,38 +409,37 @@ const styles = StyleSheet.create({
   },
   badgeRow: {
     alignSelf: 'flex-start',
-    backgroundColor: THEME.COLORS.primary,
-    paddingHorizontal: 10,
+    backgroundColor: '#000000',
+    paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: THEME.BORDERS.radius.sm,
     marginBottom: THEME.SPACING.xs,
   },
   badgeText: {
-    color: '#000000',
-    fontSize: 10,
+    color: '#F5D142',
+    fontSize: 9,
     fontWeight: 'bold',
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
   titleText: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: THEME.COLORS.primary,
-    marginBottom: 4,
+    fontWeight: '800',
+    color: '#0A0A0A',
+    marginBottom: 2,
   },
   bodyText: {
     fontSize: 12,
-    color: THEME.COLORS.textSecondary,
+    color: '#2A2A2A',
     lineHeight: 16,
+    fontWeight: '500',
   },
   imageWrapper: {
     width: 85,
     height: 85,
     borderRadius: THEME.BORDERS.radius.lg,
     overflow: 'hidden',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)',
-    backgroundColor: 'rgba(0,0,0,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
@@ -466,11 +463,11 @@ const styles = StyleSheet.create({
   },
   dotActive: {
     width: 14,
-    backgroundColor: THEME.COLORS.primary,
+    backgroundColor: '#000000',
   },
   dotInactive: {
     width: 4,
-    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   
   // Styles des animations

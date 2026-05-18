@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
@@ -8,7 +8,8 @@ import {
   TouchableOpacity, 
   Image,
   Dimensions,
-  useColorScheme
+  useColorScheme,
+  DeviceEventEmitter
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,13 @@ const Cart = ({ navigation }) => {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('scroll_to_top_cart', () => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    return () => sub.remove();
+  }, []);
 
   const handleScroll = (event) => {
     setShowScrollTop(event.nativeEvent.contentOffset.y > 150);

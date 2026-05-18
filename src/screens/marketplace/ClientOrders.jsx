@@ -6,7 +6,8 @@ import {
   StyleSheet, 
   FlatList, 
   TouchableOpacity,
-  RefreshControl 
+  RefreshControl,
+  DeviceEventEmitter
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useGetMyOrdersQuery } from '../../store/api/marketplaceApiSlice';
@@ -42,6 +43,13 @@ const ClientOrders = ({ navigation }) => {
   const scrollToTop = () => {
     listRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
+
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('scroll_to_top_orders', () => {
+      listRef.current?.scrollToOffset({ offset: 0, animated: true });
+    });
+    return () => sub.remove();
+  }, []);
 
   useEffect(() => {
     socketService.on('order_updated', () => {

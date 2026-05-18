@@ -36,7 +36,7 @@ import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import ResetPasswordScreen from '../screens/auth/ResetPasswordScreen';
 import PrivacyPolicyScreen from '../screens/legal/PrivacyPolicyScreen';
 import TermsOfServiceScreen from '../screens/legal/TermsOfServiceScreen';
-import MarketplaceHub from '../screens/marketplace/MarketplaceHub';
+import MarketplaceTabNavigator from './MarketplaceTabNavigator';
 import ProductList from '../screens/marketplace/ProductList';
 import ProductDetails from '../screens/marketplace/ProductDetails';
 import Cart from '../screens/marketplace/Cart';
@@ -236,7 +236,7 @@ const AppNavigator = () => {
             <Stack.Screen name="RiderHome" component={RiderHome} />
             <Stack.Screen name="DriverHome" component={DriverHome} />
             <Stack.Screen name="SellerHome" component={SellerHome} />
-            <Stack.Screen name="MarketplaceHub" component={MarketplaceHub} />
+            <Stack.Screen name="MarketplaceHub" component={MarketplaceTabNavigator} />
             <Stack.Screen name="ProductList" component={ProductList} />
             <Stack.Screen name="ProductDetails" component={ProductDetails} />
             <Stack.Screen name="Cart" component={Cart} />
