@@ -10,7 +10,7 @@ import {
   TouchableOpacity, 
   Image, 
   useWindowDimensions,
-  FlatList,
+  ScrollView,
   Platform
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -45,15 +45,15 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
         nextIndex = 0;
       }
       
-      flatListRef.current?.scrollToIndex({
-        index: nextIndex,
+      flatListRef.current?.scrollTo({
+        x: nextIndex * dynamicCardWidth,
         animated: true,
       });
       setActiveIndex(nextIndex);
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [activeIndex, images.length, isSoldOut]);
+  }, [activeIndex, images.length, isSoldOut, dynamicCardWidth]);
 
   const handleScroll = (event) => {
     const scrollPosition = event.nativeEvent.contentOffset.x;
@@ -105,19 +105,22 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
       <View style={[styles.imageContainer, { height: imageHeight }]}>
         {images.length > 0 ? (
           <>
-            <FlatList
+            <ScrollView
               ref={flatListRef}
-              data={images}
               horizontal
               pagingEnabled
               showsHorizontalScrollIndicator={false}
               onScroll={handleScroll}
               scrollEventThrottle={16}
-              keyExtractor={(_, index) => `img-${index}`}
-              renderItem={({ item }) => (
-                <Image source={{ uri: item }} style={{ width: dynamicCardWidth, height: imageHeight, resizeMode: 'cover' }} />
-              )}
-            />
+            >
+              {images.map((item, index) => (
+                <Image 
+                  key={index} 
+                  source={{ uri: item }} 
+                  style={{ width: dynamicCardWidth, height: imageHeight, resizeMode: 'cover' }} 
+                />
+              ))}
+            </ScrollView>
             {images.length > 1 && (
               <View style={styles.pagination}>
                 {images.map((_, i) => (

@@ -13,6 +13,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetOrderQuery, useCancelOrderMutation } from '../../store/api/marketplaceApiSlice';
 import socketService from '../../services/socketService';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
@@ -78,12 +79,7 @@ const OrderTracking = ({ route, navigation }) => {
 
   if (isLoading) return (
     <ScreenWrapper style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Suivi de commande</Text>
-      </View>
+      <MarketplaceDetailsHeader title="Suivi de commande" showCart={false} isOverlay={false} />
       {renderSkeleton()}
     </ScreenWrapper>
   );
@@ -91,6 +87,9 @@ const OrderTracking = ({ route, navigation }) => {
   if (!order) return <View style={styles.center}><Text style={{color: THEME.COLORS.textPrimary}}>Commande introuvable</Text></View>;
 
   const currentStatus = STATUS_MAP[order.status] || STATUS_MAP['pending'];
+  const isCancelled = order.status === 'cancelled' || order.status === 'cancelled_no_driver' || order.status === 'rejected';
+  const cancellationLabel = order.status === 'rejected' ? "Commande refusée" : "Commande annulée";
+  const cancellationReason = order.status === 'cancelled_no_driver' ? "Pas de livreur disponible" : (order.cancelReason || order.rejectReason || "");
 
   const renderStep = (step, title, isCompleted, isLast = false) => (
     <View style={styles.stepRow}>
@@ -106,14 +105,23 @@ const OrderTracking = ({ route, navigation }) => {
     </View>
   );
 
+  const renderCancelledStep = (title, reason) => (
+    <View style={styles.stepRow}>
+      <View style={styles.stepIndicator}>
+        <View style={[styles.circle, styles.cancelledCircle]}>
+          <Ionicons name="close" size={16} color={THEME.COLORS.textInverse} />
+        </View>
+      </View>
+      <View style={styles.stepContent}>
+        <Text style={[styles.stepTitle, styles.cancelledText]}>{title}</Text>
+        {reason ? <Text style={styles.cancelledReason}>{reason}</Text> : null}
+      </View>
+    </View>
+  );
+
   return (
     <ScreenWrapper style={styles.container}>
-      <View style={[styles.header, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
-        <Text style={styles.title}>Suivi de commande</Text>
-      </View>
+      <MarketplaceDetailsHeader title="Suivi de commande" showCart={false} isOverlay={false} />
 
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <GlassCard style={styles.statusCard}>
@@ -127,11 +135,21 @@ const OrderTracking = ({ route, navigation }) => {
         <GlassCard style={styles.timelineCard}>
           <Text style={styles.sectionTitle}>Progression</Text>
           <View style={styles.timeline}>
-            {renderStep(0, "Commande passée", true)}
-            {renderStep(1, "Confirmation vendeur", order.confirmedAt)}
-            {renderStep(2, "Attribution livreur", order.driver)}
-            {renderStep(3, "En cours de livraison", order.pickedUpAt)}
-            {renderStep(4, "Livré", order.deliveredAt, true)}
+            {isCancelled ? (
+              <>
+                {renderStep(0, "Commande passée", true, false)}
+                {order.confirmedAt ? renderStep(1, "Confirmation vendeur", true, false) : null}
+                {renderCancelledStep(cancellationLabel, cancellationReason)}
+              </>
+            ) : (
+              <>
+                {renderStep(0, "Commande passée", true)}
+                {renderStep(1, "Confirmation vendeur", order.confirmedAt)}
+                {renderStep(2, "Attribution livreur", order.driver)}
+                {renderStep(3, "En cours de livraison", order.pickedUpAt)}
+                {renderStep(4, "Livré", order.deliveredAt, true)}
+              </>
+            )}
           </View>
         </GlassCard>
 
@@ -214,6 +232,24 @@ const styles = StyleSheet.create({
   stepContent: { paddingTop: 3 },
   stepTitle: { fontSize: 15, color: THEME.COLORS.textTertiary, fontWeight: '500' },
   completedText: { color: THEME.COLORS.textPrimary, fontWeight: '700' },
+  cancelledCircle: {
+    borderColor: THEME.COLORS.danger,
+    backgroundColor: THEME.COLORS.danger,
+    shadowColor: THEME.COLORS.danger,
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.5,
+    shadowRadius: 10,
+    elevation: 5
+  },
+  cancelledText: {
+    color: THEME.COLORS.danger,
+    fontWeight: '700'
+  },
+  cancelledReason: {
+    fontSize: 12,
+    color: THEME.COLORS.textTertiary,
+    marginTop: 2
+  },
   detailsCard: { padding: 20, marginBottom: 20 },
   itemRow: { flexDirection: 'row', marginBottom: 10 },
   itemQty: { color: THEME.COLORS.primary, fontWeight: 'bold', width: 30 },

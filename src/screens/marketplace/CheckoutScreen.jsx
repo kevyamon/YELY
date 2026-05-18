@@ -7,7 +7,8 @@ import {
   ScrollView, 
   TextInput, 
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -17,6 +18,7 @@ import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import { useCreateOrderMutation } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import THEME from '../../theme/theme';
@@ -26,6 +28,10 @@ import GlassModal from '../../components/ui/GlassModal';
 
 const CheckoutScreen = ({ navigation }) => {
   useMarketplaceSocketEvents();
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+  const gradientColors = isDark ? ['#000000', '#0B0B0C', '#000000'] : ['#F8F9FA', '#F3F4F6', '#E5E7EB'];
+
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
@@ -34,6 +40,8 @@ const CheckoutScreen = ({ navigation }) => {
   const user = useSelector(state => state.auth.user);
   
   const scrollRef = useRef(null);
+  const receiptScrollRef = useRef(null);
+  const [receiptScrollOffset, setReceiptScrollOffset] = useState(0);
 
   const handleInputFocus = (offset) => {
     setTimeout(() => {
@@ -228,17 +236,9 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#000000', '#0B0B0C', '#000000']} style={styles.container}>
+    <LinearGradient colors={gradientColors} style={styles.container}>
       <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <View style={[styles.header, { paddingTop: insets.top + 15 }]}>
-          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={24} color={THEME.COLORS.primary} />
-          </TouchableOpacity>
-          <View style={styles.headerTitleContainer}>
-            <Text style={styles.headerSubtitle}>YÉLY MARKETPLACE</Text>
-            <Text style={styles.title}>Validation de commande</Text>
-          </View>
-        </View>
+        <MarketplaceDetailsHeader title="Validation de commande" showCart={false} isOverlay={false} />
 
         <ScrollView 
           ref={scrollRef}
@@ -391,20 +391,42 @@ const CheckoutScreen = ({ navigation }) => {
           </View>
 
           <View style={styles.receiptContainer}>
-            {cartItems.map((item, idx) => (
-              <View key={idx} style={styles.proReceiptItem}>
-                <View style={styles.proItemLead}>
-                  <View style={styles.proQtyCircle}>
-                    <Text style={styles.proQtyText}>{item.quantity}</Text>
+            <View style={styles.receiptItemsContainer}>
+              <ScrollView
+                ref={receiptScrollRef}
+                style={styles.receiptScroll}
+                contentContainerStyle={styles.receiptScrollContent}
+                showsVerticalScrollIndicator={true}
+                nestedScrollEnabled={true}
+                onScroll={e => setReceiptScrollOffset(e.nativeEvent.contentOffset.y)}
+                scrollEventThrottle={16}
+              >
+                {cartItems.map((item, idx) => (
+                  <View key={idx} style={styles.proReceiptItem}>
+                    <View style={styles.proItemLead}>
+                      <View style={styles.proQtyCircle}>
+                        <Text style={styles.proQtyText}>{item.quantity}</Text>
+                      </View>
+                      <View style={styles.proItemDetails}>
+                        <Text style={styles.proItemName} numberOfLines={1}>{item.name}</Text>
+                        <Text style={styles.proItemSeller}>Chez {item.sellerName || 'Vendeur Yély'}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
                   </View>
-                  <View style={styles.proItemDetails}>
-                    <Text style={styles.proItemName} numberOfLines={1}>{item.name}</Text>
-                    <Text style={styles.proItemSeller}>Chez {item.sellerName || 'Vendeur Yély'}</Text>
-                  </View>
-                </View>
-                <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
-              </View>
-            ))}
+                ))}
+              </ScrollView>
+              
+              {receiptScrollOffset > 30 && (
+                <TouchableOpacity 
+                  style={styles.receiptScrollToTopBtn} 
+                  onPress={() => receiptScrollRef.current?.scrollTo({ y: 0, animated: true })}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="chevron-up" size={14} color="#000000" />
+                </TouchableOpacity>
+              )}
+            </View>
             
             <View style={styles.proDashedLine} />
             
@@ -421,13 +443,19 @@ const CheckoutScreen = ({ navigation }) => {
             </View>
 
             <View style={styles.proTotalBlock}>
-              <View>
-                <Text style={styles.proTotalLabel}>TOTAL À RÉGLER</Text>
+              <View style={styles.proTotalLeft}>
+                <View style={styles.proTotalHeaderRow}>
+                  <Ionicons name="wallet-outline" size={16} color={THEME.COLORS.primary} />
+                  <Text style={styles.proTotalLabel}>TOTAL À RÉGLER</Text>
+                </View>
                 <Text style={styles.proTotalSub}>Net à payer (TTC)</Text>
               </View>
-              <Text style={styles.proTotalAmount}>
-                {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()} FCFA
-              </Text>
+              <View style={styles.proTotalRight}>
+                <Text style={styles.proTotalAmount} numberOfLines={1}>
+                  {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()}
+                </Text>
+                <Text style={styles.proTotalCurrency}>FCFA</Text>
+              </View>
             </View>
 
             <View style={styles.receiptFooter}>
@@ -531,13 +559,13 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
   },
-  headerSubtitle: { color: '#AAA', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2 },
-  title: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
+  headerSubtitle: { color: THEME.COLORS.textTertiary, fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2 },
+  title: { fontSize: 20, fontWeight: '800', color: THEME.COLORS.textPrimary },
   scrollContent: { paddingHorizontal: 25 },
   mainTitle: { 
     fontSize: 16, 
     fontWeight: '700', 
-    color: '#FFFFFF', 
+    color: THEME.COLORS.textPrimary, 
     marginTop: 20, 
     marginBottom: 15,
     paddingLeft: 5
@@ -545,23 +573,23 @@ const styles = StyleSheet.create({
   section: { 
     padding: 20, 
     borderRadius: 25, 
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    backgroundColor: THEME.COLORS.glassSurface,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.08)'
+    borderColor: THEME.COLORS.border
   },
   inputGroup: { marginBottom: 20 },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
   label: { color: THEME.COLORS.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
   addressWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', position: 'relative' },
   input: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    backgroundColor: THEME.COLORS.overlay,
     borderRadius: 16, 
     padding: 16, 
-    color: '#FFFFFF',
+    color: THEME.COLORS.textPrimary,
     fontSize: 15,
     fontWeight: '600',
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.25)'
+    borderColor: THEME.COLORS.border
   },
   inlineLocateBtn: {
     position: 'absolute',
@@ -589,8 +617,8 @@ const styles = StyleSheet.create({
     gap: 8
   },
   toggleBtnActive: { backgroundColor: THEME.COLORS.primary },
-  toggleText: { color: '#AAA', fontSize: 13, fontWeight: '700' },
-  toggleTextActive: { color: '#000000', fontWeight: '800' },
+  toggleText: { color: THEME.COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
+  toggleTextActive: { color: THEME.COLORS.textInverse, fontWeight: '800' },
   orderHeaderRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -608,12 +636,38 @@ const styles = StyleSheet.create({
   },
   itemCountText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   receiptContainer: { 
-    backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+    backgroundColor: THEME.COLORS.glassSurface, 
     padding: 24,
     borderRadius: 24,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.15)',
+    borderColor: THEME.COLORS.border,
     marginBottom: 20
+  },
+  receiptItemsContainer: {
+    maxHeight: 180,
+    position: 'relative',
+    borderBottomWidth: 1,
+    borderBottomColor: THEME.COLORS.border,
+    paddingBottom: 10
+  },
+  receiptScroll: {
+    flexGrow: 0,
+  },
+  receiptScrollContent: {
+    paddingRight: 5
+  },
+  receiptScrollToTopBtn: {
+    position: 'absolute',
+    bottom: 15,
+    right: 5,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...THEME.SHADOWS.gold,
+    zIndex: 10
   },
   proReceiptItem: { 
     flexDirection: 'row', 
@@ -635,33 +689,71 @@ const styles = StyleSheet.create({
   },
   proQtyText: { color: THEME.COLORS.primary, fontWeight: '900', fontSize: 13 },
   proItemDetails: { flex: 1 },
-  proItemName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
-  proItemSeller: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
-  proItemPrice: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginLeft: 10 },
+  proItemName: { color: THEME.COLORS.textPrimary, fontSize: 15, fontWeight: '700' },
+  proItemSeller: { color: THEME.COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
+  proItemPrice: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: '800', marginLeft: 10 },
   proDashedLine: { 
     height: 1, 
     borderWidth: 1, 
-    borderColor: 'rgba(255, 255, 255, 0.08)', 
+    borderColor: THEME.COLORS.border, 
     borderStyle: 'dashed', 
     marginVertical: 20 
   },
   proSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  proSummaryLabel: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-  proSummaryValue: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
+  proSummaryLabel: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  proSummaryValue: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
   proTotalBlock: { 
     marginTop: 20, 
     padding: 18, 
-    borderRadius: 18, 
+    borderRadius: 20, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: THEME.COLORS.primary,
-    backgroundColor: 'rgba(212, 175, 55, 0.06)'
+    borderColor: 'rgba(212, 175, 55, 0.4)',
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    ...THEME.SHADOWS.gold
   },
-  proTotalLabel: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 },
-  proTotalSub: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, fontWeight: '600', marginTop: 2 },
-  proTotalAmount: { color: THEME.COLORS.primary, fontSize: 22, fontWeight: '900' },
+  proTotalLeft: {
+    flex: 1,
+    justifyContent: 'center',
+    gap: 4
+  },
+  proTotalHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6
+  },
+  proTotalLabel: { 
+    color: THEME.COLORS.textPrimary, 
+    fontWeight: '900', 
+    fontSize: 13, 
+    letterSpacing: 0.5 
+  },
+  proTotalSub: { 
+    color: THEME.COLORS.textSecondary, 
+    fontSize: 10, 
+    fontWeight: '600', 
+    paddingLeft: 22
+  },
+  proTotalRight: {
+    alignItems: 'flex-end',
+    justifyContent: 'center',
+    marginLeft: 15
+  },
+  proTotalAmount: { 
+    color: THEME.COLORS.primary, 
+    fontSize: 24, 
+    fontWeight: '900',
+    lineHeight: 26
+  },
+  proTotalCurrency: {
+    color: THEME.COLORS.primary,
+    fontSize: 11,
+    fontWeight: '900',
+    letterSpacing: 1,
+    marginTop: 2
+  },
   receiptFooter: { 
     flexDirection: 'row', 
     alignItems: 'center', 
@@ -670,7 +762,7 @@ const styles = StyleSheet.create({
     gap: 6,
     opacity: 0.8
   },
-  receiptFooterText: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  receiptFooterText: { color: THEME.COLORS.textTertiary, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   footer: { 
     paddingHorizontal: 25, 
     paddingBottom: 20,
@@ -693,24 +785,24 @@ const styles = StyleSheet.create({
   modalTitle: {
     fontSize: 18,
     fontWeight: 'bold',
-    color: '#FFFFFF',
+    color: THEME.COLORS.textPrimary,
     marginTop: 10,
     marginBottom: 5,
   },
   modalSubtitle: {
     fontSize: 13,
-    color: '#AAA',
+    color: THEME.COLORS.textSecondary,
     textAlign: 'center',
     paddingHorizontal: 10,
   },
   modalInput: {
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    backgroundColor: THEME.COLORS.overlay,
     borderRadius: 15,
     padding: 15,
-    color: '#FFFFFF',
+    color: THEME.COLORS.textPrimary,
     fontSize: 16,
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderColor: THEME.COLORS.border,
     minHeight: 100,
     textAlignVertical: 'top',
     marginBottom: 20,
@@ -727,12 +819,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   modalBtnCancel: {
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    backgroundColor: THEME.COLORS.overlay,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    borderColor: THEME.COLORS.border,
   },
   modalBtnCancelText: {
-    color: '#AAA',
+    color: THEME.COLORS.textSecondary,
     fontWeight: '600',
     fontSize: 15,
   },
@@ -740,7 +832,7 @@ const styles = StyleSheet.create({
     backgroundColor: THEME.COLORS.primary,
   },
   modalBtnConfirmText: {
-    color: '#000',
+    color: THEME.COLORS.textInverse,
     fontWeight: 'bold',
     fontSize: 15,
   }

@@ -12,13 +12,27 @@ const STEPS = [
 ];
 
 const OrderStatusTimeline = ({ currentStatus }) => {
+  const isCancelled = currentStatus === 'cancelled' || currentStatus === 'cancelled_no_driver' || currentStatus === 'rejected';
+
+  const getSteps = () => {
+    if (isCancelled) {
+      const cancelLabel = currentStatus === 'rejected' ? 'Refusée par le vendeur' : 'Commande annulée';
+      return [
+        { id: 'pending', label: 'Commande passée', icon: 'cart-check' },
+        { id: 'cancelled', label: cancelLabel, icon: 'close-circle', isDanger: true }
+      ];
+    }
+    return STEPS;
+  };
+
+  const stepsList = getSteps();
   const getStatusIndex = (status) => {
+    if (isCancelled) return 1;
     const map = {
       'pending': 0,
       'confirmed': 1,
       'picked_up': 2,
-      'delivered': 3,
-      'cancelled': -1
+      'delivered': 3
     };
     return map[status] || 0;
   };
@@ -27,9 +41,9 @@ const OrderStatusTimeline = ({ currentStatus }) => {
 
   return (
     <View style={styles.container}>
-      {STEPS.map((step, index) => {
+      {stepsList.map((step, index) => {
         const isCompleted = index <= currentIndex;
-        const isLast = index === STEPS.length - 1;
+        const isLast = index === stepsList.length - 1;
         const isActive = index === currentIndex;
 
         return (
@@ -37,7 +51,9 @@ const OrderStatusTimeline = ({ currentStatus }) => {
             <View style={styles.leftColumn}>
               <View style={[
                 styles.dot,
-                isCompleted ? styles.dotCompleted : styles.dotPending,
+                step.isDanger 
+                  ? styles.dotDanger 
+                  : (isCompleted ? styles.dotCompleted : styles.dotPending),
                 isActive && styles.dotActive
               ]}>
                 <MaterialCommunityIcons
@@ -57,13 +73,18 @@ const OrderStatusTimeline = ({ currentStatus }) => {
             <View style={styles.rightColumn}>
               <Text style={[
                 styles.label,
-                isCompleted ? styles.labelCompleted : styles.labelPending,
+                step.isDanger 
+                  ? styles.labelDanger 
+                  : (isCompleted ? styles.labelCompleted : styles.labelPending),
                 isActive && styles.labelActive
               ]}>
                 {step.label}
               </Text>
-              {isActive && (
+              {isActive && !step.isDanger && (
                 <Text style={styles.activeSubtitle}>Étape actuelle</Text>
+              )}
+              {step.isDanger && (
+                <Text style={[styles.activeSubtitle, { color: THEME.COLORS.danger }]}>Commande interrompue</Text>
               )}
             </View>
           </View>
@@ -138,7 +159,14 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.micro,
     color: THEME.COLORS.primary,
     marginTop: 2,
-  }
+  },
+  dotDanger: {
+    backgroundColor: THEME.COLORS.danger,
+  },
+  labelDanger: {
+    color: THEME.COLORS.danger,
+    fontWeight: THEME.FONTS.weights.bold,
+  },
 });
 
 export default OrderStatusTimeline;

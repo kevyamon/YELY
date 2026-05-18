@@ -9,8 +9,12 @@ import {
   DeviceEventEmitter
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import { useDispatch } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useGetMyOrdersQuery } from '../../store/api/marketplaceApiSlice';
+import { showToast } from '../../store/slices/uiSlice';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
+import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import socketService from '../../services/socketService';
@@ -29,10 +33,63 @@ const STATUS_MAP = {
 };
 
 const ClientOrders = ({ navigation }) => {
+  const dispatch = useDispatch();
   const { data: ordersData, isLoading, refetch, isFetching } = useGetMyOrdersQuery();
   const orders = ordersData?.data || [];
 
   const listRef = useRef(null);
+  
+  const [archivedOrderIds, setArchivedOrderIds] = useState([]);
+  const [activeTab, setActiveTab] = useState('active'); // 'active' or 'archived'
+
+  useEffect(() => {
+    const loadArchivedOrders = async () => {
+      try {
+        const value = await AsyncStorage.getItem('yely_archived_orders');
+        if (value) {
+          setArchivedOrderIds(JSON.parse(value));
+        }
+      } catch (err) {
+        console.warn('[ORDERS] Failed to load archived orders:', err);
+      }
+    };
+    loadArchivedOrders();
+  }, []);
+
+  const handleArchiveOrder = async (orderId) => {
+    try {
+      const updated = [...archivedOrderIds, orderId];
+      setArchivedOrderIds(updated);
+      await AsyncStorage.setItem('yely_archived_orders', JSON.stringify(updated));
+      dispatch(showToast({
+        type: 'success',
+        title: 'Commande archivée',
+        message: 'La commande a été déplacée vers les archives.'
+      }));
+    } catch (err) {
+      console.warn('[ORDERS] Failed to archive order:', err);
+    }
+  };
+
+  const handleUnarchiveOrder = async (orderId) => {
+    try {
+      const updated = archivedOrderIds.filter(id => id !== orderId);
+      setArchivedOrderIds(updated);
+      await AsyncStorage.setItem('yely_archived_orders', JSON.stringify(updated));
+      dispatch(showToast({
+        type: 'success',
+        title: 'Commande restaurée',
+        message: 'La commande est de retour dans vos commandes actives.'
+      }));
+    } catch (err) {
+      console.warn('[ORDERS] Failed to unarchive order:', err);
+    }
+  };
+
+  const filteredOrders = orders.filter(item => {
+    const isArchived = archivedOrderIds.includes(item._id);
+    return activeTab === 'archived' ? isArchived : !isArchived;
+  });
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('scroll_to_top_orders', () => {
@@ -72,9 +129,24 @@ const ClientOrders = ({ navigation }) => {
           <View style={styles.cardHeader}>
             <View style={[styles.statusBadge, { backgroundColor: status.color + '15' }]}>
               <View style={[styles.statusDot, { backgroundColor: status.color }]} />
-              <Text style={[styles.statusText, { color: status.color }]}>{status.label.toUpperCase()}</Text>
+              <Text style={[styles.statusText, { color: status.color }]} numberOfLines={1} ellipsizeMode="tail">
+                {status.label.toUpperCase()}
+              </Text>
             </View>
-            <Text style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
+            <View style={styles.dateContainer}>
+              <Text style={styles.orderDate}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
+              <TouchableOpacity 
+                onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)} 
+                style={styles.archiveBtn}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons 
+                  name={activeTab === 'active' ? "archive-outline" : "arrow-undo-outline"} 
+                  size={18} 
+                  color={activeTab === 'active' ? THEME.COLORS.textTertiary : THEME.COLORS.primary} 
+                />
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.cardBody}>
@@ -102,17 +174,31 @@ const ClientOrders = ({ navigation }) => {
 
   return (
     <ScreenWrapper>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+      <MarketplaceDetailsHeader title="Mes commandes" showCart={false} isOverlay={false} />
+
+      {/* TABS SELECTOR */}
+      <View style={styles.tabsContainer}>
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'active' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('active')}
+        >
+          <Ionicons name="cart-outline" size={18} color={activeTab === 'active' ? '#000000' : '#AAA'} />
+          <Text style={[styles.tabText, activeTab === 'active' && styles.tabTextActive]}>En cours</Text>
         </TouchableOpacity>
-        <Text style={styles.title}>Mes commandes</Text>
+        
+        <TouchableOpacity 
+          style={[styles.tabButton, activeTab === 'archived' && styles.tabButtonActive]}
+          onPress={() => setActiveTab('archived')}
+        >
+          <Ionicons name="archive-outline" size={18} color={activeTab === 'archived' ? '#000000' : '#AAA'} />
+          <Text style={[styles.tabText, activeTab === 'archived' && styles.tabTextActive]}>Archivées</Text>
+        </TouchableOpacity>
       </View>
 
       {isLoading ? renderSkeleton() : (
         <FlatList
           ref={listRef}
-          data={orders}
+          data={filteredOrders}
           keyExtractor={item => item._id}
           renderItem={renderItem}
           contentContainerStyle={styles.list}
@@ -121,14 +207,25 @@ const ClientOrders = ({ navigation }) => {
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="cart-off" size={80} color={THEME.COLORS.textTertiary} />
-              <Text style={styles.emptyText}>Aucune commande pour le moment</Text>
-              <TouchableOpacity 
-                style={styles.shopBtn}
-                onPress={() => navigation.navigate('MarketplaceHub')}
-              >
-                <Text style={styles.shopBtnText}>Commencer mes achats</Text>
-              </TouchableOpacity>
+              <MaterialCommunityIcons 
+                name={activeTab === 'active' ? "cart-off" : "archive-off-outline"} 
+                size={80} 
+                color={THEME.COLORS.textTertiary} 
+              />
+              <Text style={styles.emptyText}>
+                {activeTab === 'active' 
+                  ? "Aucune commande pour le moment" 
+                  : "Aucune commande archivée"
+                }
+              </Text>
+              {activeTab === 'active' && (
+                <TouchableOpacity 
+                  style={styles.shopBtn}
+                  onPress={() => navigation.navigate('MarketplaceHub')}
+                >
+                  <Text style={styles.shopBtnText}>Commencer mes achats</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
@@ -167,14 +264,16 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    marginBottom: 15
+    marginBottom: 15,
+    gap: 10
   },
   statusBadge: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     paddingHorizontal: 10, 
     paddingVertical: 5, 
-    borderRadius: 8 
+    borderRadius: 8,
+    flexShrink: 1
   },
   statusDot: { 
     width: 6, 
@@ -185,11 +284,52 @@ const styles = StyleSheet.create({
   statusText: { 
     fontSize: 10, 
     fontWeight: '900', 
-    letterSpacing: 0.5 
+    letterSpacing: 0.5,
+    flexShrink: 1
+  },
+  dateContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flexShrink: 0
   },
   orderDate: { 
     fontSize: 12, 
     color: THEME.COLORS.textTertiary 
+  },
+  archiveBtn: {
+    padding: 4
+  },
+  tabsContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderRadius: 14,
+    padding: 4,
+    marginHorizontal: 20,
+    marginBottom: 10,
+    gap: 4
+  },
+  tabButton: {
+    flex: 1,
+    flexDirection: 'row',
+    height: 42,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: 8
+  },
+  tabButtonActive: {
+    backgroundColor: THEME.COLORS.primary,
+    ...THEME.SHADOWS.gold
+  },
+  tabText: {
+    color: '#AAA',
+    fontSize: 13,
+    fontWeight: '700'
+  },
+  tabTextActive: {
+    color: '#000000',
+    fontWeight: '800'
   },
   cardBody: { 
     flexDirection: 'row', 

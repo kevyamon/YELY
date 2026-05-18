@@ -12,7 +12,8 @@ import {
   Animated,
   Dimensions,
   Platform,
-  ScrollView
+  ScrollView,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -33,6 +34,8 @@ const CATEGORY_LABELS = {
 };
 
 const ProductList = ({ route, navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   useMarketplaceSocketEvents();
   const { category, search: initialSearch } = route.params || {};
@@ -82,7 +85,7 @@ const ProductList = ({ route, navigation }) => {
 
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <View style={styles.topRow}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />

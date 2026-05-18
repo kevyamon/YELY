@@ -9,7 +9,8 @@ import {
   ActivityIndicator, 
   StatusBar,
   Animated,
-  useWindowDimensions
+  useWindowDimensions,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -30,6 +31,8 @@ const CATEGORY_LABELS = {
 };
 
 const ProductList = ({ route, navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 600;
   const gridGap = isLargeScreen ? 24 : 16;
@@ -97,7 +100,7 @@ const ProductList = ({ route, navigation }) => {
 
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
-      <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       <View style={styles.topRow}>
         <View style={styles.backButtonWrapper}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>

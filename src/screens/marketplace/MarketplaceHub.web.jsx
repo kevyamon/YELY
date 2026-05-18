@@ -10,7 +10,8 @@ import {
   Animated,
   DeviceEventEmitter,
   useWindowDimensions,
-  Modal
+  Modal,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -48,6 +49,8 @@ const HORIZONTAL_CATEGORIES = [
 ];
 
 const MarketplaceHub = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const { width } = useWindowDimensions();
   const isLargeScreen = width > 768;
   const paddingValue = isLargeScreen ? '8%' : '5%';
@@ -180,8 +183,8 @@ const MarketplaceHub = ({ navigation }) => {
   );
 
   return (
-    <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+    <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
 
       {/* HEADER FIXE FLUIDE AVEC DÉPLACEMENT BOUTON HOME À DROITE */}
       <Animated.View style={[
@@ -189,7 +192,9 @@ const MarketplaceHub = ({ navigation }) => {
         { 
           height: headerHeight, 
           opacity: headerOpacity,
-          paddingTop: insets.top + THEME.SPACING.md 
+          paddingTop: insets.top + THEME.SPACING.md,
+          backgroundColor: isDarkMode ? '#000000' : THEME.COLORS.background,
+          borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : THEME.COLORS.border
         }
       ]}>
         <View style={[styles.headerTopRow, { paddingHorizontal: paddingValue }]}>
@@ -220,7 +225,9 @@ const MarketplaceHub = ({ navigation }) => {
               extrapolate: 'clamp'
             })
           }],
-          pointerEvents: isMiniSearchActive ? 'auto' : 'box-none'
+          pointerEvents: isMiniSearchActive ? 'auto' : 'box-none',
+          backgroundColor: isDarkMode ? 'rgba(0, 0, 0, 0.95)' : THEME.COLORS.background,
+          borderBottomColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : THEME.COLORS.border
         }
       ]}>
         <View style={[styles.miniStickyInner, { paddingHorizontal: paddingValue }]}>
@@ -289,8 +296,8 @@ const MarketplaceHub = ({ navigation }) => {
             {HORIZONTAL_CATEGORIES.map(cat => {
               const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
               const isSelected = selectedCategoryFilter === cat.type;
-              const chipBg = isSelected ? config.color + '26' : 'rgba(255, 255, 255, 0.04)';
-              const chipBorder = isSelected ? config.color : 'rgba(255, 255, 255, 0.05)';
+              const chipBg = isSelected ? config.color + '26' : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)');
+              const chipBorder = isSelected ? config.color : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)');
               const iconColor = config.color;
 
               return (
@@ -329,7 +336,7 @@ const MarketplaceHub = ({ navigation }) => {
               style={styles.catChip}
               onPress={() => setIsCategoriesModalVisible(true)}
             >
-              <View style={[styles.catIconWrapper, { backgroundColor: 'rgba(255,255,255,0.06)' }]}>
+              <View style={[styles.catIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
                 <MaterialCommunityIcons name="dots-horizontal" size={20} color={THEME.COLORS.textSecondary} />
               </View>
               <Text style={[styles.catChipText, { color: THEME.COLORS.textSecondary }]}>Plus</Text>

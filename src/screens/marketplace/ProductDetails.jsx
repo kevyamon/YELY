@@ -16,7 +16,7 @@ import {
   useColorScheme,
   ScrollView
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -29,16 +29,18 @@ import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
 import GlassModal from '../../components/ui/GlassModal';
+import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 
 const { width, height } = Dimensions.get('window');
-const IMG_HEIGHT = height * 0.42;
+const IMG_HEIGHT = height * 0.44;
+const SPEC_CARD_WIDTH = (width - 48 - 10) / 2; // 24 padding each side, 10 gap
 
 // Exact Category Mapping matching ProductList.jsx
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
-  'Supermarket': 'Supermarche',
-  'Cosmetics': 'Cosmetiques',
-  'Electronics': 'Electronique',
+  'Supermarket': 'Supermarché',
+  'Cosmetics': 'Cosmétiques',
+  'Electronics': 'Électronique',
   'Home': 'Maison',
   'Other': 'Autres'
 };
@@ -78,8 +80,8 @@ const ProductDetails = ({ route, navigation }) => {
         nextIndex = 0;
       }
       try {
-        flatListRef.current?.scrollToIndex({
-          index: nextIndex,
+        flatListRef.current?.scrollTo({
+          x: nextIndex * width,
           animated: true,
         });
         setActiveImage(nextIndex);
@@ -108,8 +110,8 @@ const ProductDetails = ({ route, navigation }) => {
         setQuantity(1);
         dispatch(showToast({
           type: 'info',
-          title: 'Retire',
-          message: `${product?.name || 'Produit'} retire du panier.`
+          title: 'Retiré',
+          message: `${product?.name || 'Produit'} retiré du panier.`
         }));
       }
     } else {
@@ -132,8 +134,8 @@ const ProductDetails = ({ route, navigation }) => {
 
     dispatch(showToast({
       type: 'success',
-      title: 'Panier mis a jour',
-      message: `${product.name} ajoute.`
+      title: 'Panier mis à jour',
+      message: `${product.name} ajouté.`
     }));
   };
 
@@ -155,70 +157,40 @@ const ProductDetails = ({ route, navigation }) => {
   }
 
   const description = product.description || "L'excellence Yely au service de votre quotidien.";
-  const isLongDescription = description.length > 180;
+  const isLongDescription = description.length > 150;
   const displayDescription = isLongDescription 
-    ? `${description.slice(0, 180)}...` 
+    ? `${description.slice(0, 150)}...` 
     : description;
-
-  const displayQuantity = quantityInCart > 0 ? quantityInCart : quantity;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
 
-      {/* HEADER DE NAVIGATION EN OVERLAY */}
-      <View style={[styles.headerOverlay, { paddingTop: Math.max(insets.top, 15) }]}>
-        <TouchableOpacity 
-          onPress={() => navigation.goBack()} 
-          style={styles.circularBtn}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="arrow-back" size={24} color="#FFFFFF" />
-        </TouchableOpacity>
-        
-        <Text style={styles.headerOverlayTitle} numberOfLines={1}>
-          Details du Produit
-        </Text>
-        
-        <TouchableOpacity 
-          onPress={() => navigation.navigate('Cart')} 
-          style={styles.circularBtn}
-          activeOpacity={0.8}
-        >
-          <Ionicons name="cart" size={24} color={THEME.COLORS.primary} />
-          {cartItems.length > 0 && (
-            <View style={styles.cartBadgeOverlay}>
-              <Text style={styles.cartBadgeOverlayText}>
-                {cartItems.reduce((sum, item) => sum + item.quantity, 0)}
-              </Text>
-            </View>
-          )}
-        </TouchableOpacity>
-      </View>
+      {/* HEADER DE NAVIGATION EN OVERLAY MODULAIRE */}
+      <MarketplaceDetailsHeader title="Détails du Produit" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ flexGrow: 1, paddingBottom: 120 }}
+        contentContainerStyle={{ flexGrow: 1, paddingBottom: 130 }}
       >
         {/* CARROUSEL IMAGE AUTO-DEFILANT */}
         <View style={styles.imageWrapper}>
-          <FlatList 
+          <ScrollView 
             ref={flatListRef}
-            data={images}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
             onMomentumScrollEnd={(e) => {
               setActiveImage(Math.round(e.nativeEvent.contentOffset.x / width));
             }}
-            renderItem={({ item }) => (
-              <Image source={{ uri: item }} style={styles.mainImage} />
-            )}
-            keyExtractor={(_, i) => `img-${i}`}
-          />
+          >
+            {images.map((item, i) => (
+              <Image key={i} source={{ uri: item }} style={styles.mainImage} />
+            ))}
+          </ScrollView>
           
           <LinearGradient
-            colors={['rgba(0,0,0,0.5)', 'transparent', isDarkMode ? 'rgba(0,0,0,0.8)' : 'rgba(248,249,250,0.8)']}
+            colors={['rgba(0,0,0,0.5)', 'transparent', isDarkMode ? 'rgba(10,10,10,1)' : '#F8F9FA']}
             style={styles.imageGradient}
           />
 
@@ -233,28 +205,85 @@ const ProductDetails = ({ route, navigation }) => {
 
         {/* SECTION CENTER : INFORMATIONS DU PRODUIT */}
         <View style={styles.contentCard}>
+          {/* HEADER PRINCIPAL PRODUIT */}
           <View style={styles.mainInfo}>
             <View style={styles.rowBetween}>
-              <Text style={styles.category}>
-                {CATEGORY_LABELS[product.category] || product.category}
-              </Text>
-              {product.rating && (
-                <View style={styles.ratingBox}>
-                  <Ionicons name="star" size={14} color={THEME.COLORS.primary} />
-                  <Text style={styles.ratingText}>{product.rating}</Text>
-                </View>
-              )}
+              <View style={styles.categoryBadge}>
+                <Text style={styles.categoryText}>
+                  {CATEGORY_LABELS[product.category] || product.category || 'Général'}
+                </Text>
+              </View>
+              
+              <View style={styles.stockBadge}>
+                <View style={styles.stockDot} />
+                <Text style={styles.stockText}>En Stock</Text>
+              </View>
             </View>
             
             <Text style={styles.productName}>{product.name}</Text>
             <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
           </View>
 
-          <View style={styles.divider} />
+          {/* FICHE TECHNIQUE / SPÉCIFICATIONS GRID */}
+          <Text style={styles.sectionSubtitle}>Fiche Technique</Text>
+          <View style={styles.specGrid}>
+            <GlassCard style={styles.specCard} padding={14}>
+              <MaterialCommunityIcons name={
+                product.category === 'Food' ? 'food-apple' :
+                product.category === 'Supermarket' ? 'shopping' :
+                product.category === 'Cosmetics' ? 'palette-outline' :
+                product.category === 'Electronics' ? 'laptop' :
+                product.category === 'Home' ? 'home-variant' : 'tag-outline'
+              } size={22} color={THEME.COLORS.primary} />
+              <Text style={styles.specLabel}>Catégorie</Text>
+              <Text style={styles.specValue} numberOfLines={1}>
+                {CATEGORY_LABELS[product.category] || product.category || 'Général'}
+              </Text>
+            </GlassCard>
 
-          {/* DESCRIPTION */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Description</Text>
+            <GlassCard style={styles.specCard} padding={14}>
+              <MaterialCommunityIcons name="shield-check-outline" size={22} color={THEME.COLORS.primary} />
+              <Text style={styles.specLabel}>Confiance</Text>
+              <Text style={styles.specValue} numberOfLines={1}>100% Vérifié</Text>
+            </GlassCard>
+
+            <GlassCard style={styles.specCard} padding={14}>
+              <MaterialCommunityIcons name="truck-delivery-outline" size={22} color={THEME.COLORS.primary} />
+              <Text style={styles.specLabel}>Livraison</Text>
+              <Text style={styles.specValue} numberOfLines={1}>Express dispo</Text>
+            </GlassCard>
+
+            <GlassCard style={styles.specCard} padding={14}>
+              <MaterialCommunityIcons name="star-circle-outline" size={22} color={THEME.COLORS.primary} />
+              <Text style={styles.specLabel}>Évaluation</Text>
+              <Text style={styles.specValue} numberOfLines={1}>
+                {product.rating ? `${product.rating} / 5` : 'Excellente'}
+              </Text>
+            </GlassCard>
+          </View>
+
+          {/* BADGES DE CONFIANCE SECURISEE */}
+          <View style={styles.trustRow}>
+            <View style={styles.trustItem}>
+              <MaterialCommunityIcons name="credit-card-shield-outline" size={14} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.trustText}>Paiement Sécurisé</Text>
+            </View>
+            <View style={styles.trustItem}>
+              <MaterialCommunityIcons name="headset" size={14} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.trustText}>Service Client Yély</Text>
+            </View>
+            <View style={styles.trustItem}>
+              <MaterialCommunityIcons name="shield-refresh-outline" size={14} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.trustText}>Garantie Retour</Text>
+            </View>
+          </View>
+
+          {/* CARD DESCRIPTION */}
+          <GlassCard style={styles.descriptionCard} padding={18}>
+            <View style={styles.sectionHeader}>
+              <MaterialCommunityIcons name="text-box-outline" size={18} color={THEME.COLORS.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.sectionTitle}>Description</Text>
+            </View>
             <Text style={styles.descriptionText}>
               {displayDescription}
             </Text>
@@ -264,22 +293,32 @@ const ProductDetails = ({ route, navigation }) => {
                 onPress={() => setIsDescModalVisible(true)}
                 hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
               >
-                <Text style={styles.readMoreText}>Lire plus</Text>
+                <Text style={styles.readMoreText}>Lire la suite</Text>
                 <Ionicons name="chevron-forward" size={14} color={THEME.COLORS.primary} />
               </TouchableOpacity>
             )}
-          </View>
+          </GlassCard>
 
-          {/* VENDEUR CERTIFIE */}
-          <GlassCard style={styles.sellerSection} padding={15}>
+          {/* CARD VENDEUR / PARTENAIRE */}
+          <GlassCard style={styles.sellerSection} padding={16}>
             <View style={styles.sellerInfo}>
-              <View style={styles.sellerAvatar}>
-                 <Ionicons name="storefront-outline" size={22} color={THEME.COLORS.primary} />
+              <View style={styles.sellerAvatarContainer}>
+                <View style={styles.sellerAvatar}>
+                   <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+                </View>
+                <View style={styles.verifiedBadge}>
+                  <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
+                </View>
               </View>
+              
               <View style={styles.sellerDetails}>
-                <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yely'}</Text>
-                <Text style={styles.sellerStatus}>Partenaire Certifie Yely</Text>
+                <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
+                <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
               </View>
+
+              <TouchableOpacity style={styles.sellerActionBtn} activeOpacity={0.7}>
+                <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textSecondary} />
+              </TouchableOpacity>
             </View>
           </GlassCard>
         </View>
@@ -294,8 +333,8 @@ const ProductDetails = ({ route, navigation }) => {
       >
         <View style={styles.modalContent}>
           <View style={styles.modalHeader}>
-            <Ionicons name="document-text-outline" size={28} color={THEME.COLORS.primary} />
-            <Text style={styles.modalTitle}>Description complete</Text>
+            <Ionicons name="document-text" size={24} color={THEME.COLORS.primary} />
+            <Text style={styles.modalTitle}>Description Complète</Text>
           </View>
           
           <ScrollView 
@@ -333,18 +372,26 @@ const ProductDetails = ({ route, navigation }) => {
         </View>
       </GlassModal>
 
-      {/* FOOTER FIXE AVEC BOUTON DE CONTRÔLE PANIER UNIFIÉ */}
-      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 15) }]}>
+      {/* FOOTER FIXE AVEC CAPSULE FLOTTANTE D'ACHAT PREMIUM */}
+      <View style={[
+        styles.floatingFooter, 
+        { 
+          bottom: Math.max(insets.bottom + 10, 20),
+          backgroundColor: isDarkMode ? 'rgba(20, 20, 20, 0.88)' : 'rgba(255, 255, 255, 0.92)',
+          borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+        }
+      ]}>
         {quantityInCart === 0 ? (
           <GoldButton 
             title="Ajouter au panier"
             onPress={handleAddToCart}
             icon="cart-outline"
+            style={styles.purchaseBtn}
           />
         ) : (
           <View style={styles.unifiedQtyContainer}>
             <TouchableOpacity style={styles.unifiedQtyAction} onPress={handleRemove}>
-              <Ionicons name="remove" size={24} color={THEME.COLORS.textPrimary} />
+              <Ionicons name="remove" size={22} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
             
             <Text style={styles.unifiedQtyText}>
@@ -352,7 +399,7 @@ const ProductDetails = ({ route, navigation }) => {
             </Text>
             
             <TouchableOpacity style={styles.unifiedQtyAction} onPress={handleAdd}>
-              <Ionicons name="add" size={24} color={THEME.COLORS.textPrimary} />
+              <Ionicons name="add" size={22} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
         )}
@@ -379,10 +426,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
   },
   circularBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    width: 42,
+    height: 42,
+    borderRadius: 21,
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
@@ -390,8 +437,9 @@ const styles = StyleSheet.create({
   },
   headerOverlayTitle: {
     color: '#FFFFFF',
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 16,
+    fontWeight: '900',
+    letterSpacing: 0.5,
     textShadowColor: 'rgba(0, 0, 0, 0.5)',
     textShadowOffset: { width: 0, height: 1 },
     textShadowRadius: 3,
@@ -407,10 +455,12 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     paddingHorizontal: 4,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.background,
   },
   cartBadgeOverlayText: {
     color: '#FFFFFF',
-    fontSize: 10,
+    fontSize: 9,
     fontWeight: 'bold',
   },
 
@@ -418,9 +468,9 @@ const styles = StyleSheet.create({
   imageWrapper: { height: IMG_HEIGHT, width: width },
   mainImage: { width: width, height: IMG_HEIGHT, resizeMode: 'cover' },
   imageGradient: { ...StyleSheet.absoluteFillObject },
-  pagination: { position: 'absolute', bottom: 35, alignSelf: 'center', flexDirection: 'row', gap: 6 },
-  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.4)' },
-  activeDot: { width: 18, backgroundColor: THEME.COLORS.primary },
+  pagination: { position: 'absolute', bottom: 42, alignSelf: 'center', flexDirection: 'row', gap: 6 },
+  dot: { width: 6, height: 6, borderRadius: 3, backgroundColor: 'rgba(255,255,255,0.35)' },
+  activeDot: { width: 18, backgroundColor: THEME.COLORS.primary, borderRadius: 3 },
 
   // Content Card
   contentCard: { 
@@ -432,53 +482,126 @@ const styles = StyleSheet.create({
     paddingTop: 30,
     flex: 1
   },
-  mainInfo: { marginBottom: 15 },
+  
+  // Header Infos
+  mainInfo: { marginBottom: 20 },
   rowBetween: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
-  category: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary, textTransform: 'uppercase', letterSpacing: 1 },
-  ratingBox: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(212,175,55,0.1)', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  ratingText: { fontSize: 12, fontWeight: '700', color: THEME.COLORS.primary },
-  productName: { fontSize: 26, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 8 },
-  price: { fontSize: 22, fontWeight: '700', color: THEME.COLORS.primary },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 20 },
-  
-  // Section Description
-  section: { marginBottom: 25 },
-  sectionTitle: { fontSize: 16, fontWeight: '700', color: THEME.COLORS.textPrimary, marginBottom: 10 },
-  descriptionText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
-  readMoreBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 8, gap: 4 },
-  readMoreText: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 14 },
-  
-  // Seller Style
-  sellerSection: { marginTop: 5 },
-  sellerInfo: { flexDirection: 'row', alignItems: 'center', gap: 15 },
-  sellerAvatar: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
-  sellerDetails: { flex: 1 },
-  sellerName: { fontSize: 15, fontWeight: '700', color: THEME.COLORS.textPrimary },
-  sellerStatus: { fontSize: 12, color: THEME.COLORS.success || '#2ecc71', marginTop: 2 },
-
-  // Sticky Footer
-  footer: { 
-    position: 'absolute', 
-    bottom: 0, 
-    left: 0, 
-    right: 0, 
-    backgroundColor: THEME.COLORS.background, 
-    borderTopWidth: 1, 
-    borderTopColor: 'rgba(255,255,255,0.06)', 
-    paddingHorizontal: 20, 
-    paddingTop: 15 
+  categoryBadge: { 
+    backgroundColor: 'rgba(212,175,55,0.08)', 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.15)'
   },
-  footerRow: { flexDirection: 'row', gap: 15, alignItems: 'center' },
-  qtyContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 25, height: 50, paddingHorizontal: 5, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
-  qtyAction: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
-  qtyValue: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary, marginHorizontal: 10, minWidth: 20, textAlign: 'center' },
-  btnWrapper: { flex: 1 },
+  categoryText: { 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: THEME.COLORS.primary, 
+    textTransform: 'uppercase', 
+    letterSpacing: 0.8 
+  },
+  stockBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(46,204,113,0.1)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
+  stockDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#2ecc71', marginRight: 6 },
+  stockText: { fontSize: 11, fontWeight: '800', color: '#2ecc71', textTransform: 'uppercase' },
+  productName: { fontSize: 24, fontWeight: '900', color: THEME.COLORS.textPrimary, marginBottom: 8, letterSpacing: -0.5 },
+  price: { fontSize: 22, fontWeight: '800', color: THEME.COLORS.primary },
+  
+  // Specs Grid Layout ("Fiche Technique")
+  sectionSubtitle: { fontSize: 15, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
+  specGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  specCard: {
+    width: SPEC_CARD_WIDTH,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  specLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, marginTop: 6, fontWeight: '500' },
+  specValue: { fontSize: 13, fontWeight: '800', color: THEME.COLORS.textPrimary, marginTop: 2 },
+  
+  // Trust Badges Ticker
+  trustRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', marginBottom: 22 },
+  trustItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  trustText: { fontSize: 10.5, fontWeight: '600', color: THEME.COLORS.textSecondary },
+
+  // Section Description
+  descriptionCard: { 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.04)',
+    marginBottom: 15 
+  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 10 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: THEME.COLORS.textPrimary },
+  descriptionText: { fontSize: 14.5, color: THEME.COLORS.textSecondary, lineHeight: 22 },
+  readMoreBtn: { flexDirection: 'row', alignItems: 'center', marginTop: 10, gap: 4 },
+  readMoreText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 13.5 },
+  
+  // Seller / Boutique Section
+  sellerSection: { 
+    borderRadius: 20, 
+    borderWidth: 1, 
+    borderColor: 'rgba(255,255,255,0.04)',
+    marginBottom: 10 
+  },
+  sellerInfo: { flexDirection: 'row', alignItems: 'center' },
+  sellerAvatarContainer: { position: 'relative', marginRight: 15 },
+  sellerAvatar: { 
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    backgroundColor: 'rgba(255,255,255,0.04)', 
+    justifyContent: 'center', 
+    alignItems: 'center', 
+    borderWidth: 1, 
+    borderColor: 'rgba(212,175,55,0.3)' 
+  },
+  verifiedBadge: { 
+    position: 'absolute', 
+    bottom: -2, 
+    right: -2, 
+    backgroundColor: THEME.COLORS.primary, 
+    width: 16, 
+    height: 16, 
+    borderRadius: 8, 
+    justifyContent: 'center', 
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.background
+  },
+  sellerDetails: { flex: 1 },
+  sellerName: { fontSize: 15, fontWeight: '800', color: THEME.COLORS.textPrimary },
+  sellerStatus: { fontSize: 11.5, color: '#2ecc71', fontWeight: '600', marginTop: 1 },
+  sellerActionBtn: { padding: 4 },
+
+  // Floating Purchase Footer Acrylique capsule
+  floatingFooter: { 
+    position: 'absolute', 
+    left: 20, 
+    right: 20, 
+    backgroundColor: 'rgba(20, 20, 20, 0.88)', 
+    borderRadius: 30, 
+    padding: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 15,
+    elevation: 8
+  },
+  purchaseBtn: {
+    height: 52,
+    borderRadius: 24,
+  },
   unifiedQtyContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     backgroundColor: 'rgba(255, 255, 255, 0.04)',
-    borderRadius: 30,
+    borderRadius: 24,
     height: 52,
     paddingHorizontal: 12,
     borderWidth: 1,
@@ -491,8 +614,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   unifiedQtyText: {
-    fontSize: 16,
-    fontWeight: 'bold',
+    fontSize: 15,
+    fontWeight: '800',
     color: THEME.COLORS.primary,
   },
 
