@@ -422,10 +422,28 @@ const MarketplaceHub = ({ navigation }) => {
             );
           })}
 
-          {!isLoading && allProducts.length === 0 && (
+          {!isLoading && categorySections.length === 0 && (
             <View style={styles.emptyFeedContainer}>
-              <MaterialCommunityIcons name="storefront-outline" size={64} color={THEME.COLORS.textTertiary} />
-              <Text style={styles.emptyFeedText}>Aucun produit disponible pour le moment.</Text>
+              <MaterialCommunityIcons 
+                name="store-search-outline" 
+                size={80} 
+                color={THEME.COLORS.primary} 
+                style={{ marginBottom: 16, opacity: 0.8 }} 
+              />
+              <Text style={[styles.emptyFeedText, { fontWeight: '800', color: THEME.COLORS.textPrimary, fontSize: 18, marginTop: 0, textAlign: 'center' }]}>
+                Aucun produit trouvé
+              </Text>
+              <Text style={{ fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32, lineHeight: 20 }}>
+                Il n'y a actuellement aucun article disponible correspondant à vos critères ou à cette catégorie.
+              </Text>
+              {selectedCategoryFilter && (
+                <TouchableOpacity 
+                  style={[styles.resetFilterButton, { marginTop: 20, alignSelf: 'center', minWidth: 220 }]}
+                  onPress={() => setSelectedCategoryFilter(null)}
+                >
+                  <Text style={styles.resetFilterText}>Voir toutes les catégories</Text>
+                </TouchableOpacity>
+              )}
             </View>
           )}
         </View>

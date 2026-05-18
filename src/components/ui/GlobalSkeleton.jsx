@@ -4,30 +4,34 @@
 
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef } from 'react';
-import { Animated, Dimensions, StyleSheet, View } from 'react-native';
+import { Animated, Dimensions, StyleSheet, View, useColorScheme } from 'react-native';
 import THEME from '../../theme/theme';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 // 1. LA BRIQUE ATOMIQUE (L'OS)
 // C'est ce composant que tu vas utiliser pour remplacer le texte/image dans tes vraies pages
-export const SkeletonBone = ({ width, height, borderRadius = THEME.BORDERS.radius.sm, style }) => (
-  <View style={[
-    {
-      width,
-      height,
-      borderRadius,
-      backgroundColor: THEME.COLORS.border,
-      opacity: 0.25,
-    },
-    style
-  ]} />
-);
+export const SkeletonBone = ({ width, height, borderRadius = THEME.BORDERS.radius.sm, style }) => {
+  const isDarkMode = useColorScheme() === 'dark';
+  return (
+    <View style={[
+      {
+        width,
+        height,
+        borderRadius,
+        backgroundColor: isDarkMode ? '#2D2D30' : '#E2E4E8',
+        opacity: 1.0,
+      },
+      style
+    ]} />
+  );
+};
 
 // 2. LE PROJECTEUR DE LUMIERE
 // Ce composant enveloppe ta page et projette l'animation par-dessus
 const GlobalSkeleton = ({ visible, children, style }) => {
   const translateX = useRef(new Animated.Value(-SCREEN_WIDTH)).current;
+  const isDarkMode = useColorScheme() === 'dark';
 
   useEffect(() => {
     if (visible) {
@@ -73,11 +77,17 @@ const GlobalSkeleton = ({ visible, children, style }) => {
         pointerEvents="none"
       >
         <LinearGradient
-          colors={[
+          colors={isDarkMode ? [
             'rgba(255, 255, 255, 0)',
             'rgba(255, 255, 255, 0.08)',
-            'rgba(255, 255, 255, 0.25)',
+            'rgba(255, 255, 255, 0.28)',
             'rgba(255, 255, 255, 0.08)',
+            'rgba(255, 255, 255, 0)'
+          ] : [
+            'rgba(255, 255, 255, 0)',
+            'rgba(255, 255, 255, 0.40)',
+            'rgba(255, 255, 255, 0.75)',
+            'rgba(255, 255, 255, 0.40)',
             'rgba(255, 255, 255, 0)'
           ]}
           start={{ x: 0, y: 0 }}

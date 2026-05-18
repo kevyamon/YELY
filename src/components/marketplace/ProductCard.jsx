@@ -2,7 +2,7 @@
 // CARTE PRODUIT PREMIUM - Avec Carrousel Auto-Play & Sélecteur Panier Dynamique
 // CSCSM Level: Bank Grade
 
-import React, { useRef, useState, useEffect } from 'react';
+import React from 'react';
 import { 
   View, 
   Text, 
@@ -10,7 +10,6 @@ import {
   TouchableOpacity, 
   Image, 
   useWindowDimensions,
-  ScrollView,
   Platform
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
@@ -26,42 +25,12 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
 
   const isSoldOut = product.isSoldOut;
   const dispatch = useDispatch();
-  const flatListRef = useRef(null);
-  const [activeIndex, setActiveIndex] = useState(0);
   const images = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
 
   // Verification de la presence dans le panier
   const cartItems = useSelector(selectCartItems);
   const cartItem = cartItems.find(item => item.id === product._id);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
-
-  // AUTO-PLAY LOGIC
-  useEffect(() => {
-    if (images.length <= 1 || isSoldOut) return;
-
-    const interval = setInterval(() => {
-      let nextIndex = activeIndex + 1;
-      if (nextIndex >= images.length) {
-        nextIndex = 0;
-      }
-      
-      flatListRef.current?.scrollTo({
-        x: nextIndex * dynamicCardWidth,
-        animated: true,
-      });
-      setActiveIndex(nextIndex);
-    }, 3000);
-
-    return () => clearInterval(interval);
-  }, [activeIndex, images.length, isSoldOut, dynamicCardWidth]);
-
-  const handleScroll = (event) => {
-    const scrollPosition = event.nativeEvent.contentOffset.x;
-    const index = Math.round(scrollPosition / dynamicCardWidth);
-    if (index !== activeIndex) {
-      setActiveIndex(index);
-    }
-  };
 
   const handleAdd = (e) => {
     e.stopPropagation();
@@ -104,34 +73,10 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
     >
       <View style={[styles.imageContainer, { height: imageHeight }]}>
         {images.length > 0 ? (
-          <>
-            <ScrollView
-              ref={flatListRef}
-              horizontal
-              pagingEnabled
-              showsHorizontalScrollIndicator={false}
-              onScroll={handleScroll}
-              scrollEventThrottle={16}
-            >
-              {images.map((item, index) => (
-                <Image 
-                  key={index} 
-                  source={{ uri: item }} 
-                  style={{ width: dynamicCardWidth, height: imageHeight, resizeMode: 'cover' }} 
-                />
-              ))}
-            </ScrollView>
-            {images.length > 1 && (
-              <View style={styles.pagination}>
-                {images.map((_, i) => (
-                  <View 
-                    key={i} 
-                    style={[styles.dot, activeIndex === i && styles.activeDot]} 
-                  />
-                ))}
-              </View>
-            )}
-          </>
+          <Image 
+            source={{ uri: images[0] }} 
+            style={{ width: dynamicCardWidth, height: imageHeight, resizeMode: 'cover' }} 
+          />
         ) : (
           <View style={styles.placeholderImage}>
             <MaterialCommunityIcons name="image-outline" size={40} color={THEME.COLORS.textTertiary} />

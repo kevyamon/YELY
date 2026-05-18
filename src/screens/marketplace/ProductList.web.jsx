@@ -178,10 +178,20 @@ const ProductList = ({ route, navigation }) => {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <MaterialCommunityIcons name="package-variant" size={64} color={THEME.COLORS.textTertiary} />
-      <Text style={styles.emptyText}>Aucun produit trouvé</Text>
+      <MaterialCommunityIcons 
+        name="store-search-outline" 
+        size={80} 
+        color={THEME.COLORS.primary} 
+        style={{ marginBottom: 16, opacity: 0.8 }} 
+      />
+      <Text style={[styles.emptyText, { fontWeight: '800', color: THEME.COLORS.textPrimary, fontSize: 18, marginTop: 0 }]}>
+        Catégorie vide
+      </Text>
+      <Text style={{ fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32, lineHeight: 20 }}>
+        Il n'y a actuellement aucun article disponible dans la catégorie "{displayTitle}".
+      </Text>
       <TouchableOpacity style={styles.refreshButton} onPress={refetch}>
-        <Text style={styles.refreshText}>Actualiser</Text>
+        <Text style={styles.refreshText}>Actualiser la page</Text>
       </TouchableOpacity>
     </View>
   );

@@ -204,7 +204,20 @@ const ProductDetails = ({ route, navigation }) => {
         </View>
 
         {/* SECTION CENTER : INFORMATIONS DU PRODUIT */}
-        <View style={styles.contentCard}>
+        <View style={[
+          styles.contentCard,
+          !isDarkMode && {
+            borderTopWidth: 1.5,
+            borderLeftWidth: 1.5,
+            borderRightWidth: 1.5,
+            borderColor: 'rgba(212, 175, 55, 0.25)',
+            shadowColor: '#000000',
+            shadowOffset: { width: 0, height: -6 },
+            shadowOpacity: 0.08,
+            shadowRadius: 12,
+            elevation: 5,
+          }
+        ]}>
           {/* HEADER PRINCIPAL PRODUIT */}
           <View style={styles.mainInfo}>
             <View style={styles.rowBetween}>
@@ -262,30 +275,19 @@ const ProductDetails = ({ route, navigation }) => {
             </GlassCard>
           </View>
 
-          {/* BADGES DE CONFIANCE SECURISEE */}
-          <View style={styles.trustRow}>
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="credit-card-shield-outline" size={14} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.trustText}>Paiement Sécurisé</Text>
-            </View>
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="headset" size={14} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.trustText}>Service Client Yély</Text>
-            </View>
-            <View style={styles.trustItem}>
-              <MaterialCommunityIcons name="shield-refresh-outline" size={14} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.trustText}>Garantie Retour</Text>
-            </View>
-          </View>
 
-          {/* CARD DESCRIPTION */}
+
           <GlassCard style={styles.descriptionCard} padding={18}>
             <View style={styles.sectionHeader}>
               <MaterialCommunityIcons name="text-box-outline" size={18} color={THEME.COLORS.primary} style={{ marginRight: 8 }} />
               <Text style={styles.sectionTitle}>Description</Text>
             </View>
-            <Text style={styles.descriptionText}>
-              {displayDescription}
+            <Text 
+              style={styles.descriptionText}
+              numberOfLines={isLongDescription ? 3 : undefined}
+              ellipsizeMode="tail"
+            >
+              {description}
             </Text>
             {isLongDescription && (
               <TouchableOpacity 
@@ -315,10 +317,6 @@ const ProductDetails = ({ route, navigation }) => {
                 <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
                 <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
               </View>
-
-              <TouchableOpacity style={styles.sellerActionBtn} activeOpacity={0.7}>
-                <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textSecondary} />
-              </TouchableOpacity>
             </View>
           </GlassCard>
         </View>
@@ -621,14 +619,14 @@ const styles = StyleSheet.create({
 
   // Modal Styles
   modalContent: { maxHeight: height * 0.6, padding: 5 },
-  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255, 255, 255, 0.08)', paddingBottom: 15, marginBottom: 15 },
-  modalTitle: { fontSize: 18, fontWeight: 'bold', color: '#FFFFFF' },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingBottom: 15, marginBottom: 15 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
   modalScroll: { maxHeight: height * 0.4 },
   modalScrollContent: { paddingBottom: 20 },
-  modalDescText: { fontSize: 15, color: 'rgba(255, 255, 255, 0.85)', lineHeight: 24 },
-  modalFooter: { borderTopWidth: 1, borderTopColor: 'rgba(255, 255, 255, 0.08)', paddingTop: 15, alignItems: 'center' },
+  modalDescText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
+  modalFooter: { borderTopWidth: 1, borderTopColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingTop: 15, alignItems: 'center' },
   modalCloseBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 },
-  modalCloseText: { color: '#000', fontWeight: 'bold', fontSize: 14 },
+  modalCloseText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
   modalScrollTopBtn: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 }
 });
 

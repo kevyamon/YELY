@@ -26,6 +26,7 @@ import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
+import GlassModal from '../../components/ui/GlassModal';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 
 const CATEGORY_LABELS = {
@@ -55,7 +56,9 @@ const ProductDetails = ({ route, navigation }) => {
   
   const [activeImage, setActiveImage] = useState(0);
   const [quantity, setQuantity] = useState(1);
-  const [isDescExpanded, setIsDescExpanded] = useState(false);
+  const [isDescModalVisible, setIsDescModalVisible] = useState(false);
+  const [showModalScrollTop, setShowModalScrollTop] = useState(false);
+  const modalScrollViewRef = useRef(null);
   
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
@@ -259,21 +262,7 @@ const ProductDetails = ({ route, navigation }) => {
                   </GlassCard>
                 </View>
 
-                {/* BADGES DE CONFIANCE SECURISEE */}
-                <View style={styles.trustRow}>
-                  <View style={styles.trustItem}>
-                    <MaterialCommunityIcons name="credit-card-shield-outline" size={14} color={THEME.COLORS.textSecondary} />
-                    <Text style={styles.trustText}>Paiement Sécurisé</Text>
-                  </View>
-                  <View style={styles.trustItem}>
-                    <MaterialCommunityIcons name="headset" size={14} color={THEME.COLORS.textSecondary} />
-                    <Text style={styles.trustText}>Service Client Yély</Text>
-                  </View>
-                  <View style={styles.trustItem}>
-                    <MaterialCommunityIcons name="shield-refresh-outline" size={14} color={THEME.COLORS.textSecondary} />
-                    <Text style={styles.trustText}>Garantie Retour</Text>
-                  </View>
-                </View>
+
 
                 {/* Description */}
                 <GlassCard style={styles.descriptionCard} padding={18}>
@@ -300,10 +289,6 @@ const ProductDetails = ({ route, navigation }) => {
                       <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
                       <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
                     </View>
-
-                    <TouchableOpacity style={styles.sellerActionBtn} activeOpacity={0.7}>
-                      <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textSecondary} />
-                    </TouchableOpacity>
                   </View>
                 </GlassCard>
 
@@ -347,9 +332,6 @@ const ProductDetails = ({ route, navigation }) => {
   // RENDER MOBILE LAYOUT (TELEPHONE EN PWA)
   const renderMobileLayout = () => {
     const isLongDescription = description.length > 150;
-    const displayDescription = isLongDescription && !isDescExpanded
-      ? `${description.slice(0, 150)}...`
-      : description;
 
     return (
       <View style={styles.mobileContainer}>
@@ -394,7 +376,25 @@ const ProductDetails = ({ route, navigation }) => {
           </View>
 
           {/* SECTION CENTER : INFORMATIONS DU PRODUIT */}
-          <View style={styles.mobileContentCard}>
+          <View style={[
+            styles.mobileContentCard,
+            !isDarkMode && {
+              marginTop: -30,
+              borderTopLeftRadius: 30,
+              borderTopRightRadius: 30,
+              backgroundColor: THEME.COLORS.background,
+              paddingTop: 30,
+              borderTopWidth: 1.5,
+              borderLeftWidth: 1.5,
+              borderRightWidth: 1.5,
+              borderColor: 'rgba(212, 175, 55, 0.25)',
+              shadowColor: '#000000',
+              shadowOffset: { width: 0, height: -10 },
+              shadowOpacity: 0.08,
+              shadowRadius: 20,
+              elevation: 5,
+            }
+          ]}>
             <View style={styles.mobileMainInfo}>
               <View style={styles.mobileRowBetween}>
                 <View style={styles.categoryBadge}>
@@ -445,42 +445,28 @@ const ProductDetails = ({ route, navigation }) => {
               </GlassCard>
             </View>
 
-            {/* BADGES DE CONFIANCE SECURISEE */}
-            <View style={styles.trustRow}>
-              <View style={styles.trustItem}>
-                <MaterialCommunityIcons name="credit-card-shield-outline" size={14} color={THEME.COLORS.textSecondary} />
-                <Text style={styles.trustText}>Paiement Sécurisé</Text>
-              </View>
-              <View style={styles.trustItem}>
-                <MaterialCommunityIcons name="headset" size={14} color={THEME.COLORS.textSecondary} />
-                <Text style={styles.trustText}>Service Client</Text>
-              </View>
-              <View style={styles.trustItem}>
-                <MaterialCommunityIcons name="shield-refresh-outline" size={14} color={THEME.COLORS.textSecondary} />
-                <Text style={styles.trustText}>Garantie Retour</Text>
-              </View>
-            </View>
-
             {/* DESCRIPTION CARD */}
             <GlassCard style={styles.descriptionCard} padding={18}>
               <View style={styles.sectionHeader}>
                 <MaterialCommunityIcons name="text-box-outline" size={18} color={THEME.COLORS.primary} style={{ marginRight: 8 }} />
                 <Text style={styles.sectionTitle}>Description</Text>
               </View>
-              <Text style={styles.mobileDescriptionText}>
-                {displayDescription}
+              <Text 
+                style={styles.mobileDescriptionText}
+                numberOfLines={isLongDescription ? 3 : undefined}
+                ellipsizeMode="tail"
+              >
+                {description}
               </Text>
               {isLongDescription && (
                 <TouchableOpacity 
                   style={styles.mobileReadMoreBtn} 
-                  onPress={() => setIsDescExpanded(!isDescExpanded)}
+                  onPress={() => setIsDescModalVisible(true)}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.mobileReadMoreText}>
-                    {isDescExpanded ? "Lire moins" : "Lire plus"}
-                  </Text>
+                  <Text style={styles.mobileReadMoreText}>Lire plus</Text>
                   <Ionicons 
-                    name={isDescExpanded ? "chevron-up" : "chevron-forward"} 
+                    name="chevron-forward" 
                     size={14} 
                     color={THEME.COLORS.primary} 
                   />
@@ -504,10 +490,6 @@ const ProductDetails = ({ route, navigation }) => {
                   <Text style={styles.mobileSellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
                   <Text style={styles.mobileSellerStatus}>Partenaire Certifié Yély</Text>
                 </View>
-
-                <TouchableOpacity style={styles.sellerActionBtn} activeOpacity={0.7}>
-                  <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.textSecondary} />
-                </TouchableOpacity>
               </View>
             </GlassCard>
           </View>
@@ -545,6 +527,54 @@ const ProductDetails = ({ route, navigation }) => {
             </View>
           )}
         </View>
+ 
+        {/* DESCRIPTION MODAL */}
+        <GlassModal
+          visible={isDescModalVisible}
+          onClose={() => setIsDescModalVisible(false)}
+          position="center"
+          closeOnBackdrop={true}
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="document-text" size={24} color={THEME.COLORS.primary} />
+              <Text style={styles.modalTitle}>Description Complète</Text>
+            </View>
+            
+            <ScrollView 
+              ref={modalScrollViewRef}
+              style={styles.modalScroll}
+              contentContainerStyle={styles.modalScrollContent}
+              onScroll={(e) => {
+                const offsetY = e.nativeEvent.contentOffset.y;
+                setShowModalScrollTop(offsetY > 120);
+              }}
+              scrollEventThrottle={16}
+              showsVerticalScrollIndicator={false}
+            >
+              <Text style={styles.modalDescText}>{description}</Text>
+            </ScrollView>
+            
+            <View style={styles.modalFooter}>
+              <TouchableOpacity 
+                style={styles.modalCloseBtn}
+                onPress={() => setIsDescModalVisible(false)}
+              >
+                <Text style={styles.modalCloseText}>Fermer</Text>
+              </TouchableOpacity>
+            </View>
+ 
+            {showModalScrollTop && (
+              <TouchableOpacity 
+                style={styles.modalScrollTopBtn}
+                onPress={() => modalScrollViewRef.current?.scrollTo({ y: 0, animated: true })}
+                hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+              >
+                <Ionicons name="arrow-up" size={18} color="#000" />
+              </TouchableOpacity>
+            )}
+          </View>
+        </GlassModal>
       </View>
     );
   };
@@ -1014,6 +1044,16 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     color: THEME.COLORS.primary,
   },
+  modalContent: { maxHeight: 500, padding: 5 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingBottom: 15, marginBottom: 15 },
+  modalTitle: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  modalScroll: { maxHeight: 300 },
+  modalScrollContent: { paddingBottom: 20 },
+  modalDescText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
+  modalFooter: { borderTopWidth: 1, borderTopColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingTop: 15, alignItems: 'center' },
+  modalCloseBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 },
+  modalCloseText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
+  modalScrollTopBtn: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 }
 });
 
 export default ProductDetails;
