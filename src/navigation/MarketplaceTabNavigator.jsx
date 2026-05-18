@@ -4,6 +4,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { View, Text, TouchableOpacity, StyleSheet, DeviceEventEmitter, Platform } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as Haptics from 'expo-haptics';
+import { useSelector } from 'react-redux';
+import { selectCartCount } from '../store/slices/cartSlice';
 
 import MarketplaceHub from '../screens/marketplace/MarketplaceHub';
 import Cart from '../screens/marketplace/Cart';
@@ -16,6 +18,8 @@ const Tab = createBottomTabNavigator();
 const DummyCategories = () => null;
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
+  const cartCount = useSelector(selectCartCount);
+
   return (
     <View style={styles.tabBarContainer}>
       {state.routes.map((route, index) => {
@@ -85,11 +89,18 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
             style={styles.tabButton}
             activeOpacity={0.7}
           >
-            <Ionicons 
-              name={iconName} 
-              size={22} 
-              color={isFocused ? THEME.COLORS.primary : THEME.COLORS.textTertiary} 
-            />
+            <View style={styles.iconContainer}>
+              <Ionicons 
+                name={iconName} 
+                size={22} 
+                color={isFocused ? THEME.COLORS.primary : THEME.COLORS.textTertiary} 
+              />
+              {route.name === 'Panier' && cartCount > 0 && (
+                <View style={styles.badge}>
+                  <Text style={styles.badgeText} numberOfLines={1}>{cartCount}</Text>
+                </View>
+              )}
+            </View>
             <Text style={[
               styles.tabLabel, 
               { color: isFocused ? THEME.COLORS.textPrimary : THEME.COLORS.textTertiary }
@@ -159,9 +170,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 4,
   },
+  iconContainer: {
+    position: 'relative',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   tabLabel: {
     fontSize: THEME.FONTS.sizes.micro + 1,
     fontWeight: THEME.FONTS.weights.medium,
+  },
+  badge: {
+    position: 'absolute',
+    top: -6,
+    right: -8,
+    backgroundColor: '#E74C3C',
+    borderRadius: 9,
+    minWidth: 16,
+    height: 16,
+    paddingHorizontal: 3,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: '#121212',
+  },
+  badgeText: {
+    color: '#FFFFFF',
+    fontSize: 8,
+    fontWeight: 'bold',
+    textAlign: 'center',
   },
 });
 

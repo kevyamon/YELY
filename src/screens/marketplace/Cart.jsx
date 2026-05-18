@@ -65,6 +65,12 @@ const Cart = ({ navigation }) => {
     borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
   };
 
+  const dynamicFooterStyle = {
+    backgroundColor: isDarkMode ? '#050505' : '#FFFFFF',
+    borderTopColor: isDarkMode ? 'rgba(212, 175, 55, 0.15)' : 'rgba(0, 0, 0, 0.05)',
+    paddingBottom: Platform.OS === 'ios' ? 94 : 74,
+  };
+
   const handleCheckout = () => {
     if (items.length === 0) return;
     navigation.navigate('Checkout');
@@ -145,13 +151,13 @@ const Cart = ({ navigation }) => {
         renderItem={renderItem}
         keyExtractor={item => item.id}
         style={{ flex: 1 }}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 320 }]}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 20 }]}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
 
       {items.length > 0 && (
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
+        <View style={[styles.footer, dynamicFooterStyle]}>
           <GlassCard style={[styles.summaryCard, dynamicSummaryCardStyle]}>
             <View style={styles.summaryRow}>
               <Text style={[styles.summaryLabel, { color: dynamicTextColorSec }]}>Total Articles</Text>
@@ -224,12 +230,9 @@ const styles = StyleSheet.create({
   qtyText: { fontWeight: 'bold', marginHorizontal: 10, fontSize: 16 },
   removeBtn: { width: 40, height: 40, justifyContent: 'center', alignItems: 'center' },
   footer: { 
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
     paddingHorizontal: 20,
-    backgroundColor: 'transparent'
+    paddingTop: 12,
+    borderTopWidth: 1,
   },
   summaryCard: { 
     padding: 20, 

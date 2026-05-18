@@ -129,14 +129,14 @@ const CheckoutScreen = ({ navigation }) => {
           if (addressStr) {
             setAddress(addressStr);
           } else {
-            setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
+            setAddress("Ma position (Abidjan, Côte d'Ivoire)");
           }
         } else {
-          setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
+          setAddress("Ma position (Abidjan, Côte d'Ivoire)");
         }
       } catch (err) {
         console.warn('[CHECKOUT] Reverse geocode failed:', err);
-        setAddress(`Position GPS: ${location.coords.latitude.toFixed(5)}, ${location.coords.longitude.toFixed(5)}`);
+        setAddress("Ma position (Abidjan, Côte d'Ivoire)");
       }
 
     } catch (error) {
@@ -228,15 +228,15 @@ const CheckoutScreen = ({ navigation }) => {
   };
 
   return (
-    <LinearGradient colors={['#000000', '#1A1405', '#000000']} style={styles.container}>
+    <LinearGradient colors={['#000000', '#0B0B0C', '#000000']} style={styles.container}>
       <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <View style={[styles.header, { paddingTop: insets.top + 10 }]}>
+        <View style={[styles.header, { paddingTop: insets.top + 15 }]}>
           <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
-            <Ionicons name="chevron-back" size={28} color="#D4AF37" />
+            <Ionicons name="chevron-back" size={24} color={THEME.COLORS.primary} />
           </TouchableOpacity>
-          <View>
-            <Text style={styles.headerSubtitle}>Marketplace</Text>
-            <Text style={styles.title}>Finalisation</Text>
+          <View style={styles.headerTitleContainer}>
+            <Text style={styles.headerSubtitle}>YÉLY MARKETPLACE</Text>
+            <Text style={styles.title}>Validation de commande</Text>
           </View>
         </View>
 
@@ -301,7 +301,11 @@ const CheckoutScreen = ({ navigation }) => {
                   style={[styles.toggleBtn, deliveryMode === 'other' && styles.toggleBtnActive]}
                   onPress={() => {
                     setDeliveryMode('other');
-                    setTempAddress(address === 'Position GPS...' || address.startsWith('Position GPS:') ? '' : address);
+                    setTempAddress(
+                      address === 'Position GPS...' || 
+                      address.startsWith('Position GPS:') || 
+                      address.startsWith('Ma position') ? '' : address
+                    );
                     setIsAddressModalVisible(true);
                   }}
                 >
@@ -386,13 +390,7 @@ const CheckoutScreen = ({ navigation }) => {
             </View>
           </View>
 
-          <View style={styles.receiptSlit} />
-          
-          <View style={styles.receiptInfinity}>
-            <View style={styles.receiptTopDecorative}>
-              <View style={styles.zigzag} />
-            </View>
-
+          <View style={styles.receiptContainer}>
             {cartItems.map((item, idx) => (
               <View key={idx} style={styles.proReceiptItem}>
                 <View style={styles.proItemLead}>
@@ -422,11 +420,7 @@ const CheckoutScreen = ({ navigation }) => {
               </Text>
             </View>
 
-            <LinearGradient 
-              colors={[THEME.COLORS.primary, '#FFD700']} 
-              start={{x:0, y:0}} end={{x:1, y:1}}
-              style={styles.proTotalBlock}
-            >
+            <View style={styles.proTotalBlock}>
               <View>
                 <Text style={styles.proTotalLabel}>TOTAL À RÉGLER</Text>
                 <Text style={styles.proTotalSub}>Net à payer (TTC)</Text>
@@ -434,10 +428,10 @@ const CheckoutScreen = ({ navigation }) => {
               <Text style={styles.proTotalAmount}>
                 {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()} FCFA
               </Text>
-            </LinearGradient>
+            </View>
 
             <View style={styles.receiptFooter}>
-              <Ionicons name="shield-checkmark" size={12} color="#AAA" />
+              <Ionicons name="shield-checkmark" size={14} color={THEME.COLORS.primary} />
               <Text style={styles.receiptFooterText}>PAIEMENT SÉCURISÉ PAR YÉLY</Text>
             </View>
           </View>
@@ -533,13 +527,17 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(212,175,55,0.2)'
   },
-  headerSubtitle: { color: '#AAA', fontSize: 12, textTransform: 'uppercase', letterSpacing: 2 },
-  title: { fontSize: 24, fontWeight: '800', color: THEME.COLORS.white },
+  headerTitleContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  headerSubtitle: { color: '#AAA', fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2 },
+  title: { fontSize: 20, fontWeight: '800', color: '#FFFFFF' },
   scrollContent: { paddingHorizontal: 25 },
   mainTitle: { 
-    fontSize: 18, 
+    fontSize: 16, 
     fontWeight: '700', 
-    color: THEME.COLORS.white, 
+    color: '#FFFFFF', 
     marginTop: 20, 
     marginBottom: 15,
     paddingLeft: 5
@@ -547,23 +545,23 @@ const styles = StyleSheet.create({
   section: { 
     padding: 20, 
     borderRadius: 25, 
-    backgroundColor: 'rgba(255, 255, 255, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)'
+    borderColor: 'rgba(255, 255, 255, 0.08)'
   },
   inputGroup: { marginBottom: 20 },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  label: { color: THEME.COLORS.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1.5 },
+  label: { color: THEME.COLORS.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
   addressWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', position: 'relative' },
   input: { 
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 15, 
-    padding: 18, 
-    color: THEME.COLORS.white,
-    fontSize: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: 16, 
+    padding: 16, 
+    color: '#FFFFFF',
+    fontSize: 15,
     fontWeight: '600',
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.4)'
+    borderColor: 'rgba(212, 175, 55, 0.25)'
   },
   inlineLocateBtn: {
     position: 'absolute',
@@ -592,7 +590,7 @@ const styles = StyleSheet.create({
   },
   toggleBtnActive: { backgroundColor: THEME.COLORS.primary },
   toggleText: { color: '#AAA', fontSize: 13, fontWeight: '700' },
-  toggleTextActive: { color: '#000' },
+  toggleTextActive: { color: '#000000', fontWeight: '800' },
   orderHeaderRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
@@ -609,31 +607,13 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212,175,55,0.3)'
   },
   itemCountText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  receiptSlit: {
-    height: 4,
-    backgroundColor: '#1A1405',
-    marginHorizontal: 10,
-    borderRadius: 2,
-    marginBottom: -2,
-    zIndex: 10
-  },
-  receiptInfinity: { 
-    backgroundColor: THEME.COLORS.white, 
-    padding: 25,
-    borderBottomLeftRadius: 30,
-    borderBottomRightRadius: 30,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 15 },
-    shadowOpacity: 0.15,
-    shadowRadius: 25,
-    elevation: 10
-  },
-  receiptTopDecorative: {
-    height: 15,
-    backgroundColor: 'transparent',
-    overflow: 'hidden',
-    marginTop: -25,
-    marginBottom: 10
+  receiptContainer: { 
+    backgroundColor: 'rgba(255, 255, 255, 0.03)', 
+    padding: 24,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.15)',
+    marginBottom: 20
   },
   proReceiptItem: { 
     flexDirection: 'row', 
@@ -646,53 +626,51 @@ const styles = StyleSheet.create({
     width: 32, 
     height: 32, 
     borderRadius: 16, 
-    backgroundColor: '#F9F9F9', 
+    backgroundColor: 'rgba(212, 175, 55, 0.08)', 
     justifyContent: 'center', 
     alignItems: 'center',
     marginRight: 15,
     borderWidth: 1,
-    borderColor: '#EEE'
+    borderColor: 'rgba(212, 175, 55, 0.25)'
   },
-  proQtyText: { color: '#333', fontWeight: '900', fontSize: 13 },
+  proQtyText: { color: THEME.COLORS.primary, fontWeight: '900', fontSize: 13 },
   proItemDetails: { flex: 1 },
-  proItemName: { color: '#222', fontSize: 16, fontWeight: '700' },
-  proItemSeller: { color: '#999', fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
-  proItemPrice: { color: '#000', fontSize: 16, fontWeight: '800', marginLeft: 10 },
+  proItemName: { color: '#FFFFFF', fontSize: 15, fontWeight: '700' },
+  proItemSeller: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
+  proItemPrice: { color: '#FFFFFF', fontSize: 16, fontWeight: '800', marginLeft: 10 },
   proDashedLine: { 
     height: 1, 
     borderWidth: 1, 
-    borderColor: '#EEE', 
+    borderColor: 'rgba(255, 255, 255, 0.08)', 
     borderStyle: 'dashed', 
     marginVertical: 20 
   },
   proSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  proSummaryLabel: { color: '#777', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-  proSummaryValue: { color: '#000', fontSize: 16, fontWeight: '700' },
+  proSummaryLabel: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+  proSummaryValue: { color: '#FFFFFF', fontSize: 16, fontWeight: '700' },
   proTotalBlock: { 
     marginTop: 20, 
-    padding: 20, 
-    borderRadius: 20, 
+    padding: 18, 
+    borderRadius: 18, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
-    shadowColor: THEME.COLORS.primary,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
-    shadowRadius: 15,
-    elevation: 8
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.primary,
+    backgroundColor: 'rgba(212, 175, 55, 0.06)'
   },
-  proTotalLabel: { color: '#000', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 },
-  proTotalSub: { color: 'rgba(0,0,0,0.5)', fontSize: 10, fontWeight: '600', marginTop: 2 },
-  proTotalAmount: { color: '#000', fontSize: 24, fontWeight: '900' },
+  proTotalLabel: { color: '#FFFFFF', fontWeight: '900', fontSize: 14, letterSpacing: 0.5 },
+  proTotalSub: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, fontWeight: '600', marginTop: 2 },
+  proTotalAmount: { color: THEME.COLORS.primary, fontSize: 22, fontWeight: '900' },
   receiptFooter: { 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
     marginTop: 25, 
     gap: 6,
-    opacity: 0.5
+    opacity: 0.8
   },
-  receiptFooterText: { color: '#777', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
+  receiptFooterText: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 10, fontWeight: '800', letterSpacing: 1 },
   footer: { 
     paddingHorizontal: 25, 
     paddingBottom: 20,
