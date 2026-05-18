@@ -221,26 +221,34 @@ const SellerOrders = ({ navigation }) => {
         </View>
 
         {/* Fiches Produits Visuelles */}
-        <View style={styles.itemsList}>
+        <View style={[styles.itemsList, { 
+          backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
+          borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' 
+        }]}>
           {item.items.map((prod, idx) => {
             const productImages = prod.product?.images || [];
             const hasImage = productImages.length > 0;
             return (
               <View key={idx} style={styles.itemRow}>
-                {hasImage ? (
-                  <Image source={{ uri: productImages[0] }} style={styles.productThumbnail} />
-                ) : (
-                  <View style={styles.thumbnailPlaceholder}>
-                    <MaterialCommunityIcons name="image-outline" size={20} color={THEME.COLORS.textTertiary} />
+                <View style={styles.thumbnailContainer}>
+                  {hasImage ? (
+                    <Image source={{ uri: productImages[0] }} style={styles.productThumbnail} />
+                  ) : (
+                    <View style={styles.thumbnailPlaceholder}>
+                      <MaterialCommunityIcons name="image-outline" size={20} color={THEME.COLORS.textTertiary} />
+                    </View>
+                  )}
+                  {/* Badge de quantité superposé en haut à droite de l'image */}
+                  <View style={[styles.quantityBadgeOverlay, { borderColor: isDark ? '#1E1E1E' : '#FFFFFF' }]}>
+                    <Text style={styles.quantityBadgeText}>{prod.quantity}</Text>
                   </View>
-                )}
+                </View>
+                
                 <View style={styles.productDetails}>
                   <Text style={styles.itemName} numberOfLines={1}>{prod.name}</Text>
                   <Text style={styles.itemUnitPrice}>{prod.price.toLocaleString()} FCFA / u</Text>
                 </View>
-                <View style={styles.qtyBadge}>
-                  <Text style={styles.qtyText}>x{prod.quantity}</Text>
-                </View>
+                
                 <Text style={styles.itemTotalPrice}>{(prod.price * prod.quantity).toLocaleString()} FCFA</Text>
               </View>
             );
@@ -248,18 +256,21 @@ const SellerOrders = ({ navigation }) => {
         </View>
 
         {/* Répartition Financière Complète */}
-        <View style={styles.financialSection}>
+        <View style={[styles.financialSection, {
+          backgroundColor: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
+          borderColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
+        }]}>
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>Sous-total articles</Text>
+            <Text style={styles.financialLabel} numberOfLines={1}>Sous-total articles</Text>
             <Text style={styles.financialValue}>{(item.itemsPrice || (item.totalPrice - item.deliveryPrice)).toLocaleString()} FCFA</Text>
           </View>
           <View style={styles.financialRow}>
-            <Text style={styles.financialLabel}>Frais de livraison (Livreur)</Text>
+            <Text style={styles.financialLabel} numberOfLines={1}>Frais de livraison (Livreur)</Text>
             <Text style={styles.financialValue}>+ {(item.deliveryPrice || 0).toLocaleString()} FCFA</Text>
           </View>
-          <View style={styles.financialDivider} />
+          <View style={[styles.financialDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
           <View style={styles.financialRowTotal}>
-            <Text style={styles.financialLabelTotal}>Total à percevoir</Text>
+            <Text style={styles.financialLabelTotal} numberOfLines={1}>Total à percevoir</Text>
             <Text style={styles.financialValueTotal}>{item.totalPrice.toLocaleString()} FCFA</Text>
           </View>
         </View>
@@ -298,7 +309,9 @@ const SellerOrders = ({ navigation }) => {
       <MarketplaceDetailsHeader title="Commandes Reçues" showCart={false} isOverlay={false} />
 
       {/* SÉLECTEUR D'ONGLETS PREMIUM */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, {
+        backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)'
+      }]}>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'active' && styles.tabButtonActive]}
           onPress={() => setActiveTab('active')}
@@ -404,26 +417,45 @@ const styles = StyleSheet.create({
   },
   
   // Grille d'articles premium et visuels
-  itemsList: { backgroundColor: 'rgba(255,255,255,0.02)', borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.04)' },
-  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
+  itemsList: { borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1 },
+  itemRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 14 },
+  thumbnailContainer: { position: 'relative', width: 48, height: 48 },
   productThumbnail: { width: 48, height: 48, borderRadius: 10, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.15)' },
   thumbnailPlaceholder: { width: 48, height: 48, borderRadius: 10, backgroundColor: 'rgba(255, 255, 255, 0.03)', borderWidth: 1, borderColor: 'rgba(255, 255, 255, 0.08)', justifyContent: 'center', alignItems: 'center' },
-  productDetails: { flex: 1, marginLeft: 12, justifyContent: 'center' },
-  itemName: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '600' },
-  itemUnitPrice: { fontSize: 12, color: THEME.COLORS.textTertiary, marginTop: 2 },
-  qtyBadge: { backgroundColor: THEME.COLORS.primary + '20', paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, marginRight: 12, minWidth: 32, alignItems: 'center' },
-  qtyText: { color: THEME.COLORS.primary, fontWeight: '800', fontSize: 12 },
-  itemTotalPrice: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: '700', minWidth: 80, textAlign: 'right' },
+  quantityBadgeOverlay: {
+    position: 'absolute',
+    top: -6,
+    right: -6,
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    ...THEME.SHADOWS.gold
+  },
+  quantityBadgeText: {
+    color: '#000000',
+    fontSize: 9,
+    fontWeight: '900',
+    textAlign: 'center'
+  },
+  productDetails: { flex: 1, marginLeft: 16, marginRight: 16, justifyContent: 'center' },
+  itemName: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
+  itemUnitPrice: { fontSize: 12, color: THEME.COLORS.textTertiary, marginTop: 4 },
+  itemTotalPrice: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: '800', textAlign: 'right', flexShrink: 0 },
   
   // Répartition financière
-  financialSection: { backgroundColor: 'rgba(255,255,255,0.015)', borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.03)' },
-  financialRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  financialLabel: { color: THEME.COLORS.textSecondary, fontSize: 13 },
-  financialValue: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '600' },
+  financialSection: { borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1 },
+  financialRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 },
+  financialLabel: { color: THEME.COLORS.textSecondary, fontSize: 13, flex: 1, flexShrink: 1, marginRight: 10 },
+  financialValue: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '600', flexShrink: 0 },
   financialDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.06)', marginVertical: 10 },
   financialRowTotal: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  financialLabelTotal: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
-  financialValueTotal: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: '900' },
+  financialLabelTotal: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '700', flex: 1, flexShrink: 1, marginRight: 10 },
+  financialValueTotal: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: '900', flexShrink: 0 },
   
   footer: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
   actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
