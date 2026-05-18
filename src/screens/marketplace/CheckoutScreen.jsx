@@ -25,6 +25,7 @@ import THEME from '../../theme/theme';
 import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import GlassModal from '../../components/ui/GlassModal';
+import MapService from '../../services/mapService';
 
 const CheckoutScreen = ({ navigation }) => {
   useMarketplaceSocketEvents();
@@ -111,39 +112,17 @@ const CheckoutScreen = ({ navigation }) => {
       console.log('[CHECKOUT] Coords obtenues:', coords);
       setClientCoords(coords);
 
-      // On tente de récupérer l'adresse textuelle en parallèle de manière robuste
+      // On tente de récupérer l'adresse textuelle de manière robuste (même intelligence que Taxi/SmartHeader)
       try {
-        const reverseGeocode = await Location.reverseGeocodeAsync({ 
-          longitude: location.coords.longitude, 
-          latitude: location.coords.latitude 
-        });
-
-        if (reverseGeocode && reverseGeocode.length > 0) {
-          const addr = reverseGeocode[0];
-          console.log('[CHECKOUT] Reverse geocode:', addr);
-          const parts = [
-            addr.name,
-            addr.streetNumber,
-            addr.street,
-            addr.district,
-            addr.subregion,
-            addr.city,
-            addr.region
-          ].filter(Boolean);
-          
-          // Déduplication des segments d'adresse
-          const uniqueParts = [...new Set(parts)];
-          const addressStr = uniqueParts.join(', ');
-          if (addressStr) {
-            setAddress(addressStr);
-          } else {
-            setAddress("Ma position (Abidjan, Côte d'Ivoire)");
-          }
+        console.log('[CHECKOUT] Géocodage intelligent via MapService...');
+        const addressStr = await MapService.getAddressFromCoordinates(location.coords.latitude, location.coords.longitude);
+        if (addressStr && addressStr !== 'Adresse introuvable') {
+          setAddress(addressStr);
         } else {
           setAddress("Ma position (Abidjan, Côte d'Ivoire)");
         }
       } catch (err) {
-        console.warn('[CHECKOUT] Reverse geocode failed:', err);
+        console.warn('[CHECKOUT] MapService reverse geocode failed:', err);
         setAddress("Ma position (Abidjan, Côte d'Ivoire)");
       }
 
