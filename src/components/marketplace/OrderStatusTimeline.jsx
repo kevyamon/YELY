@@ -36,27 +36,27 @@ const OrderStatusTimeline = ({ currentStatus }) => {
           <View key={step.id} style={styles.stepContainer}>
             <View style={styles.leftColumn}>
               <View style={[
-                styles.dot, 
+                styles.dot,
                 isCompleted ? styles.dotCompleted : styles.dotPending,
                 isActive && styles.dotActive
               ]}>
-                <MaterialCommunityIcons 
-                  name={step.icon} 
-                  size={16} 
-                  color={isCompleted ? THEME.COLORS.textInverse : THEME.COLORS.textTertiary} 
+                <MaterialCommunityIcons
+                  name={step.icon}
+                  size={16}
+                  color={isCompleted ? THEME.COLORS.textInverse : THEME.COLORS.textTertiary}
                 />
               </View>
               {!isLast && (
                 <View style={[
-                  styles.line, 
+                  styles.line,
                   index < currentIndex ? styles.lineCompleted : styles.linePending
                 ]} />
               )}
             </View>
-            
+
             <View style={styles.rightColumn}>
               <Text style={[
-                styles.label, 
+                styles.label,
                 isCompleted ? styles.labelCompleted : styles.labelPending,
                 isActive && styles.labelActive
               ]}>
@@ -142,3 +142,4 @@ const styles = StyleSheet.create({
 });
 
 export default OrderStatusTimeline;
+
