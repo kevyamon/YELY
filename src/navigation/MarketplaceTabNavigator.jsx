@@ -36,8 +36,10 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           }
 
           if (route.name === 'Categories') {
-            // Événement global pour afficher la modale overlay
-            DeviceEventEmitter.emit('toggle_categories_modal');
+            const activeRouteName = state.routes[state.index].name;
+            if (activeRouteName === 'Accueil') {
+              DeviceEventEmitter.emit('toggle_categories_modal');
+            }
             return;
           }
 

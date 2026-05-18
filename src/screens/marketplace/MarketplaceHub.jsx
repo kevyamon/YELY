@@ -137,11 +137,29 @@ const MarketplaceHub = ({ navigation }) => {
       setIsCategoriesModalVisible(prev => !prev);
     });
 
+    // Réinitialisation de la recherche au focus de l'écran
+    const focusSub = navigation.addListener('focus', () => {
+      setSearchQuery('');
+      setIsMiniSearchActive(false);
+    });
+
+    // Auto-fermeture de la recherche mini lors du dépliement (scroll-up)
+    const scrollListenerId = scrollY.addListener(({ value }) => {
+      if (value < 40) {
+        setIsMiniSearchActive(false);
+      }
+    });
+
     return () => {
       scrollTopSub.remove();
       toggleModalSub.remove();
+      focusSub();
+      scrollY.removeListener(scrollListenerId);
     };
-  }, []);
+  }, [navigation, scrollY]);
+
+  // Calcul de la largeur de carte pour 2 colonnes avec espace de 12px
+  const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim().length > 0) {
@@ -175,7 +193,7 @@ const MarketplaceHub = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* HEADER FIXE FLUIDE AVEC DÉPLACEMENT HAMBURGER À DROITE */}
+      {/* HEADER FIXE FLUIDE AVEC DÉPLACEMENT BOUTON HOME À DROITE */}
       <Animated.View style={[
         styles.collapsibleHeader, 
         { 
@@ -188,9 +206,9 @@ const MarketplaceHub = ({ navigation }) => {
           <Text style={styles.headerTitle}>Yély Marketplace</Text>
           <TouchableOpacity 
             style={styles.hamburgerButton} 
-            onPress={() => navigation.openDrawer()}
+            onPress={() => navigation.navigate('Home')}
           >
-            <Ionicons name="menu" size={26} color={THEME.COLORS.textPrimary} />
+            <Ionicons name="home-outline" size={25} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
         </View>
       </Animated.View>
@@ -226,9 +244,9 @@ const MarketplaceHub = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity 
               style={styles.miniIconWrapper}
-              onPress={() => navigation.openDrawer()}
+              onPress={() => navigation.navigate('Home')}
             >
-              <Ionicons name="menu" size={22} color={THEME.COLORS.textPrimary} />
+              <Ionicons name="home-outline" size={20} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>
@@ -282,33 +300,44 @@ const MarketplaceHub = ({ navigation }) => {
 
             {/* HORIZONTAL CATEGORY BAR CHIPS */}
             <View style={styles.categoriesRow}>
-              {HORIZONTAL_CATEGORIES.map(cat => (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.catChip,
-                    selectedCategoryFilter === cat.type && styles.catChipActive
-                  ]}
-                  onPress={() => handleSelectCategory(selectedCategoryFilter === cat.type ? null : cat.type)}
-                >
-                  <View style={[
-                    styles.catIconWrapper,
-                    { backgroundColor: selectedCategoryFilter === cat.type ? '#000000' : 'rgba(214, 175, 55, 0.08)' }
-                  ]}>
-                    <MaterialCommunityIcons 
-                      name={cat.icon} 
-                      size={20} 
-                      color={selectedCategoryFilter === cat.type ? THEME.COLORS.primary : THEME.COLORS.primary} 
-                    />
-                  </View>
-                  <Text style={[
-                    styles.catChipText,
-                    { color: selectedCategoryFilter === cat.type ? THEME.COLORS.primary : THEME.COLORS.textPrimary }
-                  ]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+              {HORIZONTAL_CATEGORIES.map(cat => {
+                const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
+                const isSelected = selectedCategoryFilter === cat.type;
+                const chipBg = isSelected ? config.color + '26' : 'rgba(255, 255, 255, 0.04)';
+                const chipBorder = isSelected ? config.color : 'rgba(255, 255, 255, 0.05)';
+                const iconColor = config.color;
+
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.catChip,
+                      selectedCategoryFilter === cat.type && styles.catChipActive
+                    ]}
+                    onPress={() => handleSelectCategory(selectedCategoryFilter === cat.type ? null : cat.type)}
+                  >
+                    <View style={[
+                      styles.catIconWrapper,
+                      { 
+                        backgroundColor: chipBg,
+                        borderColor: chipBorder,
+                      }
+                    ]}>
+                      <MaterialCommunityIcons 
+                        name={cat.icon} 
+                        size={20} 
+                        color={iconColor} 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.catChipText,
+                      { color: isSelected ? config.color : THEME.COLORS.textPrimary }
+                    ]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
 
               <TouchableOpacity
                 style={styles.catChip}
@@ -333,6 +362,7 @@ const MarketplaceHub = ({ navigation }) => {
                     <ProductCard 
                       key={`popular-${product._id}`} 
                       product={product} 
+                      cardWidth={cardWidth}
                       onPress={() => navigation.navigate('ProductDetails', { productId: product._id })}
                     />
                   ))}
@@ -372,6 +402,7 @@ const MarketplaceHub = ({ navigation }) => {
                   <ProductCard 
                     key={`cat-${item.key}-${product._id}`} 
                     product={product} 
+                    cardWidth={cardWidth}
                     onPress={() => navigation.navigate('ProductDetails', { productId: product._id })}
                   />
                 ))}
@@ -419,13 +450,20 @@ const MarketplaceHub = ({ navigation }) => {
 
             <View style={styles.modalGrid}>
               <TouchableOpacity
-                style={[styles.modalCatItem, !selectedCategoryFilter && styles.modalCatItemActive]}
+                style={[
+                  styles.modalCatItem, 
+                  !selectedCategoryFilter && styles.modalCatItemActive,
+                  {
+                    backgroundColor: !selectedCategoryFilter ? 'rgba(214, 175, 55, 0.22)' : 'rgba(255, 255, 255, 0.03)',
+                    borderColor: !selectedCategoryFilter ? THEME.COLORS.primary : 'rgba(255, 255, 255, 0.06)'
+                  }
+                ]}
                 onPress={() => handleSelectCategory(null)}
               >
                 <View style={[styles.modalCatIconBg, { backgroundColor: 'rgba(214, 175, 55, 0.15)' }]}>
                   <MaterialCommunityIcons name="all-inclusive" size={24} color={THEME.COLORS.primary} />
                 </View>
-                <Text style={styles.modalCatLabel}>Tout voir</Text>
+                <Text style={[styles.modalCatLabel, { color: !selectedCategoryFilter ? THEME.COLORS.primary : THEME.COLORS.textPrimary }]}>Tout voir</Text>
               </TouchableOpacity>
 
               {Object.keys(CATEGORY_LABELS).map(key => {
@@ -436,13 +474,20 @@ const MarketplaceHub = ({ navigation }) => {
                 return (
                   <TouchableOpacity
                     key={key}
-                    style={[styles.modalCatItem, isSelected && styles.modalCatItemActive]}
+                    style={[
+                      styles.modalCatItem, 
+                      isSelected && styles.modalCatItemActive,
+                      {
+                        backgroundColor: isSelected ? config.color + '22' : 'rgba(255, 255, 255, 0.03)',
+                        borderColor: isSelected ? config.color : 'rgba(255, 255, 255, 0.06)'
+                      }
+                    ]}
                     onPress={() => handleSelectCategory(key)}
                   >
-                    <View style={[styles.modalCatIconBg, { backgroundColor: config.color + '20' }]}>
+                    <View style={[styles.modalCatIconBg, { backgroundColor: config.color + '1C' }]}>
                       <MaterialCommunityIcons name={config.icon} size={24} color={config.color} />
                     </View>
-                    <Text style={styles.modalCatLabel}>{label}</Text>
+                    <Text style={[styles.modalCatLabel, { color: isSelected ? config.color : THEME.COLORS.textPrimary }]}>{label}</Text>
                   </TouchableOpacity>
                 );
               })}
@@ -589,8 +634,8 @@ const styles = StyleSheet.create({
   productsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
-    marginHorizontal: -4,
+    justifyContent: 'flex-start',
+    gap: 12,
   },
   catFooterLine: {
     flexDirection: 'row',

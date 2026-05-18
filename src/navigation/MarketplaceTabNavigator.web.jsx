@@ -29,7 +29,10 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
 
           const onPress = () => {
             if (route.name === 'Categories') {
-              DeviceEventEmitter.emit('toggle_categories_modal');
+              const activeRouteName = state.routes[state.index].name;
+              if (activeRouteName === 'Accueil') {
+                DeviceEventEmitter.emit('toggle_categories_modal');
+              }
               return;
             }
 

@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -33,16 +32,7 @@ const ClientOrders = ({ navigation }) => {
   const { data: ordersData, isLoading, refetch, isFetching } = useGetMyOrdersQuery();
   const orders = ordersData?.data || [];
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
-
-  const handleScroll = (event) => {
-    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
-  };
-
-  const scrollToTop = () => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
 
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('scroll_to_top_orders', () => {
@@ -122,8 +112,6 @@ const ClientOrders = ({ navigation }) => {
       {isLoading ? renderSkeleton() : (
         <FlatList
           ref={listRef}
-          onScroll={handleScroll}
-          scrollEventThrottle={16}
           data={orders}
           keyExtractor={item => item._id}
           renderItem={renderItem}
@@ -145,7 +133,6 @@ const ClientOrders = ({ navigation }) => {
           }
         />
       )}
-      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
     </ScreenWrapper>
   );
 };

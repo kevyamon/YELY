@@ -93,6 +93,8 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
     }
   };
 
+  const imageHeight = dynamicCardWidth * 0.78;
+
   return (
     <TouchableOpacity 
       style={[styles.card, { width: dynamicCardWidth }, isSoldOut && styles.soldOutCard]} 
@@ -100,7 +102,7 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
       activeOpacity={0.9}
       disabled={isSoldOut}
     >
-      <View style={[styles.imageContainer, { height: dynamicCardWidth }]}>
+      <View style={[styles.imageContainer, { height: imageHeight }]}>
         {images.length > 0 ? (
           <>
             <FlatList
@@ -113,7 +115,7 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
               scrollEventThrottle={16}
               keyExtractor={(_, index) => `img-${index}`}
               renderItem={({ item }) => (
-                <Image source={{ uri: item }} style={{ width: dynamicCardWidth, height: dynamicCardWidth, resizeMode: 'cover' }} />
+                <Image source={{ uri: item }} style={{ width: dynamicCardWidth, height: imageHeight, resizeMode: 'cover' }} />
               )}
             />
             {images.length > 1 && (
@@ -186,12 +188,12 @@ const styles = StyleSheet.create({
   soldOutBadge: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center' },
   soldOutText: { color: '#FFFFFF', fontWeight: 'bold', fontSize: 10 },
   infoContainer: { padding: 12 },
-  price: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.primary },
-  name: { fontSize: 13, fontWeight: '600', color: THEME.COLORS.textPrimary, marginVertical: 4 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 4 },
-  seller: { fontSize: 10, color: THEME.COLORS.textTertiary, flex: 1 },
+  price: { fontSize: 14, fontWeight: '700', color: THEME.COLORS.primary },
+  name: { fontSize: 12, fontWeight: '500', color: THEME.COLORS.textPrimary, marginVertical: 3 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
+  seller: { fontSize: 9, color: THEME.COLORS.textTertiary, flex: 1 },
   ratingContainer: { flexDirection: 'row', alignItems: 'center' },
-  rating: { fontSize: 10, color: THEME.COLORS.textSecondary, marginLeft: 2 },
+  rating: { fontSize: 9, color: THEME.COLORS.textSecondary, marginLeft: 2 },
   
   actionContainer: { position: 'absolute', bottom: 8, right: 8 },
   addButton: { 

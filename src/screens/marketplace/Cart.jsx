@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import { 
   View, 
   Text, 
@@ -37,7 +36,6 @@ const Cart = ({ navigation }) => {
   const totalAmount = useSelector(selectCartTotal);
   const colorScheme = useColorScheme();
 
-  const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
 
   useEffect(() => {
@@ -47,14 +45,6 @@ const Cart = ({ navigation }) => {
     return () => sub.remove();
   }, []);
 
-  const handleScroll = (event) => {
-    setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
-  };
-
-  const scrollToTop = () => {
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
-  
   const isDarkMode = colorScheme === 'dark';
   const dynamicBg = isDarkMode ? '#000000' : '#F8F9FA';
   const dynamicTextColor = isDarkMode ? '#FFFFFF' : '#1A1A1A';
@@ -104,7 +94,7 @@ const Cart = ({ navigation }) => {
               <Ionicons name="add" size={18} color={THEME.COLORS.primary} />
             </TouchableOpacity>
           </View>
-
+ 
           <TouchableOpacity 
             style={styles.removeBtn}
             onPress={() => dispatch(removeFromCart(item.id))}
@@ -125,7 +115,7 @@ const Cart = ({ navigation }) => {
       <Text style={[styles.emptySubtitle, { color: dynamicTextColorSec }]}>Découvrez nos meilleurs produits et faites-vous plaisir !</Text>
       <TouchableOpacity 
         style={styles.exploreBtn}
-        onPress={() => navigation.navigate('MarketplaceHub')}
+        onPress={() => navigation.navigate('Accueil')}
       >
         <Text style={styles.exploreText}>EXPLORER LE MARCHÉ</Text>
       </TouchableOpacity>
@@ -151,17 +141,14 @@ const Cart = ({ navigation }) => {
 
       <FlatList
         ref={listRef}
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
         data={items}
         renderItem={renderItem}
         keyExtractor={item => item.id}
-        contentContainerStyle={[styles.listContent, { paddingBottom: 250 }]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[styles.listContent, { paddingBottom: 320 }]}
         ListEmptyComponent={renderEmpty}
         showsVerticalScrollIndicator={false}
       />
-
-      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       {items.length > 0 && (
         <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
