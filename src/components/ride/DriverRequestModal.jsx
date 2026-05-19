@@ -24,6 +24,18 @@ const DriverRequestModal = () => {
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [loadingStep, setLoadingStep] = useState(null);
 
+  const priceOptions = incomingRide?.priceOptions || [];
+  const isDelivery = incomingRide?.type === 'DELIVERY';
+
+  // Auto-sélectionner le tarif unique pour la livraison
+  React.useEffect(() => {
+    if (incomingRide && isDelivery && priceOptions.length > 0) {
+      setSelectedAmount(priceOptions[0].amount);
+    } else {
+      setSelectedAmount(null);
+    }
+  }, [incomingRide]);
+
   // Intelligence Adaptative pour les petits écrans (ex: Galaxy S8, iPhone SE)
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const isSmallScreen = screenHeight < 700;
@@ -46,23 +58,32 @@ const DriverRequestModal = () => {
     }
 
     try {
-      setLoadingStep('locking');
-      await lockRide({ rideId: incomingRide.rideId }).unwrap();
-      
-      setLoadingStep('submitting');
-      await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
-      
-      dispatch(showSuccessToast({ 
-        title: 'Offre envoyée', 
-        message: 'En attente de la réponse du client.' 
-      }));
+      if (isDelivery) {
+        setLoadingStep('submitting');
+        await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
+        dispatch(showSuccessToast({ 
+          title: 'Livraison acceptée', 
+          message: 'Vous êtes maintenant en charge de cette livraison.' 
+        }));
+      } else {
+        setLoadingStep('locking');
+        await lockRide({ rideId: incomingRide.rideId }).unwrap();
+        
+        setLoadingStep('submitting');
+        await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
+        
+        dispatch(showSuccessToast({ 
+          title: 'Offre envoyée', 
+          message: 'En attente de la réponse du client.' 
+        }));
+      }
       
       dispatch(clearIncomingRide()); 
 
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Course indisponible', 
-        message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou le client a annulé.' 
+        title: isDelivery ? 'Livraison indisponible' : 'Course indisponible', 
+        message: error?.data?.message || 'Un autre livreur a été plus rapide ou la commande a été annulée.' 
       }));
       dispatch(clearIncomingRide());
     } finally {
@@ -70,12 +91,11 @@ const DriverRequestModal = () => {
     }
   };
 
-  const priceOptions = incomingRide.priceOptions || [];
-  
   const passengersCount = incomingRide.passengersCount || incomingRide.passengers || incomingRide.seats || incomingRide.passengerCount || 1;
   const isGroupRide = passengersCount > 1;
 
   const getLocalLabel = (backendLabel) => {
+    if (isDelivery) return 'Livraison Directe';
     switch (backendLabel?.toUpperCase()) {
       case 'ECO': return 'Tarif Normal';
       case 'STANDARD': return 'Départ Rapide';
@@ -83,6 +103,8 @@ const DriverRequestModal = () => {
       default: return 'Tarif Proposé';
     }
   };
+
+  const collectionPointsCount = incomingRide.collectionPoints?.length || 1;
 
   return (
     <GlassModal 
@@ -97,40 +119,70 @@ const DriverRequestModal = () => {
       >
         <View style={[styles.header, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>
           <View style={styles.headerTitles}>
-            <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>Nouvelle Demande</Text>
+            <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>
+              {isDelivery ? 'Nouvelle Livraison' : 'Nouvelle Demande'}
+            </Text>
           </View>
           <Text style={[styles.distance, isSmallScreen && { fontSize: 14, paddingHorizontal: 10, paddingVertical: 4 }]}>
             {incomingRide.distance} km
           </Text>
         </View>
 
-        <View style={[
-          styles.passengerAlertContainer, 
-          isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle,
-          isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }
-        ]}>
-          <Ionicons 
-            name={isGroupRide ? 'people' : 'person'} 
-            size={isSmallScreen ? 24 : 32} 
-            color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
-          />
-          <View style={styles.passengerAlertTextContainer}>
-            <Text style={[
-              styles.passengerAlertTitle,
-              isSmallScreen && { fontSize: 12 },
-              isGroupRide && { color: THEME.COLORS.danger }
-            ]}>
-              {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
-            </Text>
-            <Text style={[
-              styles.passengerAlertSubtitle,
-              isSmallScreen && { fontSize: 14 },
-              isGroupRide && { color: THEME.COLORS.danger }
-            ]}>
-              {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandée{passengersCount > 1 ? 's' : ''}
-            </Text>
+        {isDelivery ? (
+          <View style={[
+            styles.passengerAlertContainer, 
+            styles.passengerAlertSingle,
+            isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }
+          ]}>
+            <Ionicons 
+              name="cube" 
+              size={isSmallScreen ? 24 : 32} 
+              color={THEME.COLORS.champagneGold} 
+            />
+            <View style={styles.passengerAlertTextContainer}>
+              <Text style={[
+                styles.passengerAlertTitle,
+                isSmallScreen && { fontSize: 12 }
+              ]}>
+                LIVRAISON DE PRODUITS
+              </Text>
+              <Text style={[
+                styles.passengerAlertSubtitle,
+                isSmallScreen && { fontSize: 14 }
+              ]}>
+                {collectionPointsCount} point{collectionPointsCount > 1 ? 's' : ''} de retrait
+              </Text>
+            </View>
           </View>
-        </View>
+        ) : (
+          <View style={[
+            styles.passengerAlertContainer, 
+            isGroupRide ? styles.passengerAlertGroup : styles.passengerAlertSingle,
+            isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }
+          ]}>
+            <Ionicons 
+              name={isGroupRide ? 'people' : 'person'} 
+              size={isSmallScreen ? 24 : 32} 
+              color={isGroupRide ? THEME.COLORS.danger : THEME.COLORS.textPrimary} 
+            />
+            <View style={styles.passengerAlertTextContainer}>
+              <Text style={[
+                styles.passengerAlertTitle,
+                isSmallScreen && { fontSize: 12 },
+                isGroupRide && { color: THEME.COLORS.danger }
+              ]}>
+                {isGroupRide ? 'ATTENTION : GROUPE' : 'COURSE INDIVIDUELLE'}
+              </Text>
+              <Text style={[
+                styles.passengerAlertSubtitle,
+                isSmallScreen && { fontSize: 14 },
+                isGroupRide && { color: THEME.COLORS.danger }
+              ]}>
+                {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandée{passengersCount > 1 ? 's' : ''}
+              </Text>
+            </View>
+          </View>
+        )}
 
         <View style={[styles.routeTimelineContainer, isSmallScreen && { padding: THEME.SPACING.sm, marginBottom: THEME.SPACING.md }]}>
           <View style={styles.timelineIndicators}>
@@ -141,14 +193,18 @@ const DriverRequestModal = () => {
           
           <View style={styles.addressTextContainer}>
             <View style={styles.addressBlock}>
-              <Text style={styles.addressLabel}>Prise en charge</Text>
+              <Text style={styles.addressLabel}>
+                {isDelivery ? 'Premier point de retrait' : 'Prise en charge'}
+              </Text>
               <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
                 {incomingRide.origin?.address || 'Position inconnue'}
               </Text>
             </View>
             
             <View style={[styles.addressBlock, styles.destinationBlock, isSmallScreen && { marginTop: 10 }]}>
-              <Text style={styles.addressLabel}>Destination finale</Text>
+              <Text style={styles.addressLabel}>
+                {isDelivery ? 'Adresse de livraison client' : 'Destination finale'}
+              </Text>
               <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
                 {incomingRide.destination?.address || 'Destination inconnue'}
               </Text>
@@ -156,7 +212,9 @@ const DriverRequestModal = () => {
           </View>
         </View>
 
-        <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>Sélectionnez votre tarif :</Text>
+        <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>
+          {isDelivery ? 'Tarif de livraison fixé :' : 'Sélectionnez votre tarif :'}
+        </Text>
         
         <View style={[styles.optionsContainer, isSmallScreen && { marginBottom: THEME.SPACING.md, gap: 6 }]}>
           {priceOptions.length > 0 ? (
@@ -170,9 +228,9 @@ const DriverRequestModal = () => {
                     isSelected && styles.optionCardSelected,
                     isSmallScreen && { paddingVertical: THEME.SPACING.sm }
                   ]}
-                  onPress={() => setSelectedAmount(option.amount)}
+                  onPress={() => !isDelivery && setSelectedAmount(option.amount)}
                   activeOpacity={0.7}
-                  disabled={!!loadingStep}
+                  disabled={!!loadingStep || isDelivery}
                 >
                   <Text style={[
                     styles.optionLabel, 
@@ -208,8 +266,8 @@ const DriverRequestModal = () => {
           <GoldButton
             title={
               loadingStep === 'locking' ? "Réservation..." : 
-              loadingStep === 'submitting' ? "Envoi..." : 
-              "Proposer ce prix"
+              loadingStep === 'submitting' ? (isDelivery ? "Acceptation..." : "Envoi...") : 
+              (isDelivery ? "Accepter la livraison" : "Proposer ce prix")
             }
             onPress={handleAcceptAndPropose}
             style={styles.acceptButton}

@@ -27,7 +27,7 @@ import Animated, {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { useCompleteRideMutation } from '../../store/api/ridesApiSlice';
+import { useCompleteRideMutation, useCollectPointMutation } from '../../store/api/ridesApiSlice';
 import { updateUserInfo } from '../../store/slices/authSlice';
 import { selectCurrentRide, selectEffectiveLocation, updateRideStatus } from '../../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -75,6 +75,7 @@ const DriverRideOverlay = () => {
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
 
   const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
+  const [collectPoint, { isLoading: isCollectingPoint }] = useCollectPointMutation();
 
   const translateY = useSharedValue(300);
   const pulseScale = useSharedValue(1); 
@@ -213,10 +214,20 @@ const DriverRideOverlay = () => {
           rating: res.data.stats.rating
         }));
       }
-      dispatch(showSuccessToast({ title: 'Course terminee', message: 'Vos gains ont ete credites.' }));
+      dispatch(showSuccessToast({ title: 'Course terminée', message: 'Vos gains ont été crédités.' }));
     } catch (err) {
       dispatch(updateRideStatus({ status: 'in_progress' }));
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de cloturer la course.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de clôturer la course.' }));
+    }
+  };
+
+  const handleCollectPoint = async (sellerId) => {
+    try {
+      const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+      await collectPoint({ rideId, sellerId }).unwrap();
+      dispatch(showSuccessToast({ title: 'Collecte validée', message: 'Le point de retrait a été marqué comme collecté.' }));
+    } catch (err) {
+      dispatch(showErrorToast({ title: 'Erreur', message: err?.data?.message || 'Impossible de valider la collecte.' }));
     }
   };
 
@@ -299,6 +310,46 @@ const DriverRideOverlay = () => {
             </TouchableOpacity>
           </View>
         </View>
+
+        {isDelivery && !isOngoing && (
+          <View style={styles.checkpointsContainer}>
+            <Text style={styles.checkpointsHeader}>Points de collecte vendeur :</Text>
+            {currentRide.collectionPoints?.map((item, idx) => {
+              const isPointCollected = item.isCollected;
+              const sId = item.seller?._id || item.seller;
+              
+              return (
+                <View key={idx} style={[styles.checkpointCard, isPointCollected && styles.checkpointCardCollected]}>
+                  <View style={styles.checkpointLeft}>
+                    <Ionicons 
+                      name={isPointCollected ? "checkmark-circle" : "cube-outline"} 
+                      size={20} 
+                      color={isPointCollected ? THEME.COLORS.success : THEME.COLORS.champagneGold} 
+                    />
+                    <View style={styles.checkpointTexts}>
+                      <Text style={[styles.checkpointAddress, isPointCollected && styles.checkpointAddressCollected]} numberOfLines={2}>
+                        {item.address || 'Adresse vendeur'}
+                      </Text>
+                      <Text style={[styles.checkpointStatus, isPointCollected && { color: THEME.COLORS.success }]}>
+                        {isPointCollected ? 'Collecté' : 'À récupérer'}
+                      </Text>
+                    </View>
+                  </View>
+                  
+                  {!isPointCollected && (
+                    <TouchableOpacity 
+                      style={styles.collectButtonAction} 
+                      onPress={() => handleCollectPoint(sId)}
+                      disabled={isCollectingPoint}
+                    >
+                      <Text style={styles.collectButtonText}>Valider</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              );
+            })}
+          </View>
+        )}
 
         <RideRouteDisplay
           originAddress={currentRide.origin?.address}
@@ -387,6 +438,75 @@ const styles = StyleSheet.create({
   passiveStatusDistance: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '600', textAlign: 'center', paddingHorizontal: 10 },
   manualCompleteButton: { marginTop: THEME.SPACING.sm, paddingVertical: 12, alignItems: 'center', backgroundColor: THEME.COLORS.glassLight, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border },
   manualCompleteText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', fontSize: 13 },
+  checkpointsContainer: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    padding: THEME.SPACING.md,
+    marginBottom: THEME.SPACING.md,
+  },
+  checkpointsHeader: {
+    fontSize: 12,
+    color: THEME.COLORS.textTertiary,
+    textTransform: 'uppercase',
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    marginBottom: 10,
+  },
+  checkpointCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: THEME.COLORS.glassLight,
+    borderRadius: 12,
+    padding: 10,
+    marginBottom: 8,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.glassBorder,
+  },
+  checkpointCardCollected: {
+    borderColor: 'rgba(40, 167, 69, 0.2)',
+    backgroundColor: 'rgba(40, 167, 69, 0.05)',
+  },
+  checkpointLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    marginRight: 10,
+  },
+  checkpointTexts: {
+    marginLeft: 10,
+    flex: 1,
+  },
+  checkpointAddress: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  checkpointAddressCollected: {
+    color: THEME.COLORS.textSecondary,
+    textDecorationLine: 'line-through',
+  },
+  checkpointStatus: {
+    fontSize: 11,
+    color: THEME.COLORS.textTertiary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    marginTop: 2,
+  },
+  collectButtonAction: {
+    backgroundColor: THEME.COLORS.champagneGold,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  collectButtonText: {
+    color: '#121418',
+    fontSize: 12,
+    fontWeight: '800',
+    textTransform: 'uppercase',
+  },
 });
 
 export default DriverRideOverlay;

@@ -37,11 +37,11 @@ const STATUS_CONFIG = {
   'pending': { label: 'Nouvelle', color: THEME.COLORS.warning, action: 'Confirmer', next: 'confirmed' },
   'confirmed': { label: 'En préparation', color: THEME.COLORS.success, action: 'Prêt pour livraison', next: 'searching' },
   'searching': { label: 'Recherche livreur', color: THEME.COLORS.info, action: null },
-  'searching_delivery_retry': { label: 'Relance recherche...', color: THEME.COLORS.info, action: 'Relancer la recherche', next: 'confirmed' },
+  'searching_delivery_retry': { label: 'Relance recherche...', color: THEME.COLORS.info, action: 'Relancer la recherche', next: 'searching' },
   'picked_up': { label: 'En route', color: THEME.COLORS.primary, action: null },
   'delivered': { label: 'Livrée', color: THEME.COLORS.success, action: null },
   'cancelled': { label: 'Annulée', color: THEME.COLORS.danger, action: null },
-  'cancelled_no_driver': { label: 'Annulée (Pas de livreur)', color: THEME.COLORS.danger, action: 'Relancer la recherche', next: 'confirmed' },
+  'cancelled_no_driver': { label: 'Annulée (Pas de livreur)', color: THEME.COLORS.danger, action: 'Relancer la recherche', next: 'searching' },
   'rejected': { label: 'Refusée', color: THEME.COLORS.warning, action: null }
 };
 
@@ -266,9 +266,11 @@ const OrderCard = ({
               backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
               borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' 
             },
-            isScrollable && { maxHeight: 152 }
+            isScrollable && { maxHeight: 160 }
           ]}
           scrollEnabled={isScrollable}
+          nestedScrollEnabled={true}
+          overScrollMode="never"
           onScroll={handleMiniScroll}
           scrollEventThrottle={16}
           showsVerticalScrollIndicator={isScrollable}

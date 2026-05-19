@@ -151,6 +151,34 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Ride'],
     }),
+
+    collectPoint: builder.mutation({
+      query: (data) => ({
+        url: '/rides/collect-point',
+        method: 'POST',
+        body: data,
+      }),
+      async onQueryStarted({ rideId, sellerId }, { dispatch, queryFulfilled }) {
+        const patchResult = dispatch(
+          ridesApiSlice.util.updateQueryData('getCurrentRide', undefined, (draft) => {
+            if (draft && (draft._id === rideId || draft.id === rideId || draft.rideId === rideId)) {
+              if (draft.collectionPoints) {
+                const point = draft.collectionPoints.find(p => (p.seller?._id || p.seller || p.sellerId) === sellerId);
+                if (point) {
+                  point.isCollected = true;
+                }
+              }
+            }
+          })
+        );
+        try {
+          await queryFulfilled;
+        } catch {
+          patchResult.undo();
+        }
+      },
+      invalidatesTags: ['Ride'],
+    }),
     
     getCurrentRide: builder.query({
       query: () => '/rides/current',
@@ -178,6 +206,7 @@ export const {
   useRateRideMutation,
   useGetRideHistoryQuery,
   useHideFromHistoryMutation, // <-- 🚀 EXPORT AJOUTÉ ICI
+  useCollectPointMutation,
   useGetCurrentRideQuery,
   useEstimateRideQuery,
   useLazyEstimateRideQuery,
