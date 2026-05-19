@@ -31,6 +31,7 @@ import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton
 import THEME from '../../theme/theme';
 import GoldButton from '../../components/ui/GoldButton';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
+import GlassModal from '../../components/ui/GlassModal';
 
 const STATUS_CONFIG = {
   'pending': { label: 'Nouvelle', color: THEME.COLORS.warning, action: 'Confirmer', next: 'confirmed' },
@@ -55,6 +56,7 @@ const SellerOrders = ({ navigation }) => {
 
   const [archivedOrderIds, setArchivedOrderIds] = useState([]);
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'archived'
+  const [selectedProduct, setSelectedProduct] = useState(null);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
@@ -181,7 +183,8 @@ const OrderCard = ({
   handleUnarchiveOrder, 
   handleUpdate, 
   isUpdating, 
-  isDark 
+  isDark,
+  onPressProduct
 }) => {
   const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
   const scrollViewRef = useRef(null);
@@ -274,7 +277,17 @@ const OrderCard = ({
             const productImages = prod.product?.images || [];
             const hasImage = productImages.length > 0;
             return (
-              <View key={idx} style={[styles.itemRow, idx === item.items.length - 1 && { marginBottom: 0 }]}>
+              <TouchableOpacity 
+                key={idx} 
+                style={[styles.itemRow, idx === item.items.length - 1 && { marginBottom: 0 }]}
+                onPress={() => onPressProduct?.({
+                  name: prod.name,
+                  image: hasImage ? productImages[0] : null,
+                  quantity: prod.quantity,
+                  price: prod.price,
+                })}
+                activeOpacity={0.7}
+              >
                 <View style={styles.thumbnailContainer}>
                   {hasImage ? (
                     <Image source={{ uri: productImages[0] }} style={styles.productThumbnail} />
@@ -295,7 +308,7 @@ const OrderCard = ({
                 </View>
                 
                 <Text style={styles.itemTotalPrice}>{(prod.price * prod.quantity).toLocaleString()} FCFA</Text>
-              </View>
+              </TouchableOpacity>
             );
           })}
         </ScrollView>
@@ -395,6 +408,7 @@ const OrderCard = ({
         handleUpdate={handleUpdate} 
         isUpdating={isUpdating} 
         isDark={isDark} 
+        onPressProduct={setSelectedProduct}
       />
     );
   };
@@ -451,6 +465,69 @@ const OrderCard = ({
         )}
       />
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
+
+      {/* MODALE DÉTAILS PRODUIT POUR LE VENDEUR */}
+      <GlassModal
+        visible={!!selectedProduct}
+        onClose={() => setSelectedProduct(null)}
+        position="center"
+      >
+        {selectedProduct && (
+          <View style={styles.modalContent}>
+            {/* Header de la modale */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Détails du Produit</Text>
+              <TouchableOpacity 
+                onPress={() => setSelectedProduct(null)}
+                style={styles.modalCloseBtn}
+              >
+                <Ionicons name="close" size={20} color={THEME.COLORS.champagneGold || '#D4AF37'} />
+              </TouchableOpacity>
+            </View>
+
+            {/* Grande Image */}
+            <View style={styles.modalImageContainer}>
+              {selectedProduct.image ? (
+                <Image source={{ uri: selectedProduct.image }} style={styles.modalProductImage} resizeMode="contain" />
+              ) : (
+                <View style={styles.modalImagePlaceholder}>
+                  <MaterialCommunityIcons name="image-off-outline" size={48} color={THEME.COLORS.textTertiary} />
+                </View>
+              )}
+            </View>
+
+            {/* Infos complètes */}
+            <View style={styles.modalInfoContainer}>
+              <Text style={styles.modalProductName}>{selectedProduct.name}</Text>
+              
+              <View style={styles.modalPriceRow}>
+                <View style={styles.modalPriceDetail}>
+                  <Text style={styles.modalDetailLabel}>Quantité</Text>
+                  <Text style={styles.modalDetailValue}>x {selectedProduct.quantity}</Text>
+                </View>
+                <View style={styles.modalPriceDetail}>
+                  <Text style={styles.modalDetailLabel}>Prix Unitaire</Text>
+                  <Text style={styles.modalDetailValue}>{selectedProduct.price.toLocaleString()} FCFA</Text>
+                </View>
+              </View>
+
+              <View style={styles.modalTotalDivider} />
+
+              <View style={styles.modalTotalRow}>
+                <Text style={styles.modalTotalLabel}>Total Article</Text>
+                <Text style={styles.modalTotalValue}>{(selectedProduct.price * selectedProduct.quantity).toLocaleString()} FCFA</Text>
+              </View>
+            </View>
+            
+            <GoldButton 
+              title="Fermer" 
+              onPress={() => setSelectedProduct(null)} 
+              fullWidth={true}
+              style={{ marginTop: 20 }}
+            />
+          </View>
+        )}
+      </GlassModal>
     </ScreenWrapper>
   );
 };
@@ -590,7 +667,108 @@ const styles = StyleSheet.create({
   refreshText: { color: THEME.COLORS.primary, fontWeight: 'bold' },
 
   skeletonContainer: { padding: 20 },
-  skeletonCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' }
+  skeletonCard: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 24, padding: 20, marginBottom: 20, borderWidth: 1, borderColor: 'rgba(255,255,255,0.05)' },
+
+  // Styles Modale Produit Vendeur
+  modalContent: {
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: 15,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: THEME.COLORS.primary || '#D4AF37',
+  },
+  modalCloseBtn: {
+    padding: 6,
+    borderRadius: 8,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+  },
+  modalImageContainer: {
+    width: '100%',
+    height: 200,
+    borderRadius: 16,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 15,
+  },
+  modalProductImage: {
+    width: '100%',
+    height: '100%',
+  },
+  modalImagePlaceholder: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalInfoContainer: {
+    width: '100%',
+    backgroundColor: 'rgba(255, 255, 255, 0.015)',
+    borderRadius: 16,
+    padding: 15,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.03)',
+  },
+  modalProductName: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 16,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 15,
+    lineHeight: 22,
+  },
+  modalPriceRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  modalPriceDetail: {
+    alignItems: 'center',
+    flex: 1,
+  },
+  modalDetailLabel: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 11,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  modalDetailValue: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '800',
+  },
+  modalTotalDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.06)',
+    width: '100%',
+    marginVertical: 12,
+  },
+  modalTotalRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+  },
+  modalTotalLabel: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalTotalValue: {
+    color: THEME.COLORS.primary || '#D4AF37',
+    fontSize: 16,
+    fontWeight: '900',
+  },
 });
 
 export default SellerOrders;
