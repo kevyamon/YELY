@@ -114,7 +114,12 @@ const useRouteManager = (location, driverLocation, markers) => {
         
         if (lastRouteDestKeyRef.current !== destKey) return;
 
-        if (!routePoints) {
+        // Protection Anti-Ligne Droite : Si l'API a expiré/échoué (ou renvoie une ligne droite de secours de 2 points)
+        // alors que nous disposons déjà d'un tracé détaillé en mémoire, on ignore le repli pour conserver le tracé détaillé.
+        const isFallbackStraightLine = routePoints && routePoints.length === 2;
+        const hasExistingDetailedRoute = fullRoutePointsRef.current && fullRoutePointsRef.current.length > 2;
+
+        if (!routePoints || (isFallbackStraightLine && hasExistingDetailedRoute)) {
            clearTimeout(retryTimeoutRef.current);
            retryTimeoutRef.current = setTimeout(() => {
               if (lastRouteDestKeyRef.current === destKey) {

@@ -31,7 +31,7 @@ const RiderWaitModal = () => {
 
   const isSearching = currentRide?.status === 'searching';
   
-  // Utilisation du hook dedie pour alleger le composant visuel
+  // Utilisation du hook dédié pour alléger le composant visuel
   const { title: searchTitle, subtitle: searchSubtitle } = useSearchExpansion(
     currentRide?.searchRadius || 1000, 
     isSearching
@@ -53,8 +53,8 @@ const RiderWaitModal = () => {
       }
     } catch (error) {
       dispatch(showErrorToast({ 
-        title: 'Information expiree', 
-        message: error?.data?.message || 'La session avec ce chauffeur a expire ou ete annulee.' 
+        title: 'Information expirée', 
+        message: error?.data?.message || 'La session avec ce chauffeur a expiré ou été annulée.' 
       }));
       
       if (error?.status === 404 || error?.status === 400) {
@@ -70,7 +70,7 @@ const RiderWaitModal = () => {
     try {
       await cancelRideApi({ 
         rideId: currentRide.rideId, 
-        reason: "Annule par le passager" 
+        reason: "Annulé par le passager" 
       }).unwrap();
     } catch (error) {
       console.log("Erreur annulation :", error);
@@ -86,7 +86,7 @@ const RiderWaitModal = () => {
       return (
         <View style={styles.confirmationContainer}>
           <Text style={styles.confirmationTitle}>Voulez-vous vraiment annuler ?</Text>
-          <Text style={styles.confirmationSubtitle}>Votre demande sera retiree des chauffeurs.</Text>
+          <Text style={styles.confirmationSubtitle}>Votre demande sera retirée des chauffeurs.</Text>
           
           <View style={styles.confirmationButtonsRow}>
             <TouchableOpacity 
@@ -143,8 +143,8 @@ const RiderWaitModal = () => {
       return (
         <View style={styles.centerContent}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} style={styles.loader} />
-          <Text style={styles.title}>Chauffeur trouve !</Text>
-          <Text style={styles.subtitle}>{currentRide.driverName} analyse votre demande et prepare son tarif.</Text>
+          <Text style={styles.title}>Chauffeur trouvé !</Text>
+          <Text style={styles.subtitle}>{currentRide.driverName} analyse votre demande et prépare son tarif.</Text>
         </View>
       );
     }
@@ -155,8 +155,8 @@ const RiderWaitModal = () => {
           <View style={styles.iconContainer}>
             <Ionicons name="pricetag" size={40} color={THEME.COLORS.champagneGold} />
           </View>
-          <Text style={styles.title}>Proposition recue</Text>
-          <Text style={styles.subtitle}>{currentRide.driverName} est pret a effectuer la course pour :</Text>
+          <Text style={styles.title}>Proposition reçue</Text>
+          <Text style={styles.subtitle}>{currentRide.driverName} est prêt à effectuer la course pour :</Text>
           
           <Text style={styles.priceText}>{currentRide.proposedPrice} FCFA</Text>
 

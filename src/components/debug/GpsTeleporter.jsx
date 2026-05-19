@@ -18,8 +18,8 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
   if (!currentRide) return null;
 
   const getTargetCoordinates = () => {
-    // REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
-    const targetType = currentRide.status === 'in_progress' ? 'destination' : 'pickup';
+    // Cible la destination si la course est arrivée ('arrived') ou en cours ('in_progress')
+    const targetType = ['arrived', 'in_progress'].includes(currentRide.status) ? 'destination' : 'pickup';
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
@@ -38,9 +38,13 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
 
     if (!lat || !lng) return;
 
+    // Ajout d'un offset de sécurité de 45 mètres (0.0004 degré) pour le saut de destination
+    // Cela évite la détection de complétion immédiate avant le démarrage de la course.
+    const offset = targetType === 'destination' ? 0.0004 : 0.00008;
+
     const newLocation = {
-      latitude: Number(lat) + 0.00008,
-      longitude: Number(lng) + 0.00008,
+      latitude: Number(lat) + offset,
+      longitude: Number(lng) + offset,
       accuracy: 5,
       heading: 0,
       speed: 0,

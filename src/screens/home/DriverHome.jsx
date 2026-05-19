@@ -111,7 +111,16 @@ const DriverHome = ({ navigation }) => {
     handleConfirmArrival,
     handleSnoozeArrival
   } = useDriverLifecycle({
-    user, currentRide, location: effectiveLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
+    user, 
+    currentRide, 
+    location: effectiveLocation, 
+    simulatedLocation,
+    setSimulatedLocation,
+    isDriverInZone, 
+    mapRef, 
+    errorMsg, 
+    isRideActive, 
+    isDisabled: isBlocked 
   });
 
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(

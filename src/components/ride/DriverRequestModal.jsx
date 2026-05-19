@@ -24,7 +24,7 @@ const DriverRequestModal = () => {
   const [selectedAmount, setSelectedAmount] = useState(null);
   const [loadingStep, setLoadingStep] = useState(null);
 
-  // Intelligence Adaptative pour les petits ecrans (ex: Galaxy S8, iPhone SE)
+  // Intelligence Adaptative pour les petits écrans (ex: Galaxy S8, iPhone SE)
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
   const isSmallScreen = screenHeight < 700;
   const isNarrowScreen = screenWidth < 360;
@@ -39,8 +39,8 @@ const DriverRequestModal = () => {
   const handleAcceptAndPropose = async () => {
     if (!selectedAmount) {
       dispatch(showErrorToast({ 
-        title: 'Selection requise', 
-        message: 'Veuillez choisir un tarif a proposer.' 
+        title: 'Sélection requise', 
+        message: 'Veuillez choisir un tarif à proposer.' 
       }));
       return;
     }
@@ -53,8 +53,8 @@ const DriverRequestModal = () => {
       await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
       
       dispatch(showSuccessToast({ 
-        title: 'Offre envoyee', 
-        message: 'En attente de la reponse du client.' 
+        title: 'Offre envoyée', 
+        message: 'En attente de la réponse du client.' 
       }));
       
       dispatch(clearIncomingRide()); 
@@ -62,7 +62,7 @@ const DriverRequestModal = () => {
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Course indisponible', 
-        message: error?.data?.message || 'Un autre chauffeur a ete plus rapide ou le client a annule.' 
+        message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou le client a annulé.' 
       }));
       dispatch(clearIncomingRide());
     } finally {
@@ -78,9 +78,9 @@ const DriverRequestModal = () => {
   const getLocalLabel = (backendLabel) => {
     switch (backendLabel?.toUpperCase()) {
       case 'ECO': return 'Tarif Normal';
-      case 'STANDARD': return 'Depart Rapide';
-      case 'PREMIUM': return 'Prix Majore';
-      default: return 'Tarif Propose';
+      case 'STANDARD': return 'Départ Rapide';
+      case 'PREMIUM': return 'Prix Majoré';
+      default: return 'Tarif Proposé';
     }
   };
 
@@ -127,7 +127,7 @@ const DriverRequestModal = () => {
               isSmallScreen && { fontSize: 14 },
               isGroupRide && { color: THEME.COLORS.danger }
             ]}>
-              {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandee{passengersCount > 1 ? 's' : ''}
+              {passengersCount} Place{passengersCount > 1 ? 's' : ''} demandée{passengersCount > 1 ? 's' : ''}
             </Text>
           </View>
         </View>
@@ -156,7 +156,7 @@ const DriverRequestModal = () => {
           </View>
         </View>
 
-        <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>Selectionnez votre tarif :</Text>
+        <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>Sélectionnez votre tarif :</Text>
         
         <View style={[styles.optionsContainer, isSmallScreen && { marginBottom: THEME.SPACING.md, gap: 6 }]}>
           {priceOptions.length > 0 ? (
@@ -207,7 +207,7 @@ const DriverRequestModal = () => {
           
           <GoldButton
             title={
-              loadingStep === 'locking' ? "Reservation..." : 
+              loadingStep === 'locking' ? "Réservation..." : 
               loadingStep === 'submitting' ? "Envoi..." : 
               "Proposer ce prix"
             }
