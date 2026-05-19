@@ -13,7 +13,8 @@ import {
   ActivityIndicator,
   RefreshControl,
   Image,
-  useColorScheme
+  useColorScheme,
+  ScrollView
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
@@ -172,64 +173,98 @@ const SellerOrders = ({ navigation }) => {
     </View>
   );
 
-  const renderOrderItem = ({ item }) => {
-    const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
-    
-    return (
-      <GlassCard style={styles.orderCard}>
-        {/* En-tête de Carte : Statut & Date & Archivage */}
-        <View style={styles.orderHeader}>
-          <View style={[styles.statusBadge, { backgroundColor: config.color + '15' }]}>
-            <View style={[styles.statusDot, { backgroundColor: config.color }]} />
-            <Text style={[styles.statusText, { color: config.color }]}>{config.label.toUpperCase()}</Text>
-          </View>
-          <View style={styles.dateContainer}>
-            <Text style={styles.orderDate}>
-              {new Date(item.createdAt).toLocaleDateString('fr-FR', { 
-                day: '2-digit', 
-                month: 'short', 
-                hour: '2-digit', 
-                minute: '2-digit' 
-              })}
-            </Text>
-            <TouchableOpacity 
-              onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)} 
-              style={styles.archiveBtn}
-              hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-            >
-              <Ionicons 
-                name={activeTab === 'active' ? "archive-outline" : "arrow-undo-outline"} 
-                size={18} 
-                color={activeTab === 'active' ? THEME.COLORS.textTertiary : THEME.COLORS.primary} 
-              />
-            </TouchableOpacity>
+// Composant individuel pour chaque carte de commande (permet d'encapsuler son propre état de défilement)
+const OrderCard = ({ 
+  item, 
+  activeTab, 
+  handleArchiveOrder, 
+  handleUnarchiveOrder, 
+  handleUpdate, 
+  isUpdating, 
+  isDark 
+}) => {
+  const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.pending;
+  const scrollViewRef = useRef(null);
+  const [showMiniScrollTop, setShowMiniScrollTop] = useState(false);
+
+  const handleMiniScroll = (event) => {
+    const offsetY = event.nativeEvent.contentOffset.y;
+    setShowMiniScrollTop(offsetY > 40);
+  };
+
+  const scrollToMiniTop = () => {
+    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
+  };
+
+  const isScrollable = item.items.length > 3;
+
+  return (
+    <GlassCard style={styles.orderCard}>
+      {/* En-tête de Carte : Statut & Date & Archivage */}
+      <View style={styles.orderHeader}>
+        <View style={[styles.statusBadge, { backgroundColor: config.color + '15' }]}>
+          <View style={[styles.statusDot, { backgroundColor: config.color }]} />
+          <Text style={[styles.statusText, { color: config.color }]}>{config.label.toUpperCase()}</Text>
+        </View>
+        <View style={styles.dateContainer}>
+          <Text style={styles.orderDate}>
+            {new Date(item.createdAt).toLocaleDateString('fr-FR', { 
+              day: '2-digit', 
+              month: 'short', 
+              hour: '2-digit', 
+              minute: '2-digit' 
+            })}
+          </Text>
+          <TouchableOpacity 
+            onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)} 
+            style={styles.archiveBtn}
+            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+          >
+            <Ionicons 
+              name={activeTab === 'active' ? "archive-outline" : "arrow-undo-outline"} 
+              size={18} 
+              color={activeTab === 'active' ? THEME.COLORS.textTertiary : THEME.COLORS.primary} 
+            />
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Client & Adresse */}
+      <View style={styles.customerBox}>
+        <View style={styles.customerAvatar}>
+          <Text style={styles.avatarText}>{(item.customer?.name || 'C').charAt(0)}</Text>
+        </View>
+        <View style={styles.customerInfo}>
+          <Text style={styles.customerName}>{item.customer?.name || 'Client Inconnu'}</Text>
+          <View style={styles.addressRow}>
+            <Ionicons name="location-sharp" size={14} color={THEME.COLORS.primary} style={styles.addressIcon} />
+            <Text style={styles.address} numberOfLines={1}>{item.shippingAddress?.address}</Text>
           </View>
         </View>
+      </View>
 
-        {/* Client & Adresse (Aucun émoji textuel !) */}
-        <View style={styles.customerBox}>
-          <View style={styles.customerAvatar}>
-            <Text style={styles.avatarText}>{(item.customer?.name || 'C').charAt(0)}</Text>
-          </View>
-          <View style={styles.customerInfo}>
-            <Text style={styles.customerName}>{item.customer?.name || 'Client Inconnu'}</Text>
-            <View style={styles.addressRow}>
-              <Ionicons name="location-sharp" size={14} color={THEME.COLORS.primary} style={styles.addressIcon} />
-              <Text style={styles.address} numberOfLines={1}>{item.shippingAddress?.address}</Text>
-            </View>
-          </View>
-        </View>
-
-        {/* Fiches Produits Visuelles */}
-        <View style={[styles.itemsList, { 
-          backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
-          borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' 
-        }]}>
+      {/* Fiches Produits Visuelles (Scrollables si > 3 produits) */}
+      <View style={{ position: 'relative' }}>
+        <ScrollView
+          ref={scrollViewRef}
+          style={[
+            styles.itemsList, 
+            { 
+              backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
+              borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' 
+            },
+            isScrollable && { maxHeight: 220 }
+          ]}
+          scrollEnabled={isScrollable}
+          onScroll={handleMiniScroll}
+          scrollEventThrottle={16}
+          showsVerticalScrollIndicator={isScrollable}
+        >
           {item.items.map((prod, idx) => {
             const productImages = prod.product?.images || [];
             const hasImage = productImages.length > 0;
             return (
-              <View key={idx} style={styles.itemRow}>
+              <View key={idx} style={[styles.itemRow, idx === item.items.length - 1 && { marginBottom: 0 }]}>
                 <View style={styles.thumbnailContainer}>
                   {hasImage ? (
                     <Image source={{ uri: productImages[0] }} style={styles.productThumbnail} />
@@ -253,54 +288,80 @@ const SellerOrders = ({ navigation }) => {
               </View>
             );
           })}
-        </View>
+        </ScrollView>
 
-        {/* Répartition Financière Complète */}
-        <View style={[styles.financialSection, {
-          backgroundColor: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
-          borderColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
-        }]}>
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel} numberOfLines={1}>Sous-total articles</Text>
-            <Text style={styles.financialValue}>{(item.itemsPrice || (item.totalPrice - item.deliveryPrice)).toLocaleString()} FCFA</Text>
-          </View>
-          <View style={styles.financialRow}>
-            <Text style={styles.financialLabel} numberOfLines={1}>Frais de livraison (Livreur)</Text>
-            <Text style={styles.financialValue}>+ {(item.deliveryPrice || 0).toLocaleString()} FCFA</Text>
-          </View>
-          <View style={[styles.financialDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
-          <View style={styles.financialRowTotal}>
-            <Text style={styles.financialLabelTotal} numberOfLines={1}>Total à percevoir</Text>
-            <Text style={styles.financialValueTotal}>{item.totalPrice.toLocaleString()} FCFA</Text>
-          </View>
-        </View>
+        {/* Micro Bouton Flottant Intelligent de Retour en Haut */}
+        {isScrollable && showMiniScrollTop && (
+          <TouchableOpacity 
+            style={styles.miniScrollTopBtn} 
+            onPress={scrollToMiniTop}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="chevron-up" size={14} color="#000000" />
+          </TouchableOpacity>
+        )}
+      </View>
 
-        {/* Actions (Boutons Confirmer / Refuser) */}
-        <View style={styles.footer}>
-          <View style={styles.actions}>
-            {item.status === 'pending' && (
-              <TouchableOpacity 
-                style={styles.rejectBtn}
-                onPress={() => handleUpdate(item._id, 'rejected')}
-                disabled={isUpdating}
-              >
-                <Ionicons name="close" size={24} color={THEME.COLORS.danger} />
-              </TouchableOpacity>
-            )}
-            
-            {config.action && (
-              <GoldButton 
-                title={config.action}
-                onPress={() => handleUpdate(item._id, config.next)}
-                loading={isUpdating}
-                fullWidth={false}
-                size="small"
-                style={{ paddingHorizontal: 20 }}
-              />
-            )}
-          </View>
+      {/* Répartition Financière Complète */}
+      <View style={[styles.financialSection, {
+        backgroundColor: isDark ? 'rgba(255,255,255,0.015)' : 'rgba(0,0,0,0.01)',
+        borderColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
+      }]}>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel} numberOfLines={1}>Sous-total articles</Text>
+          <Text style={styles.financialValue}>{(item.itemsPrice || (item.totalPrice - item.deliveryPrice)).toLocaleString()} FCFA</Text>
         </View>
-      </GlassCard>
+        <View style={styles.financialRow}>
+          <Text style={styles.financialLabel} numberOfLines={1}>Frais de livraison (Livreur)</Text>
+          <Text style={styles.financialValue}>+ {(item.deliveryPrice || 0).toLocaleString()} FCFA</Text>
+        </View>
+        <View style={[styles.financialDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
+        <View style={styles.financialRowTotal}>
+          <Text style={styles.financialLabelTotal} numberOfLines={1}>Total à percevoir</Text>
+          <Text style={styles.financialValueTotal}>{item.totalPrice.toLocaleString()} FCFA</Text>
+        </View>
+      </View>
+
+      {/* Actions (Boutons Confirmer / Refuser) */}
+      <View style={styles.footer}>
+        <View style={styles.actions}>
+          {item.status === 'pending' && (
+            <TouchableOpacity 
+              style={styles.rejectBtn}
+              onPress={() => handleUpdate(item._id, 'rejected')}
+              disabled={isUpdating}
+            >
+              <Ionicons name="close" size={24} color={THEME.COLORS.danger} />
+            </TouchableOpacity>
+          )}
+          
+          {config.action && (
+            <GoldButton 
+              title={config.action}
+              onPress={() => handleUpdate(item._id, config.next)}
+              loading={isUpdating}
+              fullWidth={false}
+              size="small"
+              style={{ paddingHorizontal: 20 }}
+            />
+          )}
+        </View>
+      </View>
+    </GlassCard>
+  );
+};
+
+  const renderOrderItem = ({ item }) => {
+    return (
+      <OrderCard 
+        item={item} 
+        activeTab={activeTab} 
+        handleArchiveOrder={handleArchiveOrder} 
+        handleUnarchiveOrder={handleUnarchiveOrder} 
+        handleUpdate={handleUpdate} 
+        isUpdating={isUpdating} 
+        isDark={isDark} 
+      />
     );
   };
 
@@ -446,6 +507,21 @@ const styles = StyleSheet.create({
   itemName: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
   itemUnitPrice: { fontSize: 12, color: THEME.COLORS.textTertiary, marginTop: 4 },
   itemTotalPrice: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: '800', textAlign: 'right', flexShrink: 0 },
+  miniScrollTopBtn: {
+    position: 'absolute',
+    bottom: 30,
+    right: 25,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...THEME.SHADOWS.gold,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)'
+  },
   
   // Répartition financière
   financialSection: { borderRadius: 15, padding: 15, marginBottom: 20, borderWidth: 1 },
