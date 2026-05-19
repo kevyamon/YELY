@@ -175,20 +175,21 @@ const RiderRideOverlay = () => {
   const driverName = currentRide.driverName || currentRide.driver?.name || 'Chauffeur Assigne';
 
   return (
-    <Animated.View 
-      style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}
-      onTouchStart={startMinimizeTimer}
-    >
-
-      {/* Poignee de tiroir / Bouton de masquage manuel */}
-      <TouchableOpacity 
-        style={styles.dragHandleContainer} 
-        onPress={toggleMinimize}
-        activeOpacity={0.7}
+    <>
+      <Animated.View 
+        style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}
+        onTouchStart={startMinimizeTimer}
       >
-        <View style={styles.dragHandle} />
-        <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
-      </TouchableOpacity>
+
+        {/* Poignee de tiroir / Bouton de masquage manuel */}
+        <TouchableOpacity 
+          style={styles.dragHandleContainer} 
+          onPress={toggleMinimize}
+          activeOpacity={0.7}
+        >
+          <View style={styles.dragHandle} />
+          <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
+        </TouchableOpacity>
 
       <View style={styles.statusBanner}>
         <View style={styles.statusIndicator}>
@@ -252,6 +253,7 @@ const RiderRideOverlay = () => {
         </TouchableOpacity>
       </View>
     )}
+    </>
   );
 };
 
