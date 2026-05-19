@@ -1,10 +1,6 @@
-// src/components/ui/DestinationSearchModal.jsx
-// MODALE DE RECHERCHE - UX Liquid Glass + POIs Dynamiques + Hyper-Responsive
-// CSCSM Level: Bank Grade
-
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions } from 'react-native';
+import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions, useColorScheme } from 'react-native';
 
 import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
 import THEME from '../../theme/theme';
@@ -19,9 +15,22 @@ const normalizeSearchText = (text) => {
 
 const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
   const [searchQuery, setSearchQuery] = useState('');
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
 
   const { height: screenHeight } = useWindowDimensions();
   const isSmallScreen = screenHeight < 700;
+
+  // 🚀 THEME RESPONSIVE SYSTEM
+  const dynamicBg = isDarkMode ? 'rgba(15, 15, 15, 0.94)' : 'rgba(255, 255, 255, 0.96)';
+  const dynamicBorder = isDarkMode ? 'rgba(212, 175, 55, 0.35)' : 'rgba(212, 175, 55, 0.45)';
+  const dynamicTitleColor = isDarkMode ? '#FFFFFF' : '#1A1A1A';
+  const dynamicSubtitleColor = isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
+  const dynamicItemBg = isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
+  const dynamicItemBorder = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)';
+  const dynamicCloseBtnBg = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
+  const dynamicCloseBtnBorder = isDarkMode ? 'rgba(212, 175, 55, 0.3)' : 'rgba(212, 175, 55, 0.4)';
+  const dynamicLoaderColor = THEME.COLORS.champagneGold || '#D4AF37';
 
   const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
     skip: !visible, 
@@ -59,26 +68,29 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity 
-      style={[styles.suggestionItem, isSmallScreen && { paddingVertical: 10 }]} 
+      style={[
+        styles.suggestionItem, 
+        { backgroundColor: dynamicItemBg, borderColor: dynamicItemBorder },
+        isSmallScreen && { paddingVertical: 10 }
+      ]} 
       onPress={() => handleSelectPlace(item)}
     >
       <View style={[styles.suggestionIcon, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
-        {/* CORRECTION : Utilisation de UniversalIcon au lieu de Ionicons pur */}
         <UniversalIcon 
           iconString={item.icon || "Ionicons/location"} 
-          size={isSmallScreen ? 18 : 20} 
-          color={item.iconColor || THEME.COLORS.champagneGold} 
+          size={isSmallScreen ? 14 : 16} 
+          color={item.iconColor || THEME.COLORS.champagneGold || '#D4AF37'} 
         />
       </View>
       <View style={styles.suggestionTextContainer}>
-        <Text style={[styles.mainText, isSmallScreen && { fontSize: 14 }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.secondaryText, isSmallScreen && { fontSize: 12 }]} numberOfLines={1}>Mafere, Cote d'Ivoire</Text>
+        <Text style={[styles.mainText, { color: dynamicTitleColor }, isSmallScreen && { fontSize: 13 }]} numberOfLines={1}>{item.name}</Text>
+        <Text style={[styles.secondaryText, { color: dynamicSubtitleColor }, isSmallScreen && { fontSize: 11 }]} numberOfLines={1}>Maféré, Côte d'Ivoire</Text>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={THEME.COLORS.textTertiary} />
+      <Ionicons name="chevron-forward" size={14} color={isDarkMode ? 'rgba(212, 175, 55, 0.6)' : 'rgba(212, 175, 55, 0.8)'} />
     </TouchableOpacity>
-  ), [handleSelectPlace, isSmallScreen]);
+  ), [handleSelectPlace, isSmallScreen, isDarkMode, dynamicItemBg, dynamicItemBorder, dynamicTitleColor, dynamicSubtitleColor]);
 
-  const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.35 : 0.50);
+  const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.22 : 0.28);
 
   return (
     <GlassModal
@@ -86,18 +98,21 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       onClose={onClose}
       position="top"
       fullWidth={false}
-      style={styles.modalStyle}
+      style={[styles.modalStyle, { backgroundColor: dynamicBg, borderColor: dynamicBorder }]}
     >
-      <View style={[styles.header, isSmallScreen && { marginBottom: 8 }]}>
-        <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>Ou allons-nous ?</Text>
-        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close" size={18} color={THEME.COLORS.champagneGold || '#D4AF37'} />
+      <View style={[styles.header, isSmallScreen && { marginBottom: 6 }]}>
+        <Text style={[styles.title, { color: dynamicTitleColor }, isSmallScreen && { fontSize: 16 }]}>Où allons-nous ?</Text>
+        <TouchableOpacity 
+          onPress={onClose} 
+          style={[styles.closeButton, { backgroundColor: dynamicCloseBtnBg, borderColor: dynamicCloseBtnBorder }]}
+        >
+          <Ionicons name="close" size={16} color={THEME.COLORS.champagneGold || '#D4AF37'} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.inputWrapper, isSmallScreen && { marginBottom: 8 }]}>
+      <View style={[styles.inputWrapper, isSmallScreen && { marginBottom: 6 }]}>
         <GlassInput
-          placeholder="Ex: Marche de Mafere..."
+          placeholder="Ex: Marché de Maféré..."
           value={searchQuery}
           onChangeText={setSearchQuery}
           autoFocus={true}
@@ -108,18 +123,18 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderDot} />
         <Text style={styles.sectionTitle}>
-          {searchQuery ? "Resultats" : "Lieux suggeres"}
+          {searchQuery ? "Résultats" : "Lieux suggérés"}
         </Text>
       </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold || '#D4AF37'} />
+          <ActivityIndicator size="large" color={dynamicLoaderColor} />
           <Text style={styles.loadingText}>Synchronisation de la carte...</Text>
         </View>
       ) : isError ? (
         <View style={styles.centerContainer}>
-          <Text style={styles.emptyText}>Impossible de charger les lieux pour le moment.</Text>
+          <Text style={[styles.emptyText, { color: dynamicSubtitleColor }]}>Impossible de charger les lieux pour le moment.</Text>
         </View>
       ) : (
         <FlatList
@@ -131,7 +146,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
           style={[styles.listContainer, { maxHeight: dynamicMaxHeight }]}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
-            <Text style={styles.emptyText}>Aucun lieu trouve pour "{searchQuery}"</Text>
+            <Text style={[styles.emptyText, { color: dynamicSubtitleColor }]}>Aucun lieu trouvé pour "{searchQuery}"</Text>
           )}
         />
       )}
@@ -141,11 +156,9 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
 
 const styles = StyleSheet.create({
   modalStyle: {
-    padding: 20,
-    backgroundColor: 'rgba(15, 15, 15, 0.94)',
-    borderColor: 'rgba(212, 175, 55, 0.35)',
+    padding: 14,
     borderWidth: 1.5,
-    borderRadius: 28,
+    borderRadius: 22,
     width: '92%',
     maxWidth: 380,
     shadowColor: '#000',
@@ -158,103 +171,95 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 10,
   },
   title: {
-    fontSize: 20,
+    fontSize: 18,
     fontWeight: '800',
-    color: '#FFFFFF',
     letterSpacing: 0.5,
   },
   closeButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     borderWidth: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
   inputWrapper: {
-    marginBottom: 16,
+    marginBottom: 10,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 12,
-    marginTop: 4,
+    marginBottom: 8,
+    marginTop: 2,
   },
   sectionHeaderDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
+    width: 5,
+    height: 5,
+    borderRadius: 2.5,
     backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
-    marginRight: 8,
+    marginRight: 6,
   },
   sectionTitle: { 
-    fontSize: 11, 
+    fontSize: 10, 
     fontWeight: '800', 
     color: THEME.COLORS.champagneGold || '#D4AF37', 
-    letterSpacing: 1.5, 
+    letterSpacing: 1.2, 
     textTransform: 'uppercase',
   },
   listContainer: {
-    marginTop: 4,
+    marginTop: 2,
   },
   listContent: {
-    paddingBottom: 8,
+    paddingBottom: 4,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    borderRadius: 14,
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   suggestionIcon: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
+    marginRight: 10,
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.25)',
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
+    backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
   suggestionTextContainer: {
     flex: 1,
   },
   mainText: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   secondaryText: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.5)',
+    fontSize: 11,
   },
   emptyText: {
     textAlign: 'center',
-    color: THEME.COLORS.textTertiary,
-    marginTop: 20,
+    marginTop: 16,
     fontStyle: 'italic',
   },
   centerContainer: {
-    padding: 30,
+    padding: 20,
     alignItems: 'center',
     justifyContent: 'center',
   },
   loadingText: {
     color: THEME.COLORS.champagneGold,
-    marginTop: 12,
-    fontSize: 14,
+    marginTop: 10,
+    fontSize: 13,
     fontWeight: '500',
   }
 });

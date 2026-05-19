@@ -39,19 +39,19 @@ const GlassModal = ({
 
   useEffect(() => {
     if (visible) {
-      backdropOpacity.value = withTiming(1, { duration: ANIMATIONS.duration.normal });
-      opacity.value = withTiming(1, { duration: ANIMATIONS.duration.normal });
+      backdropOpacity.value = withTiming(1, { duration: 180 });
+      opacity.value = withTiming(1, { duration: 180 });
 
       const startY = position === 'top' ? -300 : position === 'bottom' ? 300 : 100;
       translateY.value = startY;
-      translateY.value = withSpring(0, ANIMATIONS.spring.gentle);
+      translateY.value = withSpring(0, { damping: 18, stiffness: 180, mass: 0.8 });
     } else {
-      backdropOpacity.value = withTiming(0, { duration: ANIMATIONS.duration.fast });
-      opacity.value = withTiming(0, { duration: ANIMATIONS.duration.fast });
+      backdropOpacity.value = withTiming(0, { duration: 150 });
+      opacity.value = withTiming(0, { duration: 150 });
 
       const endY = position === 'bottom' ? 300 : 100;
       translateY.value = withTiming(endY, {
-        duration: ANIMATIONS.duration.normal,
+        duration: 180,
       });
     }
   }, [visible, position, backdropOpacity, opacity, translateY]);
