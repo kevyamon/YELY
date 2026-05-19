@@ -7,7 +7,7 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -160,6 +160,22 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    // 1. Détection de changement de thème en arrière-plan (quand l'app revient au premier plan)
+    const handleAppStateChange = async (nextAppState) => {
+      if (nextAppState === 'active') {
+        const currentScheme = Appearance.getColorScheme();
+        if (currentScheme !== initialTheme.current) {
+          try {
+            await Updates.reloadAsync();
+          } catch (error) {
+            setThemeChanged(true);
+          }
+        }
+      }
+    };
+    const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
+    // 2. Détection de changement de thème en temps réel (quand l'app est active)
     const subscription = Appearance.addChangeListener(async (preferences) => {
       if (preferences.colorScheme !== initialTheme.current) {
         try {
@@ -169,7 +185,11 @@ const App = () => {
         }
       }
     });
-    return () => subscription.remove();
+
+    return () => {
+      appStateSub.remove();
+      subscription.remove();
+    };
   }, []);
 
   return (
