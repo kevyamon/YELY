@@ -96,7 +96,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
     <GlassModal
       visible={visible}
       onClose={onClose}
-      position="top"
+      position="center"
       fullWidth={false}
       style={[styles.modalStyle, { backgroundColor: dynamicBg, borderColor: dynamicBorder }]}
     >
