@@ -7,7 +7,7 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, AppState, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, AppState, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -160,6 +160,10 @@ const App = () => {
   }, []);
 
   useEffect(() => {
+    // Les PWA/Web gèrent nativement les requêtes média CSS du thème et n'ont pas le bug de cache d'Expo.
+    // On ignore cette logique de rafraîchissement forcé sur le Web pour éviter toute friction hors-ligne.
+    if (Platform.OS === 'web') return;
+
     // 1. Détection de changement de thème en arrière-plan (quand l'app revient au premier plan)
     const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {

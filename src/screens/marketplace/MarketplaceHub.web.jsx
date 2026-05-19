@@ -306,56 +306,119 @@ const MarketplaceHub = ({ navigation }) => {
           <MarketplaceBanner navigation={navigation} />
 
           {/* HORIZONTAL CATEGORY BAR CHIPS */}
-          <View style={styles.categoriesRow}>
-            {HORIZONTAL_CATEGORIES.map(cat => {
-              const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
-              const isSelected = selectedCategoryFilter === cat.type;
-              const chipBg = isSelected ? config.color + '26' : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)');
-              const chipBorder = isSelected ? config.color : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)');
-              const iconColor = config.color;
-
-              return (
-                <TouchableOpacity
-                  key={cat.id}
-                  style={[
-                    styles.catChip,
-                    selectedCategoryFilter === cat.type && styles.catChipActive
-                  ]}
-                  onPress={() => handleSelectCategory(selectedCategoryFilter === cat.type ? null : cat.type)}
-                >
-                  <View style={[
-                    styles.catIconWrapper,
-                    { 
-                      backgroundColor: chipBg,
-                      borderColor: chipBorder,
-                    }
-                  ]}>
-                    <MaterialCommunityIcons 
-                      name={cat.icon} 
-                      size={20} 
-                      color={iconColor} 
-                    />
-                  </View>
-                  <Text style={[
-                    styles.catChipText,
-                    { color: isSelected ? config.color : THEME.COLORS.textPrimary }
-                  ]}>
-                    {cat.name}
-                  </Text>
-                </TouchableOpacity>
-              );
-            })}
-
-            <TouchableOpacity
-              style={styles.catChip}
-              onPress={() => setIsCategoriesModalVisible(true)}
+          {!isLargeScreen ? (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.categoriesRowMobile}
+              style={styles.categoriesScrollViewMobile}
             >
-              <View style={[styles.catIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
-                <MaterialCommunityIcons name="dots-horizontal" size={20} color={THEME.COLORS.textSecondary} />
-              </View>
-              <Text style={[styles.catChipText, { color: THEME.COLORS.textSecondary }]}>Plus</Text>
-            </TouchableOpacity>
-          </View>
+              {HORIZONTAL_CATEGORIES.map(cat => {
+                const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
+                const isSelected = selectedCategoryFilter === cat.type;
+                const chipBg = isSelected ? config.color + '26' : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)');
+                const chipBorder = isSelected ? config.color : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)');
+                const iconColor = config.color;
+
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.catChipMobile,
+                      selectedCategoryFilter === cat.type && styles.catChipActive
+                    ]}
+                    onPress={() => handleSelectCategory(selectedCategoryFilter === cat.type ? null : cat.type)}
+                  >
+                    <View style={[
+                      styles.catIconWrapper,
+                      { 
+                        backgroundColor: chipBg,
+                        borderColor: chipBorder,
+                      }
+                    ]}>
+                      <MaterialCommunityIcons 
+                        name={cat.icon} 
+                        size={20} 
+                        color={iconColor} 
+                      />
+                    </View>
+                    <Text 
+                      style={[
+                        styles.catChipText,
+                        { color: isSelected ? config.color : THEME.COLORS.textPrimary }
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity
+                style={styles.catChipMobile}
+                onPress={() => setIsCategoriesModalVisible(true)}
+              >
+                <View style={[styles.catIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
+                  <MaterialCommunityIcons name="dots-horizontal" size={20} color={THEME.COLORS.textSecondary} />
+                </View>
+                <Text style={[styles.catChipText, { color: THEME.COLORS.textSecondary }]}>Plus</Text>
+              </TouchableOpacity>
+            </ScrollView>
+          ) : (
+            <View style={styles.categoriesRow}>
+              {HORIZONTAL_CATEGORIES.map(cat => {
+                const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
+                const isSelected = selectedCategoryFilter === cat.type;
+                const chipBg = isSelected ? config.color + '26' : (isDarkMode ? 'rgba(255, 255, 255, 0.04)' : 'rgba(0, 0, 0, 0.04)');
+                const chipBorder = isSelected ? config.color : (isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)');
+                const iconColor = config.color;
+
+                return (
+                  <TouchableOpacity
+                    key={cat.id}
+                    style={[
+                      styles.catChip,
+                      selectedCategoryFilter === cat.type && styles.catChipActive
+                    ]}
+                    onPress={() => handleSelectCategory(selectedCategoryFilter === cat.type ? null : cat.type)}
+                  >
+                    <View style={[
+                      styles.catIconWrapper,
+                      { 
+                        backgroundColor: chipBg,
+                        borderColor: chipBorder,
+                      }
+                    ]}>
+                      <MaterialCommunityIcons 
+                        name={cat.icon} 
+                        size={20} 
+                        color={iconColor} 
+                      />
+                    </View>
+                    <Text style={[
+                      styles.catChipText,
+                      { color: isSelected ? config.color : THEME.COLORS.textPrimary }
+                    ]}>
+                      {cat.name}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+
+              <TouchableOpacity
+                style={styles.catChip}
+                onPress={() => setIsCategoriesModalVisible(true)}
+              >
+                <View style={[styles.catIconWrapper, { backgroundColor: isDarkMode ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)' }]}>
+                  <MaterialCommunityIcons name="dots-horizontal" size={20} color={THEME.COLORS.textSecondary} />
+                </View>
+                <Text style={[styles.catChipText, { color: THEME.COLORS.textSecondary }]}>Plus</Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {isLoading && renderSkeleton()}
 
@@ -637,6 +700,21 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginVertical: THEME.SPACING.md,
     gap: 12,
+  },
+  categoriesScrollViewMobile: {
+    marginVertical: THEME.SPACING.md,
+    width: '100%',
+  },
+  categoriesRowMobile: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 16,
+    paddingHorizontal: THEME.SPACING.xs,
+  },
+  catChipMobile: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: 72,
   },
   catChip: {
     alignItems: 'center',

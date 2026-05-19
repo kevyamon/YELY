@@ -133,7 +133,7 @@ const Cart = ({ navigation }) => {
       backgroundColor={dynamicBg}
       style={{ flex: 1 }}
     >
-      <View style={[styles.header, { paddingTop: 10, backgroundColor: dynamicBg }]}>
+      <View style={[styles.header, { paddingTop: insets.top + 10, backgroundColor: dynamicBg }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, dynamicBackBtnStyle]}>
           <Ionicons name="chevron-back" size={24} color={dynamicTextColor} />
         </TouchableOpacity>
