@@ -23,7 +23,7 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
   const isLargeScreen = width > 600;
   const dynamicCardWidth = cardWidth || (isLargeScreen ? 220 : (width - THEME.SPACING.xl * 3) / 2);
 
-  const isSoldOut = product.isSoldOut;
+  const isSoldOut = product.isSoldOut || (product.category !== 'Food' && product.manageStock && product.stockCount === 0);
   const dispatch = useDispatch();
   const images = product.images && product.images.length > 0 ? product.images : (product.image ? [product.image] : []);
 
@@ -36,13 +36,25 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
     e.stopPropagation();
     if (isSoldOut) return;
 
+    if (product.category !== 'Food' && product.manageStock) {
+      const availableStock = product.stockCount || 0;
+      if (quantityInCart >= availableStock) {
+        dispatch(showToast({
+          type: 'warning',
+          title: 'Stock limite atteint',
+          message: `Désolé, il n'y a que ${availableStock} articles disponibles en stock.`
+        }));
+        return;
+      }
+    }
+
     if (quantityInCart > 0) {
       dispatch(updateQuantity({ id: product._id, quantity: quantityInCart + 1 }));
     } else {
       dispatch(addToCart({ product, quantity: 1 }));
       dispatch(showToast({
         type: 'success',
-        title: 'Ajoute',
+        title: 'Ajouté',
         message: `${product.name} est dans votre panier.`
       }));
     }
@@ -94,6 +106,16 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
         <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         
+        {product.category === 'Food' ? (
+          <Text style={[styles.stockTextMini, { color: '#10B981' }]}>Toujours dispo</Text>
+        ) : isSoldOut ? (
+          <Text style={[styles.stockTextMini, { color: THEME.COLORS.danger }]}>Épuisé</Text>
+        ) : product.stockCount <= 5 ? (
+          <Text style={[styles.stockTextMini, { color: '#F59E0B' }]}>Stock limité ({product.stockCount})</Text>
+        ) : (
+          <Text style={[styles.stockTextMini, { color: THEME.COLORS.primary }]}>En stock ({product.stockCount})</Text>
+        )}
+        
         <View style={styles.footer}>
           <Text style={styles.seller} numberOfLines={1}>{product.seller?.name || 'Vendeur'}</Text>
           <View style={styles.ratingContainer}>
@@ -138,6 +160,7 @@ const styles = StyleSheet.create({
   infoContainer: { padding: 12 },
   price: { fontSize: 14, fontWeight: '700', color: THEME.COLORS.primary },
   name: { fontSize: 12, fontWeight: '500', color: THEME.COLORS.textPrimary, marginVertical: 3 },
+  stockTextMini: { fontSize: 8.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 1, marginBottom: 4 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   seller: { fontSize: 9, color: THEME.COLORS.textTertiary, flex: 1 },
   ratingContainer: { flexDirection: 'row', alignItems: 'center' },

@@ -90,6 +90,18 @@ const ProductDetails = ({ route, navigation }) => {
   }, [activeImage, images.length, isLargeScreen, width]);
 
   const handleAdd = () => {
+    if (product?.category !== 'Food' && product?.manageStock) {
+      const availableStock = product.stockCount || 0;
+      if (quantityInCart >= availableStock) {
+        dispatch(showToast({
+          type: 'warning',
+          title: 'Stock limite atteint',
+          message: `Désolé, il n'y a que ${availableStock} articles disponibles en stock.`
+        }));
+        return;
+      }
+    }
+    
     if (quantityInCart > 0) {
       dispatch(updateQuantity({ id: productId, quantity: quantityInCart + 1 }));
     } else {
@@ -117,6 +129,18 @@ const ProductDetails = ({ route, navigation }) => {
 
   const handleAddToCart = () => {
     if (!product) return;
+
+    if (product.category !== 'Food' && product.manageStock) {
+      const availableStock = product.stockCount || 0;
+      if (quantity > availableStock) {
+        dispatch(showToast({
+          type: 'warning',
+          title: 'Stock insuffisant',
+          message: `Il n'y a que ${availableStock} articles disponibles en stock.`
+        }));
+        return;
+      }
+    }
 
     const normalizedProduct = {
       ...product,
@@ -212,10 +236,27 @@ const ProductDetails = ({ route, navigation }) => {
                     </Text>
                   </View>
                   
-                  <View style={styles.stockBadge}>
-                    <View style={styles.stockDot} />
-                    <Text style={styles.stockText}>En Stock</Text>
-                  </View>
+                  {product.category === 'Food' ? (
+                    <View style={[styles.stockBadge, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+                      <View style={[styles.stockDot, { backgroundColor: '#10B981' }]} />
+                      <Text style={[styles.stockText, { color: '#10B981' }]}>Toujours dispo</Text>
+                    </View>
+                  ) : product.stockCount === 0 || product.isSoldOut ? (
+                    <View style={[styles.stockBadge, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                      <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.danger }]} />
+                      <Text style={[styles.stockText, { color: THEME.COLORS.danger, fontWeight: '800' }]}>Rupture</Text>
+                    </View>
+                  ) : product.stockCount <= 5 ? (
+                    <View style={[styles.stockBadge, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+                      <View style={[styles.stockDot, { backgroundColor: '#F59E0B' }]} />
+                      <Text style={[styles.stockText, { color: '#F59E0B' }]}>Limité ({product.stockCount})</Text>
+                    </View>
+                  ) : (
+                    <View style={[styles.stockBadge, { backgroundColor: 'rgba(212,175,55,0.1)' }]}>
+                      <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.primary }]} />
+                      <Text style={[styles.stockText, { color: THEME.COLORS.primary }]}>En Stock ({product.stockCount})</Text>
+                    </View>
+                  )}
                 </View>
 
                 {/* Titre & Prix */}
@@ -295,29 +336,43 @@ const ProductDetails = ({ route, navigation }) => {
                 <View style={styles.divider} />
 
                 {/* CONTRÔLEUR DE QUANTITÉ & BOUTON PANIER INTÉGRÉS */}
-                <View style={styles.actionBlock}>
-                  <View style={styles.qtyContainer}>
-                    <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
-                      <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
-                    </TouchableOpacity>
-                    
-                    <Text style={styles.qtyValue}>
-                      {quantityInCart > 0 ? `${quantityInCart} dans le panier` : quantity}
-                    </Text>
-                    
-                    <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
-                      <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
-                    </TouchableOpacity>
+                {product.category !== 'Food' && (product.stockCount === 0 || product.isSoldOut) ? (
+                  <View style={styles.actionBlock}>
+                    <View style={styles.btnWrapper}>
+                      <GoldButton 
+                        title="Stock épuisé"
+                        onPress={() => {}}
+                        icon="alert-circle-outline"
+                        style={{ opacity: 0.5 }}
+                        disabled={true}
+                      />
+                    </View>
                   </View>
+                ) : (
+                  <View style={styles.actionBlock}>
+                    <View style={styles.qtyContainer}>
+                      <TouchableOpacity style={styles.qtyAction} onPress={handleRemove}>
+                        <Ionicons name="remove" size={20} color={THEME.COLORS.textPrimary} />
+                      </TouchableOpacity>
+                      
+                      <Text style={styles.qtyValue}>
+                        {quantityInCart > 0 ? `${quantityInCart} dans le panier` : quantity}
+                      </Text>
+                      
+                      <TouchableOpacity style={styles.qtyAction} onPress={handleAdd}>
+                        <Ionicons name="add" size={20} color={THEME.COLORS.textPrimary} />
+                      </TouchableOpacity>
+                    </View>
 
-                  <View style={styles.btnWrapper}>
-                    <GoldButton 
-                      title={quantityInCart > 0 ? "Panier mis à jour" : "Ajouter au panier"} 
-                      onPress={handleAddToCart}
-                      icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
-                    />
+                    <View style={styles.btnWrapper}>
+                      <GoldButton 
+                        title={quantityInCart > 0 ? "Panier mis à jour" : "Ajouter au panier"} 
+                        onPress={handleAddToCart}
+                        icon={quantityInCart > 0 ? "checkmark-circle-outline" : "cart-outline"}
+                      />
+                    </View>
                   </View>
-                </View>
+                )}
 
               </View>
 
@@ -403,10 +458,27 @@ const ProductDetails = ({ route, navigation }) => {
                   </Text>
                 </View>
                 
-                <View style={styles.stockBadge}>
-                  <View style={styles.stockDot} />
-                  <Text style={styles.stockText}>En Stock</Text>
-                </View>
+                {product.category === 'Food' ? (
+                  <View style={[styles.stockBadge, { backgroundColor: 'rgba(16,185,129,0.1)' }]}>
+                    <View style={[styles.stockDot, { backgroundColor: '#10B981' }]} />
+                    <Text style={[styles.stockText, { color: '#10B981' }]}>Toujours dispo</Text>
+                  </View>
+                ) : product.stockCount === 0 || product.isSoldOut ? (
+                  <View style={[styles.stockBadge, { backgroundColor: 'rgba(239,68,68,0.1)' }]}>
+                    <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.danger }]} />
+                    <Text style={[styles.stockText, { color: THEME.COLORS.danger, fontWeight: '800' }]}>Rupture</Text>
+                  </View>
+                ) : product.stockCount <= 5 ? (
+                  <View style={[styles.stockBadge, { backgroundColor: 'rgba(245,158,11,0.1)' }]}>
+                    <View style={[styles.stockDot, { backgroundColor: '#F59E0B' }]} />
+                    <Text style={[styles.stockText, { color: '#F59E0B' }]}>Limité ({product.stockCount})</Text>
+                  </View>
+                ) : (
+                  <View style={[styles.stockBadge, { backgroundColor: 'rgba(212,175,55,0.1)' }]}>
+                    <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.primary }]} />
+                    <Text style={[styles.stockText, { color: THEME.COLORS.primary }]}>En Stock ({product.stockCount})</Text>
+                  </View>
+                )}
               </View>
               
               <Text style={styles.mobileProductName}>{product.name}</Text>
@@ -504,7 +576,15 @@ const ProductDetails = ({ route, navigation }) => {
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
           }
         ]}>
-          {quantityInCart === 0 ? (
+          {product.category !== 'Food' && (product.stockCount === 0 || product.isSoldOut) ? (
+            <GoldButton 
+              title="Stock épuisé"
+              onPress={() => {}}
+              icon="alert-circle-outline"
+              style={[styles.purchaseBtn, { opacity: 0.5 }]}
+              disabled={true}
+            />
+          ) : quantityInCart === 0 ? (
             <GoldButton 
               title="Ajouter au panier"
               onPress={handleAddToCart}

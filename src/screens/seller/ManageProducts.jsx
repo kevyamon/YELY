@@ -65,6 +65,7 @@ const ManageProducts = ({ navigation }) => {
     price: '',
     category: 'Food',
     images: [], // Tableau d'images
+    stockCount: '', // Stock initial pour les catégories concernées
   });
 
   const CATEGORIES = [
@@ -105,7 +106,7 @@ const ManageProducts = ({ navigation }) => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: 'Food', images: [] });
+    setForm({ name: '', description: '', price: '', category: 'Food', images: [], stockCount: '' });
     setEditingProduct(null);
     setModalVisible(false);
   };
@@ -123,13 +124,19 @@ const ManageProducts = ({ navigation }) => {
       price: product.price.toString(),
       category: product.category || 'Food',
       images: existingImages,
+      stockCount: product.stockCount !== undefined ? product.stockCount.toString() : '',
     });
     setModalVisible(true);
   };
 
   const handleSubmit = async () => {
     if (!form.name || !form.price || form.images.length === 0 || !form.category) {
-      dispatch(showToast({ type: 'warning', title: 'Données manquantes', message: 'Veuillez remplir tous les champs et ajouter au moins une image.' }));
+      dispatch(showToast({ type: 'warning', title: 'Données manquantes', message: 'Veuillez remplir tous les champs obligatoires et ajouter au moins une image.' }));
+      return;
+    }
+
+    if (form.category !== 'Food' && (form.stockCount === '' || isNaN(Number(form.stockCount)))) {
+      dispatch(showToast({ type: 'warning', title: 'Stock manquant', message: 'Veuillez renseigner une quantité valide en stock pour cette catégorie.' }));
       return;
     }
 
@@ -138,8 +145,14 @@ const ManageProducts = ({ navigation }) => {
     formData.append('description', form.description || 'Pas de description'); // Valeur par defaut si vide
     formData.append('price', Number(form.price)); // Forcer le type Number
     formData.append('category', form.category);
+    
+    if (form.category !== 'Food') {
+      formData.append('stockCount', Number(form.stockCount));
+    } else {
+      formData.append('stockCount', 0);
+    }
 
-    if (__DEV__) console.log('[MARKETPLACE] Submitting FormData for category:', form.category);
+    if (__DEV__) console.log('[MARKETPLACE] Submitting FormData for category:', form.category, 'Stock:', form.stockCount);
 
     for (let index = 0; index < form.images.length; index++) {
       const img = form.images[index];
@@ -216,7 +229,28 @@ const ManageProducts = ({ navigation }) => {
       <View style={styles.productInfo}>
         <Text style={styles.productName}>{item.name}</Text>
         <Text style={styles.productPrice}>{item.price} FCFA</Text>
-        {item.isSoldOut && <Text style={styles.soldOutText}>RUPTURE</Text>}
+        
+        {item.category === 'Food' ? (
+          <View style={styles.stockStatusContainer}>
+            <View style={[styles.stockDot, { backgroundColor: '#10B981' }]} />
+            <Text style={[styles.stockStatusText, { color: '#10B981' }]}>Toujours dispo</Text>
+          </View>
+        ) : item.stockCount === 0 || item.isSoldOut ? (
+          <View style={styles.stockStatusContainer}>
+            <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.danger }]} />
+            <Text style={[styles.stockStatusText, { color: THEME.COLORS.danger, fontWeight: '800' }]}>Rupture de stock</Text>
+          </View>
+        ) : item.stockCount <= 5 ? (
+          <View style={styles.stockStatusContainer}>
+            <View style={[styles.stockDot, { backgroundColor: '#F59E0B' }]} />
+            <Text style={[styles.stockStatusText, { color: '#F59E0B' }]}>Stock limité ({item.stockCount})</Text>
+          </View>
+        ) : (
+          <View style={styles.stockStatusContainer}>
+            <View style={[styles.stockDot, { backgroundColor: THEME.COLORS.primary }]} />
+            <Text style={[styles.stockStatusText, { color: THEME.COLORS.primary }]}>En stock ({item.stockCount})</Text>
+          </View>
+        )}
       </View>
       <View style={styles.productActions}>
         <TouchableOpacity onPress={() => toggleSoldOut(item._id)} style={styles.actionBtn}>
@@ -373,6 +407,21 @@ const ManageProducts = ({ navigation }) => {
                 />
               </View>
 
+              {form.category !== 'Food' && (
+                <View style={styles.formGroup}>
+                  <Text style={styles.label}>Quantité en stock *</Text>
+                  <TextInput 
+                    style={styles.input}
+                    placeholder="Ex: 50"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
+                    keyboardType="numeric"
+                    value={form.stockCount}
+                    onChangeText={(t) => setForm({...form, stockCount: t})}
+                    onFocus={() => setTimeout(() => modalScrollRef.current?.scrollTo({ y: 300, animated: true }), 100)}
+                  />
+                </View>
+              )}
+
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Description</Text>
                 <TextInput 
@@ -466,6 +515,9 @@ const styles = StyleSheet.create({
   productName: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
   productPrice: { color: THEME.COLORS.primary, fontWeight: 'bold', marginTop: 2 },
   soldOutText: { fontSize: 10, color: THEME.COLORS.danger, fontWeight: '900', marginTop: 4 },
+  stockStatusContainer: { flexDirection: 'row', alignItems: 'center', marginTop: 6, gap: 5 },
+  stockDot: { width: 6, height: 6, borderRadius: 3 },
+  stockStatusText: { fontSize: 11, fontWeight: '600' },
   productActions: { flexDirection: 'row', gap: 8 },
   actionBtn: { padding: 8, backgroundColor: 'rgba(255,255,255,0.05)', borderRadius: 8 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
