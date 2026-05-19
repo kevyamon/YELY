@@ -561,14 +561,15 @@ const styles = StyleSheet.create({
   
   // Specs Grid Layout ("Fiche Technique")
   sectionSubtitle: { fontSize: 15, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 12, textTransform: 'uppercase', letterSpacing: 0.5 },
-  specGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  specGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   specCard: {
-    width: SPEC_CARD_WIDTH,
+    width: '48.5%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 10,
   },
   specLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, marginTop: 6, fontWeight: '500' },
   specValue: { fontSize: 13, fontWeight: '800', color: THEME.COLORS.textPrimary, marginTop: 2 },

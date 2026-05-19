@@ -15,8 +15,8 @@ const API_HEADERS = {
 const ADDRESS_CACHE_PRECISION = 4;
 const ADDRESS_CACHE_MAX_SIZE = 50;
 const ADDRESS_DEBOUNCE_MS = 1500;
-const ROUTE_FETCH_TIMEOUT_MS = 8000;
-const MAX_RETRIES = 3;
+const ROUTE_FETCH_TIMEOUT_MS = 2000;
+const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = 1000;
 
 const addressCache = new Map();
@@ -310,11 +310,11 @@ class MapService {
         }
       }
     } catch (error) {
-      console.warn('[MapService] Echec definitif OSRM Route (Reseau):', error.message);
-      return null;
+      console.warn('[MapService] Echec definitif OSRM Route (Reseau), fallback ligne droite:', error.message);
+      return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
     }
 
-    return null;
+    return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
   }
 
   static calculateDistance(coord1, coord2) {

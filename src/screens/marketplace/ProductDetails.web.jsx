@@ -1080,14 +1080,15 @@ const styles = StyleSheet.create({
   mobileSellerStatus: { fontSize: 11.5, color: '#2ecc71', fontWeight: '600', marginTop: 1 },
   
   // Mobile specifications grid layout (web)
-  specGridMobile: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginBottom: 20 },
+  specGridMobile: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   specCardMobile: {
-    width: '48%',
+    width: '48.5%',
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: 16,
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
+    marginBottom: 10,
   },
 
   // Floating Purchase Footer capsule (web mobile)

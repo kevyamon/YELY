@@ -5,7 +5,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
 
-const ROUTE_DRAW_DURATION_MS = 1500;
+const ROUTE_DRAW_DURATION_MS = 300;
 const ROUTE_DRAW_INTERVAL_MS = 16;
 const TRIM_THRESHOLD_METERS = 2;
 const DEVIATION_THRESHOLD_METERS = 60;

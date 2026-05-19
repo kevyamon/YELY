@@ -4,7 +4,7 @@ import * as Updates from 'expo-updates';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -90,6 +90,15 @@ const linking = {
   },
 };
 
+const customNavigationTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    background: THEME.COLORS.background,
+    card: THEME.COLORS.background,
+  },
+};
+
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
@@ -116,7 +125,7 @@ const AppContent = () => {
 
   return (
     <>
-      <NavigationContainer ref={navigationRef} linking={linking} documentTitle={{ formatter: () => 'Yely' }}>
+      <NavigationContainer ref={navigationRef} linking={linking} theme={customNavigationTheme} documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
           <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
           <AppNavigator />

@@ -14,8 +14,8 @@ import THEME from '../../theme/theme';
 const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation }) => {
   const dispatch = useDispatch();
 
-  // SECURITE DE PRODUCTION : Ce composant ne s'affiche qu'en mode developpement
-  if (!__DEV__ || !currentRide) return null;
+  // SECURITE DE PRODUCTION : Ce composant ne s'affiche que s'il y a une course active
+  if (!currentRide) return null;
 
   const getTargetCoordinates = () => {
     // REPARATION : On ne vise la destination QUE si la course a officiellement demarre ('in_progress')
@@ -68,7 +68,8 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       { latitude: targetInfo.lat, longitude: targetInfo.lng }
     );
 
-    if (distance <= 3) {
+    // Saut de 3 km (3000 mètres)
+    if (distance <= 3000) {
       const exactLocation = {
         latitude: targetInfo.lat,
         longitude: targetInfo.lng,
@@ -80,7 +81,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       return;
     }
 
-    const ratio = 3 / distance;
+    const ratio = 3000 / distance;
     const newLat = currentLat + (targetInfo.lat - currentLat) * ratio;
     const newLng = currentLng + (targetInfo.lng - currentLng) * ratio;
 
@@ -102,7 +103,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
 
   return (
     <View style={styles.debugPanel}>
-      <Text style={styles.debugTitle}>TEST GPS (MODE DEV)</Text>
+      <Text style={styles.debugTitle}>TEST GPS (SIMULATION ACTIVE)</Text>
       <View style={styles.debugButtons}>
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
           <Text style={styles.debugBtnText}>SAUT CLIENT</Text>
@@ -113,7 +114,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       </View>
       <View style={styles.debugButtonsSecond}>
         <TouchableOpacity style={[styles.debugBtn, styles.debugBtnAdvance]} onPress={moveForward}>
-          <Text style={styles.debugBtnText}>AVANCER DE 3M</Text>
+          <Text style={styles.debugBtnText}>AVANCER DE 3KM</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[styles.debugBtn, styles.debugBtnReset]} onPress={resetSimulation}>
           <Text style={styles.debugBtnText}>RESTAURER GPS</Text>

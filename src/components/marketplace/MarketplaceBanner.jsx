@@ -486,6 +486,13 @@ const MarketplaceBanner = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(1)).current;
   const slideXAnim = useRef(new Animated.Value(0)).current;
 
+  // Sécurité anti out-of-bounds sur changement dynamique de slides
+  useEffect(() => {
+    if (slides.length > 0 && currentIndex >= slides.length) {
+      setCurrentIndex(0);
+    }
+  }, [slides.length, currentIndex]);
+
   // Lance l'intervalle de défilement de 6.5s
   useEffect(() => {
     if (slides.length <= 1 || isPaused) {
@@ -494,6 +501,8 @@ const MarketplaceBanner = ({ navigation }) => {
     }
 
     timerRef.current = setInterval(() => {
+      if (slides.length === 0) return;
+
       // Transition fluide de sortie
       Animated.parallel([
         Animated.timing(fadeAnim, {
@@ -507,8 +516,11 @@ const MarketplaceBanner = ({ navigation }) => {
           useNativeDriver: true
         })
       ]).start(() => {
-        // Changement d'index diapo
-        setCurrentIndex((prevIndex) => (prevIndex + 1) % slides.length);
+        // Changement d'index diapo sécurisé
+        setCurrentIndex((prevIndex) => {
+          const nextIndex = prevIndex + 1;
+          return nextIndex >= slides.length ? 0 : nextIndex;
+        });
         
         // Repositionnement direct avant ré-apparition
         slideXAnim.setValue(30);
@@ -539,7 +551,12 @@ const MarketplaceBanner = ({ navigation }) => {
     return null;
   }
 
-  const activeSlide = slides[currentIndex];
+  // Sélection ultra-sécurisée avec double fallback
+  const activeSlide = slides[currentIndex] || slides[0] || null;
+
+  if (!activeSlide) {
+    return null;
+  }
 
   // Pause tactile/hover
   const handlePressIn = () => {
@@ -552,12 +569,13 @@ const MarketplaceBanner = ({ navigation }) => {
 
   // Rendu de l'animation associée au slide (Fallback intelligent si type non spécifié)
   const renderMicroAnimation = () => {
-    const type = activeSlide.animationType || ['confetti', 'stars', 'bubbles', 'balloons', 'meteors', 'fireflies', 'aurora'][currentIndex % 7];
-    switch (type) {
-      case 'bubbles':
-        return <RisingBubbles />;
-      case 'confetti':
-        return <FallingConfetti />;
+    try {
+      const type = activeSlide.animationType || ['confetti', 'stars', 'bubbles', 'balloons', 'meteors', 'fireflies', 'aurora'][currentIndex % 7];
+      switch (type) {
+        case 'bubbles':
+          return <RisingBubbles />;
+        case 'confetti':
+          return <FallingConfetti />;
       case 'stars':
         return <TwinklingStars />;
       case 'balloons':
@@ -570,6 +588,10 @@ const MarketplaceBanner = ({ navigation }) => {
         return <PulsingAura />;
       default:
         return null;
+    }
+    } catch (e) {
+      console.warn("Failed to render micro animation:", e);
+      return null;
     }
   };
 
