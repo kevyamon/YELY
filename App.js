@@ -9,6 +9,7 @@ import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
 import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -185,6 +186,14 @@ const App = () => {
       // 🚀 MISE A JOUR OTA SYSTEM - ULTRA-FLUIDE
       if (Platform.OS !== 'web') {
         try {
+          // Si le démarrage est un simple reload de changement de thème, on démarre instantanément sans requêtes réseau
+          const isThemeReload = await AsyncStorage.getItem('theme_reload');
+          if (isThemeReload === 'true') {
+            await AsyncStorage.removeItem('theme_reload');
+            await NativeSplashScreen.hideAsync();
+            return;
+          }
+
           // Si la vérification réseau prend plus de 2.2s, on démarre direct pour éviter l'attente
           const checkPromise = Updates.checkForUpdateAsync();
           const timeoutPromise = new Promise((_, reject) => 
@@ -227,6 +236,7 @@ const App = () => {
         try {
           // On s'assure que le fond natif est noir pour éviter le flash blanc au reload lors du changement de thème
           if (Platform.OS !== 'web') {
+            await AsyncStorage.setItem('theme_reload', 'true');
             await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
           }
           await Updates.reloadAsync();
