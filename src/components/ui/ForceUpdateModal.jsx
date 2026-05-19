@@ -17,6 +17,8 @@ const REMINDER_DELAY_MS = 2 * 60 * 60 * 1000;
 
 const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, isOta }) => {
   const [showModal, setShowModal] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [statusText, setStatusText] = useState('');
   const dispatch = useDispatch();
 
   useEffect(() => {
@@ -61,24 +63,37 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
   }, [visible, mandatoryUpdate, isOta]);
 
   const handleUpdate = async () => {
-    // LOGIQUE OTA SILENCIEUSE
+    // LOGIQUE OTA FLUIDE & TRANSPARENTE
     if (isOta && Platform.OS !== 'web') {
-      dispatch(showSuccessToast({
-        title: "Mise a jour lancee",
-        message: "Verification en cours en arriere-plan..."
-      }));
+      setIsUpdating(true);
+      setStatusText("Vérification des mises à jour...");
       
-      await SecureStore.setItemAsync(REMINDER_KEY, Date.now().toString());
-      setShowModal(false);
-
       try {
         const update = await Updates.checkForUpdateAsync();
         if (update.isAvailable) {
+          setStatusText("Nouvelle version détectée !\nTéléchargement en cours... (Veuillez patienter)");
           await Updates.fetchUpdateAsync();
-          await Updates.reloadAsync();
+          setStatusText("Mise à jour installée !\nRedémarrage imminent...");
+          
+          await SecureStore.setItemAsync(REMINDER_KEY, Date.now().toString());
+          
+          setTimeout(async () => {
+            await Updates.reloadAsync();
+          }, 1500);
+        } else {
+          setStatusText("Votre application est déjà à jour !");
+          setTimeout(() => {
+            setIsUpdating(false);
+            setShowModal(false);
+          }, 2000);
         }
       } catch (error) {
         console.warn("[OTA] Echec de la mise a jour:", error);
+        setStatusText("Échec du téléchargement.\nL'application va se fermer pour appliquer la mise à jour.");
+        setTimeout(() => {
+          setIsUpdating(false);
+          setShowModal(false);
+        }, 4000);
       }
       return;
     }
@@ -127,27 +142,42 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
         <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
         
         <View style={styles.card}>
-          <View style={styles.iconContainer}>
-            <Ionicons name="cloud-download-outline" size={50} color={THEME.COLORS.background} />
-          </View>
-          
-          <Text style={styles.title}>Mise a jour requise</Text>
-          <Text style={styles.version}>Version {latestVersion} disponible</Text>
-          
-          <Text style={styles.message}>
-            Une nouvelle version de Yely est disponible. {isOta ? "Une installation rapide sans quitter l'app est prete." : (Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la')} pour profiter des dernieres fonctionnalites.
-          </Text>
+          {isUpdating ? (
+            <View style={styles.loaderContainer}>
+              <View style={styles.iconContainer}>
+                <Ionicons name="cloud-download" size={50} color={THEME.COLORS.background} />
+              </View>
+              <Text style={styles.title}>Mise à jour en cours</Text>
+              <Text style={styles.statusText}>{statusText}</Text>
+              <View style={styles.loadingSpinnerWrapper}>
+                <Text style={styles.pulseDot}>⚡</Text>
+              </View>
+            </View>
+          ) : (
+            <>
+              <View style={styles.iconContainer}>
+                <Ionicons name="cloud-download-outline" size={50} color={THEME.COLORS.background} />
+              </View>
+              
+              <Text style={styles.title}>Mise a jour requise</Text>
+              <Text style={styles.version}>Version {latestVersion} disponible</Text>
+              
+              <Text style={styles.message}>
+                Une nouvelle version de Yely est disponible. {isOta ? "Une installation rapide sans quitter l'app est prete." : (Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la')} pour profiter des dernieres fonctionnalites.
+              </Text>
 
-          <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
-            <Text style={styles.updateButtonText}>
-              {isOta ? 'Verifier la mise a jour (OTA)' : (Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant')}
-            </Text>
-          </TouchableOpacity>
+              <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
+                <Text style={styles.updateButtonText}>
+                  {isOta ? 'Installer la mise à jour (OTA)' : (Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant')}
+                </Text>
+              </TouchableOpacity>
 
-          {!mandatoryUpdate && !isOta && (
-            <TouchableOpacity style={styles.laterButton} onPress={handleRemindLater}>
-              <Text style={styles.laterButtonText}>Me rappeler dans 2h</Text>
-            </TouchableOpacity>
+              {!mandatoryUpdate && !isOta && (
+                <TouchableOpacity style={styles.laterButton} onPress={handleRemindLater}>
+                  <Text style={styles.laterButtonText}>Me rappeler dans 2h</Text>
+                </TouchableOpacity>
+              )}
+            </>
           )}
           
           <Text style={styles.teamText}>DevTeam</Text>
@@ -168,7 +198,11 @@ const styles = StyleSheet.create({
   updateButtonText: { color: THEME.COLORS.background, fontSize: 16, fontWeight: 'bold' },
   laterButton: { paddingVertical: 10 },
   laterButtonText: { color: THEME.COLORS.textTertiary, fontSize: 14, fontWeight: '500' },
-  teamText: { marginTop: 20, fontSize: 10, color: THEME.COLORS.textTertiary, textTransform: 'uppercase', letterSpacing: 1 }
+  teamText: { marginTop: 20, fontSize: 10, color: THEME.COLORS.textTertiary, textTransform: 'uppercase', letterSpacing: 1 },
+  statusText: { fontSize: 14, color: THEME.COLORS.primary, fontWeight: 'bold', marginTop: 10, textAlign: 'center', lineHeight: 22 },
+  loaderContainer: { alignItems: 'center', width: '100%' },
+  loadingSpinnerWrapper: { marginTop: 25, marginBottom: 15, alignItems: 'center', justifyContent: 'center' },
+  pulseDot: { fontSize: 32, transform: [{ scale: 1.2 }] }
 });
 
 export default ForceUpdateModal;
