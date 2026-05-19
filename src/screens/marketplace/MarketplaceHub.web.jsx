@@ -28,7 +28,13 @@ const CATEGORY_LABELS = {
   'Supermarket': 'Supermarché',
   'Cosmetics': 'Cosmétiques',
   'Electronics': 'Électronique',
-  'Home': 'Maison',
+  'Home': 'Maison & Déco',
+  'Fashion': 'Mode & Chaussures',
+  'Sports': 'Sport & Loisirs',
+  'Tools': 'Bricolage & Outils',
+  'Toys': 'Jeux & Jouets',
+  'Automotive': 'Auto & Accessoires',
+  'Office': 'Bureau & Papeterie',
   'Other': 'Autres'
 };
 
@@ -38,12 +44,20 @@ const CATEGORY_ICONS = {
   'Home': { icon: 'home-variant', color: '#F1C40F' },
   'Food': { icon: 'food-apple', color: '#E67E22' },
   'Supermarket': { icon: 'cart', color: '#27AE60' },
+  'Fashion': { icon: 'tshirt-crew', color: '#EC4899' },
+  'Sports': { icon: 'soccer', color: '#3B82F6' },
+  'Tools': { icon: 'hammer-wrench', color: '#F59E0B' },
+  'Toys': { icon: 'toy-brick', color: '#10B981' },
+  'Automotive': { icon: 'car-sports', color: '#EF4444' },
+  'Office': { icon: 'lead-pencil', color: '#6366F1' },
   'Other': { icon: 'dots-horizontal', color: '#95A5A6' }
 };
 
 const HORIZONTAL_CATEGORIES = [
+  { id: 'Fashion', name: 'Mode', icon: 'tshirt-crew', type: 'Fashion' },
+  { id: 'Supermarket', name: 'Supermarché', icon: 'cart', type: 'Supermarket' },
   { id: 'Electronics', name: 'Électronique', icon: 'laptop', type: 'Electronics' },
-  { id: 'Cosmetics', name: 'Beauté', icon: 'lipstick', type: 'Cosmetics' },
+  { id: 'Cosmetics', name: 'Cosmétiques', icon: 'lipstick', type: 'Cosmetics' },
   { id: 'Home', name: 'Maison', icon: 'home-variant', type: 'Home' },
   { id: 'Food', name: 'Nourriture', icon: 'food-apple', type: 'Food' },
 ];
@@ -768,7 +782,8 @@ const styles = StyleSheet.create({
   },
   modalCatItem: {
     width: '30%',
-    aspectRatio: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: THEME.BORDERS.radius.lg,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
@@ -791,10 +806,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalCatLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
     color: THEME.COLORS.textPrimary,
     textAlign: 'center',
+    width: '100%',
   },
 });
 

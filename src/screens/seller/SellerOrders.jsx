@@ -196,7 +196,7 @@ const OrderCard = ({
     scrollViewRef.current?.scrollTo({ y: 0, animated: true });
   };
 
-  const isScrollable = item.items.length > 3;
+  const isScrollable = item.items.length >= 3;
 
   return (
     <GlassCard style={styles.orderCard}>
@@ -207,6 +207,27 @@ const OrderCard = ({
           <Text style={[styles.statusText, { color: config.color }]}>{config.label.toUpperCase()}</Text>
         </View>
         <View style={styles.dateContainer}>
+          <TouchableOpacity 
+            onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)} 
+            style={[
+              styles.archiveBtn, 
+              { 
+                marginRight: 6, 
+                backgroundColor: activeTab === 'active' ? 'rgba(212, 175, 55, 0.12)' : 'rgba(39, 174, 96, 0.12)', 
+                padding: 6, 
+                borderRadius: 8,
+                borderWidth: 0.5,
+                borderColor: activeTab === 'active' ? 'rgba(212, 175, 55, 0.25)' : 'rgba(39, 174, 96, 0.25)'
+              }
+            ]}
+            hitSlop={{ top: 15, bottom: 15, left: 15, right: 15 }}
+          >
+            <Ionicons 
+              name={activeTab === 'active' ? "archive" : "arrow-undo"} 
+              size={16} 
+              color={activeTab === 'active' ? THEME.COLORS.primary : THEME.COLORS.success} 
+            />
+          </TouchableOpacity>
           <Text style={styles.orderDate}>
             {new Date(item.createdAt).toLocaleDateString('fr-FR', { 
               day: '2-digit', 
@@ -215,17 +236,6 @@ const OrderCard = ({
               minute: '2-digit' 
             })}
           </Text>
-          <TouchableOpacity 
-            onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)} 
-            style={styles.archiveBtn}
-            hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
-          >
-            <Ionicons 
-              name={activeTab === 'active' ? "archive-outline" : "arrow-undo-outline"} 
-              size={18} 
-              color={activeTab === 'active' ? THEME.COLORS.textTertiary : THEME.COLORS.primary} 
-            />
-          </TouchableOpacity>
         </View>
       </View>
 
@@ -243,7 +253,7 @@ const OrderCard = ({
         </View>
       </View>
 
-      {/* Fiches Produits Visuelles (Scrollables si > 3 produits) */}
+      {/* Fiches Produits Visuelles (Scrollables si >= 3 produits) */}
       <View style={{ position: 'relative' }}>
         <ScrollView
           ref={scrollViewRef}
@@ -253,7 +263,7 @@ const OrderCard = ({
               backgroundColor: isDark ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.015)', 
               borderColor: isDark ? 'rgba(255,255,255,0.04)' : 'rgba(0,0,0,0.04)' 
             },
-            isScrollable && { maxHeight: 220 }
+            isScrollable && { maxHeight: 152 }
           ]}
           scrollEnabled={isScrollable}
           onScroll={handleMiniScroll}
@@ -281,7 +291,7 @@ const OrderCard = ({
                 
                 <View style={styles.productDetails}>
                   <Text style={styles.itemName} numberOfLines={1}>{prod.name}</Text>
-                  <Text style={styles.itemUnitPrice}>{prod.price.toLocaleString()} FCFA / u</Text>
+                  <Text style={styles.itemUnitPrice} numberOfLines={1}>{prod.price.toLocaleString()} FCFA/u</Text>
                 </View>
                 
                 <Text style={styles.itemTotalPrice}>{(prod.price * prod.quantity).toLocaleString()} FCFA</Text>
@@ -308,16 +318,16 @@ const OrderCard = ({
         borderColor: isDark ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.03)'
       }]}>
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel} numberOfLines={1}>Sous-total articles</Text>
+          <Text style={styles.financialLabel}>Sous-total articles</Text>
           <Text style={styles.financialValue}>{(item.itemsPrice || (item.totalPrice - item.deliveryPrice)).toLocaleString()} FCFA</Text>
         </View>
         <View style={styles.financialRow}>
-          <Text style={styles.financialLabel} numberOfLines={1}>Frais de livraison (Livreur)</Text>
+          <Text style={styles.financialLabel}>Frais de livraison (Livreur)</Text>
           <Text style={styles.financialValue}>+ {(item.deliveryPrice || 0).toLocaleString()} FCFA</Text>
         </View>
         <View style={[styles.financialDivider, { backgroundColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.06)' }]} />
         <View style={styles.financialRowTotal}>
-          <Text style={styles.financialLabelTotal} numberOfLines={1}>Total à percevoir</Text>
+          <Text style={styles.financialLabelTotal}>Total à percevoir</Text>
           <Text style={styles.financialValueTotal}>{item.totalPrice.toLocaleString()} FCFA</Text>
         </View>
       </View>
@@ -344,6 +354,30 @@ const OrderCard = ({
               size="small"
               style={{ paddingHorizontal: 20 }}
             />
+          )}
+
+          {/* Bouton d'archivage footer pour les commandes terminées, rejetées ou annulées */}
+          {(item.status === 'delivered' || item.status === 'cancelled' || item.status === 'cancelled_no_driver' || item.status === 'rejected') && (
+            <TouchableOpacity
+              style={[
+                styles.footerArchiveBtn,
+                {
+                  backgroundColor: activeTab === 'active' ? 'rgba(212, 175, 55, 0.12)' : 'rgba(39, 174, 96, 0.12)',
+                  borderColor: activeTab === 'active' ? THEME.COLORS.primary : THEME.COLORS.success,
+                }
+              ]}
+              onPress={() => activeTab === 'active' ? handleArchiveOrder(item._id) : handleUnarchiveOrder(item._id)}
+            >
+              <Ionicons 
+                name={activeTab === 'active' ? "archive" : "arrow-undo"} 
+                size={16} 
+                color={activeTab === 'active' ? THEME.COLORS.primary : THEME.COLORS.success} 
+                style={{ marginRight: 6 }}
+              />
+              <Text style={[styles.footerArchiveText, { color: activeTab === 'active' ? THEME.COLORS.primary : THEME.COLORS.success }]}>
+                {activeTab === 'active' ? "Archiver" : "Restaurer"}
+              </Text>
+            </TouchableOpacity>
           )}
         </View>
       </View>
@@ -503,9 +537,9 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     textAlign: 'center'
   },
-  productDetails: { flex: 1, marginLeft: 16, marginRight: 16, justifyContent: 'center' },
+  productDetails: { flex: 1, marginLeft: 12, marginRight: 8, justifyContent: 'center' },
   itemName: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '700' },
-  itemUnitPrice: { fontSize: 12, color: THEME.COLORS.textTertiary, marginTop: 4 },
+  itemUnitPrice: { fontSize: 11, color: THEME.COLORS.textTertiary, marginTop: 4 },
   itemTotalPrice: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: '800', textAlign: 'right', flexShrink: 0 },
   miniScrollTopBtn: {
     position: 'absolute',
@@ -534,8 +568,21 @@ const styles = StyleSheet.create({
   financialValueTotal: { color: THEME.COLORS.primary, fontSize: 20, fontWeight: '900', flexShrink: 0 },
   
   footer: { flexDirection: 'row', justifyContent: 'flex-end', alignItems: 'center' },
-  actions: { flexDirection: 'row', gap: 12, alignItems: 'center' },
+  actions: { flexDirection: 'row', gap: 12, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' },
   rejectBtn: { width: 45, height: 45, borderRadius: 15, backgroundColor: THEME.COLORS.danger + '10', justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.danger + '20' },
+  footerArchiveBtn: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    paddingHorizontal: 16, 
+    paddingVertical: 8, 
+    borderRadius: 12, 
+    borderWidth: 1, 
+    height: 40,
+  },
+  footerArchiveText: { 
+    fontSize: 13, 
+    fontWeight: '700' 
+  },
   
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', marginTop: 80 },
   emptyText: { color: THEME.COLORS.textSecondary, marginTop: 15, fontSize: 16, textAlign: 'center' },

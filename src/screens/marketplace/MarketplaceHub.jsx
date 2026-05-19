@@ -5,6 +5,7 @@ import {
   Text, 
   StyleSheet, 
   FlatList, 
+  ScrollView,
   TouchableOpacity, 
   Dimensions,
   StatusBar,
@@ -31,7 +32,13 @@ const CATEGORY_LABELS = {
   'Supermarket': 'Supermarché',
   'Cosmetics': 'Cosmétiques',
   'Electronics': 'Électronique',
-  'Home': 'Maison',
+  'Home': 'Maison & Déco',
+  'Fashion': 'Mode & Chaussures',
+  'Sports': 'Sport & Loisirs',
+  'Tools': 'Bricolage & Outils',
+  'Toys': 'Jeux & Jouets',
+  'Automotive': 'Auto & Accessoires',
+  'Office': 'Bureau & Papeterie',
   'Other': 'Autres'
 };
 
@@ -41,12 +48,20 @@ const CATEGORY_ICONS = {
   'Home': { icon: 'home-variant', color: '#F1C40F' },
   'Food': { icon: 'food-apple', color: '#E67E22' },
   'Supermarket': { icon: 'cart', color: '#27AE60' },
+  'Fashion': { icon: 'tshirt-crew', color: '#EC4899' },
+  'Sports': { icon: 'soccer', color: '#3B82F6' },
+  'Tools': { icon: 'hammer-wrench', color: '#F59E0B' },
+  'Toys': { icon: 'toy-brick', color: '#10B981' },
+  'Automotive': { icon: 'car-sports', color: '#EF4444' },
+  'Office': { icon: 'lead-pencil', color: '#6366F1' },
   'Other': { icon: 'dots-horizontal', color: '#95A5A6' }
 };
 
 const HORIZONTAL_CATEGORIES = [
+  { id: 'Fashion', name: 'Mode', icon: 'tshirt-crew', type: 'Fashion' },
+  { id: 'Supermarket', name: 'Supermarché', icon: 'cart', type: 'Supermarket' },
   { id: 'Electronics', name: 'Électronique', icon: 'laptop', type: 'Electronics' },
-  { id: 'Cosmetics', name: 'Beauté', icon: 'lipstick', type: 'Cosmetics' },
+  { id: 'Cosmetics', name: 'Cosmétiques', icon: 'lipstick', type: 'Cosmetics' },
   { id: 'Home', name: 'Maison', icon: 'home-variant', type: 'Home' },
   { id: 'Food', name: 'Nourriture', icon: 'food-apple', type: 'Food' },
 ];
@@ -305,8 +320,12 @@ const MarketplaceHub = ({ navigation }) => {
             {/* BANNER PROMO DYNAMIQUE ADAPTÉE AU DESIGN JAUNE */}
             <MarketplaceBanner navigation={navigation} />
 
-            {/* HORIZONTAL CATEGORY BAR CHIPS */}
-            <View style={styles.categoriesRow}>
+            {/* HORIZONTAL CATEGORY BAR CHIPS (SCROLLABLE & PREMIUM) */}
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false} 
+              contentContainerStyle={styles.categoriesRow}
+            >
               {HORIZONTAL_CATEGORIES.map(cat => {
                 const config = CATEGORY_ICONS[cat.type] || { color: THEME.COLORS.primary };
                 const isSelected = selectedCategoryFilter === cat.type;
@@ -336,10 +355,15 @@ const MarketplaceHub = ({ navigation }) => {
                         color={iconColor} 
                       />
                     </View>
-                    <Text style={[
-                      styles.catChipText,
-                      { color: isSelected ? config.color : THEME.COLORS.textPrimary }
-                    ]}>
+                    <Text 
+                      style={[
+                        styles.catChipText,
+                        { color: isSelected ? config.color : THEME.COLORS.textPrimary }
+                      ]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.8}
+                    >
                       {cat.name}
                     </Text>
                   </TouchableOpacity>
@@ -355,7 +379,7 @@ const MarketplaceHub = ({ navigation }) => {
                 </View>
                 <Text style={[styles.catChipText, { color: THEME.COLORS.textSecondary }]}>Plus</Text>
               </TouchableOpacity>
-            </View>
+            </ScrollView>
 
             {/* SECTION POPULAIRES (TOP 8) */}
             {!selectedCategoryFilter && popularProducts.length > 0 && (
@@ -488,7 +512,14 @@ const MarketplaceHub = ({ navigation }) => {
                 <View style={[styles.modalCatIconBg, { backgroundColor: 'rgba(214, 175, 55, 0.15)' }]}>
                   <MaterialCommunityIcons name="all-inclusive" size={24} color={THEME.COLORS.primary} />
                 </View>
-                <Text style={[styles.modalCatLabel, { color: !selectedCategoryFilter ? THEME.COLORS.primary : THEME.COLORS.textPrimary }]}>Tout voir</Text>
+                <Text 
+                  style={[styles.modalCatLabel, { color: !selectedCategoryFilter ? THEME.COLORS.primary : THEME.COLORS.textPrimary }]}
+                  numberOfLines={1}
+                  adjustsFontSizeToFit
+                  minimumFontScale={0.6}
+                >
+                  Tout voir
+                </Text>
               </TouchableOpacity>
 
               {Object.keys(CATEGORY_LABELS).map(key => {
@@ -512,7 +543,14 @@ const MarketplaceHub = ({ navigation }) => {
                     <View style={[styles.modalCatIconBg, { backgroundColor: config.color + '1C' }]}>
                       <MaterialCommunityIcons name={config.icon} size={24} color={config.color} />
                     </View>
-                    <Text style={[styles.modalCatLabel, { color: isSelected ? config.color : THEME.COLORS.textPrimary }]}>{label}</Text>
+                    <Text 
+                      style={[styles.modalCatLabel, { color: isSelected ? config.color : THEME.COLORS.textPrimary }]}
+                      numberOfLines={1}
+                      adjustsFontSizeToFit
+                      minimumFontScale={0.6}
+                    >
+                      {label}
+                    </Text>
                   </TouchableOpacity>
                 );
               })}
@@ -608,15 +646,15 @@ const styles = StyleSheet.create({
   },
   categoriesRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
     marginVertical: THEME.SPACING.md,
-    gap: 8,
+    gap: 16,
+    paddingHorizontal: THEME.SPACING.xs,
   },
   catChip: {
     alignItems: 'center',
     justifyContent: 'center',
-    flex: 1,
+    width: 72,
   },
   catIconWrapper: {
     width: 46,
@@ -749,7 +787,8 @@ const styles = StyleSheet.create({
   },
   modalCatItem: {
     width: '30%',
-    aspectRatio: 1,
+    paddingVertical: 12,
+    paddingHorizontal: 4,
     borderRadius: THEME.BORDERS.radius.lg,
     backgroundColor: 'rgba(255,255,255,0.04)',
     borderWidth: 1,
@@ -771,10 +810,11 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   modalCatLabel: {
-    fontSize: 11,
+    fontSize: 9.5,
     fontWeight: '700',
     color: THEME.COLORS.textPrimary,
     textAlign: 'center',
+    width: '100%',
   },
 });
 

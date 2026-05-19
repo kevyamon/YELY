@@ -73,7 +73,13 @@ const ManageProducts = ({ navigation }) => {
     { label: 'Supermarché', value: 'Supermarket' },
     { label: 'Cosmétiques', value: 'Cosmetics' },
     { label: 'Électronique', value: 'Electronics' },
-    { label: 'Maison', value: 'Home' },
+    { label: 'Maison & Déco', value: 'Home' },
+    { label: 'Mode & Chaussures', value: 'Fashion' },
+    { label: 'Sport & Loisirs', value: 'Sports' },
+    { label: 'Bricolage & Outils', value: 'Tools' },
+    { label: 'Jeux & Jouets', value: 'Toys' },
+    { label: 'Auto & Accessoires', value: 'Automotive' },
+    { label: 'Bureau & Papeterie', value: 'Office' },
     { label: 'Autres', value: 'Other' },
   ];
 

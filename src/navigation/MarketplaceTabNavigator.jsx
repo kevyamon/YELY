@@ -150,11 +150,11 @@ const MarketplaceTabNavigator = () => {
 const styles = StyleSheet.create({
   tabBarContainer: {
     flexDirection: 'row',
-    height: Platform.OS === 'ios' ? 84 : 64,
+    height: Platform.OS === 'ios' ? 88 : 72,
     backgroundColor: THEME.COLORS.glassSurface,
     borderTopWidth: 1,
     borderTopColor: THEME.COLORS.border,
-    paddingBottom: Platform.OS === 'ios' ? 20 : 8,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
     paddingTop: 8,
     justifyContent: 'space-around',
     alignItems: 'center',
@@ -168,7 +168,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 4,
+    gap: 2,
   },
   iconContainer: {
     position: 'relative',
@@ -176,8 +176,9 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   tabLabel: {
-    fontSize: THEME.FONTS.sizes.micro + 1,
+    fontSize: 10.5,
     fontWeight: THEME.FONTS.weights.medium,
+    textAlign: 'center',
   },
   badge: {
     position: 'absolute',

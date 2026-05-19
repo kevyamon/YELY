@@ -35,13 +35,18 @@ const { width, height } = Dimensions.get('window');
 const IMG_HEIGHT = height * 0.44;
 const SPEC_CARD_WIDTH = (width - 48 - 10) / 2; // 24 padding each side, 10 gap
 
-// Exact Category Mapping matching ProductList.jsx
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
   'Supermarket': 'Supermarché',
   'Cosmetics': 'Cosmétiques',
   'Electronics': 'Électronique',
-  'Home': 'Maison',
+  'Home': 'Maison & Déco',
+  'Fashion': 'Mode & Chaussures',
+  'Sports': 'Sport & Loisirs',
+  'Tools': 'Bricolage & Outils',
+  'Toys': 'Jeux & Jouets',
+  'Automotive': 'Auto & Accessoires',
+  'Office': 'Bureau & Papeterie',
   'Other': 'Autres'
 };
 

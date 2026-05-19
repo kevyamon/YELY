@@ -222,6 +222,256 @@ const TwinklingStars = () => {
 };
 
 // ==========================================
+// 🧼 ANIMATION 4 : BALLONS FLOTTANTS (BALLOONS)
+// ==========================================
+const FloatingBalloons = () => {
+  const balloonCount = 5;
+  const anims = useRef([...Array(balloonCount)].map(() => new Animated.Value(0))).current;
+  const colors = ['#E74C3C', '#3498DB', '#9B59B6', '#E67E22', '#F1C40F'];
+
+  useEffect(() => {
+    const startAnimation = (index) => {
+      anims[index].setValue(0);
+      Animated.timing(anims[index], {
+        toValue: 1,
+        duration: 4500 + Math.random() * 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => startAnimation(index));
+    };
+
+    anims.forEach((_, i) => {
+      const timeout = setTimeout(() => startAnimation(i), i * 900);
+      return () => clearTimeout(timeout);
+    });
+  }, [anims]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {anims.map((anim, i) => {
+        const left = 15 + i * 18 + Math.random() * 5;
+        const color = colors[i % colors.length];
+
+        const translateY = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [180, -40]
+        });
+        const translateX = anim.interpolate({
+          inputRange: [0, 0.4, 0.8, 1],
+          outputRange: [0, 12, -12, 0]
+        });
+        const scale = anim.interpolate({
+          inputRange: [0, 0.1, 0.9, 1],
+          outputRange: [0.6, 1, 1, 0.6]
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.balloonContainer,
+              {
+                left: `${left}%`,
+                transform: [{ translateY }, { translateX }, { scale }],
+              }
+            ]}
+          >
+            <View style={[styles.balloonBody, { backgroundColor: color }]} />
+            <View style={[styles.balloonKnot, { borderBottomColor: color }]} />
+            <View style={styles.balloonString} />
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+};
+
+// ==========================================
+// 🧼 ANIMATION 5 : PLUIE D'ÉTOILES FILANTES (METEORS)
+// ==========================================
+const MeteorShower = () => {
+  const meteorCount = 4;
+  const anims = useRef([...Array(meteorCount)].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const startAnimation = (index) => {
+      anims[index].setValue(0);
+      Animated.timing(anims[index], {
+        toValue: 1,
+        duration: 1200 + Math.random() * 800,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => {
+        const delay = 1000 + Math.random() * 2000;
+        setTimeout(() => startAnimation(index), delay);
+      });
+    };
+
+    anims.forEach((_, i) => {
+      const timeout = setTimeout(() => startAnimation(i), i * 1000);
+      return () => clearTimeout(timeout);
+    });
+  }, [anims]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {anims.map((anim, i) => {
+        const top = 10 + i * 25;
+        const left = 20 + i * 15;
+
+        const translateX = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-100, SCREEN_WIDTH]
+        });
+        const translateY = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-50, 200]
+        });
+        const opacity = anim.interpolate({
+          inputRange: [0, 0.2, 0.6, 1],
+          outputRange: [0, 1, 0.8, 0]
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.meteor,
+              {
+                top: `${top}%`,
+                left: `${left}%`,
+                transform: [{ translateX }, { translateY }],
+                opacity,
+              }
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+};
+
+// ==========================================
+// 🧼 ANIMATION 6 : LUCIOLES MAGIQUES (FIREFLIES)
+// ==========================================
+const MagicalFireflies = () => {
+  const fireflyCount = 8;
+  const anims = useRef([...Array(fireflyCount)].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const startAnimation = (index) => {
+      anims[index].setValue(0);
+      Animated.sequence([
+        Animated.timing(anims[index], {
+          toValue: 1,
+          duration: 2000 + Math.random() * 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(anims[index], {
+          toValue: 0,
+          duration: 2000 + Math.random() * 1500,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        })
+      ]).start(() => startAnimation(index));
+    };
+
+    anims.forEach((_, i) => {
+      const timeout = setTimeout(() => startAnimation(i), i * 500);
+      return () => clearTimeout(timeout);
+    });
+  }, [anims]);
+
+  const fireflyPositions = [
+    { top: '20%', left: '15%' },
+    { top: '35%', left: '70%' },
+    { top: '70%', left: '30%' },
+    { top: '15%', left: '85%' },
+    { top: '80%', left: '75%' },
+    { top: '55%', left: '10%' },
+    { top: '45%', left: '55%' },
+    { top: '75%', left: '90%' }
+  ];
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {anims.map((anim, i) => {
+        const scale = anim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0.4, 1.2, 0.4]
+        });
+        const translateY = anim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, -15, 0]
+        });
+        const translateX = anim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, 10, 0]
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.firefly,
+              fireflyPositions[i],
+              {
+                transform: [{ scale }, { translateY }, { translateX }],
+                opacity: anim,
+              }
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+};
+
+// ==========================================
+// 🧼 ANIMATION 7 : AURA DE LUMIÈRE (AURORA)
+// ==========================================
+const PulsingAura = () => {
+  const anim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const start = () => {
+      anim.setValue(0);
+      Animated.timing(anim, {
+        toValue: 1,
+        duration: 3500,
+        easing: Easing.inOut(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => start());
+    };
+    start();
+  }, [anim]);
+
+  const scale = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.8, 1.4, 0.8]
+  });
+  const opacity = anim.interpolate({
+    inputRange: [0, 0.5, 1],
+    outputRange: [0.15, 0.4, 0.15]
+  });
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      <Animated.View 
+        style={[
+          styles.auroraGlow,
+          {
+            transform: [{ scale }],
+            opacity,
+          }
+        ]}
+      />
+    </View>
+  );
+};
+
+// ==========================================
 // 🚀 COMPOSANT PRINCIPAL DE LA BANNIÈRE CARROUSEL
 // ==========================================
 const MarketplaceBanner = ({ navigation }) => {
@@ -300,15 +550,24 @@ const MarketplaceBanner = ({ navigation }) => {
     setIsPaused(false);
   };
 
-  // Rendu de l'animation associée au slide
+  // Rendu de l'animation associée au slide (Fallback intelligent si type non spécifié)
   const renderMicroAnimation = () => {
-    switch (activeSlide.animationType) {
+    const type = activeSlide.animationType || ['confetti', 'stars', 'bubbles', 'balloons', 'meteors', 'fireflies', 'aurora'][currentIndex % 7];
+    switch (type) {
       case 'bubbles':
         return <RisingBubbles />;
       case 'confetti':
         return <FallingConfetti />;
       case 'stars':
         return <TwinklingStars />;
+      case 'balloons':
+        return <FloatingBalloons />;
+      case 'meteors':
+        return <MeteorShower />;
+      case 'fireflies':
+        return <MagicalFireflies />;
+      case 'aurora':
+        return <PulsingAura />;
       default:
         return null;
     }
@@ -492,6 +751,72 @@ const styles = StyleSheet.create({
     position: 'absolute',
     justifyContent: 'center',
     alignItems: 'center',
+  },
+  
+  // Ballons
+  balloonContainer: {
+    position: 'absolute',
+    bottom: -50,
+    width: 20,
+    height: 25,
+    alignItems: 'center',
+    zIndex: 1,
+  },
+  balloonBody: {
+    width: 20,
+    height: 24,
+    borderRadius: 10,
+  },
+  balloonKnot: {
+    width: 0,
+    height: 0,
+    backgroundColor: 'transparent',
+    borderStyle: 'solid',
+    borderLeftWidth: 3,
+    borderRightWidth: 3,
+    borderBottomWidth: 4,
+    borderLeftColor: 'transparent',
+    borderRightColor: 'transparent',
+    marginTop: -1,
+  },
+  balloonString: {
+    width: 1,
+    height: 20,
+    backgroundColor: 'rgba(0, 0, 0, 0.15)',
+  },
+  
+  // Étoiles filantes (Météores)
+  meteor: {
+    position: 'absolute',
+    width: 60,
+    height: 1.5,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 1,
+  },
+  
+  // Lucioles
+  firefly: {
+    position: 'absolute',
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFD700',
+    shadowColor: '#FFD700',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  
+  // Aura lumineuse
+  auroraGlow: {
+    position: 'absolute',
+    top: '10%',
+    left: '15%',
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
   }
 });
 

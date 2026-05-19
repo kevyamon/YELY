@@ -26,7 +26,13 @@ const CATEGORY_LABELS = {
   'Supermarket': 'Supermarché',
   'Cosmetics': 'Cosmétiques',
   'Electronics': 'Électronique',
-  'Home': 'Maison',
+  'Home': 'Maison & Déco',
+  'Fashion': 'Mode & Chaussures',
+  'Sports': 'Sport & Loisirs',
+  'Tools': 'Bricolage & Outils',
+  'Toys': 'Jeux & Jouets',
+  'Automotive': 'Auto & Accessoires',
+  'Office': 'Bureau & Papeterie',
   'Other': 'Autres'
 };
 

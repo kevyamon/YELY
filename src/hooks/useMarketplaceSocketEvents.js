@@ -22,12 +22,25 @@ const useMarketplaceSocketEvents = () => {
     const handleProductUpdated = (product) => {
       if (!product) return;
 
-      // 1. Invalider le cache RTK Query pour toutes les listes de produits
+      const prodId = String(product._id || product.id);
+
+      // 1. Mise à jour instantanée du cache local RTK Query (0ms de latence UI)
+      dispatch(
+        marketplaceApiSlice.util.updateQueryData('getProduct', prodId, (draft) => {
+          if (draft && draft.data) {
+            draft.data.stockCount = product.stockCount;
+            draft.data.isSoldOut = product.isSoldOut;
+            draft.data.manageStock = product.manageStock;
+          }
+        })
+      );
+
+      // 2. Invalider le cache RTK Query pour toutes les listes de produits (refetch de sécurité)
       dispatch(marketplaceApiSlice.util.invalidateTags(['Product']));
 
-      // 2. Synchroniser le panier Redux avec les nouvelles infos (prix, nom, image)
+      // 3. Synchroniser le panier Redux avec les nouvelles infos (prix, nom, image, statut de rupture)
       dispatch(updateCartItemInfo({
-        id: String(product._id || product.id),
+        id: prodId,
         changes: {
           name: product.name,
           price: product.price,
