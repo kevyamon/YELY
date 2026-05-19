@@ -28,17 +28,41 @@ import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation.web';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
+import { useGetRideByIdQuery } from '../../store/api/ridesApiSlice';
 
 import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus } from '../../store/slices/authSlice';
-import { selectCurrentRide } from '../../store/slices/rideSlice';
+import { selectCurrentRide, setIncomingRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-const DriverHome = ({ navigation }) => {
+const DriverHome = ({ navigation, route }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   const isFocused = useIsFocused();
   const dispatch = useDispatch();
+
+  const rideIdFromParams = route?.params?.rideId;
+  const { data: rideData } = useGetRideByIdQuery(rideIdFromParams, {
+    skip: !rideIdFromParams || !isFocused,
+  });
+
+  useEffect(() => {
+    if (rideData?.data || rideData) {
+      const formatted = rideData.data || rideData;
+      const payload = {
+        rideId: formatted._id || formatted.id || formatted.rideId,
+        origin: formatted.origin,
+        destination: formatted.destination,
+        distance: formatted.distance,
+        priceOptions: formatted.priceOptions || [],
+        type: formatted.type,
+        collectionPoints: formatted.collectionPoints || [],
+        passengersCount: formatted.passengersCount || formatted.passengers || formatted.seats || 1,
+      };
+      dispatch(setIncomingRide(payload));
+      navigation.setParams({ rideId: undefined });
+    }
+  }, [rideData, dispatch, navigation]);
 
   usePoiSocketEvents();
 

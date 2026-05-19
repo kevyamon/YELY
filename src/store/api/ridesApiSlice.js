@@ -184,6 +184,11 @@ export const ridesApiSlice = apiSlice.injectEndpoints({
       query: () => '/rides/current',
       providesTags: ['Ride'],
     }),
+
+    getRideById: builder.query({
+      query: (rideId) => `/rides/${rideId}`,
+      providesTags: ['Ride'],
+    }),
     
     estimateRide: builder.query({
       query: ({ pickupLat, pickupLng, dropoffLat, dropoffLng }) => 
@@ -208,6 +213,7 @@ export const {
   useHideFromHistoryMutation, // <-- 🚀 EXPORT AJOUTÉ ICI
   useCollectPointMutation,
   useGetCurrentRideQuery,
+  useGetRideByIdQuery,
   useEstimateRideQuery,
   useLazyEstimateRideQuery,
 } = ridesApiSlice;
