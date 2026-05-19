@@ -17,7 +17,7 @@ const RideRouteDisplay = ({ originAddress, destinationAddress, showDestination =
             size={24}
             color={showDestination ? THEME.COLORS.success : THEME.COLORS.danger}
           />
-          <Text style={styles.routeTextDriver} numberOfLines={2}>
+          <Text style={styles.routeTextDriver}>
             {showDestination ? destinationAddress : originAddress}
           </Text>
         </View>
@@ -31,7 +31,7 @@ const RideRouteDisplay = ({ originAddress, destinationAddress, showDestination =
         <View style={styles.iconContainer}>
           <Ionicons name="location" size={18} color={THEME.COLORS.info} />
         </View>
-        <Text style={styles.routeText} numberOfLines={1}>
+        <Text style={styles.routeText}>
           {originAddress || 'Point de depart'}
         </Text>
       </View>
@@ -42,7 +42,7 @@ const RideRouteDisplay = ({ originAddress, destinationAddress, showDestination =
         <View style={styles.iconContainer}>
           <Ionicons name="flag" size={18} color={THEME.COLORS.danger} />
         </View>
-        <Text style={styles.routeText} numberOfLines={1}>
+        <Text style={styles.routeText}>
           {destinationAddress || 'Destination'}
         </Text>
       </View>

@@ -248,7 +248,7 @@ const OrderCard = ({
           <Text style={styles.customerName}>{item.customer?.name || 'Client Inconnu'}</Text>
           <View style={styles.addressRow}>
             <Ionicons name="location-sharp" size={14} color={THEME.COLORS.primary} style={styles.addressIcon} />
-            <Text style={styles.address} numberOfLines={1}>{item.shippingAddress?.address}</Text>
+            <Text style={styles.address}>{item.shippingAddress?.address}</Text>
           </View>
         </View>
       </View>
