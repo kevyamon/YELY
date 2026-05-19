@@ -90,7 +90,8 @@ const RiderHome = ({ navigation }) => {
     handlePlaceSelect,
     handleCancelDestination,
     handleCancelManualOrigin,
-    handleConfirmRide
+    handleConfirmRide,
+    handleRefreshLocation
   } = useRiderLifecycle({
     location,
     errorMsg,
@@ -191,6 +192,7 @@ const RiderHome = ({ navigation }) => {
           onCancelDestination={handleCancelDestination}
           isManualOrigin={!!manualOrigin}
           onCancelOrigin={handleCancelManualOrigin}
+          onRefreshLocation={handleRefreshLocation}
         />
       </View>
 

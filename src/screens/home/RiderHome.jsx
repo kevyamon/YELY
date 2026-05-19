@@ -84,7 +84,8 @@ const RiderHome = ({ navigation }) => {
     estimateError,
     handlePlaceSelect,
     handleCancelDestination,
-    handleConfirmRide
+    handleConfirmRide,
+    handleRefreshLocation
   } = useRiderLifecycle({
     location,
     errorMsg,
@@ -177,6 +178,7 @@ const RiderHome = ({ navigation }) => {
           onShoppingPress={() => navigation.navigate('MarketplaceHub')}
           hasDestination={!!destination && !isRideActive} 
           onCancelDestination={handleCancelDestination}
+          onRefreshLocation={handleRefreshLocation}
         />
       </View>
 

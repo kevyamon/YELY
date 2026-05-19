@@ -133,6 +133,22 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     };
   }, [location, errorMsg]);
 
+  const handleRefreshLocation = async () => {
+    if (!location) {
+      dispatch(showErrorToast({ title: 'GPS', message: 'Signal GPS introuvable.' }));
+      return;
+    }
+    setCurrentAddress('Recherche...');
+    try {
+      const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+      setCurrentAddress(addr);
+      dispatch(updateAddress(addr));
+      lastGeocodedLocationRef.current = location;
+    } catch (error) {
+      setCurrentAddress(`Mafere (${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)})`);
+    }
+  };
+
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
       const standardOption = displayVehicles.find(v => v.type === 'standard');
@@ -298,7 +314,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     estimateError,
     handlePlaceSelect,
     handleCancelDestination,
-    handleConfirmRide
+    handleConfirmRide,
+    handleRefreshLocation
   };
 };
 

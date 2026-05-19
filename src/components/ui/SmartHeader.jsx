@@ -31,7 +31,8 @@ const SmartHeader = ({
   onSearchPress,
   onShoppingPress,
   hasDestination = false,
-  onCancelDestination 
+  onCancelDestination,
+  onRefreshLocation
 }) => {
   const insets = useSafeAreaInsets();
   
@@ -83,7 +84,12 @@ const SmartHeader = ({
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <View style={styles.locationTitleWrapper}>
+            <TouchableOpacity 
+              onPress={onRefreshLocation} 
+              activeOpacity={0.7} 
+              style={styles.locationTitleWrapper} 
+              disabled={!onRefreshLocation}
+            >
               <Ionicons 
                 name="location" 
                 size={14} 
@@ -91,7 +97,15 @@ const SmartHeader = ({
                 style={styles.locationIcon} 
               />
               <Text style={styles.locationTitle} numberOfLines={1}>{address}</Text>
-            </View>
+              {onRefreshLocation && (
+                <Ionicons 
+                  name="sync-outline" 
+                  size={12} 
+                  color={THEME.COLORS.textSecondary} 
+                  style={{ marginLeft: 4 }} 
+                />
+              )}
+            </TouchableOpacity>
           </Animated.View>
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
@@ -110,25 +124,51 @@ const SmartHeader = ({
              
              {isRider && (
                <View style={styles.riderAddressRow}>
-                 <View style={styles.originView}>
+                 <TouchableOpacity 
+                   onPress={onRefreshLocation} 
+                   activeOpacity={0.7} 
+                   style={styles.originView} 
+                   disabled={!onRefreshLocation}
+                 >
                    <Ionicons 
                      name="location-sharp" 
                      size={14} 
                      color={THEME.COLORS.champagneGold} 
                    />
                    <Text style={styles.riderAddressText} numberOfLines={1}>{address}</Text>
-                 </View>
+                   {onRefreshLocation && (
+                     <Ionicons 
+                       name="sync-outline" 
+                       size={12} 
+                       color={THEME.COLORS.champagneGold} 
+                       style={{ marginLeft: 6 }} 
+                     />
+                   )}
+                 </TouchableOpacity>
                </View>
              )}
           </View>
 
           {!isRider ? (
              <View style={styles.driverCtaRow}>
-               <View style={styles.driverGpsBadge}>
+               <TouchableOpacity 
+                 onPress={onRefreshLocation} 
+                 activeOpacity={0.7} 
+                 style={styles.driverGpsBadge} 
+                 disabled={!onRefreshLocation}
+               >
                    <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
                    <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                    <Text style={styles.gpsText} numberOfLines={1}>{address}</Text>
-               </View>
+                   {onRefreshLocation && (
+                     <Ionicons 
+                       name="sync-outline" 
+                       size={14} 
+                       color={THEME.COLORS.champagneGold} 
+                       style={{ marginLeft: 6 }} 
+                     />
+                   )}
+               </TouchableOpacity>
                <TouchableOpacity style={styles.shoppingBtnSmall} onPress={onShoppingPress}>
                   <Ionicons name="cart" size={20} color={THEME.COLORS.textPrimary} />
                </TouchableOpacity>
@@ -309,7 +349,8 @@ const arePropsEqual = (prevProps, nextProps) => {
   return (
     prevProps.address === nextProps.address &&
     prevProps.hasDestination === nextProps.hasDestination &&
-    prevProps.userName === nextProps.userName
+    prevProps.userName === nextProps.userName &&
+    prevProps.onRefreshLocation === nextProps.onRefreshLocation
   );
 };
 

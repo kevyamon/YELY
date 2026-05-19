@@ -317,6 +317,29 @@ const YelyTheme = {
   },
 };
 
+export const updateThemeColors = (scheme) => {
+  const isDarkScheme = scheme === 'dark';
+  COLORS.background = isDarkScheme ? PALETTE.pureBlack : PALETTE.offWhite;
+  COLORS.secondary = isDarkScheme ? PALETTE.pureWhite : PALETTE.pureBlack;
+  COLORS.textPrimary = isDarkScheme ? '#F8F9FA' : '#1A1A1A';
+  COLORS.textSecondary = isDarkScheme ? 'rgba(248, 249, 250, 0.70)' : 'rgba(26, 26, 26, 0.70)';
+  COLORS.textTertiary = isDarkScheme ? 'rgba(248, 249, 250, 0.45)' : 'rgba(26, 26, 26, 0.45)';
+  COLORS.textInverse = isDarkScheme ? '#1A1A1A' : '#FFFFFF';
+  COLORS.glassSurface = isDarkScheme ? 'rgba(18, 18, 18, 0.85)' : 'rgba(255, 255, 255, 0.85)';
+  COLORS.glassModal = isDarkScheme ? 'rgba(10, 10, 10, 0.95)' : 'rgba(255, 255, 255, 0.95)';
+  COLORS.border = isDarkScheme ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)';
+  COLORS.overlay = isDarkScheme ? 'rgba(255,255,255,0.05)' : 'rgba(0,0,0,0.05)';
+  COLORS.shadow = isDarkScheme ? '#000000' : '#888888';
+  
+  COLORS.deepAsphalt = COLORS.background;
+  COLORS.moonlightWhite = COLORS.textPrimary;
+  COLORS.glassDark = COLORS.glassSurface;
+  COLORS.glassMedium = COLORS.glassSurface;
+  COLORS.glassLight = COLORS.glassSurface;
+  COLORS.glassUltraLight = COLORS.glassSurface;
+  COLORS.glassBorder = COLORS.border;
+};
+
 const THEME = {
   COLORS,
   FONTS,

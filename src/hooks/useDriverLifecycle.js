@@ -181,6 +181,21 @@ const useDriverLifecycle = ({
     };
   }, [location, errorMsg]);
 
+  const handleRefreshLocation = async () => {
+    if (!location) {
+      dispatch(showErrorToast({ title: 'GPS', message: 'Signal GPS introuvable.' }));
+      return;
+    }
+    setCurrentAddress('Recherche...');
+    try {
+      const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+      setCurrentAddress(addr);
+      lastGeocodedLocationRef.current = location;
+    } catch (error) {
+      setCurrentAddress(`Mafere (${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)})`);
+    }
+  };
+
   useEffect(() => {
     if (!currentRide && !fetchedRideData) {
       isProcessingPickupRef.current = false;

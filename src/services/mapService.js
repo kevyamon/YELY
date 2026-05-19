@@ -20,6 +20,8 @@ const MAX_RETRIES = 2;
 const RETRY_BACKOFF_MS = 1000;
 
 const addressCache = new Map();
+let lastSuccessfulAddress = null;
+let lastSuccessfulCoords = null;
 
 // --- GESTION DU CACHE DES REPERES LOCAUX (POI) ---
 let globalPoisCache = null;
@@ -268,11 +270,56 @@ class MapService {
       address = await enrichWithPOI(address, lat, lng);
 
       writeAddressCache(cacheKey, address);
+
+      // Sauvegarder la derniere resolution reussie
+      lastSuccessfulAddress = address;
+      lastSuccessfulCoords = { latitude: lat, longitude: lng };
+
       return address;
     } catch (error) {
-      if (error.message.includes('429')) return `${lat.toFixed(4)}, ${lng.toFixed(4)}`;
-      console.warn('[MapService] Erreur getAddressFromCoordinates:', error.message);
-      return 'Adresse introuvable';
+      console.warn('[MapService] Echec resolution geocodage Nominatim:', error.message);
+
+      // Robustesse 1 : Si la derniere position resolue avec succes est proche (< 300m), on la reutilise
+      if (lastSuccessfulAddress && lastSuccessfulCoords) {
+        const distance = MapService.calculateDistance(
+          { latitude: lat, longitude: lng },
+          lastSuccessfulCoords
+        );
+        if (distance < 300) {
+          return lastSuccessfulAddress;
+        }
+      }
+
+      // Robustesse 2 : Fallback sur le POI le plus proche si on a le cache des POIs
+      try {
+        const pois = globalPoisCache || [];
+        if (pois.length > 0) {
+          let nearestPOI = null;
+          let minDistance = Infinity;
+
+          for (const poi of pois) {
+            if (poi.isActive === false) continue;
+            const d = MapService.calculateDistance(
+              { latitude: lat, longitude: lng },
+              { latitude: poi.latitude, longitude: poi.longitude }
+            );
+            if (d < minDistance) {
+              minDistance = d;
+              nearestPOI = poi;
+            }
+          }
+
+          if (nearestPOI && minDistance <= 1500) {
+            const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
+            return `Mafere (Proche ${nearestPOI.name} - ~${distStr})`;
+          }
+        }
+      } catch (poiErr) {
+        // Ignorer les erreurs de fallback POI
+      }
+
+      // Robustesse 3 : Fallback final lisible au lieu de "Adresse introuvable"
+      return `Mafere (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
     }
   }
 

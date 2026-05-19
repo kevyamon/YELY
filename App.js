@@ -7,7 +7,8 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
+import * as SystemUI from 'expo-system-ui';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -17,7 +18,7 @@ import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import store from './src/store/store';
-import THEME from './src/theme/theme';
+import THEME, { updateThemeColors } from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
 import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
@@ -157,28 +158,60 @@ const AppContent = () => {
   );
 };
 
+const OtaDownloadScreen = () => (
+  <View style={styles.otaContainer}>
+    <Text style={styles.otaTitle}>Mise à jour en cours</Text>
+    <ActivityIndicator size="large" color="#D4AF37" style={styles.otaSpinner} />
+    <Text style={styles.otaSubtitle}>Yely se refait une beauté. Veuillez patienter quelques instants...</Text>
+  </View>
+);
+
 const App = () => {
   const [themeChanged, setThemeChanged] = useState(false);
+  const [isDownloadingOta, setIsDownloadingOta] = useState(false);
   const initialTheme = useRef(Appearance.getColorScheme());
+  const colorScheme = useColorScheme();
+
+  // Mettre à jour dynamiquement les couleurs du thème au démarrage et à chaque changement de thème système
+  useEffect(() => {
+    updateThemeColors(colorScheme);
+    if (Platform.OS !== 'web') {
+      SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+    }
+  }, [colorScheme]);
 
   useEffect(() => {
     const initApp = async () => {
-      // 🚀 MISE A JOUR OTA SYSTEM - FLUIDE & NATIVE
-      // Si une mise à jour est prête, on la télécharge immédiatement et on recharge
-      // pendant que le Splash Screen est affiché pour éviter tout décalage
+      // 🚀 MISE A JOUR OTA SYSTEM - ULTRA-FLUIDE
       if (Platform.OS !== 'web') {
         try {
-          const update = await Updates.checkForUpdateAsync();
+          // Si la vérification réseau prend plus de 2.2s, on démarre direct pour éviter l'attente
+          const checkPromise = Updates.checkForUpdateAsync();
+          const timeoutPromise = new Promise((_, reject) => 
+            setTimeout(() => reject(new Error('TIMEOUT')), 2200)
+          );
+          
+          const update = await Promise.race([checkPromise, timeoutPromise]);
+          
           if (update.isAvailable) {
+            // Une mise à jour est disponible ! On affiche l'écran de chargement haut de gamme
+            setIsDownloadingOta(true);
+            await NativeSplashScreen.hideAsync();
+            
+            // Téléchargement du nouveau bundle
             await Updates.fetchUpdateAsync();
+            
+            // On s'assure que le fond natif est noir pour éviter le flash blanc au reload
+            await SystemUI.setBackgroundColorAsync('#000000').catch(() => {});
             await Updates.reloadAsync();
             return;
           }
         } catch (error) {
-          console.warn("[OTA Startup Check] Echec de la verification:", error);
+          console.warn("[OTA Startup Check] Pas d'OTA ou verification ignoree:", error.message);
         }
       }
 
+      // Démarrage instantané en masquant le splash natif
       await NativeSplashScreen.hideAsync();
     };
     initApp();
@@ -186,8 +219,16 @@ const App = () => {
 
   useEffect(() => {
     const subscription = Appearance.addChangeListener(async (preferences) => {
+      updateThemeColors(preferences.colorScheme);
+      if (Platform.OS !== 'web') {
+        await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+      }
       if (preferences.colorScheme !== initialTheme.current) {
         try {
+          // On s'assure que le fond natif est noir pour éviter le flash blanc au reload lors du changement de thème
+          if (Platform.OS !== 'web') {
+            await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+          }
           await Updates.reloadAsync();
         } catch (error) {
           setThemeChanged(true);
@@ -196,6 +237,10 @@ const App = () => {
     });
     return () => subscription.remove();
   }, []);
+
+  if (isDownloadingOta) {
+    return <OtaDownloadScreen />;
+  }
 
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
@@ -221,5 +266,28 @@ const styles = StyleSheet.create({
   fallbackTitle: { color: THEME.COLORS.primary, fontSize: 22, fontWeight: 'bold', marginBottom: 10 },
   fallbackText: { color: THEME.COLORS.textPrimary, textAlign: 'center', marginBottom: 30, fontSize: 14 },
   fallbackButton: { backgroundColor: THEME.COLORS.primary, paddingVertical: 12, paddingHorizontal: 24, borderRadius: 8 },
-  fallbackButtonText: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 }
+  fallbackButtonText: { color: THEME.COLORS.background, fontWeight: 'bold', fontSize: 16 },
+  otaContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 30,
+  },
+  otaTitle: {
+    color: '#D4AF37',
+    fontSize: 22,
+    fontWeight: '800',
+    marginBottom: 20,
+    letterSpacing: 0.5,
+  },
+  otaSpinner: {
+    marginVertical: 30,
+  },
+  otaSubtitle: {
+    color: 'rgba(248, 249, 250, 0.7)',
+    fontSize: 14,
+    textAlign: 'center',
+    lineHeight: 20,
+  },
 });
