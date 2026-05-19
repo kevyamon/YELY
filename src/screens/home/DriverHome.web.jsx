@@ -245,6 +245,7 @@ const DriverHome = ({ navigation, route }) => {
             realLocation={realLocation}
             simulatedLocation={simulatedLocation}
             setSimulatedLocation={setSimulatedLocation}
+            mapRef={mapRef}
           />
 
           <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>

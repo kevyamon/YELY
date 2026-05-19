@@ -210,6 +210,7 @@ const DriverHome = ({ navigation, route }) => {
         realLocation={location} 
         simulatedLocation={simulatedLocation} 
         setSimulatedLocation={setSimulatedLocation} 
+        mapRef={mapRef}
       />
 
       <View style={styles.mapContainer}>

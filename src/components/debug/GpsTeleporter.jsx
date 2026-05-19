@@ -11,15 +11,37 @@ import socketService from '../../services/socketService';
 import { showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
-const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation }) => {
+const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation, mapRef }) => {
   const dispatch = useDispatch();
 
   // SECURITE DE PRODUCTION : Ce composant ne s'affiche que s'il y a une course active
   if (!currentRide) return null;
 
   const getTargetCoordinates = () => {
-    // Cible la destination si la course est arrivée ('arrived') ou en cours ('in_progress')
-    const targetType = ['arrived', 'in_progress'].includes(currentRide.status) ? 'destination' : 'pickup';
+    if (!currentRide) return { lat: 0, lng: 0, type: 'unknown' };
+
+    const isOngoing = ['arrived', 'in_progress'].includes(currentRide.status);
+    const isDelivery = currentRide.type === 'DELIVERY';
+
+    if (isDelivery) {
+      if (isOngoing) {
+        // Destination finale (client)
+        const lat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+        const lng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+        return { lat: Number(lat), lng: Number(lng), type: 'destination' };
+      }
+
+      // Prochain point de collecte vendeur
+      const nextSeller = currentRide.collectionPoints?.find(cp => !cp.isCollected);
+      if (nextSeller) {
+        const lat = nextSeller.coordinates?.[1] || nextSeller.coordinates?.latitude;
+        const lng = nextSeller.coordinates?.[0] || nextSeller.coordinates?.longitude;
+        return { lat: Number(lat), lng: Number(lng), type: 'pickup_seller' };
+      }
+    }
+
+    // Trajet standard VTC
+    const targetType = isOngoing ? 'destination' : 'pickup';
     const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
     const lat = target?.coordinates?.[1] || target?.latitude;
     const lng = target?.coordinates?.[0] || target?.longitude;
@@ -29,18 +51,43 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
   const syncLocation = (newLocation) => {
     setSimulatedLocation(newLocation);
     socketService.emitLocation(newLocation);
+
+    // Animer la caméra de la carte pour centrer la voiture sur le nouveau point de simulation
+    if (mapRef?.current) {
+      mapRef.current.animateToRegion({
+        latitude: newLocation.latitude,
+        longitude: newLocation.longitude,
+      }, 1000);
+    }
   };
 
   const teleportTo = (targetType) => {
-    const target = targetType === 'pickup' ? currentRide.origin : currentRide.destination;
-    const lat = target?.coordinates?.[1] || target?.latitude;
-    const lng = target?.coordinates?.[0] || target?.longitude;
+    let lat, lng;
+    let name = '';
+
+    if (targetType === 'pickup') {
+      const isDelivery = currentRide.type === 'DELIVERY';
+      const nextSeller = isDelivery ? currentRide.collectionPoints?.find(cp => !cp.isCollected) : null;
+
+      if (nextSeller) {
+        lat = nextSeller.coordinates?.[1] || nextSeller.coordinates?.latitude;
+        lng = nextSeller.coordinates?.[0] || nextSeller.coordinates?.longitude;
+        name = 'Vendeur';
+      } else {
+        lat = currentRide.origin?.coordinates?.[1] || currentRide.origin?.latitude;
+        lng = currentRide.origin?.coordinates?.[0] || currentRide.origin?.longitude;
+        name = 'Client';
+      }
+    } else {
+      lat = currentRide.destination?.coordinates?.[1] || currentRide.destination?.latitude;
+      lng = currentRide.destination?.coordinates?.[0] || currentRide.destination?.longitude;
+      name = 'Destination';
+    }
 
     if (!lat || !lng) return;
 
-    // Ajout d'un offset de sécurité de 45 mètres (0.0004 degré) pour le saut de destination
-    // Cela évite la détection de complétion immédiate avant le démarrage de la course.
-    const offset = targetType === 'destination' ? 0.0004 : 0.00008;
+    // Offset de sécurité minimal pour la détection
+    const offset = targetType === 'destination' ? 0.0001 : 0.00008;
 
     const newLocation = {
       latitude: Number(lat) + offset,
@@ -54,7 +101,7 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
 
     dispatch(showSuccessToast({
       title: 'Simulation System',
-      message: `Saut vers ${targetType === 'pickup' ? 'Client' : 'Destination'} effectue`,
+      message: `Saut vers ${name} effectué`,
     }));
   };
 
@@ -110,7 +157,9 @@ const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimula
       <Text style={styles.debugTitle}>TEST GPS (SIMULATION ACTIVE)</Text>
       <View style={styles.debugButtons}>
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('pickup')}>
-          <Text style={styles.debugBtnText}>SAUT CLIENT</Text>
+          <Text style={styles.debugBtnText}>
+            {currentRide.type === 'DELIVERY' && currentRide.status === 'accepted' ? 'SAUT VENDEUR' : 'SAUT CLIENT'}
+          </Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.debugBtn} onPress={() => teleportTo('destination')}>
           <Text style={styles.debugBtnText}>SAUT DEST.</Text>

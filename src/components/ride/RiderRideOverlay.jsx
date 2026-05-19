@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
@@ -45,24 +45,74 @@ const RiderRideOverlay = () => {
 
   const translateY = useSharedValue(300);
 
+  const [isMinimized, setIsMinimized] = useState(false);
+  const hideTimerRef = useRef(null);
+
+  const startMinimizeTimer = () => {
+    if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    hideTimerRef.current = setTimeout(() => {
+      setIsMinimized(true);
+      translateY.value = withTiming(800, {
+        duration: 600,
+        easing: Easing.inOut(Easing.ease),
+      });
+    }, 5000);
+  };
+
+  const cancelMinimizeTimer = () => {
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+  };
+
+  const toggleMinimize = () => {
+    if (isMinimized) {
+      setIsMinimized(false);
+      translateY.value = withTiming(0, {
+        duration: 500,
+        easing: Easing.out(Easing.exp),
+      });
+      startMinimizeTimer();
+    } else {
+      setIsMinimized(true);
+      translateY.value = withTiming(800, {
+        duration: 500,
+        easing: Easing.inOut(Easing.ease),
+      });
+      cancelMinimizeTimer();
+    }
+  };
+
   useEffect(() => {
     translateY.value = withTiming(0, {
       duration: 500,
       easing: Easing.out(Easing.exp),
     });
+    startMinimizeTimer();
+    return () => cancelMinimizeTimer();
   }, [translateY]);
 
   useEffect(() => {
     const status = currentRide?.status;
 
+    let newStatus = RIDER_STATUS.APPROACHING;
     if (status === 'in_progress') {
-      setRiderStatus(RIDER_STATUS.IN_PROGRESS);
+      newStatus = RIDER_STATUS.IN_PROGRESS;
     } else if (status === 'arrived') {
-      setRiderStatus(RIDER_STATUS.ARRIVED);
-    } else {
-      setRiderStatus(RIDER_STATUS.APPROACHING);
+      newStatus = RIDER_STATUS.ARRIVED;
     }
-  }, [currentRide?.status]);
+
+    if (newStatus !== riderStatus) {
+      setRiderStatus(newStatus);
+      setIsMinimized(false);
+      translateY.value = withTiming(0, {
+        duration: 500,
+        easing: Easing.out(Easing.exp),
+      });
+      startMinimizeTimer();
+    }
+  }, [currentRide?.status, riderStatus]);
 
   const animatedStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: translateY.value }],
@@ -125,7 +175,20 @@ const RiderRideOverlay = () => {
   const driverName = currentRide.driverName || currentRide.driver?.name || 'Chauffeur Assigne';
 
   return (
-    <Animated.View style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}>
+    <Animated.View 
+      style={[styles.container, { paddingBottom: insets.bottom + 10 }, animatedStyle]}
+      onTouchStart={startMinimizeTimer}
+    >
+
+      {/* Poignee de tiroir / Bouton de masquage manuel */}
+      <TouchableOpacity 
+        style={styles.dragHandleContainer} 
+        onPress={toggleMinimize}
+        activeOpacity={0.7}
+      >
+        <View style={styles.dragHandle} />
+        <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
+      </TouchableOpacity>
 
       <View style={styles.statusBanner}>
         <View style={styles.statusIndicator}>
@@ -177,6 +240,18 @@ const RiderRideOverlay = () => {
       </View>
 
     </Animated.View>
+
+    {isMinimized && (
+      <View style={styles.floatingArrowContainer} pointerEvents="box-none">
+        <TouchableOpacity 
+          style={styles.floatingArrowButton} 
+          onPress={toggleMinimize}
+          activeOpacity={0.85}
+        >
+          <Ionicons name="chevron-up" size={24} color="#121418" />
+        </TouchableOpacity>
+      </View>
+    )}
   );
 };
 
@@ -217,6 +292,48 @@ const styles = StyleSheet.create({
   priceContainer: { flex: 1 },
   priceLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 'bold' },
   priceValue: { fontSize: 24, fontWeight: '900', color: THEME.COLORS.textPrimary },
+  dragHandleContainer: {
+    width: '100%',
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: -4,
+    marginBottom: THEME.SPACING.xs,
+  },
+  dragHandle: {
+    width: 40,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: THEME.COLORS.border,
+    marginBottom: 4,
+  },
+  dragIcon: {
+    marginTop: -2,
+  },
+  floatingArrowContainer: {
+    position: 'absolute',
+    bottom: 24,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 99,
+  },
+  floatingArrowButton: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: THEME.COLORS.champagneGold,
+    justifyContent: 'center',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
 });
 
 export default RiderRideOverlay;
