@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
+import { Animated, Dimensions, Modal, PanResponder, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
 
@@ -170,35 +170,42 @@ const AppToast = ({
 
   if (!visible) return null;
 
-  // MODIFICATION SENIOR: Remplacement de <Modal> par une View absolue avec pointerEvents="box-none"
-  // Cela permet de cliquer à travers l'écran transparent !
+  // SYSTEME ABSOLU HAUTE DISPONIBILITE: Utilisation d'un Modal natif transparent
+  // afin de passer TOUJOURS au-dessus de n'importe quel autre Modal de l'application (ex: formulaires, alertes)
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 99999, elevation: 99999 }]} pointerEvents="box-none">
-      <Animated.View
-        {...panResponder.panHandlers}
-        // pointerEvents="auto" permet d'interagir avec le toast lui-même (swipe)
-        pointerEvents="auto" 
-        style={[
-          styles.container,
-          {
-            top: insets.top + SPACING.sm,
-            backgroundColor: config.bgColor,
-            borderColor: config.borderColor,
-            opacity,
-            transform: [
-              { translateY },
-              { translateX }
-            ],
-          },
-        ]}
-      >
-        <Ionicons name={config.icon} size={24} color={config.color} />
-        <View style={styles.textContainer}>
-          {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
-          {message && <Text style={styles.message}>{message}</Text>}
-        </View>
-      </Animated.View>
-    </View>
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="none"
+      statusBarTranslucent={true}
+      onRequestClose={closeToast}
+    >
+      <View style={[StyleSheet.absoluteFill, { zIndex: 999999, elevation: 999999 }]} pointerEvents="box-none">
+        <Animated.View
+          {...panResponder.panHandlers}
+          pointerEvents="auto" 
+          style={[
+            styles.container,
+            {
+              top: insets.top + SPACING.sm,
+              backgroundColor: config.bgColor,
+              borderColor: config.borderColor,
+              opacity,
+              transform: [
+                { translateY },
+                { translateX }
+              ],
+            },
+          ]}
+        >
+          <Ionicons name={config.icon} size={24} color={config.color} />
+          <View style={styles.textContainer}>
+            {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
+            {message && <Text style={styles.message}>{message}</Text>}
+          </View>
+        </Animated.View>
+      </View>
+    </Modal>
   );
 };
 

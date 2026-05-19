@@ -5,6 +5,7 @@ import { ActivityIndicator, StyleSheet, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import useServerWakeup from '../hooks/useServerWakeup';
+import useSocketEvents from '../hooks/useSocketEvents';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
 
 import {
@@ -78,6 +79,7 @@ const AppNavigator = () => {
   const promoMode = useSelector(selectPromoMode); 
   
   const { isServerReady } = useServerWakeup();
+  useSocketEvents();
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [promoAlert, setPromoAlert] = useState({ visible: false, isActive: false, message: '' });
