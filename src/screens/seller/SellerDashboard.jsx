@@ -9,7 +9,8 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
-  ScrollView
+  ScrollView,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -23,6 +24,8 @@ import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const SellerDashboard = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('pending');
 
@@ -122,7 +125,7 @@ const SellerDashboard = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
       
       <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <View style={styles.headerLeft}>

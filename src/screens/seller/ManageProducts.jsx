@@ -17,7 +17,8 @@ import {
   TextInput, 
   TouchableOpacity, 
   View,
-  StatusBar
+  StatusBar,
+  useColorScheme
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { 
@@ -34,6 +35,8 @@ import { useDispatch } from 'react-redux';
 import THEME from '../../theme/theme';
 
 const ManageProducts = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   useMarketplaceSocketEvents();
@@ -278,7 +281,7 @@ const ManageProducts = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
       
       <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>

@@ -9,7 +9,8 @@ import {
   TouchableOpacity, 
   ActivityIndicator,
   Alert,
-  StatusBar
+  StatusBar,
+  useColorScheme
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -20,6 +21,8 @@ import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const LedgerHistory = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
   const { data, isLoading, refetch } = useGetMyLedgerQuery();
@@ -92,7 +95,7 @@ const LedgerHistory = ({ navigation }) => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
       
       <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
