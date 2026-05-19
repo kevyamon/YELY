@@ -32,6 +32,34 @@ import UserLocationMarker from './markers/UserLocationMarker';
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
+// Algorithme de désambiguïsation géographique des labels de POI pour éviter les chevauchements
+const resolvePoiCollisions = (pois) => {
+  if (!pois || pois.length === 0) return [];
+  const LAT_LNG_THRESHOLD = 0.0006; // environ 70 mètres
+  const processed = [];
+
+  for (let i = 0; i < pois.length; i++) {
+    const current = { ...pois[i] };
+    const curLat = Number(current.latitude);
+    const curLng = Number(current.longitude);
+
+    let hasCollision = false;
+    for (const p of processed) {
+      if (p.showLabel === false) continue;
+      const pLat = Number(p.latitude);
+      const pLng = Number(p.longitude);
+
+      if (Math.abs(curLat - pLat) < LAT_LNG_THRESHOLD && Math.abs(curLng - pLng) < LAT_LNG_THRESHOLD) {
+        hasCollision = true;
+        break;
+      }
+    }
+    current.showLabel = !hasCollision;
+    processed.push(current);
+  }
+  return processed;
+};
+
 const MapCard = forwardRef(({
   location,
   driverLocation,
@@ -170,7 +198,7 @@ const MapCard = forwardRef(({
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
   const isCinematicMode = isRouteValid || rideStatus !== null;
-  const visiblePOIs = isCinematicMode ? [] : mapPOIs;
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs);
   
   const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
   const actualDriverLocation = isDriver ? safeLocation : driverLocation;
@@ -264,6 +292,7 @@ const MapCard = forwardRef(({
               name={poi.name}
               icon={poi.icon}
               color={poi.iconColor}
+              showLabel={poi.showLabel}
               onPress={() => onMarkerPress?.(poi)}
             />
           ))}

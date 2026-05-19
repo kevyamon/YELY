@@ -179,7 +179,7 @@ const getShortName = (text) => {
   return `${words[0]}...`;
 };
 
-export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
+export const PoiMarker = ({ coordinate, name, icon, color, onPress, showLabel = true }) => {
   if (!coordinate?.latitude || !coordinate?.longitude) return null;
   if (isExpoGo) return null;
 
@@ -205,12 +205,14 @@ export const PoiMarker = ({ coordinate, name, icon, color, onPress }) => {
                 color="#FFFFFF" 
               />
             </View>
-            <Text
-              style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
-              numberOfLines={1}
-            >
-              {shortName}
-            </Text>
+            {showLabel && (
+              <Text
+                style={[styles.poiShortText, { color: THEME.COLORS.textPrimary }]}
+                numberOfLines={1}
+              >
+                {shortName}
+              </Text>
+            )}
           </View>
         </TouchableOpacity>
       </View>

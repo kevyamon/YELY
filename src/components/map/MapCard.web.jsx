@@ -28,6 +28,34 @@ import {
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
+// Algorithme de désambiguïsation géographique des labels de POI pour éviter les chevauchements
+const resolvePoiCollisions = (pois) => {
+  if (!pois || pois.length === 0) return [];
+  const LAT_LNG_THRESHOLD = 0.0006; // environ 70 mètres
+  const processed = [];
+
+  for (let i = 0; i < pois.length; i++) {
+    const current = { ...pois[i] };
+    const curLat = Number(current.latitude);
+    const curLng = Number(current.longitude);
+
+    let hasCollision = false;
+    for (const p of processed) {
+      if (p.showLabel === false) continue;
+      const pLat = Number(p.latitude);
+      const pLng = Number(p.longitude);
+
+      if (Math.abs(curLat - pLat) < LAT_LNG_THRESHOLD && Math.abs(curLng - pLng) < LAT_LNG_THRESHOLD) {
+        hasCollision = true;
+        break;
+      }
+    }
+    current.showLabel = !hasCollision;
+    processed.push(current);
+  }
+  return processed;
+};
+
 const createPoiIcon = (poi) => {
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
@@ -41,9 +69,11 @@ const createPoiIcon = (poi) => {
       <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
         ${iconHtml}
       </div>
+      ${poi.showLabel !== false ? `
       <div style="margin-top: 2px; font-size: 13px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
         ${fullName}
       </div>
+      ` : ''}
     </div>
   `;
 
@@ -178,7 +208,7 @@ const MapCard = forwardRef(({
 
   // --- UX : CINEMATIC FOCUS (Version Web) ---
   const isCinematicMode = isRouteValid || rideStatus !== null;
-  const visiblePOIs = isCinematicMode ? [] : mapPOIs;
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs);
 
   return (
     <View style={[styles.container, style]}>
