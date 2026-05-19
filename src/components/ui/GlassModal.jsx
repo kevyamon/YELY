@@ -3,8 +3,10 @@
 // FIX: Ajustement automatique de la hauteur pour eviter les debordements sur petits ecrans
 
 import { BlurView } from 'expo-blur';
+import * as Updates from 'expo-updates';
 import { useEffect } from 'react';
 import {
+  Appearance,
   BackHandler,
   Dimensions,
   Modal,
@@ -66,6 +68,20 @@ const GlassModal = ({
 
     return () => backHandler.remove();
   }, [visible, onClose]);
+
+  useEffect(() => {
+    if (!visible) return;
+
+    const subscription = Appearance.addChangeListener(async (preferences) => {
+      try {
+        await Updates.reloadAsync();
+      } catch (error) {
+        console.warn("[GlassModal Theme Change] Reload failed:", error);
+      }
+    });
+
+    return () => subscription.remove();
+  }, [visible]);
 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
