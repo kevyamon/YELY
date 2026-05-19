@@ -7,7 +7,7 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useRef, useState } from 'react';
-import { Appearance, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { Provider as PaperProvider, Portal } from 'react-native-paper';
@@ -154,6 +154,22 @@ const App = () => {
 
   useEffect(() => {
     const initApp = async () => {
+      // 🚀 MISE A JOUR OTA SYSTEM - FLUIDE & NATIVE
+      // Si une mise à jour est prête, on la télécharge immédiatement et on recharge
+      // pendant que le Splash Screen est affiché pour éviter tout décalage
+      if (Platform.OS !== 'web') {
+        try {
+          const update = await Updates.checkForUpdateAsync();
+          if (update.isAvailable) {
+            await Updates.fetchUpdateAsync();
+            await Updates.reloadAsync();
+            return;
+          }
+        } catch (error) {
+          console.warn("[OTA Startup Check] Echec de la verification:", error);
+        }
+      }
+
       await NativeSplashScreen.hideAsync();
     };
     initApp();
