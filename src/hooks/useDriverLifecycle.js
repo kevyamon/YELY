@@ -164,7 +164,7 @@ const useDriverLifecycle = ({
             }
           } catch (error) {
             if (isMounted) {
-              setCurrentAddress(`${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)}`);
+              setCurrentAddress(MapService.getFallbackAddress(location.latitude, location.longitude));
             }
           }
         }, 1500);
@@ -192,7 +192,7 @@ const useDriverLifecycle = ({
       setCurrentAddress(addr);
       lastGeocodedLocationRef.current = location;
     } catch (error) {
-      setCurrentAddress(`Mafere (${location.latitude.toFixed(4)}, ${location.longitude.toFixed(4)})`);
+      setCurrentAddress(MapService.getFallbackAddress(location.latitude, location.longitude));
     }
   };
 

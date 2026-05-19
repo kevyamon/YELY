@@ -249,6 +249,48 @@ class MapService {
     }
   }
 
+  static getFallbackAddress(lat, lng) {
+    if (!lat || !lng) return "Maféré";
+    
+    // Liste de secours en dur de repères clés à Maféré
+    const FALLBACK_LANDMARKS = [
+      { name: 'Gare de Maféré', latitude: 5.4215, longitude: -3.0285 },
+      { name: 'Marché Central', latitude: 5.4228, longitude: -3.0296 },
+      { name: 'Mairie de Maféré', latitude: 5.4205, longitude: -3.0270 },
+      { name: 'Commissariat de Police', latitude: 5.4190, longitude: -3.0255 },
+      { name: 'Sous-Préfecture', latitude: 5.4245, longitude: -3.0310 },
+      { name: 'Hôpital Général', latitude: 5.4180, longitude: -3.0240 },
+      { name: 'Collège Moderne', latitude: 5.4260, longitude: -3.0330 },
+      { name: 'Pharmacie Principale', latitude: 5.4220, longitude: -3.0290 },
+      { name: 'Grand Carrefour', latitude: 5.4200, longitude: -3.0260 }
+    ];
+
+    // Combiner les POIs dynamiques en cache et la liste de secours
+    const pois = [...(globalPoisCache || []), ...FALLBACK_LANDMARKS];
+    
+    let nearestPOI = null;
+    let minDistance = Infinity;
+
+    for (const poi of pois) {
+      if (poi.isActive === false) continue;
+      const d = MapService.calculateDistance(
+        { latitude: lat, longitude: lng },
+        { latitude: parseFloat(poi.latitude), longitude: parseFloat(poi.longitude) }
+      );
+      if (d < minDistance) {
+        minDistance = d;
+        nearestPOI = poi;
+      }
+    }
+
+    if (nearestPOI) {
+      const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
+      return `Maféré (à ${distStr} de : ${nearestPOI.name})`;
+    }
+
+    return "Maféré";
+  }
+
   static async getCoordinatesFromPlaceId(placeId, fallbackCoords) {
     if (fallbackCoords && fallbackCoords.latitude && fallbackCoords.longitude) {
       return fallbackCoords;
@@ -290,36 +332,8 @@ class MapService {
         }
       }
 
-      // Robustesse 2 : Fallback sur le POI le plus proche si on a le cache des POIs
-      try {
-        const pois = globalPoisCache || [];
-        if (pois.length > 0) {
-          let nearestPOI = null;
-          let minDistance = Infinity;
-
-          for (const poi of pois) {
-            if (poi.isActive === false) continue;
-            const d = MapService.calculateDistance(
-              { latitude: lat, longitude: lng },
-              { latitude: poi.latitude, longitude: poi.longitude }
-            );
-            if (d < minDistance) {
-              minDistance = d;
-              nearestPOI = poi;
-            }
-          }
-
-          if (nearestPOI && minDistance <= 1500) {
-            const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
-            return `Mafere (Proche ${nearestPOI.name} - ~${distStr})`;
-          }
-        }
-      } catch (poiErr) {
-        // Ignorer les erreurs de fallback POI
-      }
-
-      // Robustesse 3 : Fallback final lisible au lieu de "Adresse introuvable"
-      return `Mafere (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+      // Robustesse 2 : Fallback final ultra-résistant sur le repère le plus proche
+      return MapService.getFallbackAddress(lat, lng);
     }
   }
 
