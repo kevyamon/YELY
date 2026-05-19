@@ -85,13 +85,13 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       visible={visible}
       onClose={onClose}
       position="top"
-      fullWidth={true}
+      fullWidth={false}
       style={styles.modalStyle}
     >
       <View style={[styles.header, isSmallScreen && { marginBottom: 8 }]}>
         <Text style={[styles.title, isSmallScreen && { fontSize: 18 }]}>Ou allons-nous ?</Text>
         <TouchableOpacity onPress={onClose} style={styles.closeButton}>
-          <Ionicons name="close-circle" size={isSmallScreen ? 24 : 28} color={THEME.COLORS.textSecondary} />
+          <Ionicons name="close" size={18} color={THEME.COLORS.champagneGold || '#D4AF37'} />
         </TouchableOpacity>
       </View>
 
@@ -105,13 +105,16 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
         />
       </View>
 
-      <Text style={[styles.sectionTitle, isSmallScreen && { marginBottom: 4 }]}>
-        {searchQuery ? "Resultats" : "Lieux suggeres"}
-      </Text>
+      <View style={styles.sectionHeader}>
+        <View style={styles.sectionHeaderDot} />
+        <Text style={styles.sectionTitle}>
+          {searchQuery ? "Resultats" : "Lieux suggeres"}
+        </Text>
+      </View>
 
       {isLoading ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
+          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold || '#D4AF37'} />
           <Text style={styles.loadingText}>Synchronisation de la carte...</Text>
         </View>
       ) : isError ? (
@@ -138,68 +141,104 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
 
 const styles = StyleSheet.create({
   modalStyle: {
-    padding: THEME.SPACING.md,
-    maxHeight: '100%', 
-    backgroundColor: THEME.COLORS.glassDark,
+    padding: 20,
+    backgroundColor: 'rgba(15, 15, 15, 0.94)',
+    borderColor: 'rgba(212, 175, 55, 0.35)',
+    borderWidth: 1.5,
+    borderRadius: 28,
+    width: '92%',
+    maxWidth: 380,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.5,
+    shadowRadius: 24,
+    elevation: 20,
   },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.SPACING.md,
+    marginBottom: 16,
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    letterSpacing: 0.5,
   },
   closeButton: {
-    padding: 4,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderWidth: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   inputWrapper: {
-    marginBottom: THEME.SPACING.md,
+    marginBottom: 16,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 12,
+    marginTop: 4,
+  },
+  sectionHeaderDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
+    marginRight: 8,
   },
   sectionTitle: { 
-    fontSize: 12, 
-    fontWeight: 'bold', 
-    color: THEME.COLORS.textSecondary, 
-    letterSpacing: 1, 
-    marginBottom: 8, 
+    fontSize: 11, 
+    fontWeight: '800', 
+    color: THEME.COLORS.champagneGold || '#D4AF37', 
+    letterSpacing: 1.5, 
     textTransform: 'uppercase',
-    paddingHorizontal: 4
   },
   listContainer: {
+    marginTop: 4,
   },
   listContent: {
-    paddingBottom: 20,
+    paddingBottom: 8,
   },
   suggestionItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.glassBorder,
+    paddingVertical: 12,
+    paddingHorizontal: 14,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.05)',
+    marginBottom: 10,
   },
   suggestionIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.25)',
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   suggestionTextContainer: {
     flex: 1,
   },
   mainText: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#FFFFFF',
     marginBottom: 4,
   },
   secondaryText: {
-    fontSize: 13,
-    color: THEME.COLORS.textSecondary,
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.5)',
   },
   emptyText: {
     textAlign: 'center',

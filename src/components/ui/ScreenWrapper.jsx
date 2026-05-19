@@ -11,6 +11,7 @@ const ScreenWrapper = ({
   style, 
   backgroundColor = COLORS.background,
   statusBarColor = 'transparent',
+  translucent = true,
 }) => {
   const insets = useSafeAreaInsets();
   
@@ -28,7 +29,7 @@ const ScreenWrapper = ({
       <StatusBar 
         style={isDarkMode ? 'light' : 'dark'}
         backgroundColor={statusBarColor} 
-        translucent={true} 
+        translucent={translucent} 
       />
       
       <KeyboardAvoidingView 
