@@ -129,9 +129,32 @@ const AppContent = () => {
   usePushNotifications();
   usePwaAutoUpdate(); 
 
+  const handleNavigationReady = async () => {
+    try {
+      const savedRouteStr = await AsyncStorage.getItem('theme_reload_route');
+      if (savedRouteStr) {
+        await AsyncStorage.removeItem('theme_reload_route');
+        const savedRoute = JSON.parse(savedRouteStr);
+        if (savedRoute && savedRoute.name) {
+          setTimeout(() => {
+            navigationRef.current?.navigate(savedRoute.name, savedRoute.params);
+          }, 50);
+        }
+      }
+    } catch (error) {
+      console.warn("[Theme Route Recovery] Failed:", error.message);
+    }
+  };
+
   return (
     <>
-      <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} documentTitle={{ formatter: () => 'Yely' }}>
+      <NavigationContainer 
+        ref={navigationRef} 
+        linking={linking} 
+        theme={navigationTheme} 
+        documentTitle={{ formatter: () => 'Yely' }}
+        onReady={handleNavigationReady}
+      >
         <View style={styles.container}>
           <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor="transparent" translucent={true} />
           <AppNavigator />
@@ -268,6 +291,34 @@ const App = () => {
 
   useEffect(() => {
     let lastTheme = colorScheme;
+
+    const handleThemeChange = async (newTheme) => {
+      try {
+        if (navigationRef.current) {
+          const currentRoute = navigationRef.current.getCurrentRoute();
+          if (currentRoute && currentRoute.name) {
+            await AsyncStorage.setItem('theme_reload_route', JSON.stringify({
+              name: currentRoute.name,
+              params: currentRoute.params,
+            }));
+          }
+        }
+      } catch (e) {
+        console.warn("[Theme Save Route] Failed:", e.message);
+      }
+
+      try {
+        if (Platform.OS === 'web') {
+          window.location.reload();
+        } else {
+          await AsyncStorage.setItem('theme_reload', 'true');
+          await SystemUI.setBackgroundColorAsync(newTheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+          await Updates.reloadAsync();
+        }
+      } catch (e) {
+        console.warn("[Theme Reload Action] Failed:", e.message);
+      }
+    };
     
     // Vérification de changement de thème au retour au premier plan (Foreground)
     const handleAppStateChange = async (nextAppState) => {
@@ -275,17 +326,7 @@ const App = () => {
         const currentTheme = Appearance.getColorScheme();
         if (currentTheme !== lastTheme) {
           lastTheme = currentTheme;
-          try {
-            if (Platform.OS === 'web') {
-              window.location.reload();
-            } else {
-              await AsyncStorage.setItem('theme_reload', 'true');
-              await SystemUI.setBackgroundColorAsync(currentTheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-              await Updates.reloadAsync();
-            }
-          } catch (e) {
-            console.warn("[AppState Theme Reload] Failed:", e.message);
-          }
+          await handleThemeChange(currentTheme);
         }
       }
     };
@@ -296,17 +337,7 @@ const App = () => {
     const appearanceSub = Appearance.addChangeListener(async (preferences) => {
       if (preferences.colorScheme !== lastTheme) {
         lastTheme = preferences.colorScheme;
-        try {
-          if (Platform.OS === 'web') {
-            window.location.reload();
-          } else {
-            await AsyncStorage.setItem('theme_reload', 'true');
-            await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-            await Updates.reloadAsync();
-          }
-        } catch (e) {
-          console.warn("[Appearance Theme Reload] Failed:", e.message);
-        }
+        await handleThemeChange(preferences.colorScheme);
       }
     });
 
