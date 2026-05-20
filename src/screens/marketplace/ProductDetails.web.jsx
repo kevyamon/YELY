@@ -10,11 +10,9 @@ import {
   Image, 
   TouchableOpacity, 
   ScrollView, 
-  ActivityIndicator, 
   StatusBar,
   useColorScheme,
-  useWindowDimensions,
-  FlatList
+  useWindowDimensions
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -28,6 +26,7 @@ import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
 import GlassModal from '../../components/ui/GlassModal';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -45,7 +44,7 @@ const CATEGORY_LABELS = {
 };
 
 const ProductDetails = ({ route, navigation }) => {
-  const { width, height } = useWindowDimensions();
+  const { width } = useWindowDimensions();
   const isLargeScreen = width > 768;
 
   const insets = useSafeAreaInsets();
@@ -87,7 +86,7 @@ const ProductDetails = ({ route, navigation }) => {
           animated: true,
         });
         setActiveImage(nextIndex);
-      } catch (err) {
+      } catch (_err) {
         // Fallback en cas d'erreur de chargement
       }
     }, 5000);
@@ -165,12 +164,116 @@ const ProductDetails = ({ route, navigation }) => {
     }));
   };
 
-  if (isLoading) {
+  const renderSkeleton = () => {
+    if (isLargeScreen) {
+      return (
+        <View style={styles.container}>
+          <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
+          <MarketplaceDetailsHeader title="Chargement..." isOverlay={false} />
+          
+          <GlobalSkeleton visible={true} style={{ flex: 1 }}>
+            <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={true}>
+              <View style={styles.innerContainer}>
+                <View style={styles.splitLayout}>
+                  {/* COLONNE GAUCHE : IMAGE */}
+                  <View style={styles.leftColumn}>
+                    <SkeletonBone width={480} height={480} borderRadius={24} />
+                    <View style={[styles.thumbnailGrid, { marginTop: 15, gap: 10, flexDirection: 'row' }]}>
+                      <SkeletonBone width={80} height={80} borderRadius={12} />
+                      <SkeletonBone width={80} height={80} borderRadius={12} />
+                      <SkeletonBone width={80} height={80} borderRadius={12} />
+                    </View>
+                  </View>
+
+                  {/* COLONNE DROITE : METADATA */}
+                  <View style={styles.rightColumn}>
+                    <View style={[styles.metadataRow, { marginBottom: 15, flexDirection: 'row', gap: 10 }]}>
+                      <SkeletonBone width={80} height={20} borderRadius={8} />
+                      <SkeletonBone width={100} height={20} borderRadius={8} />
+                    </View>
+
+                    <SkeletonBone width={300} height={28} borderRadius={6} style={{ marginBottom: 12 }} />
+                    <SkeletonBone width={150} height={24} borderRadius={6} style={{ marginBottom: 25 }} />
+
+                    <View style={[styles.divider, { marginVertical: 20, height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+
+                    <SkeletonBone width={120} height={18} borderRadius={4} style={{ marginBottom: 12 }} />
+                    
+                    <View style={[styles.specGridDesktop, { marginBottom: 20, flexDirection: 'row', flexWrap: 'wrap', gap: 12 }]}>
+                      <SkeletonBone width="48%" height={60} borderRadius={12} style={{ marginBottom: 10 }} />
+                      <SkeletonBone width="48%" height={60} borderRadius={12} style={{ marginBottom: 10 }} />
+                      <SkeletonBone width="48%" height={60} borderRadius={12} style={{ marginBottom: 10 }} />
+                      <SkeletonBone width="48%" height={60} borderRadius={12} style={{ marginBottom: 10 }} />
+                    </View>
+
+                    <SkeletonBone width="100%" height={120} borderRadius={20} style={{ marginBottom: 15 }} />
+                    <SkeletonBone width="100%" height={76} borderRadius={20} style={{ marginBottom: 20 }} />
+
+                    <View style={[styles.divider, { marginVertical: 20, height: 1, backgroundColor: 'rgba(255,255,255,0.05)' }]} />
+
+                    <View style={[styles.actionBlock, { flexDirection: 'row', gap: 15 }]}>
+                      <SkeletonBone width={160} height={52} borderRadius={24} />
+                      <SkeletonBone width={240} height={52} borderRadius={24} />
+                    </View>
+                  </View>
+                </View>
+              </View>
+            </ScrollView>
+          </GlobalSkeleton>
+        </View>
+      );
+    }
+
+    // Mobile layout
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+      <View style={styles.mobileContainer}>
+        <StatusBar barStyle="light-content" transparent translucent />
+        <MarketplaceDetailsHeader title="Chargement..." isOverlay={true} />
+        
+        <GlobalSkeleton visible={true} style={{ flex: 1 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingBottom: 130 }}>
+            <SkeletonBone width={width} height={width} borderRadius={0} />
+
+            <View style={[styles.mobileContentCard, { marginTop: -30, borderTopLeftRadius: 30, borderTopRightRadius: 30, backgroundColor: THEME.COLORS.background, paddingTop: 30 }]}>
+              <View style={[styles.mobileRowBetween, { marginBottom: 15, flexDirection: 'row', justifyContent: 'space-between' }]}>
+                <SkeletonBone width={80} height={20} borderRadius={8} />
+                <SkeletonBone width={100} height={20} borderRadius={8} />
+              </View>
+
+              <SkeletonBone width={width * 0.6} height={26} borderRadius={6} style={{ marginBottom: 12 }} />
+              <SkeletonBone width={120} height={22} borderRadius={6} style={{ marginBottom: 25 }} />
+
+              <SkeletonBone width={120} height={18} borderRadius={4} style={{ marginBottom: 12 }} />
+              
+              <View style={[styles.specGridMobile, { marginBottom: 20, flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', gap: 10 }]}>
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+              </View>
+
+              <SkeletonBone width="100%" height={110} borderRadius={20} style={{ marginBottom: 15 }} />
+              <SkeletonBone width="100%" height={76} borderRadius={20} />
+            </View>
+          </ScrollView>
+        </GlobalSkeleton>
+
+        <View style={[
+          styles.floatingFooter, 
+          { 
+            bottom: Math.max(insets.bottom + 10, 20),
+            backgroundColor: isDarkMode ? 'rgba(20, 20, 20, 0.88)' : 'rgba(255, 255, 255, 0.92)',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+          }
+        ]}>
+          <SkeletonBone width="100%" height={52} borderRadius={24} />
+        </View>
       </View>
     );
+  };
+
+  if (isLoading) {
+    return renderSkeleton();
   }
 
   if (isError || !product) {

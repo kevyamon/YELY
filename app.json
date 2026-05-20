@@ -43,6 +43,10 @@
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
+      "navigationBar": {
+        "backgroundColor": "#000000",
+        "barStyle": "light-content"
+      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",

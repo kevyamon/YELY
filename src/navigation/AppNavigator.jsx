@@ -133,12 +133,18 @@ const AppNavigator = () => {
         const storedUserStr = await SecureStorageAdapter.getItem('userInfo');
         const storedToken = await SecureStorageAdapter.getItem('token');
         const storedRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
+        const storedTokenAcquiredAt = await SecureStorageAdapter.getItem('tokenAcquiredAt');
         if (storedRefreshToken && storedToken) {
           let storedUser = null;
           if (storedUserStr) {
             try { storedUser = JSON.parse(storedUserStr); } catch (e) { await SecureStorageAdapter.removeItem('userInfo'); }
           }
-          dispatch(restoreAuth({ user: storedUser, token: storedToken, refreshToken: storedRefreshToken }));
+          dispatch(restoreAuth({ 
+            user: storedUser, 
+            token: storedToken, 
+            refreshToken: storedRefreshToken,
+            tokenAcquiredAt: storedTokenAcquiredAt
+          }));
           dispatch(forceSilentRefresh());
         } else {
           dispatch(logout({ reason: 'MISSING_TOKENS_AT_STARTUP' })); 

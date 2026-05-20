@@ -14,8 +14,9 @@ import THEME from '../../theme/theme';
 const GpsTeleporter = ({ currentRide, realLocation, simulatedLocation, setSimulatedLocation, mapRef }) => {
   const dispatch = useDispatch();
 
-  // SECURITE DE PRODUCTION : Ce composant ne s'affiche que s'il y a une course active
-  if (!currentRide) return null;
+  // SECURITE DE PRODUCTION : Ce composant ne s'affiche jamais en production
+  const isDev = typeof __DEV__ !== 'undefined' ? __DEV__ : process.env.NODE_ENV !== 'production';
+  if (!isDev || !currentRide) return null;
 
   const getTargetCoordinates = () => {
     if (!currentRide) return { lat: 0, lng: 0, type: 'unknown' };

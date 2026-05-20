@@ -1,14 +1,16 @@
 import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
+import { applyThemeUpdate } from './src/theme/themeEngine';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useRef, useState } from 'react';
-import { Appearance, Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
+import { useEffect, useState, useMemo } from 'react';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
+import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -19,7 +21,7 @@ import { Provider as ReduxProvider, useDispatch, useSelector } from 'react-redux
 import AppNavigator from './src/navigation/AppNavigator';
 import { navigationRef } from './src/navigation/navigationRef';
 import store from './src/store/store';
-import THEME, { updateThemeColors } from './src/theme/theme';
+import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
 import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
@@ -27,7 +29,6 @@ import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
-import ThemeChangeModal from './src/components/ui/ThemeChangeModal';
 
 import useAppStartup from './src/hooks/useAppStartup';
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -92,15 +93,6 @@ const linking = {
   },
 };
 
-const customNavigationTheme = {
-  ...DefaultTheme,
-  colors: {
-    ...DefaultTheme.colors,
-    background: THEME.COLORS.background,
-    card: THEME.COLORS.background,
-  },
-};
-
 const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
@@ -115,10 +107,22 @@ const GlobalErrorFallback = ({ error, resetError }) => (
 
 const AppContent = () => {
   const dispatch = useDispatch();
+  const colorScheme = useColorScheme();
 
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);
+
+  const navigationTheme = useMemo(() => ({
+    ...DefaultTheme,
+    colors: {
+      ...DefaultTheme.colors,
+      background: colorScheme === 'dark' ? '#000000' : '#F8F9FA',
+      card: colorScheme === 'dark' ? '#000000' : '#F8F9FA',
+      text: colorScheme === 'dark' ? '#F8F9FA' : '#1A1A1A',
+      border: colorScheme === 'dark' ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.12)',
+    },
+  }), [colorScheme]);
 
   useAppStartup();
   useSocketEvents();
@@ -127,9 +131,9 @@ const AppContent = () => {
 
   return (
     <>
-      <NavigationContainer ref={navigationRef} linking={linking} theme={customNavigationTheme} documentTitle={{ formatter: () => 'Yely' }}>
+      <NavigationContainer ref={navigationRef} linking={linking} theme={navigationTheme} documentTitle={{ formatter: () => 'Yely' }}>
         <View style={styles.container}>
-          <StatusBar style="dark" backgroundColor="transparent" translucent={true} />
+          <StatusBar style={colorScheme === 'dark' ? 'light' : 'dark'} backgroundColor="transparent" translucent={true} />
           <AppNavigator />
         </View>
       </NavigationContainer>
@@ -167,17 +171,36 @@ const OtaDownloadScreen = () => (
   </View>
 );
 
+const triggerBackgroundOtaCheck = async () => {
+  if (Platform.OS === 'web') return;
+  try {
+    const update = await Updates.checkForUpdateAsync();
+    if (update.isAvailable) {
+      // Téléchargement silencieux en tâche de fond pour le prochain démarrage
+      await Updates.fetchUpdateAsync();
+      console.info("[OTA Background] Nouvelle mise à jour téléchargée avec succès pour le prochain démarrage.");
+    }
+  } catch (error) {
+    console.warn("[OTA Background Check] Échec silencieux:", error.message);
+  }
+};
+
 const App = () => {
-  const [themeChanged, setThemeChanged] = useState(false);
   const [isDownloadingOta, setIsDownloadingOta] = useState(false);
-  const initialTheme = useRef(Appearance.getColorScheme());
   const colorScheme = useColorScheme();
 
-  // Mettre à jour dynamiquement les couleurs du thème au démarrage et à chaque changement de thème système
+  // Mettre à jour synchrone le thème et toutes les feuilles de style au rendu
+  applyThemeUpdate(colorScheme);
+
+  // Mettre à jour dynamiquement les couleurs du système (StatusBar, NavigationBar, SystemUI)
   useEffect(() => {
-    updateThemeColors(colorScheme);
     if (Platform.OS !== 'web') {
       SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+      
+      const navBarColor = colorScheme === 'dark' ? '#000000' : '#F8F9FA';
+      const navBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
+      NavigationBar.setBackgroundColorAsync(navBarColor).catch(() => {});
+      NavigationBar.setButtonStyleAsync(navBarStyle).catch(() => {});
     }
   }, [colorScheme]);
 
@@ -194,6 +217,20 @@ const App = () => {
             return;
           }
 
+          // Cooldown de 6 heures sur la vérification OTA bloquante au boot
+          const lastOtaCheckStr = await AsyncStorage.getItem('last_ota_check');
+          const lastOtaCheck = lastOtaCheckStr ? Number(lastOtaCheckStr) : 0;
+          const timeSinceLastCheck = Date.now() - lastOtaCheck;
+
+          if (timeSinceLastCheck < 6 * 60 * 60 * 1000) {
+            // Moins de 6 heures se sont écoulées, on démarre instantanément
+            await NativeSplashScreen.hideAsync();
+            
+            // Lancement de la vérification et du téléchargement OTA en tâche de fond
+            triggerBackgroundOtaCheck();
+            return;
+          }
+
           // Si la vérification réseau prend plus de 2.2s, on démarre direct pour éviter l'attente
           const checkPromise = Updates.checkForUpdateAsync();
           const timeoutPromise = new Promise((_, reject) => 
@@ -202,6 +239,9 @@ const App = () => {
           
           const update = await Promise.race([checkPromise, timeoutPromise]);
           
+          // Sauvegarde de la date de la dernière vérification réussie
+          await AsyncStorage.setItem('last_ota_check', String(Date.now()));
+
           if (update.isAvailable) {
             // Une mise à jour est disponible ! On affiche l'écran de chargement haut de gamme
             setIsDownloadingOta(true);
@@ -226,28 +266,6 @@ const App = () => {
     initApp();
   }, []);
 
-  useEffect(() => {
-    const subscription = Appearance.addChangeListener(async (preferences) => {
-      updateThemeColors(preferences.colorScheme);
-      if (Platform.OS !== 'web') {
-        await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-      }
-      if (preferences.colorScheme !== initialTheme.current) {
-        try {
-          // On s'assure que le fond natif est noir pour éviter le flash blanc au reload lors du changement de thème
-          if (Platform.OS !== 'web') {
-            await AsyncStorage.setItem('theme_reload', 'true');
-            await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-          }
-          await Updates.reloadAsync();
-        } catch (error) {
-          setThemeChanged(true);
-        }
-      }
-    });
-    return () => subscription.remove();
-  }, []);
-
   if (isDownloadingOta) {
     return <OtaDownloadScreen />;
   }
@@ -259,7 +277,6 @@ const App = () => {
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
               <AppContent />
-              {themeChanged && <ThemeChangeModal />}
             </Sentry.ErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>

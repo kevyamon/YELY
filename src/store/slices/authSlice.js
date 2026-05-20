@@ -66,6 +66,7 @@ const authSlice = createSlice({
       if (finalToken) {
         state.token = finalToken;
         state.tokenAcquiredAt = Date.now(); 
+        safeStorageSet('tokenAcquiredAt', String(state.tokenAcquiredAt));
       }
       
       if (refreshToken) state.refreshToken = refreshToken;
@@ -123,15 +124,16 @@ const authSlice = createSlice({
       safeStorageRemove('userInfo');
       safeStorageRemove('token');
       safeStorageRemove('refreshToken');
+      safeStorageRemove('tokenAcquiredAt');
     },
 
     restoreAuth: (state, action) => {
-      const { user, token, refreshToken } = action.payload || {};
+      const { user, token, refreshToken, tokenAcquiredAt } = action.payload || {};
       state.user = user || null;
       state.token = token;
       state.refreshToken = refreshToken;
       
-      state.tokenAcquiredAt = 0; 
+      state.tokenAcquiredAt = tokenAcquiredAt ? Number(tokenAcquiredAt) : 0; 
       state.isAuthenticated = !!token;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
@@ -184,11 +186,13 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
   return null;
 };
 
+let isSilentRefreshing = false;
+
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
 
-  // ANTI-RACE CONDITION : On verifie l'etat AVANT toute action asynchrone
-  if (auth.isRefreshing) return;
+  // ANTI-RACE CONDITION : On verifie l'etat local de rafraichissement
+  if (isSilentRefreshing) return;
 
   if (auth.token && auth.tokenAcquiredAt) {
     const ageInMs = Date.now() - auth.tokenAcquiredAt;
@@ -197,8 +201,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     }
   }
 
-  // ON VERROUILLE IMMEDIATEMENT LE SYSTEME (Pour bloquer les autres appels API)
-  dispatch(setRefreshing(true)); 
+  isSilentRefreshing = true;
 
   try {
     let currentRefreshToken = auth.refreshToken;
@@ -207,7 +210,6 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
     }
 
     if (!currentRefreshToken) {
-      dispatch(setRefreshing(false));
       return;
     }
 
@@ -259,7 +261,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
   } catch (error) {
     console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
   } finally {
-    dispatch(setRefreshing(false)); 
+    isSilentRefreshing = false;
   }
 };
 

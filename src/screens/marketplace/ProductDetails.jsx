@@ -10,8 +10,6 @@ import {
   Image, 
   Dimensions, 
   TouchableOpacity, 
-  FlatList,
-  ActivityIndicator,
   StatusBar,
   useColorScheme,
   ScrollView
@@ -30,10 +28,10 @@ import GoldButton from '../../components/ui/GoldButton';
 import GlassCard from '../../components/ui/GlassCard';
 import GlassModal from '../../components/ui/GlassModal';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
+import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 
 const { width, height } = Dimensions.get('window');
 const IMG_HEIGHT = height * 0.44;
-const SPEC_CARD_WIDTH = (width - 48 - 10) / 2; // 24 padding each side, 10 gap
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -90,7 +88,7 @@ const ProductDetails = ({ route, navigation }) => {
           animated: true,
         });
         setActiveImage(nextIndex);
-      } catch (err) {
+      } catch (_err) {
         // Fallback en cas d'erreur de chargement
       }
     }, 5000);
@@ -168,12 +166,64 @@ const ProductDetails = ({ route, navigation }) => {
     }));
   };
 
-  if (isLoading) {
+  const renderSkeleton = () => {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+      <View style={styles.container}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} transparent translucent />
+        <MarketplaceDetailsHeader title="Chargement..." />
+        <GlobalSkeleton visible={true} style={{ flex: 1 }}>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ flexGrow: 1, paddingBottom: 130 }}>
+            {/* Image Placeholder */}
+            <SkeletonBone width={width} height={IMG_HEIGHT} borderRadius={0} />
+
+            {/* Content Card Overlay */}
+            <View style={[styles.contentCard, { marginTop: -25 }]}>
+              {/* Category and Stock badge skeletons */}
+              <View style={[styles.rowBetween, { marginBottom: 15 }]}>
+                <SkeletonBone width={80} height={20} borderRadius={8} />
+                <SkeletonBone width={100} height={20} borderRadius={8} />
+              </View>
+
+              {/* Title & Price Skeletons */}
+              <SkeletonBone width={width * 0.6} height={26} borderRadius={6} style={{ marginBottom: 12 }} />
+              <SkeletonBone width={120} height={22} borderRadius={6} style={{ marginBottom: 25 }} />
+
+              {/* Specs Grid Skeletons */}
+              <View style={[styles.rowBetween, { marginBottom: 12 }]}>
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+              </View>
+              <View style={[styles.rowBetween, { marginBottom: 25 }]}>
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+                <SkeletonBone width="48.5%" height={68} borderRadius={16} />
+              </View>
+
+              {/* Description Card Skeleton */}
+              <SkeletonBone width="100%" height={110} borderRadius={20} style={{ marginBottom: 15 }} />
+
+              {/* Seller Card Skeleton */}
+              <SkeletonBone width="100%" height={76} borderRadius={20} />
+            </View>
+          </ScrollView>
+        </GlobalSkeleton>
+
+        {/* Floating Footer Skeleton */}
+        <View style={[
+          styles.floatingFooter, 
+          { 
+            bottom: Math.max(insets.bottom + 10, 20),
+            backgroundColor: isDarkMode ? 'rgba(20, 20, 20, 0.88)' : 'rgba(255, 255, 255, 0.92)',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+          }
+        ]}>
+          <SkeletonBone width="100%" height={52} borderRadius={24} />
+        </View>
       </View>
     );
+  };
+
+  if (isLoading) {
+    return renderSkeleton();
   }
 
   if (isError || !product) {
@@ -187,9 +237,6 @@ const ProductDetails = ({ route, navigation }) => {
 
   const description = product.description || "L'excellence Yely au service de votre quotidien.";
   const isLongDescription = description.length > 150;
-  const displayDescription = isLongDescription 
-    ? `${description.slice(0, 150)}...` 
-    : description;
 
   return (
     <View style={styles.container}>
