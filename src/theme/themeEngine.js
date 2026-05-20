@@ -1,10 +1,7 @@
-// src/theme/themeEngine.js
-// MOTEUR DE THÈME DYNAMIQUE - Interception de StyleSheet.create
-// Permet la transition fluide et instantanée sans rechargement de bundle
-// CSCSM Level: Bank Grade
-
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Platform } from 'react-native';
 import THEME, { updateThemeColors, YelyTheme } from './theme';
+
+const isWeb = Platform.OS === 'web';
 
 // Sécurisation globale pour éviter la double initialisation
 if (!global.__themeEngineInitialized) {
@@ -66,40 +63,42 @@ if (!global.__themeEngineInitialized) {
     return null;
   };
 
-  // Surcharge de StyleSheet.create
-  StyleSheet.create = (styles) => {
-    // Crée une copie entièrement mutable (évite Object.freeze natif de React Native en dev)
-    const sheet = {};
-    for (const key in styles) {
-      if (styles[key]) {
-        sheet[key] = { ...styles[key] };
+  // Surcharge de StyleSheet.create uniquement sur Web
+  if (isWeb) {
+    StyleSheet.create = (styles) => {
+      // Crée une copie entièrement mutable (évite Object.freeze natif de React Native en dev)
+      const sheet = {};
+      for (const key in styles) {
+        if (styles[key]) {
+          sheet[key] = { ...styles[key] };
+        }
       }
-    }
 
-    const themeColors = { ...THEME.COLORS };
+      const themeColors = { ...THEME.COLORS };
 
-    for (const key in sheet) {
-      const styleObj = sheet[key];
-      for (const prop in styleObj) {
-        if (COLOR_PROPERTIES.includes(prop)) {
-          const val = styleObj[prop];
-          if (typeof val === 'string') {
-            const matchedKey = findThemeColorKey(prop, val, themeColors);
-            if (matchedKey) {
-              registeredStyles.push({
-                sheet,
-                key,
-                prop,
-                themeKey: matchedKey
-              });
+      for (const key in sheet) {
+        const styleObj = sheet[key];
+        for (const prop in styleObj) {
+          if (COLOR_PROPERTIES.includes(prop)) {
+            const val = styleObj[prop];
+            if (typeof val === 'string') {
+              const matchedKey = findThemeColorKey(prop, val, themeColors);
+              if (matchedKey) {
+                registeredStyles.push({
+                  sheet,
+                  key,
+                  prop,
+                  themeKey: matchedKey
+                });
+              }
             }
           }
         }
       }
-    }
 
-    return sheet;
-  };
+      return sheet;
+    };
+  }
 
   // Moteur d'application de mise à jour synchrone du thème
   global.__applyThemeUpdate = (newScheme) => {
@@ -123,11 +122,13 @@ if (!global.__themeEngineInitialized) {
       YelyTheme.colors.info = themeColors.info;
     }
 
-    // 3. Met à jour toutes les feuilles de style enregistrées en mémoire
-    for (const item of registeredStyles) {
-      const { sheet, key, prop, themeKey } = item;
-      if (sheet[key] && themeColors[themeKey]) {
-        sheet[key][prop] = themeColors[themeKey];
+    // 3. Met à jour toutes les feuilles de style enregistrées en mémoire (uniquement sur Web)
+    if (isWeb) {
+      for (const item of registeredStyles) {
+        const { sheet, key, prop, themeKey } = item;
+        if (sheet[key] && themeColors[themeKey]) {
+          sheet[key][prop] = themeColors[themeKey];
+        }
       }
     }
   };

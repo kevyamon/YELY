@@ -8,7 +8,7 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator, Appearance, AppState } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -265,6 +265,56 @@ const App = () => {
     };
     initApp();
   }, []);
+
+  useEffect(() => {
+    let lastTheme = colorScheme;
+    
+    // Vérification de changement de thème au retour au premier plan (Foreground)
+    const handleAppStateChange = async (nextAppState) => {
+      if (nextAppState === 'active') {
+        const currentTheme = Appearance.getColorScheme();
+        if (currentTheme !== lastTheme) {
+          lastTheme = currentTheme;
+          try {
+            if (Platform.OS === 'web') {
+              window.location.reload();
+            } else {
+              await AsyncStorage.setItem('theme_reload', 'true');
+              await SystemUI.setBackgroundColorAsync(currentTheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+              await Updates.reloadAsync();
+            }
+          } catch (e) {
+            console.warn("[AppState Theme Reload] Failed:", e.message);
+          }
+        }
+      }
+    };
+
+    const appStateSub = AppState.addEventListener('change', handleAppStateChange);
+
+    // Écouteur de changement de thème en temps réel (quand l'application est active)
+    const appearanceSub = Appearance.addChangeListener(async (preferences) => {
+      if (preferences.colorScheme !== lastTheme) {
+        lastTheme = preferences.colorScheme;
+        try {
+          if (Platform.OS === 'web') {
+            window.location.reload();
+          } else {
+            await AsyncStorage.setItem('theme_reload', 'true');
+            await SystemUI.setBackgroundColorAsync(preferences.colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
+            await Updates.reloadAsync();
+          }
+        } catch (e) {
+          console.warn("[Appearance Theme Reload] Failed:", e.message);
+        }
+      }
+    });
+
+    return () => {
+      appStateSub.remove();
+      appearanceSub.remove();
+    };
+  }, [colorScheme]);
 
   if (isDownloadingOta) {
     return <OtaDownloadScreen />;
