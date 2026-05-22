@@ -14,6 +14,8 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import { 
   useGetSellerOrdersQuery, 
   useUpdateOrderStatusMutation,
@@ -28,6 +30,7 @@ const SellerDashboard = ({ navigation }) => {
   const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('pending');
+  const currentUser = useSelector(selectCurrentUser);
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
@@ -134,13 +137,24 @@ const SellerDashboard = ({ navigation }) => {
           </TouchableOpacity>
           <Text style={styles.title}>Dashboard</Text>
         </View>
-        <TouchableOpacity 
-          style={styles.manageProductsBtn} 
-          onPress={() => navigation.navigate('ManageProducts')}
-        >
-          <MaterialCommunityIcons name="package-variant-closed" size={24} color={THEME.COLORS.primary} />
-          <Text style={styles.manageBtnText}>Produits</Text>
-        </TouchableOpacity>
+        <View style={styles.headerActions}>
+          {currentUser && (
+            <TouchableOpacity 
+              style={styles.manageProductsBtn} 
+              onPress={() => navigation.navigate('SellerProfile', { sellerId: currentUser._id })}
+            >
+              <MaterialCommunityIcons name="storefront" size={20} color={THEME.COLORS.primary} />
+              <Text style={styles.manageBtnText}>Ma Boutique</Text>
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity 
+            style={[styles.manageProductsBtn, { marginLeft: 8 }]} 
+            onPress={() => navigation.navigate('ManageProducts')}
+          >
+            <MaterialCommunityIcons name="package-variant-closed" size={20} color={THEME.COLORS.primary} />
+            <Text style={styles.manageBtnText}>Produits</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Stats Ledger */}
@@ -260,7 +274,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.glassSurface,
-    paddingHorizontal: 12,
+    paddingHorizontal: 10,
     paddingVertical: 6,
     borderRadius: THEME.BORDERS.radius.pill,
     borderWidth: 1,
@@ -268,9 +282,13 @@ const styles = StyleSheet.create({
   },
   manageBtnText: {
     color: THEME.COLORS.primary,
-    fontSize: 12,
+    fontSize: 11,
     fontWeight: 'bold',
-    marginLeft: 6,
+    marginLeft: 4,
+  },
+  headerActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   ledgerCard: {
     marginHorizontal: THEME.SPACING.xl,

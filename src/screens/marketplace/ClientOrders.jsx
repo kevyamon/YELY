@@ -6,16 +6,19 @@ import {
   FlatList, 
   TouchableOpacity,
   RefreshControl,
-  DeviceEventEmitter
+  DeviceEventEmitter,
+  TextInput,
+  ActivityIndicator
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useGetMyOrdersQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetMyOrdersQuery, useCreateReviewMutation } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 import GlassCard from '../../components/ui/GlassCard';
+import GlassModal from '../../components/ui/GlassModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
@@ -38,6 +41,52 @@ const ClientOrders = ({ navigation }) => {
   const orders = ordersData?.data || [];
 
   const listRef = useRef(null);
+
+  const [createReview, { isLoading: isCreatingReview }] = useCreateReviewMutation();
+  const [rateModalVisible, setRateModalVisible] = useState(false);
+  const [selectedProductForRating, setSelectedProductForRating] = useState(null);
+  const [ratingVal, setRatingVal] = useState(5);
+  const [ratingComment, setRatingComment] = useState('');
+
+  const handleOpenRateModal = (productId, productName) => {
+    setSelectedProductForRating({ id: productId, name: productName });
+    setRatingVal(5);
+    setRatingComment('');
+    setRateModalVisible(true);
+  };
+
+  const handleSubmitRating = async () => {
+    if (!ratingComment.trim()) {
+      dispatch(showToast({
+        type: 'warning',
+        title: 'Commentaire requis',
+        message: 'Veuillez saisir un commentaire pour votre avis.'
+      }));
+      return;
+    }
+
+    try {
+      await createReview({
+        product: selectedProductForRating.id,
+        rating: ratingVal,
+        comment: ratingComment
+      }).unwrap();
+
+      setRateModalVisible(false);
+      setSelectedProductForRating(null);
+      dispatch(showToast({
+        type: 'success',
+        title: 'Avis enregistré',
+        message: 'Merci pour votre retour ! Votre avis a été publié.'
+      }));
+    } catch (err) {
+      dispatch(showToast({
+        type: 'error',
+        title: 'Erreur',
+        message: err.data?.message || "Impossible d'enregistrer l'avis. Avez-vous déjà noté ce produit ?"
+      }));
+    }
+  };
   
   const [archivedOrderIds, setArchivedOrderIds] = useState([]);
   const [activeTab, setActiveTab] = useState('active'); // 'active' or 'archived'
@@ -151,12 +200,29 @@ const ClientOrders = ({ navigation }) => {
 
           <View style={styles.cardBody}>
             <View style={styles.itemsPreview}>
-              {item.items.slice(0, 2).map((prod, idx) => (
-                <Text key={idx} style={styles.itemName} numberOfLines={1}>
-                  • {prod.quantity}x {prod.name}
-                </Text>
-              ))}
-              {item.items.length > 2 && (
+              {(item.status === 'delivered' ? item.items : item.items.slice(0, 2)).map((prod, idx) => {
+                const isDelivered = item.status === 'delivered';
+                return (
+                  <View key={idx} style={styles.itemRow}>
+                    <Text style={styles.itemName} numberOfLines={1}>
+                      • {prod.quantity}x {prod.name}
+                    </Text>
+                    {isDelivered && (
+                      <TouchableOpacity 
+                        style={styles.rateProductBtn}
+                        onPress={(e) => {
+                          e.stopPropagation();
+                          handleOpenRateModal(prod.product, prod.name);
+                        }}
+                      >
+                        <MaterialCommunityIcons name="star-plus-outline" size={13} color="#000" style={{ marginRight: 2 }} />
+                        <Text style={styles.rateProductBtnText}>Noter</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+                );
+              })}
+              {item.status !== 'delivered' && item.items.length > 2 && (
                 <Text style={styles.moreItems}>+ {item.items.length - 2} autres articles</Text>
               )}
             </View>
@@ -230,6 +296,62 @@ const ClientOrders = ({ navigation }) => {
           }
         />
       )}
+      {/* MODALE DE NOTATION DU PRODUIT */}
+      <GlassModal
+        visible={rateModalVisible}
+        onClose={() => setRateModalVisible(false)}
+        position="center"
+        closeOnBackdrop={true}
+      >
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <MaterialCommunityIcons name="star-plus-outline" size={24} color={THEME.COLORS.primary} />
+            <Text style={styles.modalTitle}>Noter le produit</Text>
+          </View>
+
+          <Text style={styles.productNameLabel}>{selectedProductForRating?.name}</Text>
+
+          <Text style={styles.label}>Votre note :</Text>
+          <View style={styles.ratingSelector}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <TouchableOpacity key={star} onPress={() => setRatingVal(star)}>
+                <MaterialCommunityIcons
+                  name={star <= ratingVal ? "star" : "star-outline"}
+                  size={36}
+                  color="#D4AF37"
+                  style={{ marginHorizontal: 4 }}
+                />
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={styles.label}>Votre avis (limité à 5000 caractères) :</Text>
+          <TextInput
+            style={styles.commentInput}
+            multiline
+            numberOfLines={6}
+            maxLength={5000}
+            placeholder="Que pensez-vous de ce produit ?"
+            placeholderTextColor={THEME.COLORS.textTertiary}
+            value={ratingComment}
+            onChangeText={setRatingComment}
+          />
+          <Text style={styles.charCount}>{ratingComment.length} / 5000</Text>
+
+          <View style={styles.modalActions}>
+            <TouchableOpacity style={styles.cancelBtn} onPress={() => setRateModalVisible(false)}>
+              <Text style={styles.cancelBtnText}>Annuler</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitRating} disabled={isCreatingReview}>
+              {isCreatingReview ? (
+                <ActivityIndicator size="small" color="#000" />
+              ) : (
+                <Text style={styles.submitBtnText}>Valider</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </View>
+      </GlassModal>
     </ScreenWrapper>
   );
 };
@@ -397,7 +519,27 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textInverse,
     fontWeight: 'bold',
     fontSize: 14
-  }
+  },
+  
+  // Styles pour les avis sur les commandes
+  itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 3 },
+  rateProductBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
+  rateProductBtnText: { color: '#000', fontSize: 10, fontWeight: '800' },
+  
+  // Styles Modal de Notation
+  modalContent: { padding: 5 },
+  modalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.04)', paddingBottom: 15, marginBottom: 15 },
+  modalTitle: { fontSize: 17, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  productNameLabel: { fontSize: 14.5, fontWeight: '800', color: THEME.COLORS.primary, marginBottom: 15 },
+  label: { fontSize: 12.5, fontWeight: '700', color: THEME.COLORS.textSecondary, marginBottom: 8 },
+  ratingSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 16 },
+  commentInput: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, fontSize: 14, color: '#FFF', height: 120, textAlignVertical: 'top' },
+  charCount: { alignSelf: 'flex-end', fontSize: 10, color: THEME.COLORS.textTertiary, marginTop: 5, marginBottom: 10 },
+  modalActions: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 15, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
+  cancelBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  cancelBtnText: { color: THEME.COLORS.textSecondary, fontWeight: '700', fontSize: 13 },
+  submitBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 18 },
+  submitBtnText: { color: '#000', fontWeight: '800', fontSize: 13 }
 });
 
 export default ClientOrders;

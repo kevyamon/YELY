@@ -18,7 +18,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProductCard from '../../components/marketplace/ProductCard';
-import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetProductsQuery, useGetSellersQuery } from '../../store/api/marketplaceApiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
@@ -46,6 +46,7 @@ const ProductList = ({ route, navigation }) => {
   useMarketplaceSocketEvents();
   const { category, search: initialSearch } = route.params || {};
   const [search, setSearch] = useState(initialSearch || '');
+  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'sellers'
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'priceAsc' | 'priceDesc'
   const [showScrollTop, setShowScrollTop] = useState(false);
   const flatListRef = useRef(null);
@@ -70,12 +71,19 @@ const ProductList = ({ route, navigation }) => {
     flatListRef.current?.scrollToOffset({ offset: 0, animated: true });
   };
 
+  // Fetch Products
   const { data, isLoading, isError, refetch, isFetching } = useGetProductsQuery({
     category: category === 'All' ? undefined : category,
     search: search.length > 1 ? search : undefined
   });
-
   const products = data?.data || [];
+
+  // Fetch Sellers (only if sellers tab active and searching)
+  const { data: sellersData, isLoading: isSellersLoading, isFetching: isSellersFetching, refetch: refetchSellers } = useGetSellersQuery(
+    { search: search.length > 1 ? search : undefined },
+    { skip: activeTab !== 'sellers' || !search }
+  );
+  const sellers = sellersData?.data || [];
 
   const sortedProducts = useMemo(() => {
     let result = [...products];
@@ -102,54 +110,79 @@ const ProductList = ({ route, navigation }) => {
 
       <MarketplaceSearchBar 
         value={search}
-        onChangeText={setSearch}
-        placeholder="Rechercher un produit..."
-        isSearching={isFetching}
+        onChangeText={(txt) => {
+          setSearch(txt);
+          if (txt.trim() === '') {
+            setActiveTab('products');
+          }
+        }}
+        placeholder="Rechercher..."
+        isSearching={isFetching || (activeTab === 'sellers' && isSellersFetching)}
         style={{ marginTop: THEME.SPACING.sm }}
       />
 
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false} 
-        style={styles.sortBar}
-        contentContainerStyle={styles.sortBarContent}
-      >
-        <TouchableOpacity 
-          style={[styles.sortChip, sortBy === 'recent' && styles.sortChipActive]}
-          onPress={() => setSortBy('recent')}
-        >
-          <MaterialCommunityIcons 
-            name="clock-outline" 
-            size={16} 
-            color={sortBy === 'recent' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
-          />
-          <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>Plus récents</Text>
-        </TouchableOpacity>
+      {/* Tabs Selector for search */}
+      {search.trim().length > 0 && (
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'products' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('products')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'products' && styles.tabButtonTextActive]}>Produits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'sellers' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('sellers')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'sellers' && styles.tabButtonTextActive]}>Vendeurs</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
-        <TouchableOpacity 
-          style={[styles.sortChip, sortBy === 'priceAsc' && styles.sortChipActive]}
-          onPress={() => setSortBy('priceAsc')}
+      {activeTab === 'products' && (
+        <ScrollView 
+          horizontal 
+          showsHorizontalScrollIndicator={false} 
+          style={styles.sortBar}
+          contentContainerStyle={styles.sortBarContent}
         >
-          <MaterialCommunityIcons 
-            name="arrow-up" 
-            size={16} 
-            color={sortBy === 'priceAsc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
-          />
-          <Text style={[styles.sortText, sortBy === 'priceAsc' && styles.sortTextActive]}>Prix croissant</Text>
-        </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.sortChip, sortBy === 'recent' && styles.sortChipActive]}
+            onPress={() => setSortBy('recent')}
+          >
+            <MaterialCommunityIcons 
+              name="clock-outline" 
+              size={16} 
+              color={sortBy === 'recent' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+            />
+            <Text style={[styles.sortText, sortBy === 'recent' && styles.sortTextActive]}>Plus récents</Text>
+          </TouchableOpacity>
 
-        <TouchableOpacity 
-          style={[styles.sortChip, sortBy === 'priceDesc' && styles.sortChipActive]}
-          onPress={() => setSortBy('priceDesc')}
-        >
-          <MaterialCommunityIcons 
-            name="arrow-down" 
-            size={16} 
-            color={sortBy === 'priceDesc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
-          />
-          <Text style={[styles.sortText, sortBy === 'priceDesc' && styles.sortTextActive]}>Prix décroissant</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          <TouchableOpacity 
+            style={[styles.sortChip, sortBy === 'priceAsc' && styles.sortChipActive]}
+            onPress={() => setSortBy('priceAsc')}
+          >
+            <MaterialCommunityIcons 
+              name="arrow-up" 
+              size={16} 
+              color={sortBy === 'priceAsc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+            />
+            <Text style={[styles.sortText, sortBy === 'priceAsc' && styles.sortTextActive]}>Prix croissant</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity 
+            style={[styles.sortChip, sortBy === 'priceDesc' && styles.sortChipActive]}
+            onPress={() => setSortBy('priceDesc')}
+          >
+            <MaterialCommunityIcons 
+              name="arrow-down" 
+              size={16} 
+              color={sortBy === 'priceDesc' ? THEME.COLORS.deepAsphalt : THEME.COLORS.textSecondary} 
+            />
+            <Text style={[styles.sortText, sortBy === 'priceDesc' && styles.sortTextActive]}>Prix décroissant</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -162,14 +195,28 @@ const ProductList = ({ route, navigation }) => {
         style={{ marginBottom: 16, opacity: 0.8 }} 
       />
       <Text style={[styles.emptyText, { fontWeight: '800', color: THEME.COLORS.textPrimary, fontSize: 18, marginTop: 0 }]}>
-        Catégorie vide
+        Aucun produit trouvé
       </Text>
       <Text style={{ fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32, lineHeight: 20 }}>
-        Il n'y a actuellement aucun article disponible dans la catégorie "{displayTitle}".
+        Il n'y a actuellement aucun article disponible correspondant à "{search}".
       </Text>
-      <TouchableOpacity style={styles.refreshButton} onPress={refetch}>
-        <Text style={styles.refreshText}>Actualiser la page</Text>
-      </TouchableOpacity>
+    </View>
+  );
+
+  const renderEmptySellers = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons 
+        name="store-search-outline" 
+        size={80} 
+        color={THEME.COLORS.primary} 
+        style={{ marginBottom: 16, opacity: 0.8 }} 
+      />
+      <Text style={[styles.emptyText, { fontWeight: '800', color: THEME.COLORS.textPrimary, fontSize: 18, marginTop: 0 }]}>
+        Aucun vendeur trouvé
+      </Text>
+      <Text style={{ fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32, lineHeight: 20 }}>
+        Il n'y a aucun vendeur enregistré avec le nom "{search}".
+      </Text>
     </View>
   );
 
@@ -185,16 +232,65 @@ const ProductList = ({ route, navigation }) => {
     </View>
   );
 
+  const renderSellerItem = ({ item }) => (
+    <TouchableOpacity 
+      style={styles.sellerCard} 
+      onPress={() => navigation.navigate('SellerProfile', { sellerId: item._id })}
+    >
+      <View style={styles.sellerAvatarWrapper}>
+        {item.profilePicture ? (
+          <Image source={{ uri: item.profilePicture }} style={styles.sellerAvatar} />
+        ) : (
+          <View style={styles.sellerAvatarPlaceholder}>
+            <MaterialCommunityIcons name="storefront" size={24} color={THEME.COLORS.primary} />
+          </View>
+        )}
+        <View style={styles.sellerVerifiedBadge}>
+          <MaterialCommunityIcons name="check-decagram" size={14} color="#D4AF37" />
+        </View>
+      </View>
+      <View style={styles.sellerInfo}>
+        <Text style={styles.sellerName}>{item.name}</Text>
+        <View style={styles.sellerMeta}>
+          <View style={styles.sellerRating}>
+            <MaterialCommunityIcons name="star" size={12} color="#D4AF37" />
+            <Text style={styles.sellerRatingText}>{item.rating ? item.rating.toFixed(1) : '5.0'}</Text>
+          </View>
+          <Text style={styles.sellerMetaSeparator}>•</Text>
+          <Text style={styles.sellerProductCount}>{item.productCount || 0} articles en stock</Text>
+        </View>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={24} color={THEME.COLORS.textTertiary} />
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       {renderHeader()}
 
-      {/* SMART SKELETON DISPLAY THRESHOLD (Prevents FlatList unmounting / Keyboard focus loss) */}
       {(() => {
-        const showSkeleton = isLoading || (isFetching && products.length === 0);
+        const isSellersTab = activeTab === 'sellers';
+        const showSkeleton = isSellersTab 
+          ? (isSellersLoading || (isSellersFetching && sellers.length === 0))
+          : (isLoading || (isFetching && products.length === 0));
+
         return (
           <GlobalSkeleton visible={showSkeleton}>
-            {showSkeleton ? renderSkeleton() : (
+            {showSkeleton ? renderSkeleton() : isSellersTab ? (
+              <FlatList
+                ref={flatListRef}
+                data={sellers}
+                renderItem={renderSellerItem}
+                keyExtractor={item => item._id}
+                contentContainerStyle={styles.listContent}
+                ListEmptyComponent={renderEmptySellers}
+                showsVerticalScrollIndicator={false}
+                onRefresh={refetchSellers}
+                refreshing={isSellersFetching}
+                onScroll={handleScroll}
+                scrollEventThrottle={16}
+              />
+            ) : (
               <FlatList
                 ref={flatListRef}
                 data={sortedProducts}
@@ -220,7 +316,7 @@ const ProductList = ({ route, navigation }) => {
         );
       })()}
 
-      {/* BOUTON SCROLL TO TOP */}
+      {/* SCROLL TO TOP BUTTON */}
       <Animated.View style={[styles.scrollTopBtn, { opacity: scrollTopOpacity }]} pointerEvents={showScrollTop ? 'auto' : 'none'}>
         <TouchableOpacity onPress={scrollToTop} style={styles.scrollTopInner}>
           <MaterialCommunityIcons name="chevron-up" size={24} color={THEME.COLORS.deepAsphalt} />
@@ -259,33 +355,12 @@ const styles = StyleSheet.create({
     fontWeight: THEME.FONTS.weights.bold,
     color: THEME.COLORS.textPrimary,
   },
-  searchBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: THEME.BORDERS.radius.lg,
-    paddingHorizontal: THEME.SPACING.md,
-    height: 48,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-  },
-  searchInput: {
-    flex: 1,
-    marginLeft: THEME.SPACING.sm,
-    color: THEME.COLORS.textPrimary,
-    fontSize: THEME.FONTS.sizes.body,
-  },
   listContent: {
     paddingHorizontal: THEME.SPACING.xl,
     paddingBottom: THEME.SPACING.xxl,
   },
   columnWrapper: {
     justifyContent: 'space-between',
-  },
-  center: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
   },
   skeletonGrid: {
     flexDirection: 'row',
@@ -308,19 +383,6 @@ const styles = StyleSheet.create({
     fontSize: THEME.FONTS.sizes.body,
     color: THEME.COLORS.textSecondary,
     marginTop: THEME.SPACING.md,
-  },
-  refreshButton: {
-    marginTop: THEME.SPACING.xl,
-    paddingHorizontal: THEME.SPACING.xl,
-    paddingVertical: THEME.SPACING.sm,
-    borderRadius: THEME.BORDERS.radius.pill,
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.primary,
-  },
-  refreshText: {
-    color: THEME.COLORS.primary,
-    fontWeight: THEME.FONTS.weights.bold,
   },
   scrollTopBtn: {
     position: 'absolute',
@@ -368,6 +430,107 @@ const styles = StyleSheet.create({
   sortTextActive: {
     color: THEME.COLORS.deepAsphalt,
     fontWeight: THEME.FONTS.weights.bold,
+  },
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: THEME.BORDERS.radius.pill,
+    padding: 4,
+    marginVertical: THEME.SPACING.sm,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: THEME.BORDERS.radius.pill,
+  },
+  tabButtonActive: {
+    backgroundColor: THEME.COLORS.primary,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.COLORS.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: THEME.COLORS.deepAsphalt,
+    fontWeight: '800',
+  },
+  // Seller styles
+  sellerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: THEME.SPACING.md,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+  },
+  sellerAvatarWrapper: {
+    position: 'relative',
+    marginRight: 14,
+  },
+  sellerAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.primary,
+  },
+  sellerAvatarPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(214, 175, 55, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.primary,
+  },
+  sellerVerifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    padding: 0.5,
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary,
+  },
+  sellerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  sellerRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sellerRatingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.COLORS.textSecondary,
+    marginLeft: 2,
+  },
+  sellerMetaSeparator: {
+    fontSize: 11,
+    color: THEME.COLORS.textTertiary,
+    marginHorizontal: 8,
+  },
+  sellerProductCount: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: '500',
   },
 });
 

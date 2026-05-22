@@ -63,7 +63,16 @@ const AdminBanners = ({ navigation }) => {
     animationType: 'none',
     order: '0',
     isActive: true,
-    image: null // Uri ou objet uri
+    image: null, // Uri ou objet uri (poster/standard)
+    layoutType: 'standard',
+    mediaType: 'image',
+    video: null, // Uri ou objet uri de la vidéo
+    displayDuration: '',
+    ctaType: 'none',
+    ctaUrl: '',
+    ctaRoute: '',
+    ctaRouteParams: '',
+    ctaLabel: 'Voir plus'
   });
 
   // Queries & Mutations
@@ -107,17 +116,49 @@ const AdminBanners = ({ navigation }) => {
     }
   };
 
+  // Sélection de vidéo
+  const handlePickVideo = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') {
+      dispatch(showToast({
+        type: 'warning',
+        title: 'Permission requise',
+        message: 'Nous avons besoin des accès pour charger une vidéo de bannière.'
+      }));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['videos'],
+      allowsEditing: true,
+      quality: 0.6
+    });
+
+    if (!result.canceled) {
+      setForm({ ...form, video: result.assets[0] });
+    }
+  };
+
   // Lancement du formulaire d'édition
   const handleStartEdit = (banner) => {
     setEditingBanner(banner);
     setForm({
-      title: banner.title,
-      body: banner.body,
+      title: banner.title || '',
+      body: banner.body || '',
       badge: banner.badge || 'NOUVEAU',
       animationType: banner.animationType || 'none',
       order: (banner.order || 0).toString(),
       isActive: banner.isActive,
-      image: banner.image ? { uri: banner.image } : null
+      image: banner.image ? { uri: banner.image } : null,
+      layoutType: banner.layoutType || 'standard',
+      mediaType: banner.mediaType || 'image',
+      video: banner.video ? { uri: banner.video } : null,
+      displayDuration: banner.displayDuration ? banner.displayDuration.toString() : '',
+      ctaType: banner.ctaType || 'none',
+      ctaUrl: banner.ctaUrl || '',
+      ctaRoute: banner.ctaRoute || '',
+      ctaRouteParams: banner.ctaRouteParams || '',
+      ctaLabel: banner.ctaLabel || 'Voir plus'
     });
     setModalVisible(true);
   };
@@ -132,21 +173,45 @@ const AdminBanners = ({ navigation }) => {
       animationType: 'none',
       order: '0',
       isActive: true,
-      image: null
+      image: null,
+      layoutType: 'standard',
+      mediaType: 'image',
+      video: null,
+      displayDuration: '',
+      ctaType: 'none',
+      ctaUrl: '',
+      ctaRoute: '',
+      ctaRouteParams: '',
+      ctaLabel: 'Voir plus'
     });
     setModalVisible(true);
   };
 
   // Envoi du formulaire
   const handleSubmit = async () => {
-    if (!form.title.trim() || !form.body.trim()) {
-      dispatch(showToast({ type: 'warning', title: 'Champs requis', message: 'Veuillez remplir le titre et le texte descriptif.' }));
+    if (form.mediaType === 'image' && (!form.title.trim() || !form.body.trim())) {
+      dispatch(showToast({ type: 'warning', title: 'Champs requis', message: 'Veuillez remplir le titre et le texte descriptif pour une bannière image.' }));
       return;
     }
 
-    if (!editingBanner && !form.image) {
+    if (form.mediaType === 'image' && !editingBanner && !form.image) {
       dispatch(showToast({ type: 'warning', title: 'Image manquante', message: 'L\'image de la bannière est obligatoire.' }));
       return;
+    }
+
+    if (form.mediaType === 'video' && !editingBanner && !form.video) {
+      dispatch(showToast({ type: 'warning', title: 'Vidéo manquante', message: 'La vidéo de la bannière est obligatoire.' }));
+      return;
+    }
+
+    // Validation JSON des paramètres si cta interne
+    if (form.ctaType === 'internal' && form.ctaRouteParams.trim()) {
+      try {
+        JSON.parse(form.ctaRouteParams);
+      } catch (e) {
+        dispatch(showToast({ type: 'warning', title: 'Format JSON invalide', message: 'Veuillez vérifier les paramètres JSON de redirection.' }));
+        return;
+      }
     }
 
     const formData = new FormData();
@@ -156,6 +221,14 @@ const AdminBanners = ({ navigation }) => {
     formData.append('animationType', form.animationType);
     formData.append('order', Number(form.order) || 0);
     formData.append('isActive', form.isActive);
+    formData.append('layoutType', form.layoutType);
+    formData.append('mediaType', form.mediaType);
+    formData.append('displayDuration', form.displayDuration ? Number(form.displayDuration) : '');
+    formData.append('ctaType', form.ctaType);
+    formData.append('ctaUrl', form.ctaUrl.trim());
+    formData.append('ctaRoute', form.ctaRoute.trim());
+    formData.append('ctaRouteParams', form.ctaRouteParams.trim());
+    formData.append('ctaLabel', form.ctaLabel.trim());
 
     // Si une nouvelle image a été sélectionnée (locale)
     if (form.image && form.image.uri && !form.image.uri.startsWith('http')) {
@@ -175,6 +248,30 @@ const AdminBanners = ({ navigation }) => {
       } else {
         formData.append('image', {
           uri: form.image.uri,
+          name: filename,
+          type
+        });
+      }
+    }
+
+    // Si une nouvelle vidéo a été sélectionnée (locale)
+    if (form.video && form.video.uri && !form.video.uri.startsWith('http')) {
+      const filename = form.video.uri.split('/').pop() || 'banner.mp4';
+      const match = /\.(\w+)$/.exec(filename);
+      const type = match ? `video/${match[1]}` : `video/mp4`;
+
+      if (Platform.OS === 'web') {
+        try {
+          const res = await fetch(form.video.uri);
+          const blob = await res.blob();
+          formData.append('video', blob, filename);
+        } catch (err) {
+          console.error('[BANNERS] Web video conversion error:', err);
+          formData.append('video', { uri: form.video.uri, name: filename, type });
+        }
+      } else {
+        formData.append('video', {
+          uri: form.video.uri,
           name: filename,
           type
         });
@@ -238,12 +335,16 @@ const AdminBanners = ({ navigation }) => {
       </View>
 
       <View style={styles.cardBody}>
-        {item.image && (
+        {item.image ? (
           <Image source={{ uri: item.image }} style={styles.cardImage} resizeMode="cover" />
-        )}
+        ) : item.video ? (
+          <View style={[styles.cardImage, { backgroundColor: 'rgba(255,255,255,0.05)', justifyContent: 'center', alignItems: 'center' }]}>
+            <Ionicons name="videocam" size={24} color={THEME.COLORS.primary} />
+          </View>
+        ) : null}
         <View style={styles.cardDetails}>
-          <Text style={styles.cardTitle} numberOfLines={1}>{item.title}</Text>
-          <Text style={styles.cardBodyText} numberOfLines={2}>{item.body}</Text>
+          <Text style={styles.cardTitle} numberOfLines={1}>{item.title || '(Sans titre)'}</Text>
+          <Text style={styles.cardBodyText} numberOfLines={2}>{item.body || '(Sans description)'}</Text>
           <View style={styles.cardMeta}>
             <View style={[styles.metaPill, { backgroundColor: 'rgba(212,175,55,0.1)' }]}>
               <Text style={styles.metaText}>{getAnimationLabel(item.animationType)}</Text>
@@ -251,6 +352,21 @@ const AdminBanners = ({ navigation }) => {
             <View style={styles.metaPill}>
               <Text style={styles.metaText}>Ordre : {item.order}</Text>
             </View>
+            <View style={[styles.metaPill, { backgroundColor: item.layoutType === 'background' ? 'rgba(0,180,255,0.1)' : 'rgba(255,255,255,0.05)' }]}>
+              <Text style={[styles.metaText, item.layoutType === 'background' && { color: '#00b4ff' }]}>
+                {item.layoutType === 'background' ? 'Cover' : 'Standard'}
+              </Text>
+            </View>
+            <View style={[styles.metaPill, { backgroundColor: item.mediaType === 'video' ? 'rgba(255,0,128,0.1)' : 'rgba(255,255,255,0.05)' }]}>
+              <Text style={[styles.metaText, item.mediaType === 'video' && { color: '#ff0080' }]}>
+                {item.mediaType === 'video' ? 'Vidéo' : 'Image'}
+              </Text>
+            </View>
+            {item.displayDuration ? (
+              <View style={styles.metaPill}>
+                <Text style={styles.metaText}>{item.displayDuration}s</Text>
+              </View>
+            ) : null}
           </View>
         </View>
       </View>
@@ -336,27 +452,110 @@ const AdminBanners = ({ navigation }) => {
 
             <ScrollView contentContainerStyle={styles.modalScroll} showsVerticalScrollIndicator={false}>
               
-              {/* IMAGE PICKER */}
-              <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickImage}>
-                {form.image ? (
-                  <View style={styles.imageSelectedContainer}>
-                    <Image source={{ uri: form.image.uri }} style={styles.imagePreview} />
-                    <View style={styles.changeImageOverlay}>
-                      <Ionicons name="camera-outline" size={24} color="#FFF" />
-                      <Text style={styles.changeImageText}>Changer l'image</Text>
-                    </View>
-                  </View>
-                ) : (
-                  <View style={styles.imagePlaceholder}>
-                    <Ionicons name="image-outline" size={40} color={THEME.COLORS.textSecondary} />
-                    <Text style={styles.imagePlaceholderText}>Sélectionner une photo *</Text>
-                    <Text style={styles.imagePlaceholderSubText}>Recommandé format 16:9</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
+              {/* DISPOSITION LAYOUT */}
+              <Text style={styles.inputLabel}>Disposition de la Bannière</Text>
+              <View style={styles.tabContainer}>
+                {[{ id: 'standard', label: 'Standard' }, { id: 'background', label: 'Cover Arrière-plan' }].map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => setForm({ ...form, layoutType: item.id })}
+                    style={[styles.tabButton, form.layoutType === item.id ? styles.tabButtonActive : styles.tabButtonInactive]}
+                  >
+                    <Text style={[styles.tabButtonText, form.layoutType === item.id ? styles.tabButtonTextActive : styles.tabButtonTextInactive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* MEDIA TYPE */}
+              <Text style={styles.inputLabel}>Type de Média</Text>
+              <View style={styles.tabContainer}>
+                {[{ id: 'image', label: '📷 Image' }, { id: 'video', label: '🎥 Vidéo' }].map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => setForm({ ...form, mediaType: item.id })}
+                    style={[styles.tabButton, form.mediaType === item.id ? styles.tabButtonActive : styles.tabButtonInactive]}
+                  >
+                    <Text style={[styles.tabButtonText, form.mediaType === item.id ? styles.tabButtonTextActive : styles.tabButtonTextInactive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {/* PICKER(S) CONDITIONNEL(S) */}
+              {form.mediaType === 'image' ? (
+                <View>
+                  <Text style={styles.inputLabel}>Image de la Bannière *</Text>
+                  <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickImage}>
+                    {form.image ? (
+                      <View style={styles.imageSelectedContainer}>
+                        <Image source={{ uri: form.image.uri }} style={styles.imagePreview} />
+                        <View style={styles.changeImageOverlay}>
+                          <Ionicons name="camera-outline" size={24} color="#FFF" />
+                          <Text style={styles.changeImageText}>Changer l'image</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="image-outline" size={40} color={THEME.COLORS.textSecondary} />
+                        <Text style={styles.imagePlaceholderText}>Sélectionner une photo *</Text>
+                        <Text style={styles.imagePlaceholderSubText}>Recommandé format 16:9</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              ) : (
+                <View>
+                  <Text style={styles.inputLabel}>Vidéo de la Bannière *</Text>
+                  <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickVideo}>
+                    {form.video ? (
+                      <View style={styles.imageSelectedContainer}>
+                        {Platform.OS === 'web' ? (
+                          <video src={form.video.uri} style={{ width: '100%', height: 160, borderRadius: 12, objectFit: 'cover' }} />
+                        ) : (
+                          <View style={styles.videoPlaceholderPreview}>
+                            <Ionicons name="videocam-outline" size={40} color={THEME.COLORS.primary} />
+                            <Text style={styles.videoSelectedText} numberOfLines={1}>Vidéo sélectionnée</Text>
+                          </View>
+                        )}
+                        <View style={styles.changeImageOverlay}>
+                          <Ionicons name="videocam-outline" size={24} color="#FFF" />
+                          <Text style={styles.changeImageText}>Changer la vidéo</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="videocam-outline" size={40} color={THEME.COLORS.textSecondary} />
+                        <Text style={styles.imagePlaceholderText}>Sélectionner une vidéo *</Text>
+                        <Text style={styles.imagePlaceholderSubText}>Format recommandé (court, boucle)</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+
+                  <Text style={styles.inputLabel}>Image de secours / Poster (Optionnel)</Text>
+                  <TouchableOpacity style={styles.imagePickerBtn} onPress={handlePickImage}>
+                    {form.image ? (
+                      <View style={styles.imageSelectedContainer}>
+                        <Image source={{ uri: form.image.uri }} style={styles.imagePreview} />
+                        <View style={styles.changeImageOverlay}>
+                          <Ionicons name="camera-outline" size={24} color="#FFF" />
+                          <Text style={styles.changeImageText}>Changer l'image</Text>
+                        </View>
+                      </View>
+                    ) : (
+                      <View style={styles.imagePlaceholder}>
+                        <Ionicons name="image-outline" size={40} color={THEME.COLORS.textSecondary} />
+                        <Text style={styles.imagePlaceholderText}>Sélectionner une photo de fallback</Text>
+                      </View>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              )}
 
               {/* INPUT TITRE */}
-              <Text style={styles.inputLabel}>Titre de la News * ({form.title.length}/80)</Text>
+              <Text style={styles.inputLabel}>Titre de la News {form.mediaType === 'image' && '*'} ({form.title.length}/80)</Text>
               <TextInput
                 value={form.title}
                 onChangeText={(val) => setForm({ ...form, title: val.slice(0, 80) })}
@@ -366,16 +565,107 @@ const AdminBanners = ({ navigation }) => {
               />
 
               {/* INPUT CORPS */}
-              <Text style={styles.inputLabel}>Corps de texte descriptif * ({form.body.length}/200)</Text>
+              <Text style={styles.inputLabel}>Corps de texte descriptif {form.mediaType === 'image' && '*'} ({form.body.length}/200)</Text>
               <TextInput
                 value={form.body}
                 onChangeText={(val) => setForm({ ...form, body: val.slice(0, 200) })}
-                placeholder="Ex: Faites vos courses sans bouger. Nos chauffeurs s'occupent de tout..."
+                placeholder="Ex: Faites vos courses sans bouger..."
                 placeholderTextColor="rgba(255,255,255,0.2)"
                 multiline={true}
                 numberOfLines={3}
                 style={[styles.textInput, styles.multilineInput]}
               />
+
+              {/* DURATION INPUT */}
+              <Text style={styles.inputLabel}>Durée d'affichage (en secondes, optionnel)</Text>
+              <TextInput
+                value={form.displayDuration}
+                onChangeText={(val) => setForm({ ...form, displayDuration: val.replace(/[^0-9.]/g, '') })}
+                placeholder="Ex: 6.5 (Défaut : 6.5)"
+                placeholderTextColor="rgba(255,255,255,0.2)"
+                keyboardType="numeric"
+                style={styles.textInput}
+              />
+
+              {/* ACTION / CTA REDIRECT SELECTOR */}
+              <Text style={styles.inputLabel}>Type d'action (Bouton CTA)</Text>
+              <View style={styles.tabContainer}>
+                {[{ id: 'none', label: 'Aucune' }, { id: 'external', label: 'Lien Externe' }, { id: 'internal', label: 'Page App' }].map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    onPress={() => setForm({ ...form, ctaType: item.id })}
+                    style={[styles.tabButton, form.ctaType === item.id ? styles.tabButtonActive : styles.tabButtonInactive]}
+                  >
+                    <Text style={[styles.tabButtonText, form.ctaType === item.id ? styles.tabButtonTextActive : styles.tabButtonTextInactive]}>
+                      {item.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {form.ctaType === 'external' && (
+                <View>
+                  <Text style={styles.inputLabel}>URL externe (Redirection Youtube, Site Web)*</Text>
+                  <TextInput
+                    value={form.ctaUrl}
+                    onChangeText={(val) => setForm({ ...form, ctaUrl: val })}
+                    placeholder="https://example.com/..."
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    autoCapitalize="none"
+                    style={styles.textInput}
+                  />
+                </View>
+              )}
+
+              {form.ctaType === 'internal' && (
+                <View>
+                  <Text style={styles.inputLabel}>Page de destination de l'application *</Text>
+                  <View style={styles.routeChips}>
+                    {['MarketplaceHub', 'ProductList', 'ProductDetails', 'Cart', 'Profile', 'Subscription'].map((route) => (
+                      <TouchableOpacity
+                        key={route}
+                        onPress={() => setForm({ ...form, ctaRoute: route })}
+                        style={[styles.routeChip, form.ctaRoute === route ? styles.routeChipActive : styles.routeChipInactive]}
+                      >
+                        <Text style={[styles.routeChipText, form.ctaRoute === route ? styles.routeChipTextActive : styles.routeChipTextInactive]}>
+                          {route}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <TextInput
+                    value={form.ctaRoute}
+                    onChangeText={(val) => setForm({ ...form, ctaRoute: val })}
+                    placeholder="Nom exact de la route (ex: ProductDetails)"
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    autoCapitalize="none"
+                    style={styles.textInput}
+                  />
+
+                  <Text style={styles.inputLabel}>Paramètres de redirection (JSON - ex: {"{\"productId\": \"12345\"}"})</Text>
+                  <TextInput
+                    value={form.ctaRouteParams}
+                    onChangeText={(val) => setForm({ ...form, ctaRouteParams: val })}
+                    placeholder='Ex: {"productId": "12345"}'
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    autoCapitalize="none"
+                    style={styles.textInput}
+                  />
+                </View>
+              )}
+
+              {form.ctaType !== 'none' && (
+                <View>
+                  <Text style={styles.inputLabel}>Libellé du bouton d'action (CTA)</Text>
+                  <TextInput
+                    value={form.ctaLabel}
+                    onChangeText={(val) => setForm({ ...form, ctaLabel: val })}
+                    placeholder="Ex: Voir plus"
+                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    style={styles.textInput}
+                  />
+                </View>
+              )}
 
               {/* CHIPS ANIMATION */}
               <Text style={styles.inputLabel}>Effets & Animations Spéciales</Text>
@@ -836,6 +1126,86 @@ const styles = StyleSheet.create({
     color: '#000',
     fontSize: 14,
     fontWeight: 'bold'
+  },
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: THEME.BORDERS.radius.lg,
+    padding: 4,
+    marginTop: THEME.SPACING.xs,
+    marginBottom: THEME.SPACING.md,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.08)'
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: THEME.SPACING.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: THEME.BORDERS.radius.md
+  },
+  tabButtonActive: {
+    backgroundColor: THEME.COLORS.primary
+  },
+  tabButtonInactive: {
+    backgroundColor: 'transparent'
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600'
+  },
+  tabButtonTextActive: {
+    color: '#000000',
+    fontWeight: 'bold'
+  },
+  tabButtonTextInactive: {
+    color: THEME.COLORS.textTertiary
+  },
+  routeChips: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    marginBottom: THEME.SPACING.xs,
+    marginTop: THEME.SPACING.xs,
+  },
+  routeChip: {
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: THEME.BORDERS.radius.pill,
+    marginRight: 6,
+    marginBottom: 6,
+    borderWidth: 1,
+  },
+  routeChipActive: {
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    borderColor: THEME.COLORS.primary,
+  },
+  routeChipInactive: {
+    backgroundColor: 'rgba(255,255,255,0.02)',
+    borderColor: 'rgba(255,255,255,0.1)',
+  },
+  routeChipText: {
+    fontSize: 11,
+  },
+  routeChipTextActive: {
+    color: THEME.COLORS.primary,
+    fontWeight: 'bold',
+  },
+  routeChipTextInactive: {
+    color: THEME.COLORS.textSecondary,
+  },
+  videoPlaceholderPreview: {
+    height: 160,
+    width: '100%',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  videoSelectedText: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 12,
+    marginTop: 6,
+    paddingHorizontal: 20
   }
 });
 

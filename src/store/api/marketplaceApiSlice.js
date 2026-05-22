@@ -143,6 +143,48 @@ export const marketplaceApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['Banner'],
     }),
+
+    // Vendeurs
+    getSellers: builder.query({
+      query: (params) => ({
+        url: '/users/sellers',
+        params,
+      }),
+      providesTags: ['User'],
+    }),
+    getSellerProfile: builder.query({
+      query: (id) => `/users/sellers/${id}`,
+      providesTags: ['User'],
+    }),
+
+    // Avis & Notes
+    getProductReviews: builder.query({
+      query: (productId) => `/reviews/product/${productId}`,
+      providesTags: (result, error, productId) => [{ type: 'Review', id: productId }, 'Review'],
+    }),
+    createReview: builder.mutation({
+      query: (body) => ({
+        url: '/reviews',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['Review', 'Product'],
+    }),
+    updateReview: builder.mutation({
+      query: ({ id, ...body }) => ({
+        url: `/reviews/${id}`,
+        method: 'PATCH',
+        body,
+      }),
+      invalidatesTags: ['Review', 'Product'],
+    }),
+    deleteReview: builder.mutation({
+      query: (id) => ({
+        url: `/reviews/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Review', 'Product'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -170,4 +212,10 @@ export const {
   useUpdateBannerMutation,
   useToggleBannerStatusMutation,
   useDeleteBannerMutation,
+  useGetSellersQuery,
+  useGetSellerProfileQuery,
+  useGetProductReviewsQuery,
+  useCreateReviewMutation,
+  useUpdateReviewMutation,
+  useDeleteReviewMutation,
 } = marketplaceApiSlice;

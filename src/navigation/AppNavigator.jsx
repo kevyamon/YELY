@@ -40,6 +40,8 @@ import TermsOfServiceScreen from '../screens/legal/TermsOfServiceScreen';
 import MarketplaceTabNavigator from './MarketplaceTabNavigator';
 import ProductList from '../screens/marketplace/ProductList';
 import ProductDetails from '../screens/marketplace/ProductDetails';
+import SellerProfile from '../screens/marketplace/SellerProfile';
+import ProductReviews from '../screens/marketplace/ProductReviews';
 import Cart from '../screens/marketplace/Cart';
 import Checkout from '../screens/marketplace/CheckoutScreen';
 import OrderTracking from '../screens/marketplace/OrderTracking';
@@ -247,6 +249,8 @@ const AppNavigator = () => {
             <Stack.Screen name="MarketplaceHub" component={MarketplaceTabNavigator} />
             <Stack.Screen name="ProductList" component={ProductList} />
             <Stack.Screen name="ProductDetails" component={ProductDetails} />
+            <Stack.Screen name="SellerProfile" component={SellerProfile} />
+            <Stack.Screen name="ProductReviews" component={ProductReviews} />
             <Stack.Screen name="Cart" component={Cart} />
             <Stack.Screen name="Checkout" component={Checkout} />
             <Stack.Screen name="OrderTracking" component={OrderTracking} />

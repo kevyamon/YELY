@@ -11,10 +11,14 @@ import {
   Dimensions, 
   Animated, 
   Platform,
-  Easing
+  Easing,
+  Linking,
+  Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useVideoPlayer, VideoView } from 'expo-video';
+import { useNavigation } from '@react-navigation/native';
 import { useGetBannersQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
@@ -472,11 +476,58 @@ const PulsingAura = () => {
 };
 
 // ==========================================
+// ==========================================
+// 🎥 COMPOSANT MULTI-PLATEFORME DE LECTURE VIDÉO
+// ==========================================
+const VideoMediaView = ({ videoSource, style }) => {
+  if (Platform.OS === 'web') {
+    return (
+      <video
+        src={videoSource}
+        autoPlay
+        loop
+        muted
+        playsInline
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          borderRadius: THEME.BORDERS.radius.xl
+        }}
+      />
+    );
+  }
+
+  // Hook expo-video pour mobile
+  const player = useVideoPlayer(videoSource, (playerInstance) => {
+    playerInstance.loop = true;
+    playerInstance.play();
+    playerInstance.muted = true;
+  });
+
+  return (
+    <VideoView
+      player={player}
+      style={style}
+      contentFit="cover"
+      nativeControls={false}
+      allowsFullscreen={false}
+      allowsPictureInPicture={false}
+    />
+  );
+};
+
 // 🚀 COMPOSANT PRINCIPAL DE LA BANNIÈRE CARROUSEL
 // ==========================================
-const MarketplaceBanner = ({ navigation }) => {
+const MarketplaceBanner = ({ navigation: propNavigation }) => {
   const { data: response, isLoading } = useGetBannersQuery();
   const slides = response?.data || response || [];
+  
+  const hookNavigation = useNavigation();
+  const navigation = propNavigation || hookNavigation;
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isPaused, setIsPaused] = useState(false);
@@ -493,14 +544,17 @@ const MarketplaceBanner = ({ navigation }) => {
     }
   }, [slides.length, currentIndex]);
 
-  // Lance l'intervalle de défilement de 6.5s
+  // Lance le timer récursif avec durée personnalisée
   useEffect(() => {
     if (slides.length <= 1 || isPaused) {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
       return;
     }
 
-    timerRef.current = setInterval(() => {
+    const activeSlide = slides[currentIndex];
+    const duration = activeSlide?.displayDuration ? Number(activeSlide.displayDuration) * 1000 : 6500;
+
+    timerRef.current = setTimeout(() => {
       if (slides.length === 0) return;
 
       // Transition fluide de sortie
@@ -539,12 +593,12 @@ const MarketplaceBanner = ({ navigation }) => {
           })
         ]).start();
       });
-    }, 6500);
+    }, duration);
 
     return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
+      if (timerRef.current) clearTimeout(timerRef.current);
     };
-  }, [slides.length, isPaused, fadeAnim, slideXAnim]);
+  }, [currentIndex, slides.length, isPaused, fadeAnim, slideXAnim]);
 
   // Si chargement ou aucune diapositive disponible
   if (isLoading || slides.length === 0) {
@@ -558,6 +612,9 @@ const MarketplaceBanner = ({ navigation }) => {
     return null;
   }
 
+  const isBackground = activeSlide.layoutType === 'background' || (!activeSlide.title?.trim() && !activeSlide.body?.trim());
+  const isVideo = activeSlide.mediaType === 'video';
+
   // Pause tactile/hover
   const handlePressIn = () => {
     setIsPaused(true);
@@ -565,6 +622,114 @@ const MarketplaceBanner = ({ navigation }) => {
 
   const handlePressOut = () => {
     setIsPaused(false);
+  };
+
+  const handleCtaPress = () => {
+    if (activeSlide.ctaType === 'external' && activeSlide.ctaUrl) {
+      Linking.openURL(activeSlide.ctaUrl).catch((err) =>
+        console.error("[CTA External Navigation] Failed to open URL:", err)
+      );
+    } else if (activeSlide.ctaType === 'internal' && activeSlide.ctaRoute) {
+      let params = {};
+      if (activeSlide.ctaRouteParams) {
+        try {
+          params = JSON.parse(activeSlide.ctaRouteParams);
+        } catch (e) {
+          console.warn("[CTA Internal Navigation] Failed to parse params:", e);
+        }
+      }
+      navigation.navigate(activeSlide.ctaRoute, params);
+    }
+  };
+
+  const renderBackgroundMedia = () => {
+    if (!isBackground) return null;
+    if (isVideo && activeSlide.video) {
+      return <VideoMediaView videoSource={activeSlide.video} style={StyleSheet.absoluteFill} />;
+    }
+    if (activeSlide.image) {
+      return (
+        <Image 
+          source={{ uri: activeSlide.image }} 
+          style={StyleSheet.absoluteFill} 
+          resizeMode="cover"
+        />
+      );
+    }
+    return null;
+  };
+
+  const renderSlideContent = () => {
+    if (isBackground) {
+      return (
+        <Animated.View style={[styles.slideContent, { opacity: fadeAnim, transform: [{ translateX: slideXAnim }] }]}>
+          <View style={styles.textContentBackground}>
+            {activeSlide.badge ? (
+              <View style={styles.badgeRowBackground}>
+                <Text style={styles.badgeTextBackground}>{activeSlide.badge}</Text>
+              </View>
+            ) : null}
+            {activeSlide.title ? (
+              <Text style={styles.titleTextBackground} numberOfLines={2}>
+                {activeSlide.title}
+              </Text>
+            ) : null}
+            {activeSlide.body ? (
+              <Text style={styles.bodyTextBackground} numberOfLines={2}>
+                {activeSlide.body}
+              </Text>
+            ) : null}
+          </View>
+
+          {activeSlide.ctaType !== 'none' && (
+            <TouchableOpacity style={styles.ctaButtonBackground} onPress={handleCtaPress} activeOpacity={0.8}>
+              <Text style={styles.ctaButtonTextBackground}>{activeSlide.ctaLabel || 'Voir plus'}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={16} color="#000000" />
+            </TouchableOpacity>
+          )}
+        </Animated.View>
+      );
+    }
+
+    return (
+      <Animated.View style={[styles.slideContent, { opacity: fadeAnim, transform: [{ translateX: slideXAnim }] }]}>
+        <View style={styles.textContent}>
+          {activeSlide.badge ? (
+            <View style={styles.badgeRow}>
+              <Text style={styles.badgeText}>{activeSlide.badge}</Text>
+            </View>
+          ) : null}
+          {activeSlide.title ? (
+            <Text style={styles.titleText} numberOfLines={2}>
+              {activeSlide.title}
+            </Text>
+          ) : null}
+          {activeSlide.body ? (
+            <Text style={styles.bodyText} numberOfLines={2}>
+              {activeSlide.body}
+            </Text>
+          ) : null}
+          {activeSlide.ctaType !== 'none' && (
+            <TouchableOpacity style={styles.ctaButtonStandard} onPress={handleCtaPress} activeOpacity={0.8}>
+              <Text style={styles.ctaButtonTextStandard}>{activeSlide.ctaLabel || 'Voir plus'}</Text>
+              <MaterialCommunityIcons name="chevron-right" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          )}
+        </View>
+
+        <View style={styles.imageWrapper}>
+          {isVideo && activeSlide.video ? (
+            <VideoMediaView videoSource={activeSlide.video} style={styles.bannerImage} />
+          ) : activeSlide.image ? (
+            <Image 
+              source={{ uri: activeSlide.image }}
+              style={styles.bannerImage}
+              resizeMode="cover"
+            />
+          ) : null}
+        </View>
+      </Animated.View>
+    );
   };
 
   // Rendu de l'animation associée au slide (Fallback intelligent si type non spécifié)
@@ -576,19 +741,19 @@ const MarketplaceBanner = ({ navigation }) => {
           return <RisingBubbles />;
         case 'confetti':
           return <FallingConfetti />;
-      case 'stars':
-        return <TwinklingStars />;
-      case 'balloons':
-        return <FloatingBalloons />;
-      case 'meteors':
-        return <MeteorShower />;
-      case 'fireflies':
-        return <MagicalFireflies />;
-      case 'aurora':
-        return <PulsingAura />;
-      default:
-        return null;
-    }
+        case 'stars':
+          return <TwinklingStars />;
+        case 'balloons':
+          return <FloatingBalloons />;
+        case 'meteors':
+          return <MeteorShower />;
+        case 'fireflies':
+          return <MagicalFireflies />;
+        case 'aurora':
+          return <PulsingAura />;
+        default:
+          return null;
+      }
     } catch (e) {
       console.warn("Failed to render micro animation:", e);
       return null;
@@ -607,8 +772,10 @@ const MarketplaceBanner = ({ navigation }) => {
       } : {})}
       style={styles.bannerContainer}
     >
+      {renderBackgroundMedia()}
+
       <LinearGradient
-        colors={['#F5D142', '#EBB02D']}
+        colors={isBackground ? ['rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.7)'] : ['#F5D142', '#EBB02D']}
         style={styles.gradientContainer}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -617,28 +784,7 @@ const MarketplaceBanner = ({ navigation }) => {
         {renderMicroAnimation()}
 
         {/* Diapositive animée */}
-        <Animated.View style={[styles.slideContent, { opacity: fadeAnim, transform: [{ translateX: slideXAnim }] }]}>
-          <View style={styles.textContent}>
-            <View style={styles.badgeRow}>
-              <Text style={styles.badgeText}>{activeSlide.badge}</Text>
-            </View>
-            <Text style={styles.titleText} numberOfLines={2}>
-              {activeSlide.title}
-            </Text>
-            <Text style={styles.bodyText} numberOfLines={2}>
-              {activeSlide.body}
-            </Text>
-          </View>
-
-          {/* Composition Image Premium */}
-          <View style={styles.imageWrapper}>
-            <Animated.Image 
-              source={{ uri: activeSlide.image }}
-              style={styles.bannerImage}
-              resizeMode="cover"
-            />
-          </View>
-        </Animated.View>
+        {renderSlideContent()}
 
         {/* Indicateurs de diapositives (dots) si plusieurs slides */}
         {slides.length > 1 && (
@@ -648,7 +794,8 @@ const MarketplaceBanner = ({ navigation }) => {
                 key={index} 
                 style={[
                   styles.dot, 
-                  currentIndex === index ? styles.dotActive : styles.dotInactive
+                  currentIndex === index ? styles.dotActive : styles.dotInactive,
+                  isBackground && { backgroundColor: currentIndex === index ? '#FFFFFF' : 'rgba(255, 255, 255, 0.4)' }
                 ]} 
               />
             ))}
@@ -667,7 +814,8 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     backgroundColor: '#F5D142',
     marginBottom: THEME.SPACING.md,
-    ...THEME.SHADOWS.strong
+    ...THEME.SHADOWS.strong,
+    position: 'relative'
   },
   gradientContainer: {
     flex: 1,
@@ -688,9 +836,23 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     zIndex: 2,
   },
+  textContentBackground: {
+    flex: 1,
+    paddingRight: THEME.SPACING.md,
+    justifyContent: 'center',
+    zIndex: 2,
+  },
   badgeRow: {
     alignSelf: 'flex-start',
     backgroundColor: '#000000',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: THEME.BORDERS.radius.sm,
+    marginBottom: THEME.SPACING.xs,
+  },
+  badgeRowBackground: {
+    alignSelf: 'flex-start',
+    backgroundColor: '#F5D142',
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: THEME.BORDERS.radius.sm,
@@ -703,17 +865,79 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase',
     letterSpacing: 0.5,
   },
+  badgeTextBackground: {
+    color: '#000000',
+    fontSize: 9,
+    fontWeight: 'bold',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
   titleText: {
     fontSize: 18,
     fontWeight: '800',
     color: '#0A0A0A',
     marginBottom: 2,
   },
+  titleTextBackground: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: '#FFFFFF',
+    marginBottom: 2,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   bodyText: {
     fontSize: 12,
     color: '#2A2A2A',
     lineHeight: 16,
     fontWeight: '500',
+  },
+  bodyTextBackground: {
+    fontSize: 12,
+    color: 'rgba(255, 255, 255, 0.9)',
+    lineHeight: 16,
+    fontWeight: '500',
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
+  ctaButtonBackground: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: THEME.BORDERS.radius.pill,
+    zIndex: 3,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+  ctaButtonTextBackground: {
+    color: '#000000',
+    fontSize: 11,
+    fontWeight: 'bold',
+    marginRight: 2,
+  },
+  ctaButtonStandard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#000000',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: THEME.BORDERS.radius.pill,
+    alignSelf: 'flex-start',
+    marginTop: THEME.SPACING.xs,
+    zIndex: 3,
+  },
+  ctaButtonTextStandard: {
+    color: '#FFFFFF',
+    fontSize: 10,
+    fontWeight: 'bold',
+    marginRight: 2,
   },
   imageWrapper: {
     width: 85,
@@ -724,6 +948,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 2,
+    position: 'relative'
   },
   bannerImage: {
     width: '100%',
@@ -741,6 +966,7 @@ const styles = StyleSheet.create({
     height: 4,
     borderRadius: 2,
     marginHorizontal: 3,
+    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   dotActive: {
     width: 14,
@@ -748,7 +974,6 @@ const styles = StyleSheet.create({
   },
   dotInactive: {
     width: 4,
-    backgroundColor: 'rgba(0, 0, 0, 0.2)',
   },
   
   // Styles des animations

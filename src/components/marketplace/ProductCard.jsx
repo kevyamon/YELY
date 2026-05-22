@@ -10,13 +10,47 @@ import {
   TouchableOpacity, 
   Image, 
   useWindowDimensions,
-  Platform
+  Platform,
+  Animated,
+  Easing
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 import { addToCart, removeFromCart, updateQuantity, selectCartItems } from '../../store/slices/cartSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
+
+const AnimatedStar = () => {
+  const rotateAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const startRotation = () => {
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => {
+        rotateAnim.setValue(0);
+      });
+    };
+
+    startRotation();
+    const interval = setInterval(startRotation, 160000);
+    return () => clearInterval(interval);
+  }, [rotateAnim]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <MaterialCommunityIcons name="star" size={12} color={THEME.COLORS.primary} />
+    </Animated.View>
+  );
+};
 
 const ProductCard = ({ product, onPress, cardWidth }) => {
   const { width } = useWindowDimensions();
@@ -106,6 +140,13 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
         <Text style={styles.price}>{product.price.toLocaleString()} FCFA</Text>
         <Text style={styles.name} numberOfLines={1}>{product.name}</Text>
         
+        <View style={styles.cardRatingRow}>
+          <Text style={styles.cardRatingVal}>
+            {product.rating ? product.rating.toFixed(1) : '5.0'}
+          </Text>
+          <AnimatedStar />
+        </View>
+        
         {product.category === 'Food' ? (
           <Text style={[styles.stockTextMini, { color: '#10B981' }]}>Toujours dispo</Text>
         ) : isSoldOut ? (
@@ -118,10 +159,6 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
         
         <View style={styles.footer}>
           <Text style={styles.seller} numberOfLines={1}>{product.seller?.name || 'Vendeur'}</Text>
-          <View style={styles.ratingContainer}>
-            <MaterialCommunityIcons name="star" size={12} color={THEME.COLORS.primary} />
-            <Text style={styles.rating}>{product.rating || '5.0'}</Text>
-          </View>
         </View>
       </View>
       
@@ -163,8 +200,8 @@ const styles = StyleSheet.create({
   stockTextMini: { fontSize: 8.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.5, marginTop: 1, marginBottom: 4 },
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 2 },
   seller: { fontSize: 9, color: THEME.COLORS.textTertiary, flex: 1 },
-  ratingContainer: { flexDirection: 'row', alignItems: 'center' },
-  rating: { fontSize: 9, color: THEME.COLORS.textSecondary, marginLeft: 2 },
+  cardRatingRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 2, gap: 3 },
+  cardRatingVal: { fontSize: 9.5, color: THEME.COLORS.textSecondary, fontWeight: '700' },
   
   actionContainer: { position: 'absolute', bottom: 8, right: 8 },
   addButton: { 

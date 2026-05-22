@@ -55,6 +55,7 @@ const linking = {
       MarketplaceHub: 'marketplace',
       ProductList: 'products',
       ProductDetails: 'product/:productId',
+      SellerProfile: 'seller/:sellerId',
       Cart: 'cart',
       Checkout: 'checkout',
       OrderTracking: 'order-tracking/:orderId',

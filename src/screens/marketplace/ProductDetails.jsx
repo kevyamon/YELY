@@ -12,7 +12,9 @@ import {
   TouchableOpacity, 
   StatusBar,
   useColorScheme,
-  ScrollView
+  ScrollView,
+  Animated,
+  Easing
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -32,6 +34,38 @@ import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton
 
 const { width, height } = Dimensions.get('window');
 const IMG_HEIGHT = height * 0.44;
+
+const AnimatedStar = () => {
+  const rotateAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const startRotation = () => {
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => {
+        rotateAnim.setValue(0);
+      });
+    };
+
+    startRotation();
+    const interval = setInterval(startRotation, 160000);
+    return () => clearInterval(interval);
+  }, [rotateAnim]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <MaterialCommunityIcons name="star" size={22} color={THEME.COLORS.primary} />
+    </Animated.View>
+  );
+};
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -359,13 +393,20 @@ const ProductDetails = ({ route, navigation }) => {
               <Text style={styles.specValue} numberOfLines={1}>Express dispo</Text>
             </GlassCard>
 
-            <GlassCard style={styles.specCard} padding={14}>
-              <MaterialCommunityIcons name="star-circle-outline" size={22} color={THEME.COLORS.primary} />
-              <Text style={styles.specLabel}>Évaluation</Text>
-              <Text style={styles.specValue} numberOfLines={1}>
-                {product.rating ? `${product.rating} / 5` : 'Excellente'}
-              </Text>
-            </GlassCard>
+            <TouchableOpacity 
+              style={styles.specCardTouch} 
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('ProductReviews', { productId: product._id, productName: product.name })}
+            >
+              <GlassCard style={styles.specCardContainer} padding={14}>
+                <AnimatedStar />
+                <Text style={styles.specLabel}>Évaluation</Text>
+                <Text style={styles.specValue} numberOfLines={1}>
+                  {product.rating ? `${product.rating.toFixed(1)} / 5` : '5.0 / 5'}
+                </Text>
+                <Text style={styles.specReviewsLink}>Lire les avis ({product.numReviews || 0})</Text>
+              </GlassCard>
+            </TouchableOpacity>
           </View>
 
 
@@ -395,23 +436,43 @@ const ProductDetails = ({ route, navigation }) => {
           </GlassCard>
 
           {/* CARD VENDEUR / PARTENAIRE */}
-          <GlassCard style={styles.sellerSection} padding={16}>
-            <View style={styles.sellerInfo}>
-              <View style={styles.sellerAvatarContainer}>
-                <View style={styles.sellerAvatar}>
-                   <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+          {product.seller && (
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => navigation.navigate('SellerProfile', { sellerId: product.seller._id })}
+            >
+              <GlassCard style={styles.sellerSection} padding={16}>
+                <View style={styles.sellerInfoRow}>
+                  <View style={styles.sellerAvatarContainer}>
+                    {product.seller.profilePicture ? (
+                      <Image source={{ uri: product.seller.profilePicture }} style={styles.sellerAvatarImage} />
+                    ) : (
+                      <View style={styles.sellerAvatar}>
+                         <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+                      </View>
+                    )}
+                    <View style={styles.verifiedBadge}>
+                      <MaterialCommunityIcons name="check-decagram" size={12} color="#D4AF37" />
+                    </View>
+                  </View>
+                  
+                  <View style={styles.sellerDetails}>
+                    <Text style={styles.sellerName}>{product.seller.name || 'Boutique Yély'}</Text>
+                    <View style={styles.sellerRatingRow}>
+                      <Ionicons name="star" size={11} color="#D4AF37" style={{ marginRight: 2 }} />
+                      <Text style={styles.sellerRatingVal}>
+                        {product.seller.rating ? product.seller.rating.toFixed(1) : '5.0'} / 5
+                      </Text>
+                      <Text style={styles.sellerRatingSeparator}>•</Text>
+                      <Text style={styles.sellerActionText}>Visiter la boutique</Text>
+                    </View>
+                  </View>
+
+                  <MaterialCommunityIcons name="chevron-right" size={24} color={THEME.COLORS.textTertiary} />
                 </View>
-                <View style={styles.verifiedBadge}>
-                  <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-                </View>
-              </View>
-              
-              <View style={styles.sellerDetails}>
-                <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
-                <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
-              </View>
-            </View>
-          </GlassCard>
+              </GlassCard>
+            </TouchableOpacity>
+          )}
         </View>
       </ScrollView>
 
@@ -618,8 +679,21 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.05)',
     marginBottom: 10,
   },
+  specCardTouch: {
+    width: '48.5%',
+    marginBottom: 10,
+  },
+  specCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
   specLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, marginTop: 6, fontWeight: '500' },
   specValue: { fontSize: 13, fontWeight: '800', color: THEME.COLORS.textPrimary, marginTop: 2 },
+  specReviewsLink: { fontSize: 9.5, color: THEME.COLORS.primary, fontWeight: '800', marginTop: 4, textTransform: 'uppercase' },
   
   // Trust Badges Ticker
   trustRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', marginBottom: 22 },
@@ -646,7 +720,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(255,255,255,0.04)',
     marginBottom: 10 
   },
-  sellerInfo: { flexDirection: 'row', alignItems: 'center' },
+  sellerInfoRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   sellerAvatarContainer: { position: 'relative', marginRight: 15 },
   sellerAvatar: { 
     width: 44, 
@@ -658,23 +732,32 @@ const styles = StyleSheet.create({
     borderWidth: 1, 
     borderColor: 'rgba(212,175,55,0.3)' 
   },
+  sellerAvatarImage: {
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    borderWidth: 1, 
+    borderColor: 'rgba(212,175,55,0.3)' 
+  },
   verifiedBadge: { 
     position: 'absolute', 
     bottom: -2, 
     right: -2, 
-    backgroundColor: THEME.COLORS.primary, 
+    backgroundColor: '#000000', 
     width: 16, 
     height: 16, 
     borderRadius: 8, 
     justifyContent: 'center', 
     alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.background
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)'
   },
   sellerDetails: { flex: 1 },
   sellerName: { fontSize: 15, fontWeight: '800', color: THEME.COLORS.textPrimary },
-  sellerStatus: { fontSize: 11.5, color: '#2ecc71', fontWeight: '600', marginTop: 1 },
-  sellerActionBtn: { padding: 4 },
+  sellerRatingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  sellerRatingVal: { fontSize: 11, color: THEME.COLORS.textSecondary, fontWeight: '700' },
+  sellerRatingSeparator: { fontSize: 11, color: THEME.COLORS.textTertiary, marginHorizontal: 6 },
+  sellerActionText: { fontSize: 11, color: THEME.COLORS.primary, fontWeight: '700' },
 
   // Floating Purchase Footer Acrylique capsule
   floatingFooter: { 
