@@ -82,7 +82,9 @@ const SellerProfile = ({ route, navigation }) => {
 
   const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
-  const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
+  const baseUrl = ENV.API_URL && (ENV.API_URL.includes('localhost') || ENV.API_URL.includes('192.168.'))
+    ? ENV.API_URL.replace('/api/v1', '')
+    : 'https://yely-amber.vercel.app';
   const correctedShareUrl = `${baseUrl}/shop/${seller?.shopSlug || sellerId}`;
   const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(correctedShareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
   const shareUrlWithBuster = useMemo(() => correctedShareUrl ? `${correctedShareUrl}?v=${Date.now()}` : '', [correctedShareUrl]);

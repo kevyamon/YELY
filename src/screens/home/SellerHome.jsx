@@ -3,12 +3,12 @@
 // CSCSM Level: Bank Grade
 
 import React, { memo, useState, useRef, useMemo } from 'react';
-import { 
-  ScrollView, 
-  StyleSheet, 
-  View, 
-  Text, 
-  TouchableOpacity, 
+import {
+  ScrollView,
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
   ActivityIndicator,
   Modal,
   Image,
@@ -42,7 +42,9 @@ const SellerHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
-  const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
+  const baseUrl = ENV.API_URL && (ENV.API_URL.includes('localhost') || ENV.API_URL.includes('192.168.'))
+    ? ENV.API_URL.replace('/api/v1', '')
+    : 'https://yely-amber.vercel.app';
   const shareUrl = user ? `${baseUrl}/shop/${user.shopSlug || user._id}` : '';
   const qrCodeUrl = user ? `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250` : '';
   const shareUrlWithBuster = useMemo(() => shareUrl ? `${shareUrl}?v=${Date.now()}` : '', [shareUrl]);
@@ -63,7 +65,7 @@ const SellerHome = ({ navigation }) => {
             // User cancelled
           }
         }
-        
+
         if (!shared) {
           if (navigator.clipboard && navigator.clipboard.writeText) {
             await navigator.clipboard.writeText(shareUrl);
@@ -128,7 +130,7 @@ const SellerHome = ({ navigation }) => {
       }));
     }
   };
-  
+
   // ─── GEOLOCATION LOGIC ───
   const { location } = useGeolocation();
   const [currentAddress, setCurrentAddress] = useState(lastKnownAddress || 'Recherche...');
@@ -152,11 +154,11 @@ const SellerHome = ({ navigation }) => {
       }
 
       if (shouldFetch) {
-        lastGeocodedLocationRef.current = { 
-          latitude: location.latitude, 
-          longitude: location.longitude 
+        lastGeocodedLocationRef.current = {
+          latitude: location.latitude,
+          longitude: location.longitude
         };
-        
+
         MapService.getAddressFromCoordinates(location.latitude, location.longitude)
           .then(addr => {
             setCurrentAddress(addr);
@@ -166,7 +168,7 @@ const SellerHome = ({ navigation }) => {
       }
     }
   }, [location, dispatch]);
-  
+
   // ─── DATA FETCHING ───
   const { data: productsData, isLoading: isLoadingProducts } = useGetMyProductsQuery();
   const { data: statsData, isLoading: isLoadingStats } = useGetLedgerStatsQuery();
@@ -187,7 +189,7 @@ const SellerHome = ({ navigation }) => {
 
   return (
     <View style={styles.screenWrapper}>
-      <SmartHeader 
+      <SmartHeader
         scrollY={scrollY}
         address={currentAddress}
         userName={user?.name?.split(' ')[0] || "Vendeur"}
@@ -196,7 +198,7 @@ const SellerHome = ({ navigation }) => {
         onSearchPress={handleGoToTaxi}
       />
 
-      <Animated.ScrollView 
+      <Animated.ScrollView
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
         onScroll={scrollHandler}
@@ -232,8 +234,8 @@ const SellerHome = ({ navigation }) => {
 
         {/* Promotion / Share Shop Card */}
         {user && (
-          <TouchableOpacity 
-            style={styles.shareShopCard} 
+          <TouchableOpacity
+            style={styles.shareShopCard}
             onPress={() => setIsShareModalVisible(true)}
             activeOpacity={0.8}
           >
@@ -271,16 +273,16 @@ const SellerHome = ({ navigation }) => {
         <View style={styles.quickActionsContainer}>
           <Text style={styles.sectionTitle}>Actions rapides</Text>
           <View style={styles.actionsGrid}>
-             <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
-               <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
-               <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
-             </TouchableOpacity>
+            <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
+              <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
+              <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
+            </TouchableOpacity>
 
-             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
-               <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
-               <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
-             </TouchableOpacity>
-            
+            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
+              <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
+              <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
+            </TouchableOpacity>
+
             <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
               <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
               <Text numberOfLines={1} style={styles.smallActionLabel}>Taxi</Text>
@@ -288,8 +290,8 @@ const SellerHome = ({ navigation }) => {
           </View>
         </View>
 
-        <GoldButton 
-          title="ACCÉDER AU MARCHÉ" 
+        <GoldButton
+          title="ACCÉDER AU MARCHÉ"
           icon="cart"
           onPress={handleGoToMarketplace}
           style={styles.bottomBtn}
@@ -304,7 +306,7 @@ const SellerHome = ({ navigation }) => {
         animationType="fade"
         onRequestClose={() => setIsShareModalVisible(false)}
       >
-        <TouchableOpacity 
+        <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
           onPress={() => setIsShareModalVisible(false)}
@@ -436,7 +438,7 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
     marginTop: 2,
   },
-  
+
   // Modale de partage
   modalOverlay: {
     flex: 1,
