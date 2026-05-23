@@ -49,8 +49,8 @@ const SellerProfile = ({ route, navigation }) => {
 
   const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
-  const shareUrl = `https://yely-backend-yzw4.onrender.com/api/v1/users/sellers/${sellerId}/share`;
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(shareUrl)}`;
+  const shareUrl = `https://yely-backend-yzw4.onrender.com/shop/${seller?.shopSlug || sellerId}`;
+  const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
 
   const handleShare = async () => {
     try {

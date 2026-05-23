@@ -41,8 +41,8 @@ const SellerHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
-  const shareUrl = user ? `https://yely-backend-yzw4.onrender.com/api/v1/users/sellers/${user._id}/share` : '';
-  const qrCodeUrl = user ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(shareUrl)}` : '';
+  const shareUrl = user ? `https://yely-backend-yzw4.onrender.com/shop/${user.shopSlug || user._id}` : '';
+  const qrCodeUrl = user ? `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250` : '';
 
   const handleShare = async () => {
     try {
