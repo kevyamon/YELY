@@ -16,9 +16,10 @@ import {
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { useGetSellerProfileQuery, useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
+import { showToast } from '../../store/slices/uiSlice';
 import ProductCard from '../../components/marketplace/ProductCard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import THEME from '../../theme/theme';
@@ -30,6 +31,7 @@ const SellerProfile = ({ route, navigation }) => {
   const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   
+  const dispatch = useDispatch();
   const { sellerId } = route.params || {};
   const currentUser = useSelector(selectCurrentUser);
   const isOwnProfile = currentUser && currentUser._id === sellerId;
@@ -52,11 +54,45 @@ const SellerProfile = ({ route, navigation }) => {
 
   const handleShare = async () => {
     try {
-      await Share.share({
-        message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrl}`,
-        url: shareUrl,
-        title: `Boutique de ${seller?.name || 'Vendeur'}`
-      });
+      let shared = false;
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `Boutique de ${seller?.name || 'Vendeur'}`,
+              text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
+              url: shareUrl,
+            });
+            shared = true;
+          } catch (e) {
+            // L'utilisateur a annulé ou erreur
+          }
+        }
+        
+        if (!shared) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareUrl);
+          } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+          }
+          dispatch(showToast({
+            type: 'success',
+            title: 'Lien copié',
+            message: 'Le lien de votre boutique a été copié dans le presse-papier.'
+          }));
+        }
+      } else {
+        await Share.share({
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrl}`,
+          url: shareUrl,
+          title: `Boutique de ${seller?.name || 'Vendeur'}`
+        });
+      }
     } catch (error) {
       console.warn('Share error:', error.message);
     }

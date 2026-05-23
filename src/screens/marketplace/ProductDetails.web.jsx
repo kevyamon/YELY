@@ -465,23 +465,44 @@ const ProductDetails = ({ route, navigation }) => {
                 </GlassCard>
 
                 {/* Vendeur Certifié */}
-                <GlassCard style={styles.sellerSection} padding={16}>
-                  <View style={styles.sellerInfo}>
-                    <View style={styles.sellerAvatarContainer}>
-                      <View style={styles.sellerAvatar}>
-                        <Ionicons name="storefront" size={22} color={THEME.COLORS.primary} />
+                {product.seller && (
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('SellerProfile', { sellerId: product.seller._id })}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <GlassCard style={styles.sellerSection} padding={16}>
+                      <View style={styles.sellerInfoRowWeb}>
+                        <View style={styles.sellerAvatarContainer}>
+                          {product.seller.profilePicture ? (
+                            <Image source={{ uri: product.seller.profilePicture }} style={styles.sellerAvatarImage} />
+                          ) : (
+                            <View style={styles.sellerAvatar}>
+                              <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+                            </View>
+                          )}
+                          <View style={styles.verifiedBadge}>
+                            <MaterialCommunityIcons name="check-decagram" size={12} color="#D4AF37" />
+                          </View>
+                        </View>
+                        
+                        <View style={styles.sellerDetails}>
+                          <Text style={styles.sellerName}>{product.seller.name || 'Boutique Yély'}</Text>
+                          <View style={styles.sellerRatingRow}>
+                            <Ionicons name="star" size={11} color="#D4AF37" style={{ marginRight: 2 }} />
+                            <Text style={styles.sellerRatingVal}>
+                              {product.seller.rating ? product.seller.rating.toFixed(1) : '5.0'} / 5
+                            </Text>
+                            <Text style={styles.sellerRatingSeparator}>•</Text>
+                            <Text style={styles.sellerActionText}>Visiter la boutique</Text>
+                          </View>
+                        </View>
+
+                        <MaterialCommunityIcons name="chevron-right" size={24} color={THEME.COLORS.textTertiary} />
                       </View>
-                      <View style={styles.verifiedBadge}>
-                        <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-                      </View>
-                    </View>
-                    
-                    <View style={styles.sellerDetails}>
-                      <Text style={styles.sellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
-                      <Text style={styles.sellerStatus}>Partenaire Certifié Yély</Text>
-                    </View>
-                  </View>
-                </GlassCard>
+                    </GlassCard>
+                  </TouchableOpacity>
+                )}
 
                 <View style={styles.divider} />
 
@@ -704,23 +725,44 @@ const ProductDetails = ({ route, navigation }) => {
             </GlassCard>
 
             {/* VENDEUR CERTIFIE */}
-            <GlassCard style={styles.mobileSellerSection} padding={16}>
-              <View style={styles.mobileSellerInfo}>
-                <View style={styles.sellerAvatarContainer}>
-                  <View style={styles.mobileSellerAvatar}>
-                     <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+            {product.seller && (
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('SellerProfile', { sellerId: product.seller._id })}
+                style={{ cursor: 'pointer' }}
+              >
+                <GlassCard style={styles.mobileSellerSection} padding={16}>
+                  <View style={styles.sellerInfoRowWeb}>
+                    <View style={styles.sellerAvatarContainer}>
+                      {product.seller.profilePicture ? (
+                        <Image source={{ uri: product.seller.profilePicture }} style={styles.sellerAvatarImage} />
+                      ) : (
+                        <View style={styles.sellerAvatar}>
+                          <Ionicons name="storefront" size={20} color={THEME.COLORS.primary} />
+                        </View>
+                      )}
+                      <View style={styles.verifiedBadge}>
+                        <MaterialCommunityIcons name="check-decagram" size={12} color="#D4AF37" />
+                      </View>
+                    </View>
+                    
+                    <View style={styles.sellerDetails}>
+                      <Text style={styles.sellerName}>{product.seller.name || 'Boutique Yély'}</Text>
+                      <View style={styles.sellerRatingRow}>
+                        <Ionicons name="star" size={11} color="#D4AF37" style={{ marginRight: 2 }} />
+                        <Text style={styles.sellerRatingVal}>
+                          {product.seller.rating ? product.seller.rating.toFixed(1) : '5.0'} / 5
+                        </Text>
+                        <Text style={styles.sellerRatingSeparator}>•</Text>
+                        <Text style={styles.sellerActionText}>Visiter la boutique</Text>
+                      </View>
+                    </View>
+
+                    <MaterialCommunityIcons name="chevron-right" size={24} color={THEME.COLORS.textTertiary} />
                   </View>
-                  <View style={styles.verifiedBadge}>
-                    <Ionicons name="checkmark-circle" size={12} color="#FFFFFF" />
-                  </View>
-                </View>
-                
-                <View style={styles.mobileSellerDetails}>
-                  <Text style={styles.mobileSellerName}>{product.seller?.name || 'Boutique Yély'}</Text>
-                  <Text style={styles.mobileSellerStatus}>Partenaire Certifié Yély</Text>
-                </View>
-              </View>
-            </GlassCard>
+                </GlassCard>
+              </TouchableOpacity>
+            )}
           </View>
         </ScrollView>
 
@@ -1315,7 +1357,19 @@ const styles = StyleSheet.create({
   modalFooter: { borderTopWidth: 1, borderTopColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingTop: 15, alignItems: 'center' },
   modalCloseBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 },
   modalCloseText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
-  modalScrollTopBtn: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 }
+  modalScrollTopBtn: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
+  sellerInfoRowWeb: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', width: '100%' },
+  sellerAvatarImage: {
+    width: 44, 
+    height: 44, 
+    borderRadius: 22, 
+    borderWidth: 1, 
+    borderColor: 'rgba(212,175,55,0.3)' 
+  },
+  sellerRatingRow: { flexDirection: 'row', alignItems: 'center', marginTop: 3 },
+  sellerRatingVal: { fontSize: 11, color: THEME.COLORS.textSecondary, fontWeight: '700' },
+  sellerRatingSeparator: { fontSize: 11, color: THEME.COLORS.textTertiary, marginHorizontal: 6 },
+  sellerActionText: { fontSize: 11, color: THEME.COLORS.primary, fontWeight: '700' },
 });
 
 export default ProductDetails;

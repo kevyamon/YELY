@@ -10,12 +10,14 @@ import {
   StatusBar,
   Animated,
   useWindowDimensions,
-  useColorScheme
+  useColorScheme,
+  Image,
+  Dimensions
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ProductCard from '../../components/marketplace/ProductCard';
-import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetProductsQuery, useGetSellersQuery } from '../../store/api/marketplaceApiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import THEME from '../../theme/theme';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
@@ -48,6 +50,7 @@ const ProductList = ({ route, navigation }) => {
   const insets = useSafeAreaInsets();
   const { category, search: initialSearch } = route.params || {};
   const [search, setSearch] = useState(initialSearch || '');
+  const [activeTab, setActiveTab] = useState('products'); // 'products' | 'sellers'
   const [sortBy, setSortBy] = useState('recent'); // 'recent' | 'priceAsc' | 'priceDesc'
   const [showScrollTop, setShowScrollTop] = useState(false);
   const scrollRef = useRef(null);
@@ -92,6 +95,13 @@ const ProductList = ({ route, navigation }) => {
 
   const products = data?.data || [];
 
+  // Fetch Sellers (only if sellers tab active and searching)
+  const { data: sellersData, isLoading: isSellersLoading, isFetching: isSellersFetching, refetch: refetchSellers } = useGetSellersQuery(
+    { search: search.length > 1 ? search : undefined },
+    { skip: activeTab !== 'sellers' || !search }
+  );
+  const sellers = sellersData?.data || [];
+
   const sortedProducts = useMemo(() => {
     let result = [...products];
     if (sortBy === 'recent') {
@@ -119,11 +129,34 @@ const ProductList = ({ route, navigation }) => {
 
       <MarketplaceSearchBar 
         value={search}
-        onChangeText={setSearch}
-        placeholder="Rechercher un produit..."
-        isSearching={isFetching}
+        onChangeText={(txt) => {
+          setSearch(txt);
+          if (txt.trim() === '') {
+            setActiveTab('products');
+          }
+        }}
+        placeholder="Rechercher..."
+        isSearching={isFetching || (activeTab === 'sellers' && isSellersFetching)}
         style={styles.searchBar}
       />
+
+      {/* Tabs Selector for search */}
+      {search.trim().length > 0 && (
+        <View style={styles.tabContainer}>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'products' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('products')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'products' && styles.tabButtonTextActive]}>Produits</Text>
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[styles.tabButton, activeTab === 'sellers' && styles.tabButtonActive]}
+            onPress={() => setActiveTab('sellers')}
+          >
+            <Text style={[styles.tabButtonText, activeTab === 'sellers' && styles.tabButtonTextActive]}>Vendeurs</Text>
+          </TouchableOpacity>
+        </View>
+      )}
 
       <ScrollView 
         horizontal 
@@ -167,6 +200,7 @@ const ProductList = ({ route, navigation }) => {
           <Text style={[styles.sortText, sortBy === 'priceDesc' && styles.sortTextActive]}>Prix décroissant</Text>
         </TouchableOpacity>
       </ScrollView>
+      )}
     </View>
   );
 
@@ -202,6 +236,23 @@ const ProductList = ({ route, navigation }) => {
     </View>
   );
 
+  const renderEmptySellers = () => (
+    <View style={styles.emptyContainer}>
+      <MaterialCommunityIcons 
+        name="store-search-outline" 
+        size={80} 
+        color={THEME.COLORS.primary} 
+        style={{ marginBottom: 16, opacity: 0.8 }} 
+      />
+      <Text style={[styles.emptyText, { fontWeight: '800', color: THEME.COLORS.textPrimary, fontSize: 18, marginTop: 0 }]}>
+        Aucun vendeur trouvé
+      </Text>
+      <Text style={{ fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 8, paddingHorizontal: 32, lineHeight: 20 }}>
+        Il n'y a aucun vendeur enregistré avec le nom "{search}".
+      </Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       {renderHeader()}
@@ -215,9 +266,54 @@ const ProductList = ({ route, navigation }) => {
       >
         <View style={styles.innerContainer}>
           {(() => {
-            const showSkeleton = isLoading || (isFetching && products.length === 0);
+            const isSellersTab = activeTab === 'sellers';
+            const showSkeleton = isSellersTab 
+              ? (isSellersLoading || (isSellersFetching && sellers.length === 0))
+              : (isLoading || (isFetching && products.length === 0));
             if (showSkeleton) {
               return renderSkeleton();
+            }
+
+            if (isSellersTab) {
+              if (sellers.length === 0) {
+                return renderEmptySellers();
+              }
+              return (
+                <View style={styles.sellersList}>
+                  {sellers.map(item => (
+                    <TouchableOpacity 
+                      key={item._id}
+                      style={styles.sellerCard} 
+                      onPress={() => navigation.navigate('SellerProfile', { sellerId: item._id })}
+                    >
+                      <View style={styles.sellerAvatarWrapper}>
+                        {item.profilePicture ? (
+                          <Image source={{ uri: item.profilePicture }} style={styles.sellerAvatar} />
+                        ) : (
+                          <View style={styles.sellerAvatarPlaceholder}>
+                            <MaterialCommunityIcons name="storefront" size={24} color={THEME.COLORS.primary} />
+                          </View>
+                        )}
+                        <View style={styles.sellerVerifiedBadge}>
+                          <MaterialCommunityIcons name="check-decagram" size={14} color="#D4AF37" />
+                        </View>
+                      </View>
+                      <View style={styles.sellerInfo}>
+                        <Text style={styles.sellerName}>{item.name}</Text>
+                        <View style={styles.sellerMeta}>
+                          <View style={styles.sellerRating}>
+                            <MaterialCommunityIcons name="star" size={12} color="#D4AF37" />
+                            <Text style={styles.sellerRatingText}>{item.rating ? item.rating.toFixed(1) : '5.0'}</Text>
+                          </View>
+                          <Text style={styles.sellerMetaSeparator}>•</Text>
+                          <Text style={styles.sellerProductCount}>{item.productCount || 0} articles en stock</Text>
+                        </View>
+                      </View>
+                      <MaterialCommunityIcons name="chevron-right" size={24} color={THEME.COLORS.textTertiary} />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              );
             }
 
             if (sortedProducts.length === 0) {
@@ -390,6 +486,118 @@ const styles = StyleSheet.create({
   sortTextActive: {
     color: THEME.COLORS.deepAsphalt,
     fontWeight: THEME.FONTS.weights.bold,
+  },
+  // Tab styles
+  tabContainer: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderRadius: THEME.BORDERS.radius.pill,
+    padding: 4,
+    marginVertical: THEME.SPACING.sm,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+  },
+  tabButton: {
+    flex: 1,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: THEME.BORDERS.radius.pill,
+    cursor: 'pointer',
+  },
+  tabButtonActive: {
+    backgroundColor: THEME.COLORS.primary,
+  },
+  tabButtonText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: THEME.COLORS.textSecondary,
+  },
+  tabButtonTextActive: {
+    color: THEME.COLORS.deepAsphalt,
+    fontWeight: '800',
+  },
+  // Seller styles
+  sellersList: {
+    width: '100%',
+    maxWidth: 600,
+    alignSelf: 'center',
+    marginTop: THEME.SPACING.md,
+  },
+  sellerCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: THEME.SPACING.md,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    cursor: 'pointer',
+  },
+  sellerAvatarWrapper: {
+    position: 'relative',
+    marginRight: 14,
+  },
+  sellerAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.primary,
+  },
+  sellerAvatarPlaceholder: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(214, 175, 55, 0.1)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.primary,
+  },
+  sellerVerifiedBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    backgroundColor: '#000000',
+    borderRadius: 8,
+    padding: 0.5,
+  },
+  sellerInfo: {
+    flex: 1,
+  },
+  sellerName: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary,
+  },
+  sellerMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  sellerRating: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sellerRatingText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: THEME.COLORS.textSecondary,
+    marginLeft: 2,
+  },
+  sellerMetaSeparator: {
+    fontSize: 11,
+    color: THEME.COLORS.textTertiary,
+    marginHorizontal: 8,
+  },
+  sellerProductCount: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: '500',
   },
 });
 
