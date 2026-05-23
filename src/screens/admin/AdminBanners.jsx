@@ -107,7 +107,6 @@ const AdminBanners = ({ navigation }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsEditing: false,
-      aspect: [16, 9],
       quality: 0.6
     });
 
