@@ -13,7 +13,8 @@ import {
   Dimensions,
   Platform,
   ScrollView,
-  useColorScheme
+  useColorScheme,
+  Image
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';

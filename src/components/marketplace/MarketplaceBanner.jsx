@@ -32,6 +32,7 @@ const RisingBubbles = () => {
   const anims = useRef([...Array(bubbleCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -45,8 +46,13 @@ const RisingBubbles = () => {
     anims.forEach((_, i) => {
       // Démarrage décalé
       const timeout = setTimeout(() => startAnimation(i), i * 600);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -93,6 +99,7 @@ const FallingConfetti = () => {
   const colors = ['#F1C40F', '#E74C3C', '#3498DB', '#2ECC71', '#9B59B6', '#E67E22'];
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -105,8 +112,13 @@ const FallingConfetti = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 400);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -159,6 +171,7 @@ const TwinklingStars = () => {
   const anims = useRef([...Array(starCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.sequence([
@@ -179,8 +192,13 @@ const TwinklingStars = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 350);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   // Positions prédéfinies bien réparties
@@ -217,7 +235,7 @@ const TwinklingStars = () => {
               }
             ]}
           >
-            <MaterialCommunityIcons name="star-four-points" size={16} color={THEME.COLORS.primary} />
+            <MaterialCommunityIcons name="star-four-points" size={16} color="#FFFFFF" />
           </Animated.View>
         );
       })}
@@ -234,6 +252,7 @@ const FloatingBalloons = () => {
   const colors = ['#E74C3C', '#3498DB', '#9B59B6', '#E67E22', '#F1C40F'];
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -246,8 +265,13 @@ const FloatingBalloons = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 900);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -298,6 +322,7 @@ const MeteorShower = () => {
   const anims = useRef([...Array(meteorCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -307,14 +332,20 @@ const MeteorShower = () => {
         useNativeDriver: true,
       }).start(() => {
         const delay = 1000 + Math.random() * 2000;
-        setTimeout(() => startAnimation(index), delay);
+        const timeout = setTimeout(() => startAnimation(index), delay);
+        timeouts.push(timeout);
       });
     };
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 1000);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -363,6 +394,7 @@ const MagicalFireflies = () => {
   const anims = useRef([...Array(fireflyCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.sequence([
@@ -383,8 +415,13 @@ const MagicalFireflies = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 500);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   const fireflyPositions = [
@@ -449,6 +486,10 @@ const PulsingAura = () => {
       }).start(() => start());
     };
     start();
+
+    return () => {
+      anim.stopAnimation();
+    };
   }, [anim]);
 
   const scale = anim.interpolate({
@@ -483,6 +524,7 @@ const FallingSnow = () => {
   const anims = useRef([...Array(flakeCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -495,8 +537,13 @@ const FallingSnow = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 500);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -546,6 +593,7 @@ const RisingHearts = () => {
   const anims = useRef([...Array(heartCount)].map(() => new Animated.Value(0))).current;
 
   useEffect(() => {
+    const timeouts = [];
     const startAnimation = (index) => {
       anims[index].setValue(0);
       Animated.timing(anims[index], {
@@ -558,8 +606,13 @@ const RisingHearts = () => {
 
     anims.forEach((_, i) => {
       const timeout = setTimeout(() => startAnimation(i), i * 450);
-      return () => clearTimeout(timeout);
+      timeouts.push(timeout);
     });
+
+    return () => {
+      timeouts.forEach(clearTimeout);
+      anims.forEach(anim => anim.stopAnimation());
+    };
   }, [anims]);
 
   return (
@@ -1116,8 +1169,8 @@ const styles = StyleSheet.create({
     height: 10,
     borderRadius: 5,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.4)',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderColor: 'rgba(255, 255, 255, 0.6)',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
   },
   confetto: {
     position: 'absolute',
@@ -1179,8 +1232,8 @@ const styles = StyleSheet.create({
     width: 6,
     height: 6,
     borderRadius: 3,
-    backgroundColor: '#FFD700',
-    shadowColor: '#FFD700',
+    backgroundColor: '#FFFFFF',
+    shadowColor: '#FFFFFF',
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.8,
     shadowRadius: 4,
