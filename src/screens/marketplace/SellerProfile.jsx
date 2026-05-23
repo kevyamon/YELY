@@ -38,7 +38,6 @@ const SellerProfile = ({ route, navigation }) => {
   const dispatch = useDispatch();
   const { sellerId } = route.params || {};
   const currentUser = useSelector(selectCurrentUser);
-  const isOwnProfile = currentUser && currentUser._id === sellerId;
 
   const handleBack = () => {
     if (navigation.canGoBack()) {
@@ -70,9 +69,14 @@ const SellerProfile = ({ route, navigation }) => {
   // Fetch Seller Profile
   const { data: profileResponse, isLoading: isProfileLoading, isError: isProfileError } = useGetSellerProfileQuery(sellerId);
   const seller = profileResponse?.data;
+  
+  const isOwnProfile = currentUser && seller && currentUser._id === seller._id;
 
   // Fetch Products of this Seller
-  const { data: productsResponse, isLoading: isProductsLoading, refetch, isFetching } = useGetProductsQuery({ seller: sellerId });
+  const { data: productsResponse, isLoading: isProductsLoading, refetch, isFetching } = useGetProductsQuery(
+    { seller: seller?._id },
+    { skip: !seller?._id }
+  );
   const allProducts = productsResponse?.data || [];
   const activeProducts = useMemo(() => allProducts.filter(p => p.isActive), [allProducts]);
 
