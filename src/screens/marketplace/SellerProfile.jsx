@@ -70,13 +70,13 @@ const SellerProfile = ({ route, navigation }) => {
   const { data: profileResponse, isLoading: isProfileLoading, isError: isProfileError } = useGetSellerProfileQuery(sellerId);
   const seller = profileResponse?.data;
   
-  const isOwnProfile = currentUser && seller && currentUser._id === seller._id;
+  const isOwnProfile = Boolean(currentUser?._id && seller?._id && currentUser._id === seller._id);
 
-  // Fetch Products of this Seller
-  const { data: productsResponse, isLoading: isProductsLoading, refetch, isFetching } = useGetProductsQuery(
-    { seller: seller?._id },
-    { skip: !seller?._id }
-  );
+  // Fetch Products of this Seller. We pass seller?._id if available, otherwise sellerId (slug)
+  // This ensures RTK Query updates the request automatically once the profile is loaded.
+  const { data: productsResponse, isLoading: isProductsLoading, refetch, isFetching } = useGetProductsQuery({ 
+    seller: seller?._id || sellerId 
+  });
   const allProducts = productsResponse?.data || [];
   const activeProducts = useMemo(() => allProducts.filter(p => p.isActive), [allProducts]);
 
