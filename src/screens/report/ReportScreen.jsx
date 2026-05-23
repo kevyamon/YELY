@@ -39,6 +39,7 @@ const ReportScreen = ({ navigation }) => {
     if (images.length >= 3) return;
     const res = await ImagePicker.launchImageLibraryAsync({ 
       mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      allowsEditing: false,
       quality: 0.5 
     });
     if (!res.canceled && res.assets && res.assets.length > 0) {
@@ -53,6 +54,7 @@ const ReportScreen = ({ navigation }) => {
   const replaceImage = async (indexToReplace) => {
     const res = await ImagePicker.launchImageLibraryAsync({ 
       mediaTypes: ImagePicker.MediaTypeOptions.Images, 
+      allowsEditing: false,
       quality: 0.5 
     });
     if (!res.canceled && res.assets && res.assets.length > 0) {

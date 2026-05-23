@@ -19,7 +19,7 @@ import {
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { useGetProductQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetProductQuery, useGetProductReviewsQuery } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import { addToCart, selectCartItems, removeFromCart, updateQuantity } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
@@ -87,6 +87,23 @@ const ProductDetails = ({ route, navigation }) => {
   const cartItems = useSelector(selectCartItems);
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
+  const { data: reviewsData } = useGetProductReviewsQuery(productId);
+  const reviews = reviewsData?.data || [];
+
+  const renderDetailStars = (rating) => {
+    const stars = [];
+    for (let i = 1; i <= 5; i++) {
+      stars.push(
+        <MaterialCommunityIcons
+          key={i}
+          name={i <= rating ? "star" : "star-outline"}
+          size={11}
+          color="#D4AF37"
+        />
+      );
+    }
+    return <View style={{ flexDirection: 'row', gap: 1 }}>{stars}</View>;
+  };
   const colorScheme = useColorScheme();
   
   const isDarkMode = colorScheme === 'dark';
@@ -464,6 +481,43 @@ const ProductDetails = ({ route, navigation }) => {
                   <Text style={styles.descriptionText}>{description}</Text>
                 </GlassCard>
 
+                {/* SECTION AVIS CLIENTS */}
+                <GlassCard style={styles.reviewsSectionCard} padding={18}>
+                  <View style={styles.sectionHeader}>
+                    <MaterialCommunityIcons name="comment-text-multiple-outline" size={18} color={THEME.COLORS.primary} style={{ marginRight: 8 }} />
+                    <Text style={styles.sectionTitle}>Avis clients ({reviews.length})</Text>
+                  </View>
+
+                  {reviews.length === 0 ? (
+                    <Text style={styles.noReviewsText}>Aucun avis pour le moment.</Text>
+                  ) : (
+                    <View style={styles.reviewsListPreview}>
+                      {reviews.slice(0, 3).map((item) => (
+                        <View key={item._id} style={styles.detailReviewItem}>
+                          <View style={styles.detailReviewHeader}>
+                            <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                            <View style={styles.detailReviewStars}>
+                              {renderDetailStars(item.rating)}
+                            </View>
+                          </View>
+                          <Text style={styles.detailReviewComment} numberOfLines={2}>
+                            {item.comment}
+                          </Text>
+                        </View>
+                      ))}
+                      {reviews.length > 3 && (
+                        <TouchableOpacity 
+                          style={styles.viewAllReviewsBtn}
+                          onPress={() => navigation.navigate('ProductReviews', { productId: product._id, productName: product.name })}
+                        >
+                          <Text style={styles.viewAllReviewsText}>Voir tous les {reviews.length} avis</Text>
+                          <Ionicons name="arrow-forward" size={14} color={THEME.COLORS.primary} />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+                  )}
+                </GlassCard>
+
                 {/* Vendeur Certifié */}
                 {product.seller && (
                   <TouchableOpacity 
@@ -721,6 +775,43 @@ const ProductDetails = ({ route, navigation }) => {
                     color={THEME.COLORS.primary} 
                   />
                 </TouchableOpacity>
+              )}
+            </GlassCard>
+
+            {/* AVIS CLIENTS CARD (MOBILE) */}
+            <GlassCard style={styles.reviewsSectionCard} padding={18}>
+              <View style={styles.sectionHeader}>
+                <MaterialCommunityIcons name="comment-text-multiple-outline" size={18} color={THEME.COLORS.primary} style={{ marginRight: 8 }} />
+                <Text style={styles.sectionTitle}>Avis clients ({reviews.length})</Text>
+              </View>
+
+              {reviews.length === 0 ? (
+                <Text style={styles.noReviewsText}>Aucun avis pour le moment.</Text>
+              ) : (
+                <View style={styles.reviewsListPreview}>
+                  {reviews.slice(0, 3).map((item) => (
+                    <View key={item._id} style={styles.detailReviewItem}>
+                      <View style={styles.detailReviewHeader}>
+                        <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                        <View style={styles.detailReviewStars}>
+                          {renderDetailStars(item.rating)}
+                        </View>
+                      </View>
+                      <Text style={styles.detailReviewComment} numberOfLines={2}>
+                        {item.comment}
+                      </Text>
+                    </View>
+                  ))}
+                  {reviews.length > 3 && (
+                    <TouchableOpacity 
+                      style={styles.viewAllReviewsBtn}
+                      onPress={() => navigation.navigate('ProductReviews', { productId: product._id, productName: product.name })}
+                    >
+                      <Text style={styles.viewAllReviewsText}>Voir tous les {reviews.length} avis</Text>
+                      <Ionicons name="arrow-forward" size={14} color={THEME.COLORS.primary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
               )}
             </GlassCard>
 
@@ -1370,6 +1461,57 @@ const styles = StyleSheet.create({
   sellerRatingVal: { fontSize: 11, color: THEME.COLORS.textSecondary, fontWeight: '700' },
   sellerRatingSeparator: { fontSize: 11, color: THEME.COLORS.textTertiary, marginHorizontal: 6 },
   sellerActionText: { fontSize: 11, color: THEME.COLORS.primary, fontWeight: '700' },
+  reviewsSectionCard: {
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.04)',
+    marginBottom: 15
+  },
+  noReviewsText: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 13,
+    fontStyle: 'italic',
+    marginTop: 5
+  },
+  reviewsListPreview: {
+    marginTop: 10
+  },
+  detailReviewItem: {
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.04)',
+    paddingVertical: 10
+  },
+  detailReviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4
+  },
+  detailReviewUser: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary
+  },
+  detailReviewStars: {
+    flexDirection: 'row'
+  },
+  detailReviewComment: {
+    fontSize: 12.5,
+    color: THEME.COLORS.textSecondary,
+    lineHeight: 18
+  },
+  viewAllReviewsBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 15,
+    gap: 6
+  },
+  viewAllReviewsText: {
+    color: THEME.COLORS.primary,
+    fontSize: 13,
+    fontWeight: '800'
+  }
 });
 
 export default ProductDetails;

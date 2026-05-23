@@ -106,7 +106,7 @@ const AdminBanners = ({ navigation }) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
-      allowsEditing: true,
+      allowsEditing: false,
       aspect: [16, 9],
       quality: 0.6
     });
@@ -130,7 +130,7 @@ const AdminBanners = ({ navigation }) => {
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['videos'],
-      allowsEditing: true,
+      allowsEditing: false,
       quality: 0.6
     });
 

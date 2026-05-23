@@ -98,6 +98,7 @@ const ManageProducts = ({ navigation }) => {
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: 'images',
       allowsMultipleSelection: true,
+      allowsEditing: false,
       selectionLimit: 10 - form.images.length, // Limite dynamique
       quality: 0.6,
     });
