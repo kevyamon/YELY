@@ -2,7 +2,7 @@
 // HOME SELLER - Orchestrateur Business & Mobilité
 // CSCSM Level: Bank Grade
 
-import React, { memo, useState, useRef } from 'react';
+import React, { memo, useState, useRef, useMemo } from 'react';
 import { 
   ScrollView, 
   StyleSheet, 
