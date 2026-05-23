@@ -1,5 +1,5 @@
 // src/screens/marketplace/SellerProfile.jsx
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   View,
   Text,
@@ -12,7 +12,10 @@ import {
   Modal,
   Share,
   StatusBar,
-  useColorScheme
+  useColorScheme,
+  BackHandler,
+  Linking,
+  Alert
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -36,6 +39,31 @@ const SellerProfile = ({ route, navigation }) => {
   const currentUser = useSelector(selectCurrentUser);
   const isOwnProfile = currentUser && currentUser._id === sellerId;
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
+  };
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!navigation.canGoBack()) {
+        navigation.navigate('Home');
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [navigation]);
+
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
   // Fetch Seller Profile
@@ -49,11 +77,12 @@ const SellerProfile = ({ route, navigation }) => {
 
   const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
-  const shareUrl = `https://yely-backend-yzw4.onrender.com/shop/${seller?.shopSlug || sellerId}`;
+  const shareUrl = `https://download-yely.vercel.app/shop/${seller?.shopSlug || sellerId}`;
   const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
 
   const handleShare = async () => {
     try {
+      const shareUrlWithBuster = `${shareUrl}?v=${Date.now()}`;
       let shared = false;
       if (Platform.OS === 'web') {
         if (navigator.share) {
@@ -61,7 +90,7 @@ const SellerProfile = ({ route, navigation }) => {
             await navigator.share({
               title: `Boutique de ${seller?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: shareUrl,
+              url: shareUrlWithBuster,
             });
             shared = true;
           } catch (e) {
@@ -71,10 +100,10 @@ const SellerProfile = ({ route, navigation }) => {
         
         if (!shared) {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(shareUrlWithBuster);
           } else {
             const textArea = document.createElement("textarea");
-            textArea.value = shareUrl;
+            textArea.value = shareUrlWithBuster;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand("copy");
@@ -88,8 +117,8 @@ const SellerProfile = ({ route, navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrl}`,
-          url: shareUrl,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrlWithBuster}`,
+          url: shareUrlWithBuster,
           title: `Boutique de ${seller?.name || 'Vendeur'}`
         });
       }
@@ -209,7 +238,7 @@ const SellerProfile = ({ route, navigation }) => {
       <View style={[styles.errorContainer, { backgroundColor: isDarkMode ? '#000000' : '#F8F9FA' }]}>
         <MaterialCommunityIcons name="alert-circle-outline" size={60} color={THEME.COLORS.danger} />
         <Text style={styles.errorText}>Profil vendeur introuvable ou inactif</Text>
-        <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+        <TouchableOpacity style={styles.backBtn} onPress={handleBack}>
           <Text style={styles.backBtnText}>Retourner à la marketplace</Text>
         </TouchableOpacity>
       </View>
@@ -222,7 +251,7 @@ const SellerProfile = ({ route, navigation }) => {
 
       {/* TOP NAVIGATION BAR */}
       <View style={[styles.navBar, { paddingTop: insets.top }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.navBackBtn}>
+        <TouchableOpacity onPress={handleBack} style={styles.navBackBtn}>
           <MaterialCommunityIcons name="arrow-left" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
         <Text style={styles.navTitle} numberOfLines={1}>{seller.name}</Text>

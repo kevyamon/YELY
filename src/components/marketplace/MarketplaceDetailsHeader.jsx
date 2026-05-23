@@ -36,7 +36,11 @@ const MarketplaceDetailsHeader = ({
     if (onBackPress) {
       onBackPress();
     } else {
-      navigation.goBack();
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate('Home');
+      }
     }
   };
 

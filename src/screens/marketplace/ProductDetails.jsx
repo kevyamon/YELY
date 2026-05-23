@@ -14,7 +14,8 @@ import {
   useColorScheme,
   ScrollView,
   Animated,
-  Easing
+  Easing,
+  BackHandler
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -90,6 +91,31 @@ const ProductDetails = ({ route, navigation }) => {
   const { productId } = route.params;
   const { data: productData, isLoading, isError } = useGetProductQuery(productId);
   const colorScheme = useColorScheme();
+
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('Home');
+    }
+  };
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!navigation.canGoBack()) {
+        navigation.navigate('Home');
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [navigation]);
   
   const isDarkMode = colorScheme === 'dark';
   
@@ -264,7 +290,7 @@ const ProductDetails = ({ route, navigation }) => {
     return (
       <View style={styles.center}>
         <Text style={styles.errorText}>Produit introuvable</Text>
-        <GoldButton title="Retour" onPress={() => navigation.goBack()} variant="secondary" size="small" fullWidth={false} />
+        <GoldButton title="Retour" onPress={handleBack} variant="secondary" size="small" fullWidth={false} />
       </View>
     );
   }

@@ -20,6 +20,7 @@
     }
   ],
   "rewrites": [
+    { "source": "/shop/:slug", "destination": "https://yely-backend-yzw4.onrender.com/shop/:slug" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

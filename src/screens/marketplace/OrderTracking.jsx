@@ -6,7 +6,8 @@ import {
   StyleSheet, 
   ScrollView, 
   TouchableOpacity,
-  ActivityIndicator
+  ActivityIndicator,
+  BackHandler
 } from 'react-native';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,6 +39,23 @@ const OrderTracking = ({ route, navigation }) => {
   const { data: orderData, isLoading, refetch } = useGetOrderQuery(orderId);
   const [cancelOrder, { isLoading: isCancelling }] = useCancelOrderMutation();
   const order = orderData?.data;
+
+  useEffect(() => {
+    const backAction = () => {
+      if (!navigation.canGoBack()) {
+        navigation.navigate('Home');
+        return true;
+      }
+      return false;
+    };
+
+    const backHandler = BackHandler.addEventListener(
+      'hardwareBackPress',
+      backAction
+    );
+
+    return () => backHandler.remove();
+  }, [navigation]);
 
   // TEMPS RÉEL: Ecouter les mises à jour de statut
   useEffect(() => {

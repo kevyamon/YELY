@@ -43,11 +43,12 @@ const SellerDashboard = ({ navigation }) => {
   const listRef = useRef(null);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
-  const shareUrl = currentUser ? `https://yely-backend-yzw4.onrender.com/shop/${currentUser.shopSlug || currentUser._id}` : '';
+  const shareUrl = currentUser ? `https://download-yely.vercel.app/shop/${currentUser.shopSlug || currentUser._id}` : '';
   const qrCodeUrl = currentUser ? `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250` : '';
 
   const handleShare = async () => {
     try {
+      const shareUrlWithBuster = `${shareUrl}?v=${Date.now()}`;
       let shared = false;
       if (Platform.OS === 'web') {
         if (navigator.share) {
@@ -55,7 +56,7 @@ const SellerDashboard = ({ navigation }) => {
             await navigator.share({
               title: `Boutique Yély de ${currentUser?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: shareUrl,
+              url: shareUrlWithBuster,
             });
             shared = true;
           } catch (e) {
@@ -65,10 +66,10 @@ const SellerDashboard = ({ navigation }) => {
         
         if (!shared) {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(shareUrl);
+            await navigator.clipboard.writeText(shareUrlWithBuster);
           } else {
             const textArea = document.createElement("textarea");
-            textArea.value = shareUrl;
+            textArea.value = shareUrlWithBuster;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand("copy");
@@ -82,8 +83,8 @@ const SellerDashboard = ({ navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrl}`,
-          url: shareUrl,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrlWithBuster}`,
+          url: shareUrlWithBuster,
           title: `Boutique de ${currentUser?.name || 'Vendeur'}`
         });
       }
