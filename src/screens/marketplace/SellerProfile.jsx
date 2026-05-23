@@ -317,7 +317,7 @@ const SellerProfile = ({ route, navigation }) => {
             </Text>
 
             <TouchableOpacity style={styles.shareLinkBox} onPress={handleShare} activeOpacity={0.7}>
-              <Text style={styles.shareLinkText} numberOfLines={1}>{shareUrl}</Text>
+              <Text style={styles.shareLinkText} numberOfLines={1}>{correctedShareUrl}</Text>
               <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
             </TouchableOpacity>
 
