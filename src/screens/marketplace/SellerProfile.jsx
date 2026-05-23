@@ -26,6 +26,7 @@ import { showToast } from '../../store/slices/uiSlice';
 import ProductCard from '../../components/marketplace/ProductCard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import THEME from '../../theme/theme';
+import ENV from '../../config/env';
 
 const { width } = Dimensions.get('window');
 
@@ -77,20 +78,20 @@ const SellerProfile = ({ route, navigation }) => {
 
   const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
-  const shareUrl = `https://download-yely.vercel.app/shop/${seller?.shopSlug || sellerId}`;
-  const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
+  const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
+  const correctedShareUrl = `${baseUrl}/shop/${seller?.shopSlug || sellerId}`;
+  const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(correctedShareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
 
   const handleShare = async () => {
     try {
-      const shareUrlWithBuster = `${shareUrl}?v=${Date.now()}`;
       let shared = false;
       if (Platform.OS === 'web') {
         if (navigator.share) {
           try {
             await navigator.share({
-              title: `Boutique de ${seller?.name || 'Vendeur'}`,
+              title: `Boutique Yély de ${seller?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: shareUrlWithBuster,
+              url: correctedShareUrl,
             });
             shared = true;
           } catch (e) {
@@ -100,10 +101,10 @@ const SellerProfile = ({ route, navigation }) => {
         
         if (!shared) {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(shareUrlWithBuster);
+            await navigator.clipboard.writeText(correctedShareUrl);
           } else {
             const textArea = document.createElement("textarea");
-            textArea.value = shareUrlWithBuster;
+            textArea.value = correctedShareUrl;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand("copy");
@@ -117,8 +118,8 @@ const SellerProfile = ({ route, navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrlWithBuster}`,
-          url: shareUrlWithBuster,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${correctedShareUrl}`,
+          url: correctedShareUrl,
           title: `Boutique de ${seller?.name || 'Vendeur'}`
         });
       }

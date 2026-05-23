@@ -30,6 +30,7 @@ import {
 import { showSuccessToast, showErrorToast, showToast } from '../../store/slices/uiSlice';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
+import ENV from '../../config/env';
 
 const SellerDashboard = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -43,12 +44,12 @@ const SellerDashboard = ({ navigation }) => {
   const listRef = useRef(null);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
 
-  const shareUrl = currentUser ? `https://download-yely.vercel.app/shop/${currentUser.shopSlug || currentUser._id}` : '';
+  const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
+  const shareUrl = currentUser ? `${baseUrl}/shop/${currentUser.shopSlug || currentUser._id}` : '';
   const qrCodeUrl = currentUser ? `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250` : '';
 
   const handleShare = async () => {
     try {
-      const shareUrlWithBuster = `${shareUrl}?v=${Date.now()}`;
       let shared = false;
       if (Platform.OS === 'web') {
         if (navigator.share) {
@@ -56,7 +57,7 @@ const SellerDashboard = ({ navigation }) => {
             await navigator.share({
               title: `Boutique Yély de ${currentUser?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: shareUrlWithBuster,
+              url: shareUrl,
             });
             shared = true;
           } catch (e) {
