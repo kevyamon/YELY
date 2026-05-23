@@ -10,22 +10,29 @@ import {
   Alert,
   StatusBar,
   ScrollView,
-  useColorScheme
+  useColorScheme,
+  Image,
+  Modal,
+  Share,
+  Linking,
+  Platform
 } from 'react-native';
-import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { 
   useGetSellerOrdersQuery, 
   useUpdateOrderStatusMutation,
   useGetLedgerStatsQuery 
 } from '../../store/api/marketplaceApiSlice';
-import { showSuccessToast, showErrorToast } from '../../store/slices/uiSlice';
+import { showSuccessToast, showErrorToast, showToast } from '../../store/slices/uiSlice';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import THEME from '../../theme/theme';
 
 const SellerDashboard = ({ navigation }) => {
+  const dispatch = useDispatch();
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
@@ -34,6 +41,92 @@ const SellerDashboard = ({ navigation }) => {
 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
+  const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+
+  const shareUrl = currentUser ? `https://yely-backend-yzw4.onrender.com/api/v1/users/sellers/${currentUser._id}/share` : '';
+  const qrCodeUrl = currentUser ? `https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(shareUrl)}` : '';
+
+  const handleShare = async () => {
+    try {
+      let shared = false;
+      if (Platform.OS === 'web') {
+        if (navigator.share) {
+          try {
+            await navigator.share({
+              title: `Boutique Yély de ${currentUser?.name || 'Vendeur'}`,
+              text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
+              url: shareUrl,
+            });
+            shared = true;
+          } catch (e) {
+            // User cancelled
+          }
+        }
+        
+        if (!shared) {
+          if (navigator.clipboard && navigator.clipboard.writeText) {
+            await navigator.clipboard.writeText(shareUrl);
+          } else {
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            document.body.appendChild(textArea);
+            textArea.select();
+            document.execCommand("copy");
+            document.body.removeChild(textArea);
+          }
+          dispatch(showToast({
+            type: 'success',
+            title: 'Lien copié',
+            message: 'Le lien de votre boutique a été copié dans le presse-papier.'
+          }));
+        }
+      } else {
+        await Share.share({
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrl}`,
+          url: shareUrl,
+          title: `Boutique de ${currentUser?.name || 'Vendeur'}`
+        });
+      }
+    } catch (error) {
+      console.warn('Share error:', error.message);
+    }
+  };
+
+  const handleDownloadQrCode = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const response = await fetch(qrCodeUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `yely-shop-${currentUser?._id || 'qr'}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        dispatch(showToast({
+          type: 'success',
+          title: 'Téléchargement',
+          message: 'Code QR téléchargé avec succès.'
+        }));
+      } else {
+        const supported = await Linking.canOpenURL(qrCodeUrl);
+        if (supported) {
+          await Linking.openURL(qrCodeUrl);
+        } else {
+          Alert.alert('Erreur', 'Impossible de générer le code QR.');
+        }
+      }
+    } catch (err) {
+      console.warn('QR download error:', err);
+      dispatch(showToast({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Impossible de télécharger le code QR.'
+      }));
+    }
+  };
 
   const handleScroll = (event) => {
     setShowScrollTop(event.nativeEvent.contentOffset.y > 150);
@@ -168,6 +261,33 @@ const SellerDashboard = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Promotion / Share Shop Card */}
+      {currentUser && (
+        <TouchableOpacity 
+          style={styles.shareShopCard} 
+          onPress={() => setIsShareModalVisible(true)}
+          activeOpacity={0.8}
+        >
+          <LinearGradient
+            colors={['rgba(212, 175, 55, 0.08)', 'rgba(212, 175, 55, 0.01)']}
+            style={styles.shareShopGradient}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+          >
+            <View style={styles.shareShopLeft}>
+              <View style={styles.shareShopIconBg}>
+                <MaterialCommunityIcons name="qrcode-scan" size={20} color={THEME.COLORS.primary} />
+              </View>
+              <View style={styles.shareShopTextContainer}>
+                <Text style={styles.shareShopTitle}>Partager ma boutique</Text>
+                <Text style={styles.shareShopSubtitle}>Lien de partage & code QR à imprimer</Text>
+              </View>
+            </View>
+            <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
+          </LinearGradient>
+        </TouchableOpacity>
+      )}
+
       {/* Tabs / Filter Navigation */}
       <View style={styles.tabsContainer}>
         <ScrollView 
@@ -243,6 +363,52 @@ const SellerDashboard = ({ navigation }) => {
         title="Mise à jour statut"
         message={confirmData.msg}
       />
+
+      {/* SHARE MODAL WITH QR CODE */}
+      <Modal
+        visible={isShareModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setIsShareModalVisible(false)}
+      >
+        <TouchableOpacity 
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setIsShareModalVisible(false)}
+        >
+          <View style={styles.modalContent} onStartShouldSetResponder={() => true}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Partager ma boutique</Text>
+              <TouchableOpacity onPress={() => setIsShareModalVisible(false)}>
+                <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.qrContainer}>
+              <Image source={{ uri: qrCodeUrl }} style={styles.qrCode} />
+            </View>
+
+            <Text style={styles.shareDescription}>
+              Scannez ce QR Code ou partagez le lien ci-dessous pour diriger directement vos clients vers votre boutique Yély.
+            </Text>
+
+            <TouchableOpacity style={styles.shareLinkBox} onPress={handleShare} activeOpacity={0.7}>
+              <Text style={styles.shareLinkText} numberOfLines={1}>{shareUrl}</Text>
+              <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
+            </TouchableOpacity>
+
+            <View style={styles.modalActionButtons}>
+              <TouchableOpacity style={styles.modalDownloadBtn} onPress={handleDownloadQrCode}>
+                <MaterialCommunityIcons name="download" size={16} color={THEME.COLORS.textPrimary} style={{ marginRight: 6 }} />
+                <Text style={styles.modalDownloadBtnText}>Télécharger QR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalShareBtn} onPress={handleShare}>
+                <Text style={styles.modalShareBtnText}>Envoyer le lien</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 };
@@ -438,6 +604,149 @@ const styles = StyleSheet.create({
   emptyText: {
     marginTop: THEME.SPACING.md,
     color: THEME.COLORS.textTertiary,
+  },
+
+  // Styles de partage de boutique
+  shareShopCard: {
+    marginHorizontal: THEME.SPACING.xl,
+    marginTop: THEME.SPACING.md,
+    borderRadius: THEME.BORDERS.radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: 'rgba(214, 175, 55, 0.2)',
+  },
+  shareShopGradient: {
+    padding: THEME.SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  shareShopLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: THEME.SPACING.md,
+  },
+  shareShopIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(214, 175, 55, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  shareShopTextContainer: {
+    justifyContent: 'center',
+  },
+  shareShopTitle: {
+    fontSize: 14.5,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+  },
+  shareShopSubtitle: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    marginTop: 2,
+  },
+  
+  // Modale de partage
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    backgroundColor: THEME.COLORS.glassModal,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    width: '88%',
+    maxWidth: 360,
+    padding: THEME.SPACING.xl,
+    alignItems: 'center',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    width: '100%',
+    marginBottom: THEME.SPACING.lg,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+  },
+  qrContainer: {
+    backgroundColor: '#FFFFFF',
+    padding: 12,
+    borderRadius: 16,
+    marginBottom: THEME.SPACING.md,
+  },
+  qrCode: {
+    width: 180,
+    height: 180,
+  },
+  shareDescription: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 16,
+    marginBottom: THEME.SPACING.md,
+  },
+  shareLinkBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    width: '100%',
+    marginBottom: THEME.SPACING.lg,
+  },
+  shareLinkText: {
+    fontSize: 11,
+    color: THEME.COLORS.textTertiary,
+    flex: 1,
+    marginRight: 8,
+  },
+  modalActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  modalDownloadBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDownloadBtnText: {
+    color: THEME.COLORS.textPrimary,
+    fontWeight: '800',
+    fontSize: 12.5,
+  },
+  modalShareBtn: {
+    flex: 1,
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...THEME.SHADOWS.goldSoft,
+  },
+  modalShareBtnText: {
+    color: THEME.COLORS.deepAsphalt,
+    fontWeight: '800',
+    fontSize: 12.5,
   }
 });
 

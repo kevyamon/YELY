@@ -65,7 +65,7 @@ const RisingBubbles = () => {
         });
         const translateY = anim.interpolate({
           inputRange: [0, 1],
-          outputRange: [160, -20]
+          outputRange: [0, -190]
         });
         const opacity = anim.interpolate({
           inputRange: [0, 0.2, 0.8, 1],
@@ -282,7 +282,7 @@ const FloatingBalloons = () => {
 
         const translateY = anim.interpolate({
           inputRange: [0, 1],
-          outputRange: [180, -40]
+          outputRange: [0, -260]
         });
         const translateX = anim.interpolate({
           inputRange: [0, 0.4, 0.8, 1],
@@ -625,7 +625,7 @@ const RisingHearts = () => {
         });
         const translateY = anim.interpolate({
           inputRange: [0, 1],
-          outputRange: [160, -20]
+          outputRange: [0, -190]
         });
         const translateX = anim.interpolate({
           inputRange: [0, 0.5, 1],

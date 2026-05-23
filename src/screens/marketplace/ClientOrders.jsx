@@ -212,7 +212,7 @@ const ClientOrders = ({ navigation }) => {
                         style={styles.rateProductBtn}
                         onPress={(e) => {
                           e.stopPropagation();
-                          handleOpenRateModal(prod.product, prod.name);
+                          handleOpenRateModal(prod.product?._id || prod.product, prod.name);
                         }}
                       >
                         <MaterialCommunityIcons name="star-plus-outline" size={13} color="#000" style={{ marginRight: 2 }} />
