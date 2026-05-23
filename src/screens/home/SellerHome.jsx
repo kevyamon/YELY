@@ -82,7 +82,7 @@ const SellerHome = ({ navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Decouvrez ma boutique sur Yely ! Visitez mes produits ici : ${shareUrl}`,
+          message: `Decouvrez ma boutique sur Yely ! Visitez mes produits ici :\n\n${shareUrl}`,
           url: shareUrl,
           title: `Boutique de ${user?.name || 'Vendeur'}`
         });

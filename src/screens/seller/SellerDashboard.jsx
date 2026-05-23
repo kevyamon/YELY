@@ -67,10 +67,10 @@ const SellerDashboard = ({ navigation }) => {
         
         if (!shared) {
           if (navigator.clipboard && navigator.clipboard.writeText) {
-            await navigator.clipboard.writeText(shareUrlWithBuster);
+            await navigator.clipboard.writeText(shareUrl);
           } else {
             const textArea = document.createElement("textarea");
-            textArea.value = shareUrlWithBuster;
+            textArea.value = shareUrl;
             document.body.appendChild(textArea);
             textArea.select();
             document.execCommand("copy");
@@ -84,8 +84,8 @@ const SellerDashboard = ({ navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrlWithBuster}`,
-          url: shareUrlWithBuster,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :\n\n${shareUrl}`,
+          url: shareUrl,
           title: `Boutique de ${currentUser?.name || 'Vendeur'}`
         });
       }
