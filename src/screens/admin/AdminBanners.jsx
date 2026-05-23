@@ -281,10 +281,10 @@ const AdminBanners = ({ navigation }) => {
     try {
       if (editingBanner) {
         await updateBanner({ id: editingBanner._id, data: formData }).unwrap();
-        dispatch(showToast({ type: 'success', title: 'Diapositive modifiée 🚀', message: 'La diapositive de la bannière a été mise à jour.' }));
+        dispatch(showToast({ type: 'success', title: 'Diapositive modifiee', message: 'La diapositive de la bannière a été mise à jour.' }));
       } else {
         await createBanner(formData).unwrap();
-        dispatch(showToast({ type: 'success', title: 'Diapositive créée 🎉', message: 'La nouvelle diapositive a été ajoutée.' }));
+        dispatch(showToast({ type: 'success', title: 'Diapositive creee', message: 'La nouvelle diapositive a été ajoutée.' }));
       }
       setModalVisible(false);
       setEditingBanner(null);
@@ -299,7 +299,7 @@ const AdminBanners = ({ navigation }) => {
     if (!deleteTargetId) return;
     try {
       await deleteBanner(deleteTargetId).unwrap();
-      dispatch(showToast({ type: 'success', title: 'Diapositive supprimée 🗑️', message: 'La diapositive a été nettoyée avec succès.' }));
+      dispatch(showToast({ type: 'success', title: 'Diapositive supprimee', message: 'La diapositive a été nettoyée avec succès.' }));
       setDeleteTargetId(null);
     } catch (error) {
       dispatch(showToast({ type: 'danger', title: 'Erreur', message: 'Impossible de supprimer la diapositive.' }));
@@ -308,10 +308,16 @@ const AdminBanners = ({ navigation }) => {
 
   const getAnimationLabel = (type) => {
     switch (type) {
-      case 'bubbles': return '🫧 Bulles';
-      case 'confetti': return '🎉 Confettis';
-      case 'stars': return '✨ Étoiles';
-      default: return '❌ Aucune';
+      case 'bubbles': return 'Bulles';
+      case 'confetti': return 'Confettis';
+      case 'stars': return 'Etoiles';
+      case 'balloons': return 'Ballons';
+      case 'meteors': return 'Meteores';
+      case 'fireflies': return 'Lucioles';
+      case 'aurora': return 'Aura';
+      case 'snow': return 'Neige';
+      case 'hearts': return 'Coeurs';
+      default: return 'Aucune';
     }
   };
 
@@ -471,7 +477,7 @@ const AdminBanners = ({ navigation }) => {
               {/* MEDIA TYPE */}
               <Text style={styles.inputLabel}>Type de Média</Text>
               <View style={styles.tabContainer}>
-                {[{ id: 'image', label: '📷 Image' }, { id: 'video', label: '🎥 Vidéo' }].map((item) => (
+                {[{ id: 'image', label: 'Image' }, { id: 'video', label: 'Video' }].map((item) => (
                   <TouchableOpacity
                     key={item.id}
                     onPress={() => setForm({ ...form, mediaType: item.id })}
@@ -560,7 +566,7 @@ const AdminBanners = ({ navigation }) => {
                 value={form.title}
                 onChangeText={(val) => setForm({ ...form, title: val.slice(0, 80) })}
                 placeholder="Ex: Livraison Yély Express"
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor={THEME.COLORS.textTertiary}
                 style={styles.textInput}
               />
 
@@ -570,7 +576,7 @@ const AdminBanners = ({ navigation }) => {
                 value={form.body}
                 onChangeText={(val) => setForm({ ...form, body: val.slice(0, 200) })}
                 placeholder="Ex: Faites vos courses sans bouger..."
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor={THEME.COLORS.textTertiary}
                 multiline={true}
                 numberOfLines={3}
                 style={[styles.textInput, styles.multilineInput]}
@@ -582,7 +588,7 @@ const AdminBanners = ({ navigation }) => {
                 value={form.displayDuration}
                 onChangeText={(val) => setForm({ ...form, displayDuration: val.replace(/[^0-9.]/g, '') })}
                 placeholder="Ex: 6.5 (Défaut : 6.5)"
-                placeholderTextColor="rgba(255,255,255,0.2)"
+                placeholderTextColor={THEME.COLORS.textTertiary}
                 keyboardType="numeric"
                 style={styles.textInput}
               />
@@ -610,7 +616,7 @@ const AdminBanners = ({ navigation }) => {
                     value={form.ctaUrl}
                     onChangeText={(val) => setForm({ ...form, ctaUrl: val })}
                     placeholder="https://example.com/..."
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     autoCapitalize="none"
                     style={styles.textInput}
                   />
@@ -637,7 +643,7 @@ const AdminBanners = ({ navigation }) => {
                     value={form.ctaRoute}
                     onChangeText={(val) => setForm({ ...form, ctaRoute: val })}
                     placeholder="Nom exact de la route (ex: ProductDetails)"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     autoCapitalize="none"
                     style={styles.textInput}
                   />
@@ -647,7 +653,7 @@ const AdminBanners = ({ navigation }) => {
                     value={form.ctaRouteParams}
                     onChangeText={(val) => setForm({ ...form, ctaRouteParams: val })}
                     placeholder='Ex: {"productId": "12345"}'
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     autoCapitalize="none"
                     style={styles.textInput}
                   />
@@ -661,16 +667,16 @@ const AdminBanners = ({ navigation }) => {
                     value={form.ctaLabel}
                     onChangeText={(val) => setForm({ ...form, ctaLabel: val })}
                     placeholder="Ex: Voir plus"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     style={styles.textInput}
                   />
                 </View>
               )}
 
               {/* CHIPS ANIMATION */}
-              <Text style={styles.inputLabel}>Effets & Animations Spéciales</Text>
+              <Text style={styles.inputLabel}>Effets et animations speciales</Text>
               <View style={styles.chipsContainer}>
-                {['none', 'bubbles', 'confetti', 'stars'].map((type) => (
+                {['none', 'bubbles', 'confetti', 'stars', 'balloons', 'meteors', 'fireflies', 'aurora', 'snow', 'hearts'].map((type) => (
                   <TouchableOpacity
                     key={type}
                     onPress={() => setForm({ ...form, animationType: type })}
@@ -697,7 +703,7 @@ const AdminBanners = ({ navigation }) => {
                     value={form.badge}
                     onChangeText={(val) => setForm({ ...form, badge: val })}
                     placeholder="Ex: NOUVEAU, PROMO"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     style={styles.textInput}
                   />
                 </View>
@@ -707,7 +713,7 @@ const AdminBanners = ({ navigation }) => {
                     value={form.order}
                     onChangeText={(val) => setForm({ ...form, order: val.replace(/[^0-9]/g, '') })}
                     placeholder="Ex: 0, 1"
-                    placeholderTextColor="rgba(255,255,255,0.2)"
+                    placeholderTextColor={THEME.COLORS.textTertiary}
                     keyboardType="numeric"
                     style={styles.textInput}
                   />
@@ -959,12 +965,12 @@ const styles = StyleSheet.create({
   },
   modalCard: {
     height: '85%',
-    backgroundColor: 'rgba(20, 20, 20, 0.95)',
+    backgroundColor: THEME.COLORS.glassModal || THEME.COLORS.background,
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)'
+    borderColor: THEME.COLORS.border
   },
   modalHeader: {
     flexDirection: 'row',
@@ -1046,9 +1052,9 @@ const styles = StyleSheet.create({
     marginTop: THEME.SPACING.md
   },
   textInput: {
-    backgroundColor: 'rgba(255,255,255,0.03)',
+    backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.03)',
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.06)',
+    borderColor: THEME.COLORS.border,
     borderRadius: THEME.BORDERS.radius.lg,
     paddingHorizontal: THEME.SPACING.md,
     paddingVertical: THEME.SPACING.md,
@@ -1077,8 +1083,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.primary
   },
   chipInactive: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.05)'
+    backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.02)',
+    borderColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.05)'
   },
   chipText: {
     fontSize: 12,
@@ -1129,13 +1135,13 @@ const styles = StyleSheet.create({
   },
   tabContainer: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.05)',
     borderRadius: THEME.BORDERS.radius.lg,
     padding: 4,
     marginTop: THEME.SPACING.xs,
     marginBottom: THEME.SPACING.md,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.08)'
+    borderColor: THEME.COLORS.border
   },
   tabButton: {
     flex: 1,
@@ -1180,8 +1186,8 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.primary,
   },
   routeChipInactive: {
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderColor: 'rgba(255,255,255,0.1)',
+    backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.02)',
+    borderColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.1)',
   },
   routeChipText: {
     fontSize: 11,
@@ -1196,7 +1202,7 @@ const styles = StyleSheet.create({
   videoPlaceholderPreview: {
     height: 160,
     width: '100%',
-    backgroundColor: 'rgba(255,255,255,0.05)',
+    backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.05)',
     borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',

@@ -476,6 +476,134 @@ const PulsingAura = () => {
 };
 
 // ==========================================
+// 🧼 ANIMATION 8 : CHUTE DE NEIGE (SNOW)
+// ==========================================
+const FallingSnow = () => {
+  const flakeCount = 8;
+  const anims = useRef([...Array(flakeCount)].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const startAnimation = (index) => {
+      anims[index].setValue(0);
+      Animated.timing(anims[index], {
+        toValue: 1,
+        duration: 3000 + Math.random() * 2000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => startAnimation(index));
+    };
+
+    anims.forEach((_, i) => {
+      const timeout = setTimeout(() => startAnimation(i), i * 500);
+      return () => clearTimeout(timeout);
+    });
+  }, [anims]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {anims.map((anim, i) => {
+        const left = 5 + i * 11 + Math.random() * 5;
+        const size = 4 + (i % 3) * 2;
+        const translateY = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [-10, 170]
+        });
+        const translateX = anim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, 10, -10]
+        });
+        const opacity = anim.interpolate({
+          inputRange: [0, 0.1, 0.9, 1],
+          outputRange: [0, 0.8, 0.8, 0]
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.snowflake,
+              {
+                left: `${left}%`,
+                width: size,
+                height: size,
+                borderRadius: size / 2,
+                transform: [{ translateY }, { translateX }],
+                opacity,
+              }
+            ]}
+          />
+        );
+      })}
+    </View>
+  );
+};
+
+// ==========================================
+// 🧼 ANIMATION 9 : ENVOLÉE DE COEURS (HEARTS)
+// ==========================================
+const RisingHearts = () => {
+  const heartCount = 6;
+  const anims = useRef([...Array(heartCount)].map(() => new Animated.Value(0))).current;
+
+  useEffect(() => {
+    const startAnimation = (index) => {
+      anims[index].setValue(0);
+      Animated.timing(anims[index], {
+        toValue: 1,
+        duration: 2500 + Math.random() * 1500,
+        easing: Easing.out(Easing.ease),
+        useNativeDriver: true,
+      }).start(() => startAnimation(index));
+    };
+
+    anims.forEach((_, i) => {
+      const timeout = setTimeout(() => startAnimation(i), i * 450);
+      return () => clearTimeout(timeout);
+    });
+  }, [anims]);
+
+  return (
+    <View style={StyleSheet.absoluteFill} pointerEvents="none">
+      {anims.map((anim, i) => {
+        const left = 10 + i * 15 + Math.random() * 5;
+        const scale = anim.interpolate({
+          inputRange: [0, 0.2, 0.8, 1],
+          outputRange: [0.3, 1, 1, 0]
+        });
+        const translateY = anim.interpolate({
+          inputRange: [0, 1],
+          outputRange: [160, -20]
+        });
+        const translateX = anim.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [0, 10, -10]
+        });
+        const opacity = anim.interpolate({
+          inputRange: [0, 0.2, 0.8, 1],
+          outputRange: [0, 0.7, 0.7, 0]
+        });
+
+        return (
+          <Animated.View
+            key={i}
+            style={[
+              styles.heartWrapper,
+              {
+                left: `${left}%`,
+                transform: [{ translateY }, { translateX }, { scale }],
+                opacity,
+              }
+            ]}
+          >
+            <MaterialCommunityIcons name="heart" size={14} color="#FF2D55" />
+          </Animated.View>
+        );
+      })}
+    </View>
+  );
+};
+
+// ==========================================
 // ==========================================
 // 🎥 COMPOSANT MULTI-PLATEFORME DE LECTURE VIDÉO
 // ==========================================
@@ -735,7 +863,7 @@ const MarketplaceBanner = ({ navigation: propNavigation }) => {
   // Rendu de l'animation associée au slide (Fallback intelligent si type non spécifié)
   const renderMicroAnimation = () => {
     try {
-      const type = activeSlide.animationType || ['confetti', 'stars', 'bubbles', 'balloons', 'meteors', 'fireflies', 'aurora'][currentIndex % 7];
+      const type = activeSlide.animationType || ['confetti', 'stars', 'bubbles', 'balloons', 'meteors', 'fireflies', 'aurora', 'snow', 'hearts'][currentIndex % 9];
       switch (type) {
         case 'bubbles':
           return <RisingBubbles />;
@@ -751,6 +879,10 @@ const MarketplaceBanner = ({ navigation: propNavigation }) => {
           return <MagicalFireflies />;
         case 'aurora':
           return <PulsingAura />;
+        case 'snow':
+          return <FallingSnow />;
+        case 'hearts':
+          return <RisingHearts />;
         default:
           return null;
       }
@@ -1064,6 +1196,21 @@ const styles = StyleSheet.create({
     height: 200,
     borderRadius: 100,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
+  
+  // Neige
+  snowflake: {
+    position: 'absolute',
+    top: -10,
+    backgroundColor: '#FFFFFF',
+  },
+  
+  // Coeurs
+  heartWrapper: {
+    position: 'absolute',
+    bottom: -15,
+    justifyContent: 'center',
+    alignItems: 'center',
   }
 });
 
