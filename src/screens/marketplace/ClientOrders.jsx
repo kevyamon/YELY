@@ -287,7 +287,7 @@ const ClientOrders = ({ navigation }) => {
               {activeTab === 'active' && (
                 <TouchableOpacity 
                   style={styles.shopBtn}
-                  onPress={() => navigation.navigate('MarketplaceHub')}
+                  onPress={() => navigation.navigate('Accueil')}
                 >
                   <Text style={styles.shopBtnText}>Commencer mes achats</Text>
                 </TouchableOpacity>
