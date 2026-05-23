@@ -98,6 +98,42 @@ const SellerProfile = ({ route, navigation }) => {
     }
   };
 
+  const handleDownloadQrCode = async () => {
+    try {
+      if (Platform.OS === 'web') {
+        const response = await fetch(qrCodeUrl);
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `yely-shop-${sellerId}.png`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        dispatch(showToast({
+          type: 'success',
+          title: 'Téléchargement',
+          message: 'Code QR téléchargé avec succès.'
+        }));
+      } else {
+        const supported = await Linking.canOpenURL(qrCodeUrl);
+        if (supported) {
+          await Linking.openURL(qrCodeUrl);
+        } else {
+          Alert.alert('Erreur', 'Impossible de générer le code QR.');
+        }
+      }
+    } catch (err) {
+      console.warn('QR download error:', err);
+      dispatch(showToast({
+        type: 'error',
+        title: 'Erreur',
+        message: 'Impossible de télécharger le code QR.'
+      }));
+    }
+  };
+
   const renderHeader = () => (
     <View style={styles.headerContainer}>
       {/* Profil details */}
@@ -251,9 +287,15 @@ const SellerProfile = ({ route, navigation }) => {
               <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.modalShareBtn} onPress={handleShare}>
-              <Text style={styles.modalShareBtnText}>Envoyer le lien de la boutique</Text>
-            </TouchableOpacity>
+            <View style={styles.modalActionButtons}>
+              <TouchableOpacity style={styles.modalDownloadBtn} onPress={handleDownloadQrCode}>
+                <MaterialCommunityIcons name="download" size={16} color={THEME.COLORS.textPrimary} style={{ marginRight: 6 }} />
+                <Text style={styles.modalDownloadBtnText}>Télécharger QR</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalShareBtn} onPress={handleShare}>
+                <Text style={styles.modalShareBtnText}>Envoyer le lien</Text>
+              </TouchableOpacity>
+            </View>
           </View>
         </TouchableOpacity>
       </Modal>
@@ -512,18 +554,40 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: 8,
   },
+  modalActionButtons: {
+    flexDirection: 'row',
+    gap: 8,
+    width: '100%',
+  },
+  modalDownloadBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    borderRadius: 14,
+    paddingVertical: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalDownloadBtnText: {
+    color: THEME.COLORS.textPrimary,
+    fontWeight: '800',
+    fontSize: 12.5,
+  },
   modalShareBtn: {
+    flex: 1,
     backgroundColor: THEME.COLORS.primary,
     borderRadius: 14,
     paddingVertical: 12,
-    width: '100%',
     alignItems: 'center',
+    justifyContent: 'center',
     ...THEME.SHADOWS.goldSoft,
   },
   modalShareBtnText: {
     color: THEME.COLORS.deepAsphalt,
     fontWeight: '800',
-    fontSize: 13,
+    fontSize: 12.5,
   },
 });
 
