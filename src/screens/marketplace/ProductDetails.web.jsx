@@ -12,7 +12,9 @@ import {
   ScrollView, 
   StatusBar,
   useColorScheme,
-  useWindowDimensions
+  useWindowDimensions,
+  Animated,
+  Easing
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -27,6 +29,38 @@ import GlassCard from '../../components/ui/GlassCard';
 import GlassModal from '../../components/ui/GlassModal';
 import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
+
+const AnimatedStar = () => {
+  const rotateAnim = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    const startRotation = () => {
+      Animated.timing(rotateAnim, {
+        toValue: 1,
+        duration: 1200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }).start(() => {
+        rotateAnim.setValue(0);
+      });
+    };
+
+    startRotation();
+    const interval = setInterval(startRotation, 160000);
+    return () => clearInterval(interval);
+  }, [rotateAnim]);
+
+  const spin = rotateAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  return (
+    <Animated.View style={{ transform: [{ rotate: spin }] }}>
+      <MaterialCommunityIcons name="star" size={22} color={THEME.COLORS.primary} />
+    </Animated.View>
+  );
+};
 
 const CATEGORY_LABELS = {
   'Food': 'Nourriture',
@@ -401,15 +435,22 @@ const ProductDetails = ({ route, navigation }) => {
                     </View>
                   </GlassCard>
 
-                  <GlassCard style={styles.specCardDesktop} padding={12}>
-                    <MaterialCommunityIcons name="star-circle-outline" size={20} color={THEME.COLORS.primary} />
-                    <View style={styles.specTextCol}>
-                      <Text style={styles.specLabel}>Évaluation</Text>
-                      <Text style={styles.specValue}>
-                        {product.rating ? `${product.rating} / 5` : 'Excellente'}
-                      </Text>
-                    </View>
-                  </GlassCard>
+                  <TouchableOpacity 
+                    style={styles.specCardDesktopTouch} 
+                    activeOpacity={0.8}
+                    onPress={() => navigation.navigate('ProductReviews', { productId: product._id, productName: product.name })}
+                  >
+                    <GlassCard style={styles.specCardDesktopContainer} padding={12}>
+                      <AnimatedStar />
+                      <View style={styles.specTextCol}>
+                        <Text style={styles.specLabel}>Évaluation</Text>
+                        <Text style={styles.specValue}>
+                          {product.rating ? `${product.rating.toFixed(1)} / 5` : '5.0 / 5'}
+                        </Text>
+                        <Text style={styles.specReviewsLink}>Lire les avis ({product.numReviews || 0})</Text>
+                      </View>
+                    </GlassCard>
+                  </TouchableOpacity>
                 </View>
 
 
@@ -617,13 +658,20 @@ const ProductDetails = ({ route, navigation }) => {
                 <Text style={styles.specValue} numberOfLines={1}>Express dispo</Text>
               </GlassCard>
 
-              <GlassCard style={styles.specCardMobile} padding={12}>
-                <MaterialCommunityIcons name="star-circle-outline" size={20} color={THEME.COLORS.primary} />
-                <Text style={styles.specLabel}>Évaluation</Text>
-                <Text style={styles.specValue} numberOfLines={1}>
-                  {product.rating ? `${product.rating} / 5` : 'Excellente'}
-                </Text>
-              </GlassCard>
+              <TouchableOpacity 
+                style={styles.specCardTouch} 
+                activeOpacity={0.8}
+                onPress={() => navigation.navigate('ProductReviews', { productId: product._id, productName: product.name })}
+              >
+                <GlassCard style={styles.specCardContainer} padding={12}>
+                  <AnimatedStar />
+                  <Text style={styles.specLabel}>Évaluation</Text>
+                  <Text style={styles.specValue} numberOfLines={1}>
+                    {product.rating ? `${product.rating.toFixed(1)} / 5` : '5.0 / 5'}
+                  </Text>
+                  <Text style={styles.specReviewsLink}>Lire les avis ({product.numReviews || 0})</Text>
+                </GlassCard>
+              </TouchableOpacity>
             </View>
 
             {/* DESCRIPTION CARD */}
@@ -979,9 +1027,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
   },
+  specCardDesktopTouch: {
+    width: '48%',
+  },
+  specCardDesktopContainer: {
+    width: '100%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
   specTextCol: { marginLeft: 12 },
   specLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, fontWeight: '500' },
   specValue: { fontSize: 13, fontWeight: '800', color: THEME.COLORS.textPrimary, marginTop: 1 },
+  specReviewsLink: { fontSize: 9.5, color: THEME.COLORS.primary, fontWeight: '800', marginTop: 4, textTransform: 'uppercase' },
   
   // Trust Badges Ticker
   trustRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 14, borderTopWidth: 1, borderBottomWidth: 1, borderColor: 'rgba(255,255,255,0.04)', marginBottom: 22 },
@@ -1192,6 +1252,18 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.05)',
     marginBottom: 10,
+  },
+  specCardTouch: {
+    width: '48.5%',
+    marginBottom: 10,
+  },
+  specCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
   },
 
   // Floating Purchase Footer capsule (web mobile)
