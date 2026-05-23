@@ -85,6 +85,7 @@ const SellerProfile = ({ route, navigation }) => {
   const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
   const correctedShareUrl = `${baseUrl}/shop/${seller?.shopSlug || sellerId}`;
   const qrCodeUrl = `https://quickchart.io/qr?text=${encodeURIComponent(correctedShareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250`;
+  const shareUrlWithBuster = useMemo(() => correctedShareUrl ? `${correctedShareUrl}?v=${Date.now()}` : '', [correctedShareUrl]);
 
   const handleShare = async () => {
     try {
@@ -95,7 +96,7 @@ const SellerProfile = ({ route, navigation }) => {
             await navigator.share({
               title: `Boutique Yély de ${seller?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: correctedShareUrl,
+              url: shareUrlWithBuster,
             });
             shared = true;
           } catch (e) {
@@ -122,8 +123,8 @@ const SellerProfile = ({ route, navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${correctedShareUrl}`,
-          url: correctedShareUrl,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici : ${shareUrlWithBuster}`,
+          url: shareUrlWithBuster,
           title: `Boutique de ${seller?.name || 'Vendeur'}`
         });
       }

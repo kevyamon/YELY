@@ -47,6 +47,7 @@ const SellerDashboard = ({ navigation }) => {
   const baseUrl = ENV.API_URL ? ENV.API_URL.replace('/api/v1', '') : 'https://download-yely.vercel.app';
   const shareUrl = currentUser ? `${baseUrl}/shop/${currentUser.shopSlug || currentUser._id}` : '';
   const qrCodeUrl = currentUser ? `https://quickchart.io/qr?text=${encodeURIComponent(shareUrl)}&centerImageUrl=${encodeURIComponent('https://download-yely.vercel.app/logo.png')}&centerImageSizeRatio=0.22&ecLevel=H&size=250` : '';
+  const shareUrlWithBuster = useMemo(() => shareUrl ? `${shareUrl}?v=${Date.now()}` : '', [shareUrl]);
 
   const handleShare = async () => {
     try {
@@ -57,7 +58,7 @@ const SellerDashboard = ({ navigation }) => {
             await navigator.share({
               title: `Boutique Yély de ${currentUser?.name || 'Vendeur'}`,
               text: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :`,
-              url: shareUrl,
+              url: shareUrlWithBuster,
             });
             shared = true;
           } catch (e) {
@@ -84,8 +85,8 @@ const SellerDashboard = ({ navigation }) => {
         }
       } else {
         await Share.share({
-          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :\n\n${shareUrl}`,
-          url: shareUrl,
+          message: `Découvrez ma boutique sur Yély ! Visitez mes produits ici :\n\n${shareUrlWithBuster}`,
+          url: shareUrlWithBuster,
           title: `Boutique de ${currentUser?.name || 'Vendeur'}`
         });
       }
