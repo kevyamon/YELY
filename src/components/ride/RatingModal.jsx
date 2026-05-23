@@ -74,14 +74,14 @@ const RatingModal = () => {
           onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} 
         />
         
-        <View style={styles.modalCard}>
+        <View style={[styles.modalCard, { backgroundColor: THEME.COLORS.background }]}>
           
           <View style={styles.header}>
             <View style={styles.successIconContainer}>
               <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
             </View>
-            <Text style={styles.titleText}>Course Terminée</Text>
-            <Text style={styles.subtitleText}>
+            <Text style={[styles.titleText, { color: THEME.COLORS.textPrimary }]}>Course Terminée</Text>
+            <Text style={[styles.subtitleText, { color: THEME.COLORS.textSecondary }]}>
               Comment s'est passé votre trajet avec {driverName} ?
             </Text>
           </View>
@@ -103,9 +103,9 @@ const RatingModal = () => {
             ))}
           </View>
 
-          <View style={styles.inputContainer}>
+          <View style={[styles.inputContainer, { backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.03)', borderColor: THEME.COLORS.border }]}>
             <TextInput
-              style={styles.textInput}
+              style={[styles.textInput, { color: THEME.COLORS.textPrimary }]}
               placeholder="Laissez un commentaire (optionnel)"
               placeholderTextColor={THEME.COLORS.textTertiary}
               value={comment}
@@ -118,7 +118,7 @@ const RatingModal = () => {
           </View>
 
           <TouchableOpacity 
-            style={[styles.submitButton, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
+            style={[styles.submitButton, { backgroundColor: THEME.COLORS.textPrimary }, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
             onPress={handleSubmit}
             disabled={rating === 0 || isLoading}
             activeOpacity={0.8}
@@ -126,7 +126,7 @@ const RatingModal = () => {
             {isLoading ? (
               <ActivityIndicator color={THEME.COLORS.background} />
             ) : (
-              <Text style={styles.submitButtonText}>VALIDER MON AVIS</Text>
+              <Text style={[styles.submitButtonText, { color: THEME.COLORS.background }]}>VALIDER MON AVIS</Text>
             )}
           </TouchableOpacity>
 
