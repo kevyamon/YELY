@@ -20,7 +20,7 @@ import {
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import {
   useGetProductReviewsQuery,
@@ -74,6 +74,7 @@ const ProductReviews = ({ route, navigation }) => {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   const currentUser = useSelector(selectCurrentUser);
+  const dispatch = useDispatch();
 
   const { data: reviewsData, isLoading, refetch } = useGetProductReviewsQuery(productId);
   const [updateReview, { isLoading: isUpdating }] = useUpdateReviewMutation();
@@ -117,7 +118,7 @@ const ProductReviews = ({ route, navigation }) => {
 
   const handleSaveEdit = async () => {
     if (!editComment.trim()) {
-      showToast({ type: 'warning', title: 'Erreur', message: 'Le commentaire ne peut pas être vide.' });
+      dispatch(showToast({ type: 'warning', title: 'Erreur', message: 'Le commentaire ne peut pas être vide.' }));
       return;
     }
     try {
@@ -128,9 +129,9 @@ const ProductReviews = ({ route, navigation }) => {
       }).unwrap();
       setEditModalVisible(false);
       setEditingReview(null);
-      showToast({ type: 'success', title: 'Succès', message: 'Votre avis a été mis à jour.' });
+      dispatch(showToast({ type: 'success', title: 'Succès', message: 'Votre avis a été mis à jour.' }));
     } catch (err) {
-      showToast({ type: 'error', title: 'Erreur', message: err.data?.message || 'Impossible de mettre à jour.' });
+      dispatch(showToast({ type: 'error', title: 'Erreur', message: err.data?.message || 'Impossible de mettre à jour.' }));
     }
   };
 
@@ -144,10 +145,10 @@ const ProductReviews = ({ route, navigation }) => {
       await deleteReview(reviewToDeleteId).unwrap();
       setDeleteConfirmVisible(false);
       setReviewToDeleteId(null);
-      showToast({ type: 'success', title: 'Succès', message: 'Votre avis a été supprimé.' });
+      dispatch(showToast({ type: 'success', title: 'Succès', message: 'Votre avis a été supprimé.' }));
     } catch (err) {
       setDeleteConfirmVisible(false);
-      showToast({ type: 'error', title: 'Erreur', message: err.data?.message || 'Impossible de supprimer.' });
+      dispatch(showToast({ type: 'error', title: 'Erreur', message: err.data?.message || 'Impossible de supprimer.' }));
     }
   };
 
