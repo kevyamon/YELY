@@ -2,13 +2,14 @@ import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { applyThemeUpdate } from './src/theme/themeEngine';
+import { BlurView } from 'expo-blur';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator, Appearance, AppState } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator, Appearance, AppState, Modal } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -211,10 +212,25 @@ const triggerBackgroundOtaCheck = async () => {
 
 const App = () => {
   const [isDownloadingOta, setIsDownloadingOta] = useState(false);
+  const [showOtaModal, setShowOtaModal] = useState(false);
   const colorScheme = useColorScheme();
 
   // Mettre à jour synchrone le thème et toutes les feuilles de style au rendu
   applyThemeUpdate(colorScheme);
+
+  const checkOtaSilent = async () => {
+    if (Platform.OS === 'web') return;
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        // Téléchargement en tâche de fond
+        await Updates.fetchUpdateAsync();
+        setShowOtaModal(true);
+      }
+    } catch (err) {
+      console.log("[OTA Background Check] Skip:", err.message);
+    }
+  };
 
   // Mettre à jour dynamiquement les couleurs du système (StatusBar, NavigationBar, SystemUI)
   useEffect(() => {
@@ -251,7 +267,7 @@ const App = () => {
             await NativeSplashScreen.hideAsync();
             
             // Lancement de la vérification et du téléchargement OTA en tâche de fond
-            triggerBackgroundOtaCheck();
+            checkOtaSilent();
             return;
           }
 
@@ -281,6 +297,8 @@ const App = () => {
           }
         } catch (error) {
           console.warn("[OTA Startup Check] Pas d'OTA ou verification ignoree:", error.message);
+          // Tentative silencieuse en arrière-plan en cas de timeout/échec réseau au démarrage
+          checkOtaSilent();
         }
       }
 
@@ -321,13 +339,25 @@ const App = () => {
       }
     };
     
-    // Vérification de changement de thème au retour au premier plan (Foreground)
+    // Vérification de changement de thème & OTA au retour au premier plan (Foreground)
     const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {
         const currentTheme = Appearance.getColorScheme();
         if (currentTheme !== lastTheme) {
           lastTheme = currentTheme;
           await handleThemeChange(currentTheme);
+        }
+
+        // Vérification OTA au retour au premier plan avec cooldown de 15 minutes
+        try {
+          const lastOtaFgCheckStr = await AsyncStorage.getItem('last_ota_fg_check');
+          const lastOtaFgCheck = lastOtaFgCheckStr ? Number(lastOtaFgCheckStr) : 0;
+          if (Date.now() - lastOtaFgCheck > 15 * 60 * 1000) {
+            await AsyncStorage.setItem('last_ota_fg_check', String(Date.now()));
+            checkOtaSilent();
+          }
+        } catch (err) {
+          console.log("[OTA Fg Check Error]", err.message);
         }
       }
     };
@@ -359,6 +389,7 @@ const App = () => {
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
               <AppContent />
+              <OtaReadyModal visible={showOtaModal} onReload={() => Updates.reloadAsync()} />
             </Sentry.ErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>
@@ -368,6 +399,33 @@ const App = () => {
 };
 
 export default Sentry.wrap(App);
+
+const OtaReadyModal = ({ visible, onReload }) => {
+  if (!visible) return null;
+
+  return (
+    <Modal animationType="fade" transparent={true} visible={visible}>
+      <View style={styles.otaModalOverlay}>
+        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={styles.otaModalCard}>
+          <View style={styles.otaModalIconContainer}>
+            <Ionicons name="sparkles" size={32} color="#000" />
+          </View>
+          <Text style={styles.otaModalTitle}>Application mise à jour !</Text>
+          <Text style={styles.otaModalMessage}>
+            Une mise à jour importante de Yely a été téléchargée en arrière-plan avec succès.
+          </Text>
+          <Text style={styles.otaModalSubmessage}>
+            Redémarrez l'application maintenant pour appliquer les modifications instantanément.
+          </Text>
+          <TouchableOpacity style={styles.otaModalButton} onPress={onReload}>
+            <Text style={styles.otaModalButtonText}>Redémarrer Yely</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+};
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
@@ -399,4 +457,69 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     lineHeight: 20,
   },
+  otaModalOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.6)'
+  },
+  otaModalCard: {
+    width: '85%',
+    backgroundColor: '#000000',
+    borderRadius: 24,
+    padding: 30,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.25)',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20
+  },
+  otaModalIconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#D4AF37',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+    borderWidth: 2,
+    borderColor: '#000'
+  },
+  otaModalTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    marginBottom: 12,
+    textAlign: 'center'
+  },
+  otaModalMessage: {
+    fontSize: 14.5,
+    color: 'rgba(255, 255, 255, 0.85)',
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: 10
+  },
+  otaModalSubmessage: {
+    fontSize: 12.5,
+    color: 'rgba(212, 175, 55, 0.8)',
+    textAlign: 'center',
+    lineHeight: 18,
+    marginBottom: 25,
+    fontWeight: '600'
+  },
+  otaModalButton: {
+    width: '100%',
+    backgroundColor: '#D4AF37',
+    paddingVertical: 14,
+    borderRadius: 14,
+    alignItems: 'center'
+  },
+  otaModalButtonText: {
+    color: '#000000',
+    fontSize: 15,
+    fontWeight: '800'
+  }
 });
