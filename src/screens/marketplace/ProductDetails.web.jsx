@@ -529,11 +529,15 @@ const ProductDetails = ({ route, navigation }) => {
                           <View key={item._id} style={styles.detailReviewItem}>
                             <View style={styles.detailReviewHeader}>
                               <View style={styles.reviewUserRow}>
-                                <View style={styles.reviewAvatar}>
-                                  <Text style={styles.reviewAvatarText}>
-                                    {(item.user?.name || 'C').charAt(0).toUpperCase()}
-                                  </Text>
-                                </View>
+                                {item.user?.profilePicture ? (
+                                  <Image source={{ uri: item.user.profilePicture }} style={styles.reviewAvatarImage} />
+                                ) : (
+                                  <View style={styles.reviewAvatar}>
+                                    <Text style={styles.reviewAvatarText}>
+                                      {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                    </Text>
+                                  </View>
+                                )}
                                 <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
                               </View>
                               <View style={styles.detailReviewStars}>
@@ -570,11 +574,15 @@ const ProductDetails = ({ route, navigation }) => {
                                 <View key={item._id} style={[styles.carouselReviewItem, { width: carouselWidth }]}>
                                   <View style={styles.detailReviewHeader}>
                                     <View style={styles.reviewUserRow}>
-                                      <View style={styles.reviewAvatar}>
-                                        <Text style={styles.reviewAvatarText}>
-                                          {(item.user?.name || 'C').charAt(0).toUpperCase()}
-                                        </Text>
-                                      </View>
+                                      {item.user?.profilePicture ? (
+                                        <Image source={{ uri: item.user.profilePicture }} style={styles.reviewAvatarImage} />
+                                      ) : (
+                                        <View style={styles.reviewAvatar}>
+                                          <Text style={styles.reviewAvatarText}>
+                                            {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                          </Text>
+                                        </View>
+                                      )}
                                       <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
                                     </View>
                                     <View style={styles.detailReviewStars}>
@@ -896,11 +904,15 @@ const ProductDetails = ({ route, navigation }) => {
                       <View key={item._id} style={styles.detailReviewItem}>
                         <View style={styles.detailReviewHeader}>
                           <View style={styles.reviewUserRow}>
-                            <View style={styles.reviewAvatar}>
-                              <Text style={styles.reviewAvatarText}>
-                                {(item.user?.name || 'C').charAt(0).toUpperCase()}
-                              </Text>
-                            </View>
+                            {item.user?.profilePicture ? (
+                              <Image source={{ uri: item.user.profilePicture }} style={styles.reviewAvatarImage} />
+                            ) : (
+                              <View style={styles.reviewAvatar}>
+                                <Text style={styles.reviewAvatarText}>
+                                  {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                </Text>
+                              </View>
+                            )}
                             <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
                           </View>
                           <View style={styles.detailReviewStars}>
@@ -937,11 +949,15 @@ const ProductDetails = ({ route, navigation }) => {
                             <View key={item._id} style={[styles.carouselReviewItem, { width: carouselWidth }]}>
                               <View style={styles.detailReviewHeader}>
                                 <View style={styles.reviewUserRow}>
-                                  <View style={styles.reviewAvatar}>
-                                    <Text style={styles.reviewAvatarText}>
-                                      {(item.user?.name || 'C').charAt(0).toUpperCase()}
-                                    </Text>
-                                  </View>
+                                  {item.user?.profilePicture ? (
+                                    <Image source={{ uri: item.user.profilePicture }} style={styles.reviewAvatarImage} />
+                                  ) : (
+                                    <View style={styles.reviewAvatar}>
+                                      <Text style={styles.reviewAvatarText}>
+                                        {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                      </Text>
+                                    </View>
+                                  )}
                                   <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
                                 </View>
                                 <View style={styles.detailReviewStars}>
@@ -1728,6 +1744,13 @@ const styles = StyleSheet.create({
   },
   reviewsActiveDot: {
     width: 14
+  },
+  reviewAvatarImage: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.3)'
   }
 });
 
