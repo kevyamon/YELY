@@ -122,7 +122,16 @@ const ProductDetails = ({ route, navigation }) => {
   const cartItem = cartItems.find(item => item.id === productId);
   const quantityInCart = cartItem ? cartItem.quantity : 0;
 
-  // Diaporama automatique toutes les 5 secondes en vue mobile
+  const reviewsFlatListRef = useRef(null);
+  const [activeReviewSlide, setActiveReviewSlide] = useState(0);
+  const [carouselWidth, setCarouselWidth] = useState(0);
+
+  const reviewsCount = reviews.length;
+  const avgRating = reviewsCount > 0 
+    ? (reviews.reduce((acc, r) => acc + r.rating, 0) / reviewsCount).toFixed(1) 
+    : (product?.rating ? product.rating.toFixed(1) : '5.0');
+
+  // Diaporama automatique toutes les 5 secondes en vue mobile (Images)
   useEffect(() => {
     if (isLargeScreen || images.length <= 1) return;
 
@@ -144,6 +153,29 @@ const ProductDetails = ({ route, navigation }) => {
 
     return () => clearInterval(interval);
   }, [activeImage, images.length, isLargeScreen, width]);
+
+  // Diaporama automatique toutes les 6 secondes (Avis)
+  useEffect(() => {
+    if (reviews.length < 2 || carouselWidth <= 0) return;
+
+    const interval = setInterval(() => {
+      let nextIndex = activeReviewSlide + 1;
+      if (nextIndex >= reviews.length) {
+        nextIndex = 0;
+      }
+      try {
+        reviewsFlatListRef.current?.scrollTo({
+          x: nextIndex * carouselWidth,
+          animated: true,
+        });
+        setActiveReviewSlide(nextIndex);
+      } catch (_err) {
+        // Fallback
+      }
+    }, 6000);
+
+    return () => clearInterval(interval);
+  }, [activeReviewSlide, reviews.length, carouselWidth]);
 
   const handleAdd = () => {
     if (product?.category !== 'Food' && product?.manageStock) {
@@ -462,9 +494,9 @@ const ProductDetails = ({ route, navigation }) => {
                       <View style={styles.specTextCol}>
                         <Text style={styles.specLabel}>Évaluation</Text>
                         <Text style={styles.specValue}>
-                          {product.rating ? `${product.rating.toFixed(1)} / 5` : '5.0 / 5'}
+                          {`${avgRating} / 5`}
                         </Text>
-                        <Text style={styles.specReviewsLink}>Lire les avis ({product.numReviews || 0})</Text>
+                        <Text style={styles.specReviewsLink}>Lire les avis ({reviewsCount})</Text>
                       </View>
                     </GlassCard>
                   </TouchableOpacity>
@@ -492,19 +524,89 @@ const ProductDetails = ({ route, navigation }) => {
                     <Text style={styles.noReviewsText}>Aucun avis pour le moment.</Text>
                   ) : (
                     <View style={styles.reviewsListPreview}>
-                      {reviews.slice(0, 3).map((item) => (
-                        <View key={item._id} style={styles.detailReviewItem}>
-                          <View style={styles.detailReviewHeader}>
-                            <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
-                            <View style={styles.detailReviewStars}>
-                              {renderDetailStars(item.rating)}
+                      {reviews.length < 2 ? (
+                        reviews.map((item) => (
+                          <View key={item._id} style={styles.detailReviewItem}>
+                            <View style={styles.detailReviewHeader}>
+                              <View style={styles.reviewUserRow}>
+                                <View style={styles.reviewAvatar}>
+                                  <Text style={styles.reviewAvatarText}>
+                                    {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                  </Text>
+                                </View>
+                                <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                              </View>
+                              <View style={styles.detailReviewStars}>
+                                {renderDetailStars(item.rating)}
+                              </View>
                             </View>
+                            <Text style={styles.detailReviewComment} numberOfLines={2}>
+                              {item.comment}
+                            </Text>
                           </View>
-                          <Text style={styles.detailReviewComment} numberOfLines={2}>
-                            {item.comment}
-                          </Text>
+                        ))
+                      ) : (
+                        <View 
+                          onLayout={(e) => {
+                            const w = e.nativeEvent.layout.width;
+                            if (w > 0) setCarouselWidth(w);
+                          }}
+                          style={{ width: '100%', overflow: 'hidden' }}
+                        >
+                          {carouselWidth > 0 && (
+                            <ScrollView
+                              ref={reviewsFlatListRef}
+                              horizontal
+                              pagingEnabled
+                              showsHorizontalScrollIndicator={false}
+                              onMomentumScrollEnd={(e) => {
+                                const index = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
+                                setActiveReviewSlide(index);
+                              }}
+                              style={{ width: carouselWidth }}
+                              contentContainerStyle={{ alignItems: 'center' }}
+                            >
+                              {reviews.map((item) => (
+                                <View key={item._id} style={[styles.carouselReviewItem, { width: carouselWidth }]}>
+                                  <View style={styles.detailReviewHeader}>
+                                    <View style={styles.reviewUserRow}>
+                                      <View style={styles.reviewAvatar}>
+                                        <Text style={styles.reviewAvatarText}>
+                                          {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                        </Text>
+                                      </View>
+                                      <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                                    </View>
+                                    <View style={styles.detailReviewStars}>
+                                      {renderDetailStars(item.rating)}
+                                    </View>
+                                  </View>
+                                  <View style={styles.reviewQuoteContainer}>
+                                    <MaterialCommunityIcons name="format-quote-open" size={20} color="rgba(212,175,55,0.3)" style={{ marginRight: 6 }} />
+                                    <Text style={styles.detailReviewComment} numberOfLines={3}>
+                                      {item.comment}
+                                    </Text>
+                                  </View>
+                                </View>
+                              ))}
+                            </ScrollView>
+                          )}
+                          
+                          <View style={styles.reviewsPagination}>
+                            {reviews.map((_, i) => (
+                              <View 
+                                key={i} 
+                                style={[
+                                  styles.reviewsDot, 
+                                  { backgroundColor: activeReviewSlide === i ? THEME.COLORS.primary : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)') },
+                                  activeReviewSlide === i && styles.reviewsActiveDot
+                                ]} 
+                              />
+                            ))}
+                          </View>
                         </View>
-                      ))}
+                      )}
+
                       {reviews.length > 3 && (
                         <TouchableOpacity 
                           style={styles.viewAllReviewsBtn}
@@ -742,9 +844,9 @@ const ProductDetails = ({ route, navigation }) => {
                   <AnimatedStar />
                   <Text style={styles.specLabel}>Évaluation</Text>
                   <Text style={styles.specValue} numberOfLines={1}>
-                    {product.rating ? `${product.rating.toFixed(1)} / 5` : '5.0 / 5'}
+                    {`${avgRating} / 5`}
                   </Text>
-                  <Text style={styles.specReviewsLink}>Lire les avis ({product.numReviews || 0})</Text>
+                  <Text style={styles.specReviewsLink}>Lire les avis ({reviewsCount})</Text>
                 </GlassCard>
               </TouchableOpacity>
             </View>
@@ -789,19 +891,89 @@ const ProductDetails = ({ route, navigation }) => {
                 <Text style={styles.noReviewsText}>Aucun avis pour le moment.</Text>
               ) : (
                 <View style={styles.reviewsListPreview}>
-                  {reviews.slice(0, 3).map((item) => (
-                    <View key={item._id} style={styles.detailReviewItem}>
-                      <View style={styles.detailReviewHeader}>
-                        <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
-                        <View style={styles.detailReviewStars}>
-                          {renderDetailStars(item.rating)}
+                  {reviews.length < 2 ? (
+                    reviews.map((item) => (
+                      <View key={item._id} style={styles.detailReviewItem}>
+                        <View style={styles.detailReviewHeader}>
+                          <View style={styles.reviewUserRow}>
+                            <View style={styles.reviewAvatar}>
+                              <Text style={styles.reviewAvatarText}>
+                                {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                              </Text>
+                            </View>
+                            <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                          </View>
+                          <View style={styles.detailReviewStars}>
+                            {renderDetailStars(item.rating)}
+                          </View>
                         </View>
+                        <Text style={styles.detailReviewComment} numberOfLines={2}>
+                          {item.comment}
+                        </Text>
                       </View>
-                      <Text style={styles.detailReviewComment} numberOfLines={2}>
-                        {item.comment}
-                      </Text>
+                    ))
+                  ) : (
+                    <View 
+                      onLayout={(e) => {
+                        const w = e.nativeEvent.layout.width;
+                        if (w > 0) setCarouselWidth(w);
+                      }}
+                      style={{ width: '100%', overflow: 'hidden' }}
+                    >
+                      {carouselWidth > 0 && (
+                        <ScrollView
+                          ref={reviewsFlatListRef}
+                          horizontal
+                          pagingEnabled
+                          showsHorizontalScrollIndicator={false}
+                          onMomentumScrollEnd={(e) => {
+                            const index = Math.round(e.nativeEvent.contentOffset.x / carouselWidth);
+                            setActiveReviewSlide(index);
+                          }}
+                          style={{ width: carouselWidth }}
+                          contentContainerStyle={{ alignItems: 'center' }}
+                        >
+                          {reviews.map((item) => (
+                            <View key={item._id} style={[styles.carouselReviewItem, { width: carouselWidth }]}>
+                              <View style={styles.detailReviewHeader}>
+                                <View style={styles.reviewUserRow}>
+                                  <View style={styles.reviewAvatar}>
+                                    <Text style={styles.reviewAvatarText}>
+                                      {(item.user?.name || 'C').charAt(0).toUpperCase()}
+                                    </Text>
+                                  </View>
+                                  <Text style={styles.detailReviewUser}>{item.user?.name || 'Client Yély'}</Text>
+                                </View>
+                                <View style={styles.detailReviewStars}>
+                                  {renderDetailStars(item.rating)}
+                                </View>
+                              </View>
+                              <View style={styles.reviewQuoteContainer}>
+                                <MaterialCommunityIcons name="format-quote-open" size={20} color="rgba(212,175,55,0.3)" style={{ marginRight: 6 }} />
+                                <Text style={styles.detailReviewComment} numberOfLines={3}>
+                                  {item.comment}
+                                </Text>
+                              </View>
+                            </View>
+                          ))}
+                        </ScrollView>
+                      )}
+                      
+                      <View style={styles.reviewsPagination}>
+                        {reviews.map((_, i) => (
+                          <View 
+                            key={i} 
+                            style={[
+                              styles.reviewsDot, 
+                              { backgroundColor: activeReviewSlide === i ? THEME.COLORS.primary : (isDarkMode ? 'rgba(255, 255, 255, 0.2)' : 'rgba(0, 0, 0, 0.15)') },
+                              activeReviewSlide === i && styles.reviewsActiveDot
+                            ]} 
+                          />
+                        ))}
+                      </View>
                     </View>
-                  ))}
+                  )}
+
                   {reviews.length > 3 && (
                     <TouchableOpacity 
                       style={styles.viewAllReviewsBtn}
@@ -1511,6 +1683,51 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.primary,
     fontSize: 13,
     fontWeight: '800'
+  },
+  carouselReviewItem: {
+    paddingVertical: 10,
+    paddingHorizontal: 5
+  },
+  reviewUserRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8
+  },
+  reviewAvatar: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(212,175,55,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(212,175,55,0.3)'
+  },
+  reviewAvatarText: {
+    color: THEME.COLORS.primary,
+    fontSize: 12,
+    fontWeight: 'bold'
+  },
+  reviewQuoteContainer: {
+    flexDirection: 'row',
+    marginTop: 8,
+    paddingLeft: 4,
+    alignItems: 'flex-start'
+  },
+  reviewsPagination: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 15,
+    gap: 6
+  },
+  reviewsDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3
+  },
+  reviewsActiveDot: {
+    width: 14
   }
 });
 
