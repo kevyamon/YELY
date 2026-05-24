@@ -21,6 +21,9 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import { useSelector, useDispatch } from 'react-redux';
+import { selectToast, hideToast } from '../../store/slices/uiSlice';
+import AppToast from './AppToast';
 import { ANIMATIONS, BORDERS, COLORS, SHADOWS, SPACING } from '../../theme/theme';
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
@@ -35,6 +38,8 @@ const GlassModal = ({
   fullWidth = false,
   style,
 }) => {
+  const dispatch = useDispatch();
+  const toast = useSelector(selectToast);
   const translateY = useSharedValue(SCREEN_HEIGHT);
   const opacity = useSharedValue(0);
   const backdropOpacity = useSharedValue(0);
@@ -140,6 +145,15 @@ const GlassModal = ({
             {children}
           </Animated.View>
         </View>
+
+        <AppToast 
+          visible={toast.visible && visible}
+          type={toast.type}
+          title={toast.title}
+          message={toast.message}
+          duration={toast.duration}
+          onHide={() => dispatch(hideToast())}
+        />
       </View>
     </Modal>
   );

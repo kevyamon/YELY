@@ -10,17 +10,17 @@ import GlassInput from '../ui/GlassInput';
 
 const COUNTRY_CODE = '+225';
 
-const ProfileForm = ({ form, setForm, isDriver }) => {
+const ProfileForm = ({ form, setForm, isDriver, isSeller }) => {
   return (
     <>
       <GlassCard style={styles.card}>
         <Text style={styles.sectionTitle}>Informations Personnelles</Text>
         
-        <Text style={styles.label}>Nom complet</Text>
+        <Text style={styles.label}>{isSeller ? "Nom de la boutique" : "Nom complet"}</Text>
         <GlassInput 
           value={form.name}
           onChangeText={(txt) => setForm({...form, name: txt})}
-          placeholder="Votre nom"
+          placeholder={isSeller ? "Le nom de votre boutique" : "Votre nom"}
         />
 
         {/* NOUVELLE UX POUR LE TÉLÉPHONE : Propre et native */}

@@ -31,6 +31,7 @@ import {
 import { showToast, showErrorToast } from '../../store/slices/uiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import GlassModal from '../../components/ui/GlassModal';
 import { useDispatch } from 'react-redux';
 import THEME from '../../theme/theme';
 
@@ -62,11 +63,14 @@ const ManageProducts = ({ navigation }) => {
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
+  const [catSearch, setCatSearch] = useState('');
+  const [validationModalVisible, setValidationModalVisible] = useState(false);
+  const [validationErrors, setValidationErrors] = useState([]);
   const [form, setForm] = useState({
     name: '',
     description: '',
     price: '',
-    category: 'Food',
+    category: '', // Vierge au départ
     images: [], // Tableau d'images
     stockCount: '', // Stock initial pour les catégories concernées
   });
@@ -116,7 +120,8 @@ const ManageProducts = ({ navigation }) => {
   };
 
   const resetForm = () => {
-    setForm({ name: '', description: '', price: '', category: 'Food', images: [], stockCount: '' });
+    setForm({ name: '', description: '', price: '', category: '', images: [], stockCount: '' });
+    setCatSearch('');
     setEditingProduct(null);
     setModalVisible(false);
   };
@@ -132,7 +137,7 @@ const ManageProducts = ({ navigation }) => {
       name: product.name,
       description: product.description || '',
       price: product.price.toString(),
-      category: product.category || 'Food',
+      category: product.category || '',
       images: existingImages,
       stockCount: product.stockCount !== undefined ? product.stockCount.toString() : '',
     });
@@ -140,13 +145,26 @@ const ManageProducts = ({ navigation }) => {
   };
 
   const handleSubmit = async () => {
-    if (!form.name || !form.price || form.images.length === 0 || !form.category) {
-      dispatch(showToast({ type: 'warning', title: 'Données manquantes', message: 'Veuillez remplir tous les champs obligatoires et ajouter au moins une image.' }));
-      return;
+    const errors = [];
+    if (form.images.length === 0) {
+      errors.push("Au moins une photo du produit est obligatoire.");
+    }
+    if (!form.category) {
+      errors.push("La catégorie du produit est obligatoire.");
+    }
+    if (!form.name.trim()) {
+      errors.push("Le nom du produit est obligatoire.");
+    }
+    if (!form.price.trim() || isNaN(Number(form.price)) || Number(form.price) <= 0) {
+      errors.push("Un prix valide (supérieur à 0) est obligatoire.");
+    }
+    if (form.category && form.category !== 'Food' && (form.stockCount.trim() === '' || isNaN(Number(form.stockCount)) || Number(form.stockCount) < 0)) {
+      errors.push("La quantité en stock valide (supérieure ou égale à 0) est obligatoire pour cette catégorie.");
     }
 
-    if (form.category !== 'Food' && (form.stockCount === '' || isNaN(Number(form.stockCount)))) {
-      dispatch(showToast({ type: 'warning', title: 'Stock manquant', message: 'Veuillez renseigner une quantité valide en stock pour cette catégorie.' }));
+    if (errors.length > 0) {
+      setValidationErrors(errors);
+      setValidationModalVisible(true);
       return;
     }
 
@@ -377,8 +395,28 @@ const ManageProducts = ({ navigation }) => {
 
               <View style={styles.formGroup}>
                 <Text style={styles.label}>Catégorie *</Text>
+                
+                {/* Recherche de catégorie */}
+                <View style={styles.searchCatWrapper}>
+                  <MaterialCommunityIcons name="magnify" size={18} color={THEME.COLORS.textTertiary} style={styles.searchCatIcon} />
+                  <TextInput
+                    style={styles.searchCatInput}
+                    placeholder="Rechercher une catégorie..."
+                    placeholderTextColor={THEME.COLORS.textTertiary}
+                    value={catSearch}
+                    onChangeText={setCatSearch}
+                  />
+                  {catSearch !== '' && (
+                    <TouchableOpacity onPress={() => setCatSearch('')} style={styles.clearSearchCatBtn}>
+                      <MaterialCommunityIcons name="close-circle" size={16} color={THEME.COLORS.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.catScroll}>
-                  {CATEGORIES.map((cat) => (
+                  {CATEGORIES.filter(cat => 
+                    cat.label.toLowerCase().includes(catSearch.toLowerCase())
+                  ).map((cat) => (
                     <TouchableOpacity 
                       key={cat.value} 
                       style={[styles.catPill, form.category === cat.value && styles.catPillActive]}
@@ -389,6 +427,11 @@ const ManageProducts = ({ navigation }) => {
                       </Text>
                     </TouchableOpacity>
                   ))}
+                  {CATEGORIES.filter(cat => 
+                    cat.label.toLowerCase().includes(catSearch.toLowerCase())
+                  ).length === 0 && (
+                    <Text style={styles.noCatText}>Aucune catégorie trouvée</Text>
+                  )}
                 </ScrollView>
               </View>
 
@@ -473,6 +516,37 @@ const ManageProducts = ({ navigation }) => {
         confirmText="Oui, supprimer"
         type="danger"
       />
+
+      {/* MODAL VALIDATION ERREURS */}
+      <GlassModal 
+        visible={validationModalVisible} 
+        onClose={() => setValidationModalVisible(false)}
+        position="center"
+      >
+        <View style={styles.validationModalContent}>
+          <View style={styles.validationIconBg}>
+            <MaterialCommunityIcons name="alert-decagram" size={44} color={THEME.COLORS.danger} />
+          </View>
+          
+          <Text style={styles.validationTitle}>Données manquantes ou incorrectes</Text>
+          
+          <View style={styles.validationErrorsList}>
+            {validationErrors.map((err, i) => (
+              <View key={i} style={styles.validationErrorItem}>
+                <MaterialCommunityIcons name="circle-medium" size={18} color={THEME.COLORS.danger} style={{ marginTop: 2 }} />
+                <Text style={styles.validationErrorText}>{err}</Text>
+              </View>
+            ))}
+          </View>
+
+          <TouchableOpacity 
+            style={styles.validationCloseBtn} 
+            onPress={() => setValidationModalVisible(false)}
+          >
+            <Text style={styles.validationCloseBtnText}>D'ACCORD</Text>
+          </TouchableOpacity>
+        </View>
+      </GlassModal>
     </View>
   );
 };
@@ -570,6 +644,87 @@ const styles = StyleSheet.create({
   submitBtn: { backgroundColor: THEME.COLORS.primary, paddingVertical: 18, borderRadius: THEME.BORDERS.radius.pill, alignItems: 'center', marginTop: 10, ...THEME.SHADOWS.gold },
   submitBtnDisabled: { opacity: 0.6 },
   submitBtnText: { color: THEME.COLORS.deepAsphalt, fontWeight: '900', letterSpacing: 1 },
+
+  // Styles de recherche de catégorie et de modale de validation
+  searchCatWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    marginBottom: 12,
+    paddingHorizontal: 12,
+  },
+  searchCatIcon: {
+    marginRight: 8,
+  },
+  searchCatInput: {
+    flex: 1,
+    color: THEME.COLORS.textPrimary,
+    fontSize: 13,
+    paddingVertical: 10,
+  },
+  clearSearchCatBtn: {
+    padding: 4,
+  },
+  noCatText: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 12,
+    fontStyle: 'italic',
+    paddingVertical: 8,
+    paddingHorizontal: 10,
+  },
+  validationModalContent: {
+    alignItems: 'center',
+    paddingVertical: 10,
+  },
+  validationIconBg: {
+    width: 76,
+    height: 76,
+    borderRadius: 38,
+    backgroundColor: 'rgba(231, 76, 60, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  validationTitle: {
+    fontSize: 18,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  validationErrorsList: {
+    width: '100%',
+    marginBottom: 24,
+    gap: 8,
+  },
+  validationErrorItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 6,
+  },
+  validationErrorText: {
+    flex: 1,
+    fontSize: 13.5,
+    color: THEME.COLORS.textSecondary,
+    lineHeight: 19,
+  },
+  validationCloseBtn: {
+    width: '100%',
+    backgroundColor: THEME.COLORS.primary,
+    paddingVertical: 14,
+    borderRadius: THEME.BORDERS.radius.pill,
+    alignItems: 'center',
+    ...THEME.SHADOWS.gold,
+  },
+  validationCloseBtnText: {
+    color: THEME.COLORS.deepAsphalt,
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1,
+  },
 });
 
 export default ManageProducts;

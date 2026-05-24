@@ -31,11 +31,13 @@ const COUNTRY_CODE = '+225';
 const ProfileScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const currentUser = useSelector(selectCurrentUser);
-  const isDriver = currentUser?.role === 'driver';
-  
-  const userRole = currentUser?.role || 'rider';
-
   const { data: profileData, isLoading: isFetching, refetch } = useGetUserProfileQuery();
+
+  const userRole = currentUser?.role || 'rider';
+  const serverRole = profileData?.data?.role || userRole;
+  const isDriver = serverRole === 'driver';
+  const isSeller = serverRole === 'seller';
+
   const [updateProfile, { isLoading: isUpdating }] = useUpdateUserProfileMutation();
   const [uploadPhoto, { isLoading: isUploading }] = useUploadProfilePictureMutation();
   const [deleteAccount, { isLoading: isDeleting }] = useDeleteAccountMutation();
@@ -177,7 +179,6 @@ const ProfileScreen = ({ navigation }) => {
 
   const userPhoto = profileData?.data?.profilePicture || currentUser?.profilePicture;
   const userEmail = profileData?.data?.email || currentUser?.email;
-  const serverRole = profileData?.data?.role || userRole;
 
   return (
     <ScreenWrapper>
@@ -217,6 +218,7 @@ const ProfileScreen = ({ navigation }) => {
                 form={form}
                 setForm={setForm}
                 isDriver={isDriver}
+                isSeller={isSeller}
               />
 
               <GoldButton 

@@ -14,6 +14,7 @@ const ProfileAvatar = ({ userPhoto, email, role, isUploading, onPickImage }) => 
     const roles = {
       driver: 'Chauffeur Partenaire',
       rider: 'Passager',
+      seller: 'Vendeur',
       admin: 'Administrateur',
       superadmin: 'Direction'
     };
