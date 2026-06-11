@@ -273,6 +273,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       
       dispatch(setCurrentRide({
         ...rideData,
+        type: 'RIDE',
         rideId: rideData._id || rideData.rideId || res.rideId,
         status: rideData.status || 'searching',
         origin: rideData.origin || payload.origin,

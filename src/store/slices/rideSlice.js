@@ -22,7 +22,12 @@ const rideSlice = createSlice({
       state.incomingRide = null;
     },
     setCurrentRide: (state, action) => {
-      state.currentRide = { ...state.currentRide, ...action.payload };
+      if (action.payload === null) {
+        state.currentRide = null;
+      } else {
+        const type = action.payload.type || (state.currentRide ? state.currentRide.type : 'RIDE');
+        state.currentRide = { type, ...state.currentRide, ...action.payload };
+      }
     },
     updateRideStatus: (state, action) => {
       if (state.currentRide) {
