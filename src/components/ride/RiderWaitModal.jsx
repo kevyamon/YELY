@@ -26,6 +26,7 @@ const RiderWaitModal = () => {
 
   const isVisible = Boolean(
     currentRide && 
+    currentRide.type !== 'DELIVERY' &&
     (currentRide.status === 'searching' || currentRide.status === 'negotiating')
   );
 

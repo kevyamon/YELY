@@ -46,7 +46,9 @@ const RiderHome = ({ navigation }) => {
   
   const { location, errorMsg } = useGeolocation(); 
   
-  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
+  const isRideActive = currentRide && 
+    currentRide.type !== 'DELIVERY' &&
+    ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   useEffect(() => {
     const checkFirstVisit = async () => {
