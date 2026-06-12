@@ -21,7 +21,7 @@ import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
-import { selectCurrentUser } from '../../store/slices/authSlice';
+import { selectCurrentUser, logout } from '../../store/slices/authSlice';
 import { 
   useGetSellerOrdersQuery, 
   useUpdateOrderStatusMutation,
@@ -146,6 +146,50 @@ const SellerDashboard = ({ navigation }) => {
   const { data: ledgerData } = useGetLedgerStatsQuery();
   const [updateStatus, { isLoading: isUpdating }] = useUpdateOrderStatusMutation();
   const [confirmData, setConfirmData] = React.useState({ visible: false, orderId: null, nextStatus: '', msg: '' });
+
+  const isLocationSet = currentUser?.currentLocation?.coordinates && 
+    !(currentUser.currentLocation.coordinates[0] === 0 && currentUser.currentLocation.coordinates[1] === 0);
+
+  if (currentUser && !isLocationSet) {
+    return (
+      <View style={[styles.container, { backgroundColor: THEME.COLORS.background, justifyContent: 'center', alignItems: 'center' }]}>
+        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
+        <View style={styles.blockingContent}>
+          <View style={styles.blockingIconBg}>
+            <MaterialCommunityIcons name="storefront-remove" size={44} color={THEME.COLORS.danger} />
+          </View>
+          <Text style={styles.blockingTitle}>Configuration requise</Text>
+          <Text style={styles.blockingDescription}>
+            Pour continuer à utiliser votre espace vendeur et recevoir des commandes, vous devez obligatoirement définir l'emplacement géographique de votre boutique.
+          </Text>
+          <Text style={styles.blockingSubDescription}>
+            Cette information permettra d'estimer précisément les frais de livraison et de planifier les itinéraires des livreurs partenaires.
+          </Text>
+          <TouchableOpacity 
+            style={styles.blockingBtn}
+            onPress={() => setIsLocationModalVisible(true)}
+          >
+            <MaterialCommunityIcons name="map-marker-radius" size={20} color="#000" style={{ marginRight: 8 }} />
+            <Text style={styles.blockingBtnText}>Configurer l'emplacement de ma boutique</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={styles.blockingLogoutBtn}
+            onPress={() => dispatch(logout({ reason: 'USER_INITIATED' }))}
+          >
+            <Text style={styles.blockingLogoutBtnText}>Se déconnecter</Text>
+          </TouchableOpacity>
+        </View>
+
+        <ShopLocationModal
+          visible={isLocationModalVisible}
+          onClose={() => setIsLocationModalVisible(false)}
+          initialCoords={currentUser.currentLocation?.coordinates}
+          initialAddress={currentUser.address}
+        />
+      </View>
+    );
+  }
 
   const orders = ordersData?.data || [];
   const filteredOrders = orders.filter(o => o.status === activeTab);
@@ -694,6 +738,78 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+  },
+  blockingContent: {
+    width: '88%',
+    maxWidth: 380,
+    backgroundColor: THEME.COLORS.glassModal,
+    borderRadius: 24,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    padding: THEME.SPACING.xl,
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 16 },
+    shadowOpacity: 0.4,
+    shadowRadius: 24,
+    elevation: 10,
+  },
+  blockingIconBg: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(231, 76, 60, 0.12)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  blockingTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: THEME.COLORS.textPrimary,
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  blockingDescription: {
+    fontSize: 13.5,
+    color: THEME.COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 10,
+  },
+  blockingSubDescription: {
+    fontSize: 11.5,
+    color: THEME.COLORS.textTertiary,
+    textAlign: 'center',
+    lineHeight: 17,
+    marginBottom: 24,
+  },
+  blockingBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.COLORS.primary,
+    borderRadius: THEME.BORDERS.radius.pill,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    width: '100%',
+    ...THEME.SHADOWS.gold,
+    marginBottom: 16,
+  },
+  blockingBtnText: {
+    color: THEME.COLORS.deepAsphalt,
+    fontWeight: '900',
+    fontSize: 13,
+  },
+  blockingLogoutBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+  },
+  blockingLogoutBtnText: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
   },
   shareShopCard: {
     marginHorizontal: THEME.SPACING.xl,
