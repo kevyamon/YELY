@@ -73,6 +73,7 @@ const DriverRideOverlay = () => {
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
   const [driverStatus, setDriverStatus] = useState(DRIVER_STATUS.APPROACHING);
+  const [isLocked, setIsLocked] = useState(false);
 
   const [completeRide, { isLoading: isCompleting }] = useCompleteRideMutation();
   const [collectPoint, { isLoading: isCollectingPoint }] = useCollectPointMutation();
@@ -84,6 +85,7 @@ const DriverRideOverlay = () => {
   const hideTimerRef = useRef(null);
 
   const startMinimizeTimer = () => {
+    if (isLocked) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       setIsMinimized(true);
@@ -287,7 +289,7 @@ const DriverRideOverlay = () => {
               <Ionicons name="checkmark-circle" size={50} color={THEME.COLORS.success} />
             </View>
 
-            <Text style={styles.modalTitle}>Course Acceptee</Text>
+            <Text style={styles.modalTitle}>Course acceptée</Text>
             <Text style={styles.modalSubtitle}>
               Le client vous attend au point de rendez-vous. Voulez-vous lancer le GPS externe ?
             </Text>
@@ -304,7 +306,7 @@ const DriverRideOverlay = () => {
               style={styles.modalDismissButton}
               onPress={() => setShowNavModal(false)}
             >
-              <Text style={styles.modalDismissText}>Je connais l'endroit</Text>
+              <Text style={styles.modalDismissText}>Continuer sans GPS</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -316,14 +318,35 @@ const DriverRideOverlay = () => {
       >
 
         {/* Poignee de tiroir / Bouton de masquage manuel */}
-        <TouchableOpacity 
-          style={styles.dragHandleContainer} 
-          onPress={toggleMinimize}
-          activeOpacity={0.7}
-        >
-          <View style={styles.dragHandle} />
-          <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
-        </TouchableOpacity>
+        <View style={styles.dragHandleWrapper}>
+          <TouchableOpacity 
+            style={styles.dragHandleContainer} 
+            onPress={toggleMinimize}
+            activeOpacity={0.7}
+          >
+            <View style={styles.dragHandle} />
+            <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.lockButton} 
+            onPress={() => {
+              const nextLocked = !isLocked;
+              setIsLocked(nextLocked);
+              if (nextLocked) {
+                cancelMinimizeTimer();
+              } else {
+                startMinimizeTimer();
+              }
+            }}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={isLocked ? "pin" : "pin-outline"} 
+              size={18} 
+              color={isLocked ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} 
+            />
+          </TouchableOpacity>
+        </View>
 
         <View style={styles.statusBanner}>
           <View style={styles.statusIndicator}>
@@ -352,12 +375,12 @@ const DriverRideOverlay = () => {
             <Text style={styles.riderName}>{currentRide.riderName || 'Client Yely'}</Text>
             <View style={styles.ratingBadge}>
               <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-              <Text style={styles.ratingText}>Client verifie</Text>
+              <Text style={styles.ratingText}>Client vérifié</Text>
             </View>
           </View>
 
           <View style={styles.topActionsGroup}>
-            {!isOngoing && (
+            {!isOngoing && !isDelivery && (
               <TouchableOpacity
                 style={styles.pancarteButton}
                 onPress={() => navigation.navigate('Pancarte')}
@@ -430,8 +453,8 @@ const DriverRideOverlay = () => {
             <>
               <Animated.View style={[styles.passiveStatusContainer, styles.passiveStatusFinishing, pulseStyle]}>
                 <Ionicons name="flag" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
-                <Text style={[styles.passiveStatusTitle, { color: THEME.COLORS.danger }]}>ARRIVEE IMMINENTE</Text>
-                <Text style={styles.passiveStatusDistance}>Cloture automatique a l'arret.</Text>
+                <Text style={[styles.passiveStatusTitle, { color: THEME.COLORS.danger }]}>ARRIVÉE IMMINENTE</Text>
+                <Text style={styles.passiveStatusDistance}>Clôture automatique à l'arrêt.</Text>
               </Animated.View>
               
               <TouchableOpacity 
@@ -439,10 +462,10 @@ const DriverRideOverlay = () => {
                 onPress={handleManualComplete}
                 disabled={isCompleting}
               >
-                <Text style={styles.manualCompleteText}>Terminer plus tot</Text>
+                <Text style={styles.manualCompleteText}>Terminer plus tôt</Text>
               </TouchableOpacity>
             </>
-          ) : (
+          ) : isDelivery && !isOngoing ? null : (
             <View style={[
               styles.passiveStatusContainer,
               bannerConfig.containerStyle && styles[bannerConfig.containerStyle],
@@ -579,13 +602,29 @@ const styles = StyleSheet.create({
     fontWeight: '800',
     textTransform: 'uppercase',
   },
-  dragHandleContainer: {
+  dragHandleWrapper: {
     width: '100%',
+    height: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
+    marginTop: -4,
+    marginBottom: THEME.SPACING.xs,
+  },
+  dragHandleContainer: {
+    width: '70%',
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -4,
-    marginBottom: THEME.SPACING.xs,
+  },
+  lockButton: {
+    position: 'absolute',
+    right: 16,
+    height: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 8,
   },
   dragHandle: {
     width: 40,

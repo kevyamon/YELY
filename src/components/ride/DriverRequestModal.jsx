@@ -196,7 +196,7 @@ const DriverRequestModal = () => {
               <Text style={styles.addressLabel}>
                 {isDelivery ? 'Premier point de retrait' : 'Prise en charge'}
               </Text>
-              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
+              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 13 }]} numberOfLines={3}>
                 {incomingRide.origin?.address || 'Position inconnue'}
               </Text>
             </View>
@@ -205,7 +205,7 @@ const DriverRequestModal = () => {
               <Text style={styles.addressLabel}>
                 {isDelivery ? 'Adresse de livraison client' : 'Destination finale'}
               </Text>
-              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 14 }]} numberOfLines={2}>
+              <Text style={[styles.addressValue, isSmallScreen && { fontSize: 13 }]} numberOfLines={3}>
                 {incomingRide.destination?.address || 'Destination inconnue'}
               </Text>
             </View>
@@ -397,9 +397,9 @@ const styles = StyleSheet.create({
   },
   addressValue: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
-    lineHeight: 20,
+    lineHeight: 18,
   },
   subtitle: {
     fontSize: 13,

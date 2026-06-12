@@ -17,7 +17,7 @@ const RideRouteDisplay = ({ originAddress, destinationAddress, showDestination =
             size={24}
             color={showDestination ? THEME.COLORS.success : THEME.COLORS.danger}
           />
-          <Text style={styles.routeTextDriver}>
+          <Text style={styles.routeTextDriver} numberOfLines={3}>
             {showDestination ? destinationAddress : originAddress}
           </Text>
         </View>
@@ -79,9 +79,10 @@ const styles = StyleSheet.create({
   routeTextDriver: {
     marginLeft: 12,
     color: THEME.COLORS.textPrimary,
-    fontSize: 16,
+    fontSize: 13.5,
+    lineHeight: 18,
     flex: 1,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   routeDots: {
     height: 16,
