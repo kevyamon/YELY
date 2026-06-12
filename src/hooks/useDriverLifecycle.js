@@ -125,6 +125,15 @@ const useDriverLifecycle = ({
         } catch (err) {
           console.warn('[DriverLifecycle] Tentative de reconnexion auto echouee');
         }
+      } else if (isDisabled || !isDriverInZone) {
+        try {
+          if (user?.isAvailable) {
+            await updateAvailability({ isAvailable: false }).unwrap();
+            dispatch(updateUserInfo({ isAvailable: false }));
+          }
+        } catch (err) {
+          console.warn('[DriverLifecycle] Echec de mise hors ligne automatique');
+        }
       }
     };
 
