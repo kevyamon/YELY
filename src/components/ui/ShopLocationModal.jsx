@@ -208,19 +208,22 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
         address: resolvedAddress.trim()
       }).unwrap();
 
-      // Mettre à jour le store Redux de l'utilisateur
-      dispatch(updateUserInfo({
-        currentLocation: res.data.currentLocation,
-        address: res.data.address
-      }));
-
-      dispatch(showToast({
-        type: 'success',
-        title: 'Localisation enregistrée',
-        message: 'L\'emplacement de votre boutique a été défini avec succès.'
-      }));
-
+      // Commencer la fermeture de la modale en premier pour éviter le démontage brutal pendant le cycle
       onClose();
+
+      setTimeout(() => {
+        // Mettre à jour le store Redux de l'utilisateur après début de transition
+        dispatch(updateUserInfo({
+          currentLocation: res.data.currentLocation,
+          address: res.data.address
+        }));
+
+        dispatch(showToast({
+          type: 'success',
+          title: 'Localisation enregistrée',
+          message: 'L\'emplacement de votre boutique a été défini avec succès.'
+        }));
+      }, 300);
     } catch (error) {
       console.error('[ShopLocationModal] Save error:', error);
       const msg = error.data?.message || 'Erreur lors de la sauvegarde de la localisation.';

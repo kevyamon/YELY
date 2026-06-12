@@ -181,46 +181,6 @@ const SellerHome = ({ navigation }) => {
   const productCount = productsData?.data?.length || productsData?.length || 0;
   const totalSales = statsData?.data?.totalEarnings || statsData?.totalEarnings || 0;
 
-  if (user && !isLocationSet) {
-    return (
-      <View style={[styles.screenWrapper, { justifyContent: 'center', alignItems: 'center', padding: 20 }]}>
-        <View style={styles.blockingContent}>
-          <View style={styles.blockingIconBg}>
-            <MaterialCommunityIcons name="storefront-remove" size={44} color={THEME.COLORS.danger} />
-          </View>
-          <Text style={styles.blockingTitle}>Configuration requise</Text>
-          <Text style={styles.blockingDescription}>
-            Pour continuer à utiliser votre espace vendeur et recevoir des commandes, vous devez obligatoirement définir l'emplacement géographique de votre boutique.
-          </Text>
-          <Text style={styles.blockingSubDescription}>
-            Cette information permettra d'estimer précisément les frais de livraison et de planifier les itinéraires des livreurs partenaires.
-          </Text>
-          <TouchableOpacity 
-            style={styles.blockingBtn}
-            onPress={() => setIsLocationModalVisible(true)}
-          >
-            <MaterialCommunityIcons name="map-marker-radius" size={20} color="#000" style={{ marginRight: 8 }} />
-            <Text style={styles.blockingBtnText}>Configurer l'emplacement de ma boutique</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.blockingLogoutBtn}
-            onPress={() => dispatch(logout({ reason: 'USER_INITIATED' }))}
-          >
-            <Text style={styles.blockingLogoutBtnText}>Se déconnecter</Text>
-          </TouchableOpacity>
-        </View>
-
-        <ShopLocationModal
-          visible={isLocationModalVisible}
-          onClose={() => setIsLocationModalVisible(false)}
-          initialCoords={user.currentLocation?.coordinates}
-          initialAddress={user.address}
-        />
-      </View>
-    );
-  }
-
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
       scrollY.value = event.contentOffset.y;
@@ -234,144 +194,177 @@ const SellerHome = ({ navigation }) => {
 
   return (
     <View style={styles.screenWrapper}>
-      <SmartHeader
-        scrollY={scrollY}
-        address={currentAddress}
-        userName={user?.name?.split(' ')[0] || "Vendeur"}
-        onMenuPress={() => navigation.navigate('Menu')}
-        onNotificationPress={() => navigation.navigate('Notifications')}
-        onSearchPress={handleGoToTaxi}
-      />
-
-      <Animated.ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        onScroll={scrollHandler}
-        scrollEventThrottle={16}
-      >
-        <View style={styles.spacer} />
-
-        <View style={styles.welcomeSection}>
-          <Text style={styles.welcomeTitle}>Ma Boutique</Text>
-          <Text style={styles.welcomeSubtitle}>Gérez vos ventes et vos déplacements.</Text>
-        </View>
-
-        <View style={styles.statsRow}>
-          <GlassCard style={styles.statCard}>
-            <Ionicons name="cube-outline" size={24} color={THEME.COLORS.primary} />
-            {isLoadingProducts ? (
-              <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
-            ) : (
-              <Text style={styles.statValue}>{productCount}</Text>
-            )}
-            <Text style={styles.statLabel}>Produits</Text>
-          </GlassCard>
-          <GlassCard style={styles.statCard}>
-            <Ionicons name="cash-outline" size={24} color={THEME.COLORS.success || '#27ae60'} />
-            {isLoadingStats ? (
-              <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
-            ) : (
-              <Text style={styles.statValue}>{totalSales.toLocaleString()} FCFA</Text>
-            )}
-            <Text style={styles.statLabel}>Ventes</Text>
-          </GlassCard>
-        </View>
-
-        {/* Localisation de ma boutique */}
-        {user && (
-          <TouchableOpacity 
-            style={styles.shareShopCard} 
-            onPress={() => setIsLocationModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.01)']}
-              style={styles.shareShopGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+      {user && !isLocationSet ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={styles.blockingContent}>
+            <View style={styles.blockingIconBg}>
+              <MaterialCommunityIcons name="storefront-remove" size={44} color={THEME.COLORS.danger} />
+            </View>
+            <Text style={styles.blockingTitle}>Configuration requise</Text>
+            <Text style={styles.blockingDescription}>
+              Pour continuer à utiliser votre espace vendeur et recevoir des commandes, vous devez obligatoirement définir l'emplacement géographique de votre boutique.
+            </Text>
+            <Text style={styles.blockingSubDescription}>
+              Cette information permettra d'estimer précisément les frais de livraison et de planifier les itinéraires des livreurs partenaires.
+            </Text>
+            <TouchableOpacity 
+              style={styles.blockingBtn}
+              onPress={() => setIsLocationModalVisible(true)}
             >
-              <View style={styles.shareShopLeft}>
-                <View style={[styles.shareShopIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
-                  <MaterialCommunityIcons name="storefront-outline" size={20} color="#10B981" />
-                </View>
-                <View style={styles.shareShopTextContainer}>
-                  <Text style={styles.shareShopTitle}>Localisation de ma boutique</Text>
-                  <Text style={styles.shareShopSubtitle} numberOfLines={1}>
-                    {user.address || 'Position configurée avec succès'}
-                  </Text>
-                </View>
-              </View>
-              <MaterialCommunityIcons name="pencil" size={16} color="#10B981" />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* Promotion / Share Shop Card */}
-        {user && (
-          <TouchableOpacity
-            style={[styles.shareShopCard, { marginTop: THEME.SPACING.xs }]}
-            onPress={() => setIsShareModalVisible(true)}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['rgba(212, 175, 55, 0.08)', 'rgba(212, 175, 55, 0.01)']}
-              style={styles.shareShopGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+              <MaterialCommunityIcons name="map-marker-radius" size={20} color="#000" style={{ marginRight: 8 }} />
+              <Text style={styles.blockingBtnText}>Configurer l'emplacement de ma boutique</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.blockingLogoutBtn}
+              onPress={() => dispatch(logout({ reason: 'USER_INITIATED' }))}
             >
-              <View style={styles.shareShopLeft}>
-                <View style={styles.shareShopIconBg}>
-                  <MaterialCommunityIcons name="qrcode-scan" size={20} color={THEME.COLORS.primary} />
-                </View>
-                <View style={styles.shareShopTextContainer}>
-                  <Text style={styles.shareShopTitle}>Partager ma boutique</Text>
-                  <Text style={styles.shareShopSubtitle}>Lien de partage & code QR a imprimer</Text>
-                </View>
-              </View>
-              <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        <TouchableOpacity style={styles.mainActionCard} onPress={handleGoToManageProducts}>
-          <View style={styles.actionIconContainer}>
-            <Ionicons name="add-circle" size={32} color={THEME.COLORS.textInverse} />
-          </View>
-          <View style={styles.actionTextContainer}>
-            <Text style={styles.actionTitle}>Gérer mes produits</Text>
-            <Text style={styles.actionDesc}>Ajouter, modifier ou supprimer vos articles.</Text>
-          </View>
-          <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.primary} />
-        </TouchableOpacity>
-
-        <View style={styles.quickActionsContainer}>
-          <Text style={styles.sectionTitle}>Actions rapides</Text>
-          <View style={styles.actionsGrid}>
-            <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
-              <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
-              <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
-              <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
-              <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
-              <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
-              <Text numberOfLines={1} style={styles.smallActionLabel}>Taxi</Text>
+              <Text style={styles.blockingLogoutBtnText}>Se déconnecter</Text>
             </TouchableOpacity>
           </View>
         </View>
+      ) : (
+        <>
+          <SmartHeader
+            scrollY={scrollY}
+            address={currentAddress}
+            userName={user?.name?.split(' ')[0] || "Vendeur"}
+            onMenuPress={() => navigation.navigate('Menu')}
+            onNotificationPress={() => navigation.navigate('Notifications')}
+            onSearchPress={handleGoToTaxi}
+          />
 
-        <GoldButton
-          title="ACCÉDER AU MARCHÉ"
-          icon="cart"
-          onPress={handleGoToMarketplace}
-          style={styles.bottomBtn}
-        />
+          <Animated.ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={false}
+            onScroll={scrollHandler}
+            scrollEventThrottle={16}
+          >
+            <View style={styles.spacer} />
 
-      </Animated.ScrollView>
+            <View style={styles.welcomeSection}>
+              <Text style={styles.welcomeTitle}>Ma Boutique</Text>
+              <Text style={styles.welcomeSubtitle}>Gérez vos ventes et vos déplacements.</Text>
+            </View>
+
+            <View style={styles.statsRow}>
+              <GlassCard style={styles.statCard}>
+                <Ionicons name="cube-outline" size={24} color={THEME.COLORS.primary} />
+                {isLoadingProducts ? (
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                ) : (
+                  <Text style={styles.statValue}>{productCount}</Text>
+                )}
+                <Text style={styles.statLabel}>Produits</Text>
+              </GlassCard>
+              <GlassCard style={styles.statCard}>
+                <Ionicons name="cash-outline" size={24} color={THEME.COLORS.success || '#27ae60'} />
+                {isLoadingStats ? (
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                ) : (
+                  <Text style={styles.statValue}>{totalSales.toLocaleString()} FCFA</Text>
+                )}
+                <Text style={styles.statLabel}>Ventes</Text>
+              </GlassCard>
+            </View>
+
+            {/* Localisation de ma boutique */}
+            {user && (
+              <TouchableOpacity 
+                style={styles.shareShopCard} 
+                onPress={() => setIsLocationModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.01)']}
+                  style={styles.shareShopGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.shareShopLeft}>
+                    <View style={[styles.shareShopIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                      <MaterialCommunityIcons name="storefront-outline" size={20} color="#10B981" />
+                    </View>
+                    <View style={styles.shareShopTextContainer}>
+                      <Text style={styles.shareShopTitle}>Localisation de ma boutique</Text>
+                      <Text style={styles.shareShopSubtitle} numberOfLines={1}>
+                        {user.address || 'Position configurée avec succès'}
+                      </Text>
+                    </View>
+                  </View>
+                  <MaterialCommunityIcons name="pencil" size={16} color="#10B981" />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            {/* Promotion / Share Shop Card */}
+            {user && (
+              <TouchableOpacity
+                style={[styles.shareShopCard, { marginTop: THEME.SPACING.xs }]}
+                onPress={() => setIsShareModalVisible(true)}
+                activeOpacity={0.8}
+              >
+                <LinearGradient
+                  colors={['rgba(212, 175, 55, 0.08)', 'rgba(212, 175, 55, 0.01)']}
+                  style={styles.shareShopGradient}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                >
+                  <View style={styles.shareShopLeft}>
+                    <View style={styles.shareShopIconBg}>
+                      <MaterialCommunityIcons name="qrcode-scan" size={20} color={THEME.COLORS.primary} />
+                    </View>
+                    <View style={styles.shareShopTextContainer}>
+                      <Text style={styles.shareShopTitle}>Partager ma boutique</Text>
+                      <Text style={styles.shareShopSubtitle}>Lien de partage & code QR a imprimer</Text>
+                    </View>
+                  </View>
+                  <MaterialCommunityIcons name="share-variant" size={20} color={THEME.COLORS.primary} />
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
+
+            <TouchableOpacity style={styles.mainActionCard} onPress={handleGoToManageProducts}>
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="add-circle" size={32} color={THEME.COLORS.textInverse} />
+              </View>
+              <View style={styles.actionTextContainer}>
+                <Text style={styles.actionTitle}>Gérer mes produits</Text>
+                <Text style={styles.actionDesc}>Ajouter, modifier ou supprimer vos articles.</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.primary} />
+            </TouchableOpacity>
+
+            <View style={styles.quickActionsContainer}>
+              <Text style={styles.sectionTitle}>Actions rapides</Text>
+              <View style={styles.actionsGrid}>
+                <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
+                  <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
+                  <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
+                  <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
+                  <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
+                  <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
+                  <Text numberOfLines={1} style={styles.smallActionLabel}>Taxi</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <GoldButton
+              title="ACCÉDER AU MARCHÉ"
+              icon="cart"
+              onPress={handleGoToMarketplace}
+              style={styles.bottomBtn}
+            />
+
+          </Animated.ScrollView>
+        </>
+      )}
 
       {/* SHARE MODAL WITH QR CODE */}
       <Modal

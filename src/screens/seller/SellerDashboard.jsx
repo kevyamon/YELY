@@ -150,46 +150,7 @@ const SellerDashboard = ({ navigation }) => {
   const isLocationSet = currentUser?.currentLocation?.coordinates && 
     !(currentUser.currentLocation.coordinates[0] === 0 && currentUser.currentLocation.coordinates[1] === 0);
 
-  if (currentUser && !isLocationSet) {
-    return (
-      <View style={[styles.container, { backgroundColor: THEME.COLORS.background, justifyContent: 'center', alignItems: 'center' }]}>
-        <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
-        <View style={styles.blockingContent}>
-          <View style={styles.blockingIconBg}>
-            <MaterialCommunityIcons name="storefront-remove" size={44} color={THEME.COLORS.danger} />
-          </View>
-          <Text style={styles.blockingTitle}>Configuration requise</Text>
-          <Text style={styles.blockingDescription}>
-            Pour continuer à utiliser votre espace vendeur et recevoir des commandes, vous devez obligatoirement définir l'emplacement géographique de votre boutique.
-          </Text>
-          <Text style={styles.blockingSubDescription}>
-            Cette information permettra d'estimer précisément les frais de livraison et de planifier les itinéraires des livreurs partenaires.
-          </Text>
-          <TouchableOpacity 
-            style={styles.blockingBtn}
-            onPress={() => setIsLocationModalVisible(true)}
-          >
-            <MaterialCommunityIcons name="map-marker-radius" size={20} color="#000" style={{ marginRight: 8 }} />
-            <Text style={styles.blockingBtnText}>Configurer l'emplacement de ma boutique</Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity 
-            style={styles.blockingLogoutBtn}
-            onPress={() => dispatch(logout({ reason: 'USER_INITIATED' }))}
-          >
-            <Text style={styles.blockingLogoutBtnText}>Se déconnecter</Text>
-          </TouchableOpacity>
-        </View>
 
-        <ShopLocationModal
-          visible={isLocationModalVisible}
-          onClose={() => setIsLocationModalVisible(false)}
-          initialCoords={currentUser.currentLocation?.coordinates}
-          initialAddress={currentUser.address}
-        />
-      </View>
-    );
-  }
 
   const orders = ordersData?.data || [];
   const filteredOrders = orders.filter(o => o.status === activeTab);
@@ -274,7 +235,38 @@ const SellerDashboard = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} translucent backgroundColor="transparent" />
       
-      <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
+      {currentUser && !isLocationSet ? (
+        <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 }}>
+          <View style={styles.blockingContent}>
+            <View style={styles.blockingIconBg}>
+              <MaterialCommunityIcons name="storefront-remove" size={44} color={THEME.COLORS.danger} />
+            </View>
+            <Text style={styles.blockingTitle}>Configuration requise</Text>
+            <Text style={styles.blockingDescription}>
+              Pour continuer à utiliser votre espace vendeur et recevoir des commandes, vous devez obligatoirement définir l'emplacement géographique de votre boutique.
+            </Text>
+            <Text style={styles.blockingSubDescription}>
+              Cette information permettra d'estimer précisément les frais de livraison et de planifier les itinéraires des livreurs partenaires.
+            </Text>
+            <TouchableOpacity 
+              style={styles.blockingBtn}
+              onPress={() => setIsLocationModalVisible(true)}
+            >
+              <MaterialCommunityIcons name="map-marker-radius" size={20} color="#000" style={{ marginRight: 8 }} />
+              <Text style={styles.blockingBtnText}>Configurer l'emplacement de ma boutique</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.blockingLogoutBtn}
+              onPress={() => dispatch(logout({ reason: 'USER_INITIATED' }))}
+            >
+              <Text style={styles.blockingLogoutBtnText}>Se déconnecter</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : (
+        <>
+          <View style={[styles.header, { paddingTop: insets.top + THEME.SPACING.md }]}>
         <View style={styles.headerLeft}>
           <TouchableOpacity onPress={() => navigation.navigate('Menu')} style={styles.menuBtn}>
             <MaterialCommunityIcons name="menu" size={28} color={THEME.COLORS.textPrimary} />
@@ -461,6 +453,8 @@ const SellerDashboard = ({ navigation }) => {
           )}
         />
       )}
+    </>
+  )}
 
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
