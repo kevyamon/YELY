@@ -80,6 +80,14 @@ export const usersApiSlice = apiSlice.injectEndpoints({
         body: data,
       }),
     }),
+    updateShopLocation: builder.mutation({
+      query: (data) => ({
+        url: '/users/update-shop-location',
+        method: 'PATCH',
+        body: data,
+      }),
+      invalidatesTags: ['User'],
+    }),
   }),
 });
 
@@ -94,5 +102,6 @@ export const {
   useUploadProfilePictureMutation,
   useDeleteAccountMutation,
   useUpdateAvailabilityMutation,
-  useUpdateFcmTokenMutation, // Export du hook
+  useUpdateFcmTokenMutation, 
+  useUpdateShopLocationMutation, // Export du hook
 } = usersApiSlice;

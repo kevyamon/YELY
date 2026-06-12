@@ -29,6 +29,7 @@ import {
 } from '../../store/api/marketplaceApiSlice';
 import { showSuccessToast, showErrorToast, showToast } from '../../store/slices/uiSlice';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import ShopLocationModal from '../../components/ui/ShopLocationModal';
 import THEME from '../../theme/theme';
 import ENV from '../../config/env';
 
@@ -43,6 +44,7 @@ const SellerDashboard = ({ navigation }) => {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const listRef = useRef(null);
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
+  const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
 
   const baseUrl = ENV.API_URL && (ENV.API_URL.includes('localhost') || ENV.API_URL.includes('192.168.'))
     ? ENV.API_URL.replace('/api/v1', '')
@@ -266,10 +268,68 @@ const SellerDashboard = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
+      {/* Configuration Localisation Boutique */}
+      {currentUser && (() => {
+        const isLocationSet = currentUser?.currentLocation?.coordinates && 
+          !(currentUser.currentLocation.coordinates[0] === 0 && currentUser.currentLocation.coordinates[1] === 0);
+
+        return !isLocationSet ? (
+          <TouchableOpacity 
+            style={[styles.locationWarningCard]} 
+            onPress={() => setIsLocationModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['rgba(231, 76, 60, 0.15)', 'rgba(231, 76, 60, 0.03)']}
+              style={styles.locationWarningGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.shareShopLeft}>
+                <View style={[styles.shareShopIconBg, { backgroundColor: 'rgba(231, 76, 60, 0.2)' }]}>
+                  <MaterialCommunityIcons name="map-marker-alert-outline" size={22} color={THEME.COLORS.danger} />
+                </View>
+                <View style={styles.shareShopTextContainer}>
+                  <Text style={[styles.shareShopTitle, { color: THEME.COLORS.danger }]}>Localisation requise ⚠️</Text>
+                  <Text style={styles.shareShopSubtitle}>Définissez la position pour recevoir des commandes</Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="chevron-right" size={20} color={THEME.COLORS.danger} />
+            </LinearGradient>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity 
+            style={styles.shareShopCard} 
+            onPress={() => setIsLocationModalVisible(true)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={['rgba(16, 185, 129, 0.08)', 'rgba(16, 185, 129, 0.01)']}
+              style={styles.shareShopGradient}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+            >
+              <View style={styles.shareShopLeft}>
+                <View style={[styles.shareShopIconBg, { backgroundColor: 'rgba(16, 185, 129, 0.15)' }]}>
+                  <MaterialCommunityIcons name="storefront-outline" size={20} color="#10B981" />
+                </View>
+                <View style={styles.shareShopTextContainer}>
+                  <Text style={styles.shareShopTitle}>Localisation de ma boutique</Text>
+                  <Text style={styles.shareShopSubtitle} numberOfLines={1}>
+                    {currentUser.address || 'Position configurée avec succès'}
+                  </Text>
+                </View>
+              </View>
+              <MaterialCommunityIcons name="pencil" size={16} color="#10B981" />
+            </LinearGradient>
+          </TouchableOpacity>
+        );
+      })()}
+
       {/* Promotion / Share Shop Card */}
       {currentUser && (
         <TouchableOpacity 
-          style={styles.shareShopCard} 
+          style={[styles.shareShopCard, { marginTop: THEME.SPACING.md }]} 
           onPress={() => setIsShareModalVisible(true)}
           activeOpacity={0.8}
         >
@@ -368,6 +428,15 @@ const SellerDashboard = ({ navigation }) => {
         title="Mise à jour statut"
         message={confirmData.msg}
       />
+
+      {currentUser && (
+        <ShopLocationModal
+          visible={isLocationModalVisible}
+          onClose={() => setIsLocationModalVisible(false)}
+          initialCoords={currentUser.currentLocation?.coordinates}
+          initialAddress={currentUser.address}
+        />
+      )}
 
       {/* SHARE MODAL WITH QR CODE */}
       <Modal
@@ -612,6 +681,20 @@ const styles = StyleSheet.create({
   },
 
   // Styles de partage de boutique
+  locationWarningCard: {
+    marginHorizontal: THEME.SPACING.xl,
+    marginTop: THEME.SPACING.md,
+    borderRadius: THEME.BORDERS.radius.lg,
+    overflow: 'hidden',
+    borderWidth: 1.2,
+    borderColor: 'rgba(231, 76, 60, 0.3)',
+  },
+  locationWarningGradient: {
+    padding: THEME.SPACING.md,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
   shareShopCard: {
     marginHorizontal: THEME.SPACING.xl,
     marginTop: THEME.SPACING.md,

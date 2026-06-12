@@ -32,7 +32,8 @@ import { showToast, showErrorToast } from '../../store/slices/uiSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import ConfirmModal from '../../components/ui/ConfirmModal';
 import GlassModal from '../../components/ui/GlassModal';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
+import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const ManageProducts = ({ navigation }) => {
@@ -40,6 +41,7 @@ const ManageProducts = ({ navigation }) => {
   const isDarkMode = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
   const dispatch = useDispatch();
+  const currentUser = useSelector(selectCurrentUser);
   useMarketplaceSocketEvents();
   const { data: productsData, isLoading, refetch } = useGetMyProductsQuery();
   const [createProduct, { isLoading: isCreating }] = useCreateProductMutation();
@@ -124,6 +126,28 @@ const ManageProducts = ({ navigation }) => {
     setCatSearch('');
     setEditingProduct(null);
     setModalVisible(false);
+  };
+
+  const isLocationSet = currentUser?.currentLocation?.coordinates && 
+    !(currentUser.currentLocation.coordinates[0] === 0 && currentUser.currentLocation.coordinates[1] === 0);
+
+  const handleOpenAddModal = () => {
+    if (!isLocationSet) {
+      Alert.alert(
+        "Localisation requise 📍",
+        "Veuillez définir la localisation de votre boutique sur le tableau de bord avant de publier un article. Cela permettra aux livreurs d'estimer et de récupérer vos colis correctement.",
+        [
+          { text: "Retour", style: "cancel" },
+          { 
+            text: "Définir maintenant", 
+            onPress: () => navigation.goBack() 
+          }
+        ]
+      );
+      return;
+    }
+    resetForm();
+    setModalVisible(true);
   };
 
   const handleEdit = (product) => {
@@ -309,10 +333,7 @@ const ManageProducts = ({ navigation }) => {
         <Text style={styles.title}>Mes Produits</Text>
         <TouchableOpacity 
           style={styles.addBtn}
-          onPress={() => {
-            resetForm();
-            setModalVisible(true);
-          }}
+          onPress={handleOpenAddModal}
         >
           <MaterialCommunityIcons name="plus" size={24} color={THEME.COLORS.textInverse} />
         </TouchableOpacity>
@@ -337,7 +358,7 @@ const ManageProducts = ({ navigation }) => {
             <View style={styles.emptyContainer}>
               <MaterialCommunityIcons name="package-variant" size={64} color={THEME.COLORS.textTertiary} />
               <Text style={styles.emptyText}>Aucun produit en vente</Text>
-              <TouchableOpacity style={styles.shopBtn} onPress={() => setModalVisible(true)}>
+              <TouchableOpacity style={styles.shopBtn} onPress={handleOpenAddModal}>
                 <Text style={styles.shopBtnText}>Ajouter mon premier produit</Text>
               </TouchableOpacity>
             </View>
