@@ -3,6 +3,7 @@ import * as NativeSplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { applyThemeUpdate } from './src/theme/themeEngine';
 import { BlurView } from 'expo-blur';
+import { Ionicons } from '@expo/vector-icons';
 
 NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 
