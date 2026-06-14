@@ -24,7 +24,9 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     } else if (route === 'HelpModal') {
       setIsHelpVisible(true);
     } else {
-      onNavigate(route);
+      requestAnimationFrame(() => {
+        onNavigate(route);
+      });
     }
   };
 
@@ -46,7 +48,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
             ]}
             onPress={() => handlePress(item.route)}
             disabled={disabled}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
           >
             <View style={[
               styles.iconContainer,

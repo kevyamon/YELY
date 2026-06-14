@@ -28,16 +28,20 @@ const MenuScreen = () => {
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const handleClose = () => {
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate(role === 'driver' ? 'DriverHome' : 'RiderHome');
-    }
+    requestAnimationFrame(() => {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        navigation.navigate(role === 'driver' ? 'DriverHome' : 'RiderHome');
+      }
+    });
   };
 
   const handleNavigate = (routeKey) => {
     try {
-      navigation.navigate(routeKey);
+      requestAnimationFrame(() => {
+        navigation.navigate(routeKey);
+      });
     } catch (error) {
       console.warn("Route introuvable ou erreur navigation:", routeKey);
     }

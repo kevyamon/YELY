@@ -187,10 +187,26 @@ const SellerHome = ({ navigation }) => {
     },
   });
 
-  const handleGoToManageProducts = () => navigation.navigate('ManageProducts');
-  const handleGoToOrders = () => navigation.navigate('SellerOrders');
-  const handleGoToMarketplace = () => navigation.navigate('MarketplaceHub');
-  const handleGoToTaxi = () => navigation.navigate('RiderHome');
+  const handleGoToManageProducts = () => {
+    requestAnimationFrame(() => {
+      navigation.navigate('ManageProducts');
+    });
+  };
+  const handleGoToOrders = () => {
+    requestAnimationFrame(() => {
+      navigation.navigate('SellerOrders');
+    });
+  };
+  const handleGoToMarketplace = () => {
+    requestAnimationFrame(() => {
+      navigation.navigate('MarketplaceHub');
+    });
+  };
+  const handleGoToTaxi = () => {
+    requestAnimationFrame(() => {
+      navigation.navigate('RiderHome');
+    });
+  };
 
   return (
     <View style={styles.screenWrapper}>

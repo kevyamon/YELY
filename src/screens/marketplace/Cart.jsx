@@ -25,6 +25,7 @@ import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import THEME from '../../theme/theme';
+import ExploreMarketplaceButton from '../../components/marketplace/ExploreMarketplaceButton';
 
 const { width } = Dimensions.get('window');
 
@@ -73,7 +74,9 @@ const Cart = ({ navigation }) => {
 
   const handleCheckout = () => {
     if (items.length === 0) return;
-    navigation.navigate('Checkout');
+    requestAnimationFrame(() => {
+      navigation.navigate('Checkout');
+    });
   };
 
   const renderItem = ({ item }) => (
@@ -119,12 +122,7 @@ const Cart = ({ navigation }) => {
       </View>
       <Text style={[styles.emptyTitle, { color: dynamicTextColor }]}>Votre panier est vide</Text>
       <Text style={[styles.emptySubtitle, { color: dynamicTextColorSec }]}>Découvrez nos meilleurs produits et faites-vous plaisir !</Text>
-      <TouchableOpacity 
-        style={styles.exploreBtn}
-        onPress={() => navigation.navigate('Accueil')}
-      >
-        <Text style={styles.exploreText}>EXPLORER LE MARCHÉ</Text>
-      </TouchableOpacity>
+      <ExploreMarketplaceButton title="EXPLORER LE MARCHÉ" />
     </View>
   );
 

@@ -8,6 +8,7 @@ import React, { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
+import GlassCard from '../../components/ui/GlassCard';
 import GlassModal from '../../components/ui/GlassModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
@@ -20,7 +21,8 @@ import {
   useDeleteAccountMutation,
   useGetUserProfileQuery,
   useUpdateUserProfileMutation,
-  useUploadProfilePictureMutation
+  useUploadProfilePictureMutation,
+  useUpdatePasswordMutation
 } from '../../store/api/usersApiSlice';
 import { logout, selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -41,8 +43,13 @@ const ProfileScreen = ({ navigation }) => {
   const [updateProfile, { isLoading: isUpdating }] = useUpdateUserProfileMutation();
   const [uploadPhoto, { isLoading: isUploading }] = useUploadProfilePictureMutation();
   const [deleteAccount, { isLoading: isDeleting }] = useDeleteAccountMutation();
+  const [updatePassword, { isLoading: isUpdatingPassword }] = useUpdatePasswordMutation();
 
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
 
   const initialPhone = currentUser?.phone ? currentUser.phone.replace(COUNTRY_CODE, '').trim() : '';
   const [form, setForm] = useState({
@@ -177,6 +184,51 @@ const ProfileScreen = ({ navigation }) => {
     }
   };
 
+  const handleChangePassword = async () => {
+    if (!currentPassword || !newPassword || !confirmNewPassword) {
+      dispatch(showErrorToast({ 
+        title: 'Champs requis', 
+        message: 'Veuillez remplir tous les champs.' 
+      }));
+      return;
+    }
+
+    if (newPassword.length < 8) {
+      dispatch(showErrorToast({ 
+        title: 'Mot de passe court', 
+        message: 'Le nouveau mot de passe doit faire au moins 8 caracteres.' 
+      }));
+      return;
+    }
+
+    if (newPassword !== confirmNewPassword) {
+      dispatch(showErrorToast({ 
+        title: 'Validation', 
+        message: 'Le nouveau mot de passe et sa confirmation ne correspondent pas.' 
+      }));
+      return;
+    }
+
+    try {
+      await updatePassword({ currentPassword, newPassword }).unwrap();
+      
+      dispatch(showSuccessToast({ 
+        title: 'Succes', 
+        message: 'Votre mot de passe a ete modifie avec succes.' 
+      }));
+      
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+      setIsPasswordModalVisible(false);
+    } catch (error) {
+      dispatch(showErrorToast({ 
+        title: 'Erreur', 
+        message: error?.data?.message || 'Une erreur est survenue lors de la mise a jour de votre mot de passe.' 
+      }));
+    }
+  };
+
   const userPhoto = profileData?.data?.profilePicture || currentUser?.profilePicture;
   const userEmail = profileData?.data?.email || currentUser?.email;
 
@@ -228,6 +280,18 @@ const ProfileScreen = ({ navigation }) => {
                 style={styles.saveBtn}
               />
 
+              <GlassCard style={[styles.card, { marginTop: 20 }]}>
+                <Text style={styles.sectionTitle}>Securite</Text>
+                <Text style={styles.securityText}>
+                  Vous pouvez mettre a jour votre mot de passe pour assurer la securite de votre compte.
+                </Text>
+                <GoldButton 
+                  title="MODIFIER LE MOT DE PASSE" 
+                  onPress={() => setIsPasswordModalVisible(true)} 
+                  variant="secondary"
+                />
+              </GlassCard>
+
               <TouchableOpacity 
                 style={styles.deleteBtn} 
                 onPress={() => setIsDeleteModalVisible(true)} 
@@ -261,6 +325,69 @@ const ProfileScreen = ({ navigation }) => {
         </View>
       </GlassModal>
 
+      <GlassModal visible={isPasswordModalVisible} onClose={() => setIsPasswordModalVisible(false)} position="center">
+        <View style={styles.modalIconContainer}>
+          <Ionicons name="key-outline" size={48} color={THEME.COLORS.champagneGold} />
+        </View>
+        <Text style={styles.modalTitlePassword}>Modifier mon mot de passe</Text>
+        
+        <View style={styles.modalForm}>
+          <Text style={styles.modalLabel}>Mot de passe actuel</Text>
+          <GlassInput 
+            value={currentPassword}
+            onChangeText={setCurrentPassword}
+            placeholder="Saisissez votre mot de passe actuel"
+            secureTextEntry={true}
+            editable={!isUpdatingPassword}
+          />
+
+          <Text style={styles.modalLabel}>Nouveau mot de passe</Text>
+          <GlassInput 
+            value={newPassword}
+            onChangeText={setNewPassword}
+            placeholder="Minimum 8 caracteres (lettre + chiffre)"
+            secureTextEntry={true}
+            editable={!isUpdatingPassword}
+          />
+
+          <Text style={styles.modalLabel}>Confirmer le nouveau mot de passe</Text>
+          <GlassInput 
+            value={confirmNewPassword}
+            onChangeText={setConfirmNewPassword}
+            placeholder="Confirmez votre nouveau mot de passe"
+            secureTextEntry={true}
+            editable={!isUpdatingPassword}
+          />
+        </View>
+        
+        <View style={styles.modalActions}>
+          <TouchableOpacity 
+            style={styles.modalCancelBtn} 
+            onPress={() => {
+              setCurrentPassword('');
+              setNewPassword('');
+              setConfirmNewPassword('');
+              setIsPasswordModalVisible(false);
+            }} 
+            disabled={isUpdatingPassword}
+          >
+            <Text style={styles.modalCancelText}>Annuler</Text>
+          </TouchableOpacity>
+          
+          <TouchableOpacity 
+            style={[styles.modalConfirmBtn, { backgroundColor: THEME.COLORS.champagneGold }]} 
+            onPress={handleChangePassword} 
+            disabled={isUpdatingPassword || !currentPassword || !newPassword || !confirmNewPassword}
+          >
+            {isUpdatingPassword ? (
+              <ActivityIndicator color={THEME.COLORS.deepAsphalt || '#121418'} size="small" />
+            ) : (
+              <Text style={[styles.modalConfirmText, { color: THEME.COLORS.deepAsphalt || '#121418' }]}>Valider</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </GlassModal>
+
     </ScreenWrapper>
   );
 };
@@ -289,6 +416,10 @@ const styles = StyleSheet.create({
   modalCancelText: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16 },
   modalConfirmBtn: { flex: 1, paddingVertical: 15, borderRadius: THEME.BORDERS.radius.pill, backgroundColor: THEME.COLORS.danger, alignItems: 'center', marginLeft: 10 },
   modalConfirmText: { color: THEME.COLORS.pureWhite, fontWeight: 'bold', fontSize: 16 },
+  modalTitlePassword: { color: THEME.COLORS.champagneGold, fontSize: 22, fontWeight: 'bold', textAlign: 'center', marginBottom: 20 },
+  modalLabel: { color: THEME.COLORS.textSecondary, fontSize: 12, marginBottom: 5, marginLeft: 5 },
+  modalForm: { width: '100%', marginBottom: 15 },
+  securityText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginBottom: 15, marginLeft: 5 },
 });
 
 export default ProfileScreen;

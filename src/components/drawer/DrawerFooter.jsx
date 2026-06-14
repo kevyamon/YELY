@@ -19,7 +19,7 @@ const DrawerFooter = ({ onLogout, isLoggingOut }) => {
         style={styles.logoutButton}
         onPress={onLogout}
         disabled={isLoggingOut}
-        activeOpacity={0.8}
+        activeOpacity={0.7}
       >
         {isLoggingOut ? (
           <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />

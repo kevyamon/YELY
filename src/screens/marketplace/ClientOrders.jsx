@@ -22,6 +22,7 @@ import GlassModal from '../../components/ui/GlassModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
+import ExploreMarketplaceButton from '../../components/marketplace/ExploreMarketplaceButton';
 
 const STATUS_MAP = {
   'pending': { label: 'En attente', color: THEME.COLORS.warning, icon: 'clock-outline' },
@@ -171,8 +172,12 @@ const ClientOrders = ({ navigation }) => {
     
     return (
       <TouchableOpacity 
-        onPress={() => navigation.navigate('OrderTracking', { orderId: item._id })}
-        activeOpacity={0.9}
+        activeOpacity={0.7}
+        onPress={() => {
+          requestAnimationFrame(() => {
+            navigation.navigate('OrderTracking', { orderId: item._id });
+          });
+        }}
       >
         <GlassCard style={styles.orderCard}>
           <View style={styles.cardHeader}>
@@ -246,6 +251,7 @@ const ClientOrders = ({ navigation }) => {
       <View style={styles.tabsContainer}>
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'active' && styles.tabButtonActive]}
+          activeOpacity={0.7}
           onPress={() => setActiveTab('active')}
         >
           <Ionicons name="cart-outline" size={18} color={activeTab === 'active' ? '#000000' : '#AAA'} />
@@ -254,6 +260,7 @@ const ClientOrders = ({ navigation }) => {
         
         <TouchableOpacity 
           style={[styles.tabButton, activeTab === 'archived' && styles.tabButtonActive]}
+          activeOpacity={0.7}
           onPress={() => setActiveTab('archived')}
         >
           <Ionicons name="archive-outline" size={18} color={activeTab === 'archived' ? '#000000' : '#AAA'} />
@@ -285,12 +292,7 @@ const ClientOrders = ({ navigation }) => {
                 }
               </Text>
               {activeTab === 'active' && (
-                <TouchableOpacity 
-                  style={styles.shopBtn}
-                  onPress={() => navigation.navigate('Accueil')}
-                >
-                  <Text style={styles.shopBtnText}>Commencer mes achats</Text>
-                </TouchableOpacity>
+                <ExploreMarketplaceButton style={{ marginTop: 25 }} />
               )}
             </View>
           }

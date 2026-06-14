@@ -174,10 +174,26 @@ const RiderHome = ({ navigation }) => {
           scrollY={scrollY}
           address={currentAddress || "Recherche..."}
           userName={user?.name?.split(' ')[0] || "Passager"}
-          onMenuPress={() => navigation.navigate('Menu')}
-          onNotificationPress={() => navigation.navigate('Notifications')}
-          onSearchPress={() => openSearchModal()}
-          onShoppingPress={() => navigation.navigate('MarketplaceHub')}
+          onMenuPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('Menu');
+            });
+          }}
+          onNotificationPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('Notifications');
+            });
+          }}
+          onSearchPress={() => {
+            requestAnimationFrame(() => {
+              openSearchModal();
+            });
+          }}
+          onShoppingPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('MarketplaceHub');
+            });
+          }}
           hasDestination={!!destination && !isRideActive} 
           onCancelDestination={handleCancelDestination}
           onRefreshLocation={handleRefreshLocation}

@@ -50,6 +50,13 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    updatePassword: builder.mutation({
+      query: (data) => ({
+        url: '/users/update-password',
+        method: 'PATCH',
+        body: data,
+      }),
+    }),
     uploadProfilePicture: builder.mutation({
       query: (formData) => ({
         url: '/users/profile-picture',
@@ -89,6 +96,7 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['User'],
     }),
   }),
+  overrideExisting: true,
 });
 
 export const {
@@ -103,5 +111,6 @@ export const {
   useDeleteAccountMutation,
   useUpdateAvailabilityMutation,
   useUpdateFcmTokenMutation, 
-  useUpdateShopLocationMutation, // Export du hook
+  useUpdateShopLocationMutation, 
+  useUpdatePasswordMutation,
 } = usersApiSlice;

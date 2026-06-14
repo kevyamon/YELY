@@ -246,9 +246,21 @@ const DriverHome = ({ navigation, route }) => {
           scrollY={scrollY}
           address={currentAddress || "Recherche..."}
           userName={user?.name?.split(' ')[0] || 'Chauffeur'}
-          onMenuPress={() => navigation.navigate('Menu')}
-          onNotificationPress={() => navigation.navigate('Notifications')}
-          onShoppingPress={() => navigation.navigate('MarketplaceHub')}
+          onMenuPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('Menu');
+            });
+          }}
+          onNotificationPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('Notifications');
+            });
+          }}
+          onShoppingPress={() => {
+            requestAnimationFrame(() => {
+              navigation.navigate('MarketplaceHub');
+            });
+          }}
         />
       </View>
 

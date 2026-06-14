@@ -15,7 +15,7 @@ const HelpVideoModal = ({ visible, onClose, role }) => {
   const [selectedVideo, setSelectedVideo] = useState(null);
   const [isVideoFinished, setIsVideoFinished] = useState(false);
 
-  const catalog = HELP_CATALOG[role === 'driver' ? 'driver' : 'rider'] || [];
+  const catalog = HELP_CATALOG[role] || HELP_CATALOG.rider || [];
 
   const player = useVideoPlayer(selectedVideo ? selectedVideo.videoSource : null, (playerInstance) => {
     playerInstance.loop = false;

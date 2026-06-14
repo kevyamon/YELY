@@ -146,7 +146,7 @@ const SubscriptionScreen = ({ navigation }) => {
       const formData = new FormData();
       formData.append('planId', selectedPlan.id);
       formData.append('senderPhone', senderPhone);
-      formData.append('file', formattedFile);
+      formData.append('proofImage', formattedFile);
 
       await submitProof(formData).unwrap();
       
