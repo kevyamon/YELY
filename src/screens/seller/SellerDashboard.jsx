@@ -153,7 +153,15 @@ const SellerDashboard = ({ navigation }) => {
 
 
   const orders = ordersData?.data || [];
-  const filteredOrders = orders.filter(o => o.status === activeTab);
+  const filteredOrders = orders.filter(o => {
+    if (activeTab === 'pending') return o.status === 'pending';
+    if (activeTab === 'confirmed') return o.status === 'confirmed';
+    if (activeTab === 'picked_up') {
+      return ['searching', 'searching_delivery_retry', 'cancelled_no_driver', 'picked_up'].includes(o.status);
+    }
+    if (activeTab === 'delivered') return ['delivered', 'cancelled', 'rejected'].includes(o.status);
+    return false;
+  });
 
   const handleUpdateStatus = async (orderId, currentStatus) => {
     let nextStatus = '';
@@ -163,8 +171,11 @@ const SellerDashboard = ({ navigation }) => {
       nextStatus = 'confirmed';
       confirmMsg = 'Voulez-vous confirmer cette commande et commencer la préparation ?';
     } else if (currentStatus === 'confirmed') {
-      nextStatus = 'picked_up';
-      confirmMsg = 'Le colis a-t-il été remis au livreur ?';
+      nextStatus = 'searching';
+      confirmMsg = 'Voulez-vous marquer cette commande comme prête et lancer la recherche d\'un livreur ?';
+    } else if (currentStatus === 'searching_delivery_retry' || currentStatus === 'cancelled_no_driver') {
+      nextStatus = 'searching';
+      confirmMsg = 'Voulez-vous relancer la recherche d\'un livreur pour cette commande ?';
     } else if (currentStatus === 'picked_up') {
       nextStatus = 'delivered';
       confirmMsg = 'Confirmez-vous que la commande a été livrée et payée ?';
@@ -214,15 +225,28 @@ const SellerDashboard = ({ navigation }) => {
           <Text style={styles.customerName}>{item.customer?.name || 'Client Yely'}</Text>
         </View>
 
-        {item.status !== 'delivered' && item.status !== 'cancelled' && (
+        {item.status !== 'delivered' && item.status !== 'cancelled' && item.status !== 'rejected' && (
           <TouchableOpacity 
-            style={[styles.statusBtn, { backgroundColor: item.status === 'pending' ? THEME.COLORS.primary : THEME.COLORS.success }]} 
+            style={[
+              styles.statusBtn, 
+              { 
+                backgroundColor: item.status === 'pending' ? THEME.COLORS.primary : 
+                                item.status === 'searching' ? THEME.COLORS.info + '25' : 
+                                THEME.COLORS.success 
+              }
+            ]} 
             onPress={() => handleUpdateStatus(item._id, item.status)}
-            disabled={isUpdating}
+            disabled={isUpdating || item.status === 'searching'}
           >
-            <Text style={styles.statusBtnText}>
+            <Text style={[
+              styles.statusBtnText, 
+              item.status === 'searching' && { color: THEME.COLORS.info }
+            ]}>
               {item.status === 'pending' ? 'PRÉPARER' : 
-               item.status === 'confirmed' ? 'REMIS AU LIVREUR' : 
+               item.status === 'confirmed' ? 'PRÊT POUR LIVRAISON' : 
+               item.status === 'searching' ? 'RECHERCHE LIVREUR...' : 
+               item.status === 'searching_delivery_retry' ? 'RELANCER LA RECHERCHE' :
+               item.status === 'cancelled_no_driver' ? 'RELANCER LA RECHERCHE' :
                item.status === 'picked_up' ? 'MARQUER LIVRÉ' : 'OK'}
             </Text>
           </TouchableOpacity>
@@ -397,12 +421,12 @@ const SellerDashboard = ({ navigation }) => {
           contentContainerStyle={styles.tabsScroll}
         >
           {[
-            { id: 'pending', label: 'Nouvelles', icon: 'bell-outline' },
-            { id: 'confirmed', label: 'En prépa', icon: 'stove' },
-            { id: 'picked_up', label: 'En route', icon: 'moped' },
-            { id: 'delivered', label: 'Livrées', icon: 'check-all' }
+            { id: 'pending', label: 'Nouvelles', icon: 'bell-outline', statuses: ['pending'] },
+            { id: 'confirmed', label: 'En prépa', icon: 'stove', statuses: ['confirmed'] },
+            { id: 'picked_up', label: 'En route', icon: 'moped', statuses: ['searching', 'searching_delivery_retry', 'cancelled_no_driver', 'picked_up'] },
+            { id: 'delivered', label: 'Livrées', icon: 'check-all', statuses: ['delivered', 'cancelled', 'rejected'] }
           ].map(tab => {
-            const count = orders.filter(o => o.status === tab.id).length;
+            const count = orders.filter(o => tab.statuses.includes(o.status)).length;
             const isActive = activeTab === tab.id;
 
             return (
