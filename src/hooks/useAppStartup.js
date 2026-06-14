@@ -20,7 +20,8 @@ import {
 import {
     setAppUpdate,
     showErrorToast,
-    showSuccessToast
+    showSuccessToast,
+    setServerWaking
 } from '../store/slices/uiSlice';
 import store from '../store/store';
 
@@ -53,11 +54,19 @@ const useAppStartup = () => {
   const checkSystemStatus = useRef(async () => {
     try {
       const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
-      const response = await fetch(`${apiUrl}/health/config`);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000); // 8s timeout
+
+      const response = await fetch(`${apiUrl}/health/config`, { signal: controller.signal });
+      clearTimeout(timeoutId);
+
       if (response.ok) {
         const payload = await response.json();
         const data = payload.data || payload;
-        // Lecture ponctuelle du store — ne crée pas de dépendance réactive
+        
+        // Connexion réussie : le backend est disponible
+        dispatch(setServerWaking(false));
+
         const isSuperAdmin = store.getState().auth.user?.role === 'superadmin';
 
         dispatch(setAppUpdate({
@@ -74,9 +83,21 @@ const useAppStartup = () => {
             promoMessage: data.promoMessage
           }));
         }
+      } else {
+        throw new Error(`Réponse HTTP non ok: ${response.status}`);
       }
     } catch (error) {
-      console.warn("[APP_INIT] Vérification configuration échouée:", error);
+      console.warn("[APP_INIT] Vérification configuration échouée, cold start potentiel :", error.message);
+      
+      const netState = await NetInfo.fetch();
+      if (netState.isConnected) {
+        // Si connecté à Internet mais échec de l'API, le serveur dort probablement.
+        // On force le mode réveil et on réessaye dans 5 secondes.
+        dispatch(setServerWaking(true));
+        setTimeout(() => {
+          checkSystemStatus();
+        }, 5000);
+      }
     }
   }).current;
 

@@ -80,7 +80,7 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     if (actualStatus !== 401 && actualStatus !== 400 && actualStatus !== 404 && actualStatus !== 409) {
       if (isSystemRefreshing && (errorStatus === 'FETCH_ERROR' || errorStatus === 'TIMEOUT_ERROR')) {
         console.info(`[API] Toast etouffe: Erreur transitoire (${errorStatus}) masquee pendant le refresh token.`);
-      } else if (!isSilent) {
+      } else if (!isSilent && !api.getState().ui.isServerWaking) {
         let toastMessage = "Une erreur inattendue est survenue.";
         if (errorStatus === 'FETCH_ERROR') toastMessage = "Impossible de joindre le serveur. Verifiez votre connexion.";
         else if (actualStatus >= 500) toastMessage = "Nos serveurs rencontrent un probleme technique. Nous y travaillons.";

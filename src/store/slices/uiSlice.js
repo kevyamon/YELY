@@ -4,6 +4,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
+  isServerWaking: true, // Par défaut au boot, le serveur est considéré en réveil
   modal: {
     visible: false,
     type: null,       
@@ -42,6 +43,9 @@ const uiSlice = createSlice({
   name: 'ui',
   initialState,
   reducers: {
+    setServerWaking: (state, action) => {
+      state.isServerWaking = action.payload;
+    },
     openModal: (state, action) => {
       state.modal.visible = true;
       state.modal.type = action.payload?.type || 'default';
@@ -129,6 +133,7 @@ const uiSlice = createSlice({
 });
 
 export const {
+  setServerWaking,
   openModal,
   closeModal,
   updateModalData,
@@ -163,5 +168,6 @@ export const selectKeyboardVisible = (state) => state.ui.keyboardVisible;
 
 // NOUVEAU SELECTOR
 export const selectAppUpdate = (state) => state.ui.appUpdate;
+export const selectIsServerWaking = (state) => state.ui.isServerWaking;
 
 export default uiSlice.reducer;

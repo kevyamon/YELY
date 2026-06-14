@@ -31,13 +31,14 @@ import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
+import ServerWakingOverlay from './src/components/ui/ServerWakingOverlay';
 
 import useAppStartup from './src/hooks/useAppStartup';
 import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
 
-import { hideToast, selectAppUpdate, selectLoading, selectToast } from './src/store/slices/uiSlice';
+import { hideToast, selectAppUpdate, selectLoading, selectToast, selectIsServerWaking } from './src/store/slices/uiSlice';
 
 import './src/tasks/backgroundLocationTask';
 
@@ -115,6 +116,7 @@ const AppContent = () => {
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
   const appUpdate = useSelector(selectAppUpdate);
+  const isServerWaking = useSelector(selectIsServerWaking);
 
   const navigationTheme = useMemo(() => ({
     ...DefaultTheme,
@@ -184,6 +186,7 @@ const AppContent = () => {
         />
         <FacebookFollowModal />
         <PwaIOSInstallGuide />
+        <ServerWakingOverlay />
       </Portal>
     </>
   );

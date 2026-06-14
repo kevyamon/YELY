@@ -26,15 +26,15 @@ const FacebookFollowModal = () => {
     if (!isAuthenticated || !user || user.hasFollowedFB) return;
     const checkEligibility = async () => {
       try {
-        const localFollowFlag = await SecureStorageAdapter.getItem(`FB_FOLLOWED_${user._id}`);
+        const localFollowFlag = await SecureStorageAdapter.getItem('FB_FOLLOWED_DEVICE');
         if (localFollowFlag === 'true') return;
-        const lastClosedStr = await SecureStorageAdapter.getItem(`FB_MODAL_CLOSED_${user._id}`);
+        const lastClosedStr = await SecureStorageAdapter.getItem('FB_MODAL_CLOSED_DEVICE');
         if (lastClosedStr) {
           const lastClosedTime = parseInt(lastClosedStr, 10);
           const hours24 = 24 * 60 * 60 * 1000;
           if (Date.now() - lastClosedTime < hours24) return;
         }
-        setTimeout(() => setVisible(true), 5000);
+        setTimeout(() => setVisible(true), 15000); // Délai de 15 secondes au lieu de 5 pour moins perturber
       } catch (error) {
         console.warn("SecureStorage FB Modal Error:", error);
       }
@@ -58,12 +58,13 @@ const FacebookFollowModal = () => {
   }, [waitingForReturn]);
 
   const handleFollowSuccess = async () => {
-    if (!user?._id) return;
     try {
-      await SecureStorageAdapter.setItem(`FB_FOLLOWED_${user._id}`, 'true');
-      const res = await updateProfile({ hasFollowedFB: true }).unwrap();
-      if (res.data) {
-        dispatch(setCredentials({ user: res.data }));
+      await SecureStorageAdapter.setItem('FB_FOLLOWED_DEVICE', 'true');
+      if (user?._id) {
+        const res = await updateProfile({ hasFollowedFB: true }).unwrap();
+        if (res.data) {
+          dispatch(setCredentials({ user: res.data }));
+        }
       }
     } catch (error) {
       console.warn("FB Status Update Error:", error);
@@ -81,9 +82,9 @@ const FacebookFollowModal = () => {
   };
 
   const handleClose = async () => {
-    if (step === 'invite' && user?._id) {
+    if (step === 'invite') {
       try {
-        await SecureStorageAdapter.setItem(`FB_MODAL_CLOSED_${user._id}`, Date.now().toString());
+        await SecureStorageAdapter.setItem('FB_MODAL_CLOSED_DEVICE', Date.now().toString());
       } catch (e) {}
     }
     setVisible(false);
