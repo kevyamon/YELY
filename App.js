@@ -101,10 +101,10 @@ const GlobalErrorFallback = ({ error, resetError }) => (
   <SafeAreaView style={styles.fallbackContainer}>
     <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
     <Text style={styles.fallbackText}>
-      L'application a rencontre un probleme. Nos equipes techniques ont ete automatiquement alertees.
+      L'application a rencontré un problème. Nos équipes techniques ont été automatiquement alertées.
     </Text>
     <TouchableOpacity onPress={resetError} style={styles.fallbackButton}>
-      <Text style={styles.fallbackButtonText}>Redemarrer Yely</Text>
+      <Text style={styles.fallbackButtonText}>Redémarrer Yély</Text>
     </TouchableOpacity>
   </SafeAreaView>
 );

@@ -9,6 +9,7 @@ import { ActivityIndicator, ScrollView, StyleSheet, Text, TouchableOpacity, View
 import { useDispatch, useSelector } from 'react-redux';
 
 import GlassCard from '../../components/ui/GlassCard';
+import GlassInput from '../../components/ui/GlassInput';
 import GlassModal from '../../components/ui/GlassModal';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
