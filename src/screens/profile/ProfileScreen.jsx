@@ -197,7 +197,7 @@ const ProfileScreen = ({ navigation }) => {
     if (newPassword.length < 8) {
       dispatch(showErrorToast({ 
         title: 'Mot de passe court', 
-        message: 'Le nouveau mot de passe doit faire au moins 8 caracteres.' 
+        message: 'Le nouveau mot de passe doit faire au moins 8 caractères.' 
       }));
       return;
     }
@@ -214,8 +214,8 @@ const ProfileScreen = ({ navigation }) => {
       await updatePassword({ currentPassword, newPassword }).unwrap();
       
       dispatch(showSuccessToast({ 
-        title: 'Succes', 
-        message: 'Votre mot de passe a ete modifie avec succes.' 
+        title: 'Succès', 
+        message: 'Votre mot de passe a été modifié avec succès.' 
       }));
       
       setCurrentPassword('');
@@ -225,7 +225,7 @@ const ProfileScreen = ({ navigation }) => {
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Erreur', 
-        message: error?.data?.message || 'Une erreur est survenue lors de la mise a jour de votre mot de passe.' 
+        message: error?.data?.message || 'Une erreur est survenue lors de la mise à jour de votre mot de passe.' 
       }));
     }
   };
@@ -282,9 +282,9 @@ const ProfileScreen = ({ navigation }) => {
               />
 
               <GlassCard style={[styles.card, { marginTop: 20 }]}>
-                <Text style={styles.sectionTitle}>Securite</Text>
+                <Text style={styles.sectionTitle}>Sécurité</Text>
                 <Text style={styles.securityText}>
-                  Vous pouvez mettre a jour votre mot de passe pour assurer la securite de votre compte.
+                  Vous pouvez mettre à jour votre mot de passe pour assurer la sécurité de votre compte.
                 </Text>
                 <GoldButton 
                   title="MODIFIER LE MOT DE PASSE" 
@@ -346,7 +346,7 @@ const ProfileScreen = ({ navigation }) => {
           <GlassInput 
             value={newPassword}
             onChangeText={setNewPassword}
-            placeholder="Minimum 8 caracteres (lettre + chiffre)"
+            placeholder="Minimum 8 caractères (lettre + chiffre)"
             secureTextEntry={true}
             editable={!isUpdatingPassword}
           />
