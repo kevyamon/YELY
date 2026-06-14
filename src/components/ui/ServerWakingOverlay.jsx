@@ -19,7 +19,7 @@ const ServerWakingOverlay = () => {
     <View style={styles.overlay}>
       <GlassCard style={styles.glassContainer}>
         <View style={styles.iconWrapper}>
-          <Ionicons name="cloud-download-outline" size={32} color={THEME.COLORS.champagneGold || '#D4AF37'} />
+          <Ionicons name="key-outline" size={32} color={THEME.COLORS.champagneGold || '#D4AF37'} />
           <View style={styles.loaderRing}>
             <ActivityIndicator size="large" color={THEME.COLORS.champagneGold || '#D4AF37'} />
           </View>
