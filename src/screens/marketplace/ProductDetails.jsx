@@ -408,6 +408,7 @@ const ProductDetails = ({ route, navigation }) => {
           <LinearGradient
             colors={['rgba(0,0,0,0.5)', 'transparent', isDarkMode ? 'rgba(10,10,10,1)' : '#F8F9FA']}
             style={styles.imageGradient}
+            pointerEvents="none"
           />
 
           {images.length > 1 && (

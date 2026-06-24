@@ -37,6 +37,83 @@ const GlassCard = ({ children, style }) => (
   </View>
 );
 
+const HistoryModal = ({ visible, user, transactions, isLoading, onClose }) => {
+  const getStatusStyle = (status) => {
+    switch (status) {
+      case 'APPROVED':
+        return { bg: 'rgba(39, 174, 96, 0.1)', text: THEME.COLORS.success, label: 'Approuvé' };
+      case 'REJECTED':
+        return { bg: 'rgba(192, 57, 43, 0.1)', text: THEME.COLORS.danger, label: 'Rejeté' };
+      default:
+        return { bg: 'rgba(243, 156, 18, 0.1)', text: THEME.COLORS.warning, label: 'En attente' };
+    }
+  };
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <View style={styles.modalOverlay}>
+        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+        <View style={styles.modalContent}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Historique : {user?.name}</Text>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+              <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+          </View>
+
+          {isLoading ? (
+            <View style={styles.loaderContainer}>
+              <ActivityIndicator size="large" color={THEME.COLORS.primary} />
+              <Text style={styles.loaderText}>Chargement de l'audit...</Text>
+            </View>
+          ) : transactions.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Ionicons name="receipt-outline" size={48} color={THEME.COLORS.textTertiary} />
+              <Text style={styles.emptyText}>Aucune transaction enregistrée pour cet utilisateur.</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={transactions}
+              keyExtractor={(item) => item._id}
+              contentContainerStyle={styles.modalList}
+              renderItem={({ item }) => {
+                const statusStyle = getStatusStyle(item.status);
+                return (
+                  <View style={styles.historyItem}>
+                    <View style={styles.historyRow}>
+                      <Text style={styles.historyPlan}>{item.planId === 'WEEKLY' ? 'HEBDOMADAIRE' : 'MENSUEL'}</Text>
+                      <Text style={styles.historyAmount}>{item.amount} FCFA</Text>
+                    </View>
+                    <View style={styles.historyRow}>
+                      <Text style={styles.historyDate}>
+                        Soumis le : {new Date(item.createdAt).toLocaleDateString('fr-FR')}
+                      </Text>
+                      <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
+                        <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
+                      </View>
+                    </View>
+                    {item.assignedTo && (
+                      <Text style={styles.historyAdmin}>Traité par : {item.assignedTo.name}</Text>
+                    )}
+                    {item.rejectionReason && (
+                      <Text style={styles.historyReason}>Motif rejet : {item.rejectionReason}</Text>
+                    )}
+                  </View>
+                );
+              }}
+            />
+          )}
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const SubscriptionManagement = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -72,6 +149,12 @@ const SubscriptionManagement = ({ navigation }) => {
   const [banUser, setBanUser] = useState(null);
   const [banReason, setBanReason] = useState('Non-paiement / Expiration de l\'abonnement');
 
+  // Hook d'historique placé au sommet (Règles des Hooks respectées)
+  const { data: historyData, isLoading: isLoadingHistory } = useGetSubscriptionHistoryQuery(
+    historyUser?._id,
+    { skip: !historyUser }
+  );
+
   const flatListRef = useRef(null);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const { height: screenHeight } = useWindowDimensions();
@@ -101,90 +184,7 @@ const SubscriptionManagement = ({ navigation }) => {
     }
   };
 
-  // Composant pour l'historique des transactions
-  const HistoryModal = () => {
-    const { data: historyData, isLoading: isLoadingHistory } = useGetSubscriptionHistoryQuery(
-      historyUser?._id,
-      { skip: !historyUser }
-    );
 
-    const transactions = historyData?.data || historyData || [];
-
-    const getStatusStyle = (status) => {
-      switch (status) {
-        case 'APPROVED':
-          return { bg: 'rgba(39, 174, 96, 0.1)', text: THEME.COLORS.success, label: 'Approuvé' };
-        case 'REJECTED':
-          return { bg: 'rgba(192, 57, 43, 0.1)', text: THEME.COLORS.danger, label: 'Rejeté' };
-        default:
-          return { bg: 'rgba(243, 156, 18, 0.1)', text: THEME.COLORS.warning, label: 'En attente' };
-      }
-    };
-
-    return (
-      <Modal
-        visible={!!historyUser}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setHistoryUser(null)}
-      >
-        <View style={styles.modalOverlay}>
-          <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Historique : {historyUser?.name}</Text>
-              <TouchableOpacity onPress={() => setHistoryUser(null)} style={styles.closeButton}>
-                <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
-              </TouchableOpacity>
-            </View>
-
-            {isLoadingHistory ? (
-              <View style={styles.loaderContainer}>
-                <ActivityIndicator size="large" color={THEME.COLORS.primary} />
-                <Text style={styles.loaderText}>Chargement de l'audit...</Text>
-              </View>
-            ) : transactions.length === 0 ? (
-              <View style={styles.emptyContainer}>
-                <Ionicons name="receipt-outline" size={48} color={THEME.COLORS.textTertiary} />
-                <Text style={styles.emptyText}>Aucune transaction enregistrée pour cet utilisateur.</Text>
-              </View>
-            ) : (
-              <FlatList
-                data={transactions}
-                keyExtractor={(item) => item._id}
-                contentContainerStyle={styles.modalList}
-                renderItem={({ item }) => {
-                  const statusStyle = getStatusStyle(item.status);
-                  return (
-                    <View style={styles.historyItem}>
-                      <View style={styles.historyRow}>
-                        <Text style={styles.historyPlan}>{item.planId === 'WEEKLY' ? 'HEBDOMADAIRE' : 'MENSUEL'}</Text>
-                        <Text style={styles.historyAmount}>{item.amount} FCFA</Text>
-                      </View>
-                      <View style={styles.historyRow}>
-                        <Text style={styles.historyDate}>
-                          Soumis le : {new Date(item.createdAt).toLocaleDateString('fr-FR')}
-                        </Text>
-                        <View style={[styles.statusBadge, { backgroundColor: statusStyle.bg }]}>
-                          <Text style={[styles.statusText, { color: statusStyle.text }]}>{statusStyle.label}</Text>
-                        </View>
-                      </View>
-                      {item.assignedTo && (
-                        <Text style={styles.historyAdmin}>Traité par : {item.assignedTo.name}</Text>
-                      )}
-                      {item.rejectionReason && (
-                        <Text style={styles.historyReason}>Motif rejet : {item.rejectionReason}</Text>
-                      )}
-                    </View>
-                  );
-                }}
-              />
-            )}
-          </View>
-        </View>
-      </Modal>
-    );
-  };
 
   const getSubscriptionBadge = (user) => {
     if (user.isBanned) {
@@ -385,7 +385,13 @@ const SubscriptionManagement = ({ navigation }) => {
       <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
 
       {/* Modale d'Historique */}
-      <HistoryModal />
+      <HistoryModal
+        visible={!!historyUser}
+        user={historyUser}
+        transactions={historyData?.data || historyData || []}
+        isLoading={isLoadingHistory}
+        onClose={() => setHistoryUser(null)}
+      />
 
       {/* Modale de suspension/bannissement */}
       <Modal
