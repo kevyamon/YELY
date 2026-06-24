@@ -279,6 +279,7 @@ const ProductList = ({ route, navigation }) => {
           <GlobalSkeleton visible={showSkeleton}>
             {showSkeleton ? renderSkeleton() : isSellersTab ? (
               <FlatList
+                key="sellers_list"
                 ref={flatListRef}
                 data={sellers}
                 renderItem={renderSellerItem}
@@ -293,6 +294,7 @@ const ProductList = ({ route, navigation }) => {
               />
             ) : (
               <FlatList
+                key="products_list"
                 ref={flatListRef}
                 data={sortedProducts}
                 renderItem={({ item }) => (

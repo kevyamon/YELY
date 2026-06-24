@@ -4,7 +4,7 @@
 import { createSlice } from '@reduxjs/toolkit';
 
 const initialState = {
-  isServerWaking: true, // Par défaut au boot, le serveur est considéré en réveil
+  isServerWaking: false, // Par défaut au boot, le serveur n'est pas considéré en réveil (géré dynamiquement)
   modal: {
     visible: false,
     type: null,       

@@ -48,6 +48,7 @@ const useAppStartup = () => {
 
   const appState = useRef(AppState.currentState);
   const hasCheckedSystem = useRef(false);
+  const hasWokenUp = useRef(false);
   const wasOffline = useRef(false);
 
   // ─── Fonction stable : lit le store au moment de l'appel, pas via selector ───
@@ -66,6 +67,7 @@ const useAppStartup = () => {
         
         // Connexion réussie : le backend est disponible
         dispatch(setServerWaking(false));
+        hasWokenUp.current = true;
 
         const isSuperAdmin = store.getState().auth.user?.role === 'superadmin';
 
@@ -90,8 +92,8 @@ const useAppStartup = () => {
       console.warn("[APP_INIT] Vérification configuration échouée, cold start potentiel :", error.message);
       
       const netState = await NetInfo.fetch();
-      if (netState.isConnected) {
-        // Si connecté à Internet mais échec de l'API, le serveur dort probablement.
+      if (netState.isConnected && !hasWokenUp.current) {
+        // Si connecté à Internet mais échec de l'API et que le serveur n'a JAMAIS répondu, le serveur dort probablement.
         // On force le mode réveil et on réessaye dans 5 secondes.
         dispatch(setServerWaking(true));
         setTimeout(() => {

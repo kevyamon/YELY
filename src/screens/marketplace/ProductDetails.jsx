@@ -15,7 +15,8 @@ import {
   ScrollView,
   Animated,
   Easing,
-  BackHandler
+  BackHandler,
+  Modal
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -143,6 +144,14 @@ const ProductDetails = ({ route, navigation }) => {
   const [quantity, setQuantity] = useState(1);
   const [isDescModalVisible, setIsDescModalVisible] = useState(false);
   const [showModalScrollTop, setShowModalScrollTop] = useState(false);
+  
+  const [isViewerVisible, setIsViewerVisible] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+
+  const handleImageClick = (index) => {
+    setViewerIndex(index);
+    setIsViewerVisible(true);
+  };
 
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
@@ -370,7 +379,13 @@ const ProductDetails = ({ route, navigation }) => {
             }}
           >
             {images.map((item, i) => (
-              <Image key={i} source={{ uri: item }} style={styles.mainImage} />
+              <TouchableOpacity 
+                key={i} 
+                activeOpacity={0.9} 
+                onPress={() => handleImageClick(i)}
+              >
+                <Image source={{ uri: item }} style={styles.mainImage} />
+              </TouchableOpacity>
             ))}
           </ScrollView>
           
@@ -754,6 +769,54 @@ const ProductDetails = ({ route, navigation }) => {
           </View>
         )}
       </View>
+
+      {/* FULLSCREEN IMAGE VIEWER MODAL */}
+      <Modal
+        visible={isViewerVisible}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setIsViewerVisible(false)}
+      >
+        <View style={styles.viewerContainer}>
+          <TouchableOpacity 
+            style={[styles.viewerCloseBtn, { top: Math.max(insets.top, 20) }]}
+            onPress={() => setIsViewerVisible(false)}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="close" size={28} color="#FFFFFF" />
+          </TouchableOpacity>
+
+          <ScrollView
+            horizontal
+            pagingEnabled
+            showsHorizontalScrollIndicator={false}
+            contentOffset={{ x: viewerIndex * width, y: 0 }}
+            onMomentumScrollEnd={(e) => {
+              setViewerIndex(Math.round(e.nativeEvent.contentOffset.x / width));
+            }}
+          >
+            {images.map((item, i) => (
+              <View key={i} style={styles.viewerImageWrapper}>
+                <Image source={{ uri: item }} style={styles.viewerImage} />
+              </View>
+            ))}
+          </ScrollView>
+
+          {images.length > 1 && (
+            <View style={styles.viewerPagination}>
+              {images.map((_, i) => (
+                <View 
+                  key={i} 
+                  style={[
+                    styles.viewerDot, 
+                    viewerIndex === i && styles.viewerActiveDot
+                  ]} 
+                />
+              ))}
+            </View>
+          )}
+        </View>
+      </Modal>
     </View>
   );
 };
@@ -1105,6 +1168,51 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(212,175,55,0.3)'
+  },
+  viewerContainer: {
+    flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerCloseBtn: {
+    position: 'absolute',
+    right: 20,
+    zIndex: 1000,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerImageWrapper: {
+    width: width,
+    height: height,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewerImage: {
+    width: width,
+    height: height * 0.7,
+    resizeMode: 'contain',
+  },
+  viewerPagination: {
+    position: 'absolute',
+    bottom: 40,
+    flexDirection: 'row',
+    gap: 8,
+    alignSelf: 'center',
+  },
+  viewerDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  viewerActiveDot: {
+    backgroundColor: THEME.COLORS.primary || '#D4AF37',
+    width: 20,
   }
 });
 
