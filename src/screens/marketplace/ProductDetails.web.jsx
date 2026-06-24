@@ -119,11 +119,25 @@ const ProductDetails = ({ route, navigation }) => {
   
   const [isViewerVisible, setIsViewerVisible] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [isCarouselPaused, setIsCarouselPaused] = useState(false);
 
   const handleImageClick = (index) => {
     setViewerIndex(index);
     setIsViewerVisible(true);
   };
+
+  // PROGRAMMATIC INITIAL SCROLL FOR THE IMAGE VIEWER MODAL (Avoids buggy contentOffset on mount)
+  useEffect(() => {
+    if (isViewerVisible && modalScrollViewRef.current) {
+      const timer = setTimeout(() => {
+        modalScrollViewRef.current?.scrollTo({
+          x: viewerIndex * width,
+          animated: false,
+        });
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isViewerVisible, viewerIndex, width]);
   
   const product = productData?.data;
   const images = product?.images && product?.images.length > 0 ? product.images : (product?.image ? [product.image] : []);
@@ -142,7 +156,7 @@ const ProductDetails = ({ route, navigation }) => {
 
   // Diaporama automatique toutes les 5 secondes en vue mobile (Images)
   useEffect(() => {
-    if (isLargeScreen || images.length <= 1) return;
+    if (isLargeScreen || images.length <= 1 || isViewerVisible || isCarouselPaused) return;
 
     const interval = setInterval(() => {
       let nextIndex = activeImage + 1;
@@ -161,7 +175,7 @@ const ProductDetails = ({ route, navigation }) => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [activeImage, images.length, isLargeScreen, width]);
+  }, [activeImage, images.length, isLargeScreen, width, isViewerVisible, isCarouselPaused]);
 
   // Diaporama automatique toutes les 6 secondes (Avis)
   useEffect(() => {
@@ -758,7 +772,13 @@ const ProductDetails = ({ route, navigation }) => {
                 }}
               >
                 {images.map((item, i) => (
-                  <TouchableOpacity key={i} activeOpacity={0.9} onPress={() => handleImageClick(i)}>
+                  <TouchableOpacity 
+                    key={i} 
+                    activeOpacity={0.9} 
+                    onPress={() => handleImageClick(i)}
+                    onPressIn={() => setIsCarouselPaused(true)}
+                    onPressOut={() => setIsCarouselPaused(false)}
+                  >
                     <Image source={{ uri: item }} style={[styles.mobileMainImage, { width }]} />
                   </TouchableOpacity>
                 ))}
@@ -1172,17 +1192,19 @@ const ProductDetails = ({ route, navigation }) => {
           </TouchableOpacity>
 
           <ScrollView
+            ref={modalScrollViewRef}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            contentOffset={{ x: viewerIndex * width, y: 0 }}
+            style={styles.viewerScrollView}
+            contentContainerStyle={{ alignItems: 'center' }}
             onMomentumScrollEnd={(e) => {
               setViewerIndex(Math.round(e.nativeEvent.contentOffset.x / width));
             }}
           >
             {images.map((item, i) => (
-              <View key={i} style={styles.viewerImageWrapper}>
-                <Image source={{ uri: item }} style={styles.viewerImage} />
+              <View key={i} style={[styles.viewerImageWrapper, { width, height }]}>
+                <Image source={{ uri: item }} style={[styles.viewerImage, { width, height: height * 0.7 }]} />
               </View>
             ))}
           </ScrollView>
@@ -1816,8 +1838,10 @@ const styles = StyleSheet.create({
   viewerContainer: {
     flex: 1,
     backgroundColor: '#000000',
-    justifyContent: 'center',
-    alignItems: 'center',
+  },
+  viewerScrollView: {
+    flex: 1,
+    width: '100%',
   },
   viewerCloseBtn: {
     position: 'absolute',
@@ -1831,14 +1855,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   viewerImageWrapper: {
-    width: '100vw',
-    height: '100vh',
     justifyContent: 'center',
     alignItems: 'center',
   },
   viewerImage: {
-    width: '100vw',
-    height: '70vh',
     resizeMode: 'contain',
   },
   viewerPagination: {

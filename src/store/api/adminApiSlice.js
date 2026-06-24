@@ -64,6 +64,31 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User', 'AuditLog'],
     }),
+
+    getSubscriptions: builder.query({
+      query: ({ page = 1, role, search, status }) => {
+        let url = `/admin/subscriptions?page=${page}`;
+        if (role) url += `&role=${role}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status) url += `&status=${status}`;
+        return url;
+      },
+      providesTags: ['User'],
+    }),
+
+    getSubscriptionHistory: builder.query({
+      query: (userId) => `/admin/subscriptions/history/${userId}`,
+      providesTags: ['Transaction'],
+    }),
+
+    toggleSubscriptionBan: builder.mutation({
+      query: ({ userId, reason }) => ({
+        url: `/admin/subscriptions/toggle-ban`,
+        method: 'POST',
+        body: { userId, reason },
+      }),
+      invalidatesTags: ['User', 'Stats', 'AuditLog'],
+    }),
     
     getFinanceData: builder.query({
       query: ({ period }) => `/admin/finance?period=${period || 'month'}`,
@@ -216,6 +241,9 @@ export const {
   useGetAllUsersQuery,
   useToggleUserBanMutation,
   useUpdateUserRoleMutation,
+  useGetSubscriptionsQuery,
+  useGetSubscriptionHistoryQuery,
+  useToggleSubscriptionBanMutation,
   useGetFinanceDataQuery,
   useUpdateWaveLinksMutation,
   useTogglePromoMutation,

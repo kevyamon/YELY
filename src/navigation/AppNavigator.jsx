@@ -63,6 +63,7 @@ import FinanceConfig from '../screens/admin/FinanceConfig';
 import MapManagement from '../screens/admin/MapManagement';
 import SystemConfig from '../screens/admin/SystemConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
+import SubscriptionManagement from '../screens/admin/SubscriptionManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
 import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
@@ -218,6 +219,7 @@ const AppNavigator = () => {
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />
+            <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagement} />
             <Stack.Screen name="AdminRides" component={AdminRides} />
             <Stack.Screen name="AdminMarketplace" component={AdminMarketplace} />
             <Stack.Screen name="FinanceConfig" component={FinanceConfig} />

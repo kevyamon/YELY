@@ -86,6 +86,7 @@ const linking = {
       AdminDashboard: 'admin-dashboard',
       ValidationCenter: 'validation-center',
       UsersManagement: 'users-management',
+      SubscriptionManagement: 'subscription-management',
       AdminRides: 'admin-rides',
       AdminMarketplace: 'admin-marketplace',
       FinanceConfig: 'finance-config',

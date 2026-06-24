@@ -120,6 +120,13 @@ const AdminDashboard = () => {
       allowed: true 
     },
     { 
+      id: 'subscriptions', 
+      title: 'Abonnements', 
+      icon: 'calendar-outline', 
+      route: 'SubscriptionManagement', 
+      allowed: true 
+    },
+    { 
       id: 'reports', 
       title: 'Signalements', 
       icon: 'alert-circle-outline', 
