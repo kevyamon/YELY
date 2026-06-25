@@ -65,6 +65,7 @@ import SystemConfig from '../screens/admin/SystemConfig';
 import UsersManagement from '../screens/admin/UsersManagement';
 import SubscriptionManagement from '../screens/admin/SubscriptionManagement';
 import ValidationCenter from '../screens/admin/ValidationCenter';
+import IdentityValidationCenter from '../screens/admin/IdentityValidationCenter';
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
 import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
@@ -218,6 +219,7 @@ const AppNavigator = () => {
             <Stack.Screen name="AdminBanners" component={AdminBanners} />
             <Stack.Screen name="Profile" component={ProfileScreen} />
             <Stack.Screen name="ValidationCenter" component={ValidationCenter} />
+            <Stack.Screen name="IdentityValidationCenter" component={IdentityValidationCenter} />
             <Stack.Screen name="UsersManagement" component={UsersManagement} />
             <Stack.Screen name="SubscriptionManagement" component={SubscriptionManagement} />
             <Stack.Screen name="AdminRides" component={AdminRides} />

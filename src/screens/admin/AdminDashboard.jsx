@@ -42,8 +42,9 @@ const AdminDashboard = () => {
   const [seenValidations, setSeenValidations] = useState(false);
   const [seenUsers, setSeenUsers] = useState(true); 
   const [seenReports, setSeenReports] = useState(false); 
+  const [seenIdentities, setSeenIdentities] = useState(false); 
 
-  const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0 });
+  const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0, pendingDriverValidations: 0 });
   const prevReportsCountRef = useRef(0);
   const isFirstLoad = useRef(true);
   
@@ -60,12 +61,14 @@ const AdminDashboard = () => {
     skip: user?.role !== 'admin' && user?.role !== 'superadmin',
   });
   
-  const stats = statsData?.data || statsData || { 
-    totalUsers: 0, 
-    totalRiders: 0, 
-    totalDrivers: 0, 
-    activeDrivers: 0, 
-    pendingValidations: 0 
+  const rawStats = statsData?.data || statsData || {};
+  const stats = {
+    totalUsers: rawStats.totalUsers || 0,
+    totalRiders: rawStats.totalRiders || 0,
+    totalDrivers: rawStats.totalDrivers || 0,
+    activeDrivers: rawStats.activeDrivers || 0,
+    pendingValidations: rawStats.pendingValidations || 0,
+    pendingDriverValidations: rawStats.pendingDriverValidations || 0
   };
   
   const reports = reportsData?.data || reportsData || [];
@@ -75,18 +78,26 @@ const AdminDashboard = () => {
     if (statsData) {
       if (isFirstLoad.current) {
         setSeenValidations(stats.pendingValidations === 0);
+        setSeenIdentities(stats.pendingDriverValidations === 0);
         isFirstLoad.current = false;
       } else {
         if (stats.pendingValidations > prevStatsRef.current.pendingValidations) {
           setSeenValidations(false);
         }
+        if (stats.pendingDriverValidations > (prevStatsRef.current.pendingDriverValidations || 0)) {
+          setSeenIdentities(false);
+        }
         if (stats.totalUsers > prevStatsRef.current.totalUsers) {
           setSeenUsers(false);
         }
       }
-      prevStatsRef.current = { pendingValidations: stats.pendingValidations, totalUsers: stats.totalUsers };
+      prevStatsRef.current = { 
+        pendingValidations: stats.pendingValidations, 
+        totalUsers: stats.totalUsers,
+        pendingDriverValidations: stats.pendingDriverValidations
+      };
     }
-  }, [stats.pendingValidations, stats.totalUsers, statsData]);
+  }, [stats.pendingValidations, stats.pendingDriverValidations, stats.totalUsers, statsData]);
 
   useEffect(() => {
     if (unresolvedReportsCount > prevReportsCountRef.current) {
@@ -99,6 +110,7 @@ const AdminDashboard = () => {
     if (id === 'validations') setSeenValidations(true);
     if (id === 'users') setSeenUsers(true);
     if (id === 'reports') setSeenReports(true); 
+    if (id === 'identities') setSeenIdentities(true); 
     navigation.navigate(route);
   };
 
@@ -124,6 +136,14 @@ const AdminDashboard = () => {
       title: 'Abonnements', 
       icon: 'calendar-outline', 
       route: 'SubscriptionManagement', 
+      allowed: true 
+    },
+    { 
+      id: 'identities', 
+      title: 'Vérifications ID', 
+      icon: 'shield-checkmark-outline', 
+      route: 'IdentityValidationCenter', 
+      badge: !seenIdentities && stats.pendingDriverValidations > 0 ? stats.pendingDriverValidations : undefined, 
       allowed: true 
     },
     { 

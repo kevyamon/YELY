@@ -229,6 +229,20 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['MarketplaceLedgers', 'MarketplaceStats', 'AuditLog'],
     }),
+
+    getPendingDrivers: builder.query({
+      query: ({ page = 1 } = {}) => `/admin/drivers/pending?page=${page}`,
+      providesTags: ['User'],
+    }),
+
+    verifyDriver: builder.mutation({
+      query: ({ id, decision, reason }) => ({
+        url: `/admin/drivers/${id}/verify`,
+        method: 'POST',
+        body: { decision, reason },
+      }),
+      invalidatesTags: ['User', 'Stats', 'AuditLog'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -262,4 +276,6 @@ export const {
   useOverrideMarketplaceOrderMutation,
   useGetMarketplaceLedgersQuery,
   useForceClearLedgerMutation,
+  useGetPendingDriversQuery,
+  useVerifyDriverMutation,
 } = adminApiSlice;

@@ -23,7 +23,8 @@ import {
   useGetUserProfileQuery,
   useUpdateUserProfileMutation,
   useUploadProfilePictureMutation,
-  useUpdatePasswordMutation
+  useUpdatePasswordMutation,
+  useVerifyIdentityMutation
 } from '../../store/api/usersApiSlice';
 import { logout, selectCurrentUser, updateUserInfo } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -45,6 +46,7 @@ const ProfileScreen = ({ navigation }) => {
   const [uploadPhoto, { isLoading: isUploading }] = useUploadProfilePictureMutation();
   const [deleteAccount, { isLoading: isDeleting }] = useDeleteAccountMutation();
   const [updatePassword, { isLoading: isUpdatingPassword }] = useUpdatePasswordMutation();
+  const [verifyIdentity, { isLoading: isSubmittingVerification }] = useVerifyIdentityMutation();
 
   const [isDeleteModalVisible, setIsDeleteModalVisible] = useState(false);
   const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
@@ -58,6 +60,9 @@ const ProfileScreen = ({ navigation }) => {
     phone: initialPhone, 
     vehicleModel: currentUser?.vehicle?.model || '',
     vehiclePlate: currentUser?.vehicle?.plate || '',
+    vehicleType: currentUser?.vehicle?.type || 'salonie',
+    idCardFront: null,
+    idCardBack: null,
   });
 
   useEffect(() => {
@@ -69,14 +74,112 @@ const ProfileScreen = ({ navigation }) => {
           localPhone = localPhone.replace(COUNTRY_CODE, '').trim();
       }
 
-      setForm({
+      setForm(prev => ({
+        ...prev,
         name: p.name || '',
         phone: localPhone,
         vehicleModel: p.vehicle?.model || '',
         vehiclePlate: p.vehicle?.plate || '',
-      });
+        vehicleType: p.vehicle?.type || prev.vehicleType || 'salonie',
+      }));
     }
   }, [profileData]);
+
+  const handlePickIdCardFront = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      dispatch(showErrorToast({ 
+        title: 'Permission refusee', 
+        message: 'L\'acces a vos photos est necessaire pour selectionner votre piece d\'identite.' 
+      }));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      setForm(prev => ({ ...prev, idCardFront: result.assets[0].uri }));
+    }
+  };
+
+  const handlePickIdCardBack = async () => {
+    const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (!permission.granted) {
+      dispatch(showErrorToast({ 
+        title: 'Permission refusee', 
+        message: 'L\'acces a vos photos est necessaire pour selectionner votre piece d\'identite.' 
+      }));
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.7,
+    });
+
+    if (!result.canceled && result.assets.length > 0) {
+      setForm(prev => ({ ...prev, idCardBack: result.assets[0].uri }));
+    }
+  };
+
+  const handleSubmitVerification = async () => {
+    if (!form.idCardFront || !form.idCardBack || !form.vehicleType) {
+      dispatch(showErrorToast({
+        title: 'Champs requis',
+        message: 'Veuillez selectionner le recto et le verso de votre piece d\'identite.'
+      }));
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('vehicleType', form.vehicleType);
+
+    const frontFilename = form.idCardFront.split('/').pop() || 'id_front.jpg';
+    const frontMatch = /\.(\w+)$/.exec(frontFilename);
+    const frontType = frontMatch ? `image/${frontMatch[1]}` : `image/jpeg`;
+
+    formData.append('idCardFront', {
+      uri: form.idCardFront,
+      name: frontFilename,
+      type: frontType,
+    });
+
+    const backFilename = form.idCardBack.split('/').pop() || 'id_back.jpg';
+    const backMatch = /\.(\w+)$/.exec(backFilename);
+    const backType = backMatch ? `image/${backMatch[1]}` : `image/jpeg`;
+
+    formData.append('idCardBack', {
+      uri: form.idCardBack,
+      name: backFilename,
+      type: backType,
+    });
+
+    try {
+      const res = await verifyIdentity(formData).unwrap();
+      dispatch(updateUserInfo({ 
+        verificationStatus: 'pending',
+        vehicle: {
+          ...currentUser?.vehicle,
+          type: form.vehicleType
+        }
+      }));
+      refetch();
+      dispatch(showSuccessToast({
+        title: 'Demande soumise',
+        message: 'Vos documents ont ete envoyes pour validation avec succes.'
+      }));
+    } catch (error) {
+      dispatch(showErrorToast({
+        title: 'Echec de l\'envoi',
+        message: error?.data?.message || 'Une erreur est survenue lors de la soumission de vos pieces d\'identite.'
+      }));
+    }
+  };
 
   const handlePickImage = async () => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -272,6 +375,12 @@ const ProfileScreen = ({ navigation }) => {
                 setForm={setForm}
                 isDriver={isDriver}
                 isSeller={isSeller}
+                verificationStatus={profileData?.data?.verificationStatus || currentUser?.verificationStatus || 'none'}
+                rejectionReason={profileData?.data?.rejectionReason || currentUser?.rejectionReason || ''}
+                onPickFront={handlePickIdCardFront}
+                onPickBack={handlePickIdCardBack}
+                onSubmitVerification={handleSubmitVerification}
+                isSubmittingVerification={isSubmittingVerification}
               />
 
               <GoldButton 

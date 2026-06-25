@@ -109,36 +109,57 @@ const useDriverLifecycle = ({
     }
   }, [location, dispatch]);
 
-  useEffect(() => {
-    const enforceOnlineStatus = async () => {
-      // ANTI-LOGOUT PROTECTION : Si l'overlay de restauration de session est a l'ecran, on attend sagement.
-      if (isRefreshing) return;
+  const [isToggling, setIsToggling] = useState(false);
 
-      if (location && !isDisabled && isDriverInZone) {
+  const handleToggleAvailability = async () => {
+    if (isToggling || isRefreshing) return;
+    setIsToggling(true);
+    try {
+      const nextState = !user?.isAvailable;
+      await updateAvailability({ isAvailable: nextState }).unwrap();
+      dispatch(updateUserInfo({ isAvailable: nextState }));
+      dispatch(showSuccessToast({
+        title: nextState ? 'En ligne' : 'Hors ligne',
+        message: nextState ? 'Vous êtes maintenant visible pour recevoir des courses.' : 'Vous ne recevrez plus de demandes.',
+      }));
+    } catch (err) {
+      dispatch(showErrorToast({
+        title: 'Erreur',
+        message: err?.data?.message || 'Impossible de modifier votre statut de disponibilité.',
+      }));
+    } finally {
+      setIsToggling(false);
+    }
+  };
+
+  useEffect(() => {
+    // Émission GPS uniquement si le chauffeur est en ligne, non bloqué et dans la zone
+    if (location && user?.isAvailable && !isDisabled && isDriverInZone) {
+      socketService.emitLocation(location);
+    }
+  }, [location, user?.isAvailable, isDisabled, isDriverInZone]);
+
+  useEffect(() => {
+    const handleAutoOffline = async () => {
+      if (isRefreshing) return;
+      
+      // Si le chauffeur est en ligne mais devient bloqué ou sort de la zone, on le passe offline automatiquement
+      if (user?.isAvailable && (isDisabled || !isDriverInZone)) {
         try {
-          if (!hasForcedOnlineRef.current || !user?.isAvailable) {
-             await updateAvailability({ isAvailable: true }).unwrap();
-             dispatch(updateUserInfo({ isAvailable: true }));
-             hasForcedOnlineRef.current = true;
-          }
-          socketService.emitLocation(location);
+          await updateAvailability({ isAvailable: false }).unwrap();
+          dispatch(updateUserInfo({ isAvailable: false }));
+          dispatch(showErrorToast({
+            title: 'Hors zone / Hors service',
+            message: !isDriverInZone ? 'Vous êtes sorti de la zone de service (Maféré).' : 'Votre accès chauffeur a été désactivé.',
+          }));
         } catch (err) {
-          console.warn('[DriverLifecycle] Tentative de reconnexion auto echouee');
-        }
-      } else if (isDisabled || !isDriverInZone) {
-        try {
-          if (user?.isAvailable) {
-            await updateAvailability({ isAvailable: false }).unwrap();
-            dispatch(updateUserInfo({ isAvailable: false }));
-          }
-        } catch (err) {
-          console.warn('[DriverLifecycle] Echec de mise hors ligne automatique');
+          console.warn('[DriverLifecycle] Echec de mise hors ligne automatique', err);
         }
       }
     };
 
-    enforceOnlineStatus();
-  }, [location, isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch, isRefreshing]);
+    handleAutoOffline();
+  }, [isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch, isRefreshing]);
 
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
@@ -387,10 +408,10 @@ const useDriverLifecycle = ({
   };
 
   return {
-    isAvailable: true,
+    isAvailable: user?.isAvailable || false,
     currentAddress,
-    isToggling: false,
-    handleToggleAvailability: () => {}, 
+    isToggling,
+    handleToggleAvailability, 
     isArrivalModalVisible,
     isCompletingRide,
     handleConfirmArrival,

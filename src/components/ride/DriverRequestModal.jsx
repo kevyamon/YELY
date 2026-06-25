@@ -27,14 +27,14 @@ const DriverRequestModal = () => {
   const priceOptions = incomingRide?.priceOptions || [];
   const isDelivery = incomingRide?.type === 'DELIVERY';
 
-  // Auto-sélectionner le tarif unique pour la livraison
+  // Auto-sélectionner le tarif unique (VTC ou livraison)
   React.useEffect(() => {
-    if (incomingRide && isDelivery && priceOptions.length > 0) {
+    if (incomingRide && priceOptions.length > 0) {
       setSelectedAmount(priceOptions[0].amount);
     } else {
       setSelectedAmount(null);
     }
-  }, [incomingRide]);
+  }, [incomingRide, priceOptions]);
 
   // Intelligence Adaptative pour les petits écrans (ex: Galaxy S8, iPhone SE)
   const { height: screenHeight, width: screenWidth } = useWindowDimensions();
@@ -49,16 +49,9 @@ const DriverRequestModal = () => {
   };
 
   const handleAcceptAndPropose = async () => {
-    if (!selectedAmount) {
-      dispatch(showErrorToast({ 
-        title: 'Sélection requise', 
-        message: 'Veuillez choisir un tarif à proposer.' 
-      }));
-      return;
-    }
-
     try {
       if (isDelivery) {
+        if (!selectedAmount) return;
         setLoadingStep('submitting');
         await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
         dispatch(showSuccessToast({ 
@@ -68,13 +61,9 @@ const DriverRequestModal = () => {
       } else {
         setLoadingStep('locking');
         await lockRide({ rideId: incomingRide.rideId }).unwrap();
-        
-        setLoadingStep('submitting');
-        await submitPrice({ rideId: incomingRide.rideId, amount: selectedAmount }).unwrap();
-        
         dispatch(showSuccessToast({ 
-          title: 'Offre envoyée', 
-          message: 'En attente de la réponse du client.' 
+          title: 'Course acceptée', 
+          message: 'Vous avez accepté la course ! En route pour la prise en charge.' 
         }));
       }
       
@@ -83,7 +72,7 @@ const DriverRequestModal = () => {
     } catch (error) {
       dispatch(showErrorToast({ 
         title: isDelivery ? 'Livraison indisponible' : 'Course indisponible', 
-        message: error?.data?.message || 'Un autre livreur a été plus rapide ou la commande a été annulée.' 
+        message: error?.data?.message || 'Un autre chauffeur a été plus rapide ou la commande a été annulée.' 
       }));
       dispatch(clearIncomingRide());
     } finally {
@@ -97,10 +86,10 @@ const DriverRequestModal = () => {
   const getLocalLabel = (backendLabel) => {
     if (isDelivery) return 'Livraison Directe';
     switch (backendLabel?.toUpperCase()) {
-      case 'ECO': return 'Tarif Normal';
-      case 'STANDARD': return 'Départ Rapide';
-      case 'PREMIUM': return 'Prix Majoré';
-      default: return 'Tarif Proposé';
+      case 'ECO': return 'Tarif Partagé (ECO)';
+      case 'VIP': return 'Tarif Privé (Solo)';
+      case 'STANDARD': return 'Tarif Standard';
+      default: return 'Tarif Fixe';
     }
   };
 
@@ -213,7 +202,7 @@ const DriverRequestModal = () => {
         </View>
 
         <Text style={[styles.subtitle, isSmallScreen && { marginBottom: THEME.SPACING.sm }]}>
-          {isDelivery ? 'Tarif de livraison fixé :' : 'Sélectionnez votre tarif :'}
+          {isDelivery ? 'Tarif de livraison fixé :' : 'Tarif de la course (fixe) :'}
         </Text>
         
         <View style={[styles.optionsContainer, isSmallScreen && { marginBottom: THEME.SPACING.md, gap: 6 }]}>

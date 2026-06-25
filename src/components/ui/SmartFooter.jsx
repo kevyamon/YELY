@@ -10,13 +10,20 @@ import { useSelector } from 'react-redux';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 import PassengerCountModal from '../ride/PassengerCountModal';
+import VehicleCarousel from '../ride/VehicleCarousel';
 
 const SmartFooter = ({
   destination,
   isEstimating,
   onConfirmRide,
   onSelectVehicle,
-  isUserInZone = true 
+  isUserInZone = true,
+  displayVehicles = [],
+  selectedVehicle = null,
+  estimateError = null,
+  isAvailable = false,
+  isToggling = false,
+  onToggleAvailability = () => {},
 }) => {
   const insets = useSafeAreaInsets();
   const user = useSelector(selectCurrentUser);
@@ -41,7 +48,11 @@ const SmartFooter = ({
 
   const handleInitialConfirm = () => {
     if (isButtonDisabled) return;
-    setIsPassengerModalVisible(true);
+    if (selectedVehicle?.type?.toLowerCase() === 'vip') {
+      onConfirmRide(1);
+    } else {
+      setIsPassengerModalVisible(true);
+    }
   };
 
   const handleFinalConfirm = (passengersCount) => {
@@ -55,6 +66,13 @@ const SmartFooter = ({
         <>
           {destination ? (
              <View style={styles.estimationWrapper}>
+               <VehicleCarousel 
+                 vehicles={displayVehicles}
+                 selectedVehicle={selectedVehicle}
+                 onSelect={onSelectVehicle}
+                 isLoading={isEstimating}
+                 error={estimateError}
+               />
                <TouchableOpacity 
                  style={[styles.confirmButton, isButtonDisabled && styles.confirmButtonDisabled]}
                  disabled={isButtonDisabled}
@@ -102,13 +120,39 @@ const SmartFooter = ({
           />
         </>
       ) : (
-        <>
-          <View style={styles.statsContainer}>
-            <StatBox icon="car-sport" value={user?.totalRides || 0} label="Courses" />
-            <StatBox icon="star" value={user?.rating?.toFixed(1) || "5.0"} label="Note" />
-            <StatBox icon="wallet" value={`${user?.totalEarnings || 0} FCFA`} label="Gains" isGold />
-          </View>
-        </>
+        <View style={{ width: '100%' }}>
+          {isAvailable ? (
+            <>
+              <View style={styles.statsContainer}>
+                <StatBox icon="car-sport" value={user?.totalRides || 0} label="Courses" />
+                <StatBox icon="star" value={user?.rating?.toFixed(1) || "5.0"} label="Note" />
+                <StatBox icon="wallet" value={`${user?.totalEarnings || 0} FCFA`} label="Gains" isGold />
+              </View>
+              <TouchableOpacity 
+                style={styles.offlineTextButton} 
+                onPress={onToggleAvailability}
+                disabled={isToggling}
+                activeOpacity={0.7}
+              >
+                <Ionicons name="power-outline" size={14} color={THEME.COLORS.danger} style={{ marginRight: 6 }} />
+                <Text style={styles.offlineTextButtonText}>Passer hors ligne</Text>
+              </TouchableOpacity>
+            </>
+          ) : (
+            <View style={styles.offlineWrapper}>
+              <Text style={styles.offlineStatusText}>Vous êtes hors ligne</Text>
+              <TouchableOpacity 
+                style={styles.onlinePrimaryButton} 
+                onPress={onToggleAvailability}
+                disabled={isToggling}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="wifi-outline" size={18} color="#121418" style={{ marginRight: 8 }} />
+                <Text style={styles.onlinePrimaryButtonText}>PASSER EN LIGNE</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+        </View>
       )}
     </View>
   );
@@ -136,7 +180,13 @@ const styles = StyleSheet.create({
   statsContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },
   statBox: { flex: 1, borderRadius: 12, paddingVertical: 15, alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface, borderColor: THEME.COLORS.border, borderWidth: 1 },
   statValue: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginVertical: 4 },
-  statLabel: { color: THEME.COLORS.textTertiary, fontSize: 10, textTransform: 'uppercase' }
+  statLabel: { color: THEME.COLORS.textTertiary, fontSize: 10, textTransform: 'uppercase' },
+  offlineTextButton: { alignSelf: 'center', flexDirection: 'row', alignItems: 'center', paddingVertical: 10, marginTop: 12 },
+  offlineTextButtonText: { color: THEME.COLORS.danger, fontSize: 13, fontWeight: 'bold' },
+  offlineWrapper: { alignItems: 'center', width: '100%', paddingVertical: 5 },
+  offlineStatusText: { color: THEME.COLORS.textTertiary, fontSize: 13, fontStyle: 'italic', marginBottom: 12 },
+  onlinePrimaryButton: { backgroundColor: THEME.COLORS.champagneGold, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 14, width: '100%', borderRadius: 14, shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 3 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
+  onlinePrimaryButtonText: { color: '#121418', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 }
 });
 
 export default SmartFooter;

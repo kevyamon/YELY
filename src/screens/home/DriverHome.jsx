@@ -5,7 +5,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
 import React, { useEffect, useRef, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -26,6 +26,7 @@ import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
 import useGeolocation from '../../hooks/useGeolocation';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
+import { Ionicons } from '@expo/vector-icons';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 import { useGetRideByIdQuery } from '../../store/api/ridesApiSlice';
 
@@ -92,7 +93,8 @@ const DriverHome = ({ navigation, route }) => {
   const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   
-  const isBlocked = !isActive && !promoMode?.isActive;
+  const isBlockedByVerification = user?.verificationStatus !== 'approved';
+  const isBlocked = (!isActive && !promoMode?.isActive) || isBlockedByVerification;
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
 
   useEffect(() => {
@@ -141,10 +143,11 @@ const DriverHome = ({ navigation, route }) => {
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  // NETTOYAGE STRICT : Suppression de isToggling et handleToggleAvailability
   const {
     isAvailable,
     currentAddress,
+    isToggling,
+    handleToggleAvailability,
     isArrivalModalVisible,
     isCompletingRide,
     handleConfirmArrival,
@@ -177,6 +180,42 @@ const DriverHome = ({ navigation, route }) => {
   const handleFooterLayout = (event) => {
     const height = event.nativeEvent.layout.height;
     if (height > 0) setFooterHeight(height);
+  };
+
+  const renderVerificationBanner = () => {
+    const status = user?.verificationStatus || 'none';
+    if (status === 'approved') return null;
+
+    let bannerStyle = styles.bannerPending;
+    let iconName = "time-outline";
+    let text = "Vérification en cours de traitement...";
+    let textColor = "#000";
+
+    if (status === 'none') {
+      bannerStyle = styles.bannerPending;
+      iconName = "warning-outline";
+      text = "Pièces d'identité requises. [Vérifier]";
+      textColor = "#000";
+    } else if (status === 'rejected') {
+      bannerStyle = styles.bannerBlocked;
+      iconName = "alert-circle-outline";
+      text = `Vérification rejetée : ${user?.rejectionReason || "Documents non conformes"}. [Vérifier]`;
+      textColor = "#FFF";
+    }
+
+    return (
+      <TouchableOpacity 
+        style={[styles.bannerContainer, bannerStyle, { marginTop: 5 }]} 
+        onPress={() => navigation.navigate('Profile')}
+        activeOpacity={0.9}
+      >
+        <Ionicons name={iconName} size={20} color={textColor} />
+        <Text style={[styles.bannerText, { color: textColor }]} numberOfLines={1}>
+          {text}
+        </Text>
+        <Ionicons name="chevron-forward" size={16} color={textColor} />
+      </TouchableOpacity>
+    );
   };
 
   const renderSubscriptionBanner = () => {
@@ -282,16 +321,20 @@ const DriverHome = ({ navigation, route }) => {
           }}
         />
         {renderSubscriptionBanner()}
+        {renderVerificationBanner()}
       </View>
 
       {!isBlocked && (
         <>
           <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
-            {/* Le composant n'attend plus de logique de bouton, uniquement la variable isAvailable (toujours true) */}
             {isRideActive ? (
               <DriverRideOverlay />
             ) : (
-              <SmartFooter isAvailable={isAvailable} />
+              <SmartFooter 
+                isAvailable={isAvailable} 
+                isToggling={isToggling}
+                onToggleAvailability={handleToggleAvailability}
+              />
             )}
           </View>
           <DriverRequestModal />

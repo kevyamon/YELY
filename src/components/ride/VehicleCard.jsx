@@ -64,13 +64,13 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
           </View>
         </View>
 
-        {/* Pied de carte "Prix libre" structuré mais ajusté pour rentrer */}
+        {/* Pied de carte avec le tarif fixe retourné par l'estimation */}
         <View style={[styles.priceFooter, isSelected && styles.priceFooterSelected]}>
           <Text style={[styles.priceText, isSelected && styles.textGold]}>
-            Prix libre
+            {vehicle.price ? `${vehicle.price} FCFA` : 'Calcul...'}
           </Text>
           <Text style={[styles.subPriceText, isSelected && styles.textGold]}>
-            Proposé par le chauffeur
+            Tarif fixe
           </Text>
         </View>
       </Pressable>

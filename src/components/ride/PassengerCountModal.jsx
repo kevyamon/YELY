@@ -16,7 +16,7 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
   }, [visible]);
 
   const increment = () => {
-    if (count < 4) setCount(count + 1);
+    if (count < 6) setCount(count + 1);
   };
 
   const decrement = () => {
@@ -39,7 +39,7 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
           <View style={styles.dragIndicator} />
           
           <Text style={styles.modalTitle}>Combien de places ?</Text>
-
+ 
           <View style={styles.counterContainer}>
             <TouchableOpacity 
               style={[styles.counterButton, count <= 1 && styles.counterButtonDisabled]} 
@@ -55,11 +55,11 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
             </View>
 
             <TouchableOpacity 
-              style={[styles.counterButton, count >= 4 && styles.counterButtonDisabled]} 
+              style={[styles.counterButton, count >= 6 && styles.counterButtonDisabled]} 
               onPress={increment}
-              disabled={count >= 4}
+              disabled={count >= 6}
             >
-              <Ionicons name="add" size={28} color={count >= 4 ? THEME.COLORS.border : THEME.COLORS.textPrimary} />
+              <Ionicons name="add" size={28} color={count >= 6 ? THEME.COLORS.border : THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
 

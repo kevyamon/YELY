@@ -95,6 +95,15 @@ export const usersApiSlice = apiSlice.injectEndpoints({
       }),
       invalidatesTags: ['User'],
     }),
+    verifyIdentity: builder.mutation({
+      query: (formData) => ({
+        url: '/users/verify-identity',
+        method: 'PATCH',
+        body: formData,
+        formData: true,
+      }),
+      invalidatesTags: ['User'],
+    }),
   }),
   overrideExisting: true,
 });
@@ -113,4 +122,5 @@ export const {
   useUpdateFcmTokenMutation, 
   useUpdateShopLocationMutation, 
   useUpdatePasswordMutation,
+  useVerifyIdentityMutation,
 } = usersApiSlice;

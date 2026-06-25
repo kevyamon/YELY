@@ -6,12 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as ImagePicker from 'expo-image-picker';
 import { useCallback, useEffect, useState } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
+import { selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -28,33 +28,40 @@ const STEPS = {
   UPLOAD_PROOF: 'UPLOAD_PROOF'
 };
 
-const formatImageForUpload = (imageAsset, prefix = 'proof') => {
+// Résolution PWA (web) & natif — miroir de la logique robuste de ManageProducts.jsx
+const formatImageForUpload = async (imageAsset) => {
   let localUri = imageAsset.uri;
-  
+  const filename = imageAsset.fileName || `proof_${Date.now()}.jpg`;
+  const type = imageAsset.mimeType || 'image/jpeg';
+
+  if (Platform.OS === 'web') {
+    try {
+      const response = await fetch(localUri);
+      const blob = await response.blob();
+      return { blob, filename, type, isBlob: true };
+    } catch (e) {
+      // Fallback : si fetch échoue, on continue avec l'objet natif
+    }
+  }
+
   if (Platform.OS === 'android' && !localUri.includes('file://') && !localUri.startsWith('content://')) {
     localUri = `file://${localUri}`;
   } else if (Platform.OS === 'ios') {
     localUri = localUri.replace('file://', '');
   }
 
-  const filename = imageAsset.fileName || `${prefix}_${Date.now()}.jpg`;
-  const type = imageAsset.mimeType || 'image/jpeg';
-
-  return {
-    uri: localUri,
-    name: filename,
-    type: type,
-  };
+  return { uri: localUri, name: filename, type, isBlob: false };
 };
 
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
   const promoMode = useSelector(selectPromoMode);
   const user = useSelector(selectCurrentUser);
   const userRole = user?.role;
   
-  const { data: configData, isLoading: isConfigLoading, isError: isConfigError, refetch: refetchConfig } = useGetConfigQuery();
-  const { data: statusData, isLoading: isStatusLoading, isError: isStatusError, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
+  const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
+  const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
   const [submitProof, { isLoading: isSubmitting }] = useSubmitProofMutation();
 
   const [currentStep, setCurrentStep] = useState(null); 
@@ -150,12 +157,23 @@ const SubscriptionScreen = ({ navigation }) => {
     }
 
     try {
-      const formattedFile = formatImageForUpload(proofImage);
+      const formattedFile = await formatImageForUpload(proofImage);
       
       const formData = new FormData();
       formData.append('planId', selectedPlan.id);
       formData.append('senderPhone', senderPhone);
-      formData.append('proofImage', formattedFile);
+
+      if (formattedFile.isBlob) {
+        // Mode PWA / Web : on passe un vrai Blob natif que le navigateur comprend
+        formData.append('proofImage', formattedFile.blob, formattedFile.filename);
+      } else {
+        // Mode natif Android/iOS
+        formData.append('proofImage', {
+          uri: formattedFile.uri,
+          name: formattedFile.name,
+          type: formattedFile.type,
+        });
+      }
 
       await submitProof(formData).unwrap();
       
@@ -172,43 +190,45 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   };
 
-  const renderHeader = () => {
-    // Back is visible if we are in UPLOAD_PROOF, or if we are in CHOOSE_PLAN and have active status to go back to DASHBOARD
-    const canGoBack = currentStep === STEPS.UPLOAD_PROOF || 
-                      (currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive));
+  // Calcul de la marge supérieure : évite tout chevauchement avec la barre système (PWA, APK, iOS)
+  const headerTopPadding = Math.max(
+    insets.top,
+    Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0
+  ) + 12;
 
-    const handleBackPress = () => {
-      if (currentStep === STEPS.UPLOAD_PROOF) {
-        setCurrentStep(STEPS.CHOOSE_PLAN);
-      } else if (currentStep === STEPS.CHOOSE_PLAN) {
-        setCurrentStep(STEPS.DASHBOARD);
-      }
-    };
+  const canGoBack = currentStep === STEPS.UPLOAD_PROOF || 
+                    (currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive));
 
-    return (
-      <View style={styles.header}>
-        {canGoBack ? (
-          <TouchableOpacity onPress={handleBackPress} style={styles.headerButton}>
-            <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-          </TouchableOpacity>
-        ) : (
-          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
-            <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
-          </TouchableOpacity>
-        )}
-        
-        <Text style={styles.headerTitle}>Pass Yely</Text>
-
-        <TouchableOpacity onPress={() => dispatch(logout())} style={styles.headerButton}>
-          <Ionicons name="log-out-outline" size={26} color="#e74c3c" />
-        </TouchableOpacity>
-      </View>
-    );
+  const handleBackPress = () => {
+    if (currentStep === STEPS.UPLOAD_PROOF) {
+      setCurrentStep(STEPS.CHOOSE_PLAN);
+    } else if (currentStep === STEPS.CHOOSE_PLAN) {
+      setCurrentStep(STEPS.DASHBOARD);
+    }
   };
+
+  const renderHeader = () => (
+    <View style={[styles.header, { paddingTop: headerTopPadding }]}>
+      {canGoBack ? (
+        <TouchableOpacity onPress={handleBackPress} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
+          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity onPress={handleClose} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
+          <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+        </TouchableOpacity>
+      )}
+      
+      <Text style={styles.headerTitle}>Passe Yély</Text>
+
+      {/* Espaceur invisible pour centrer le titre */}
+      <View style={styles.headerIconBtn} />
+    </View>
+  );
 
   if (isConfigLoading || isStatusLoading || !currentStep) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <View style={[styles.safeArea, { paddingTop: headerTopPadding }]}>
         <View style={styles.container}>
           <View style={styles.header}>
             <SkeletonBone width={40} height={40} borderRadius={20} />
@@ -224,12 +244,12 @@ const SubscriptionScreen = ({ navigation }) => {
             </GlobalSkeleton>
           </View>
         </View>
-      </SafeAreaView>
+      </View>
     );
   }
 
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <View style={styles.container}>
         
         {renderHeader()}
@@ -248,7 +268,6 @@ const SubscriptionScreen = ({ navigation }) => {
               status={statusData?.data}
               onSelectPlan={handleSelectPlan}
               onBack={() => setCurrentStep(STEPS.DASHBOARD)}
-              onLogout={() => dispatch(logout())}
               userRole={userRole}
             />
           )}
@@ -267,17 +286,32 @@ const SubscriptionScreen = ({ navigation }) => {
         </View>
 
       </View>
-    </SafeAreaView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingVertical: 15 },
-  headerButton: { padding: 8, borderRadius: 50, backgroundColor: 'rgba(255,255,255,0.05)' },
-  headerSpacer: { width: 42 },
-  headerTitle: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+  },
+  headerIconBtn: {
+    width: 40,
+    height: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  headerTitle: {
+    fontSize: 17,
+    fontWeight: '700',
+    color: THEME.COLORS.textPrimary,
+    letterSpacing: 0.3,
+  },
   content: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, justifyContent: 'center' }
 });
 
