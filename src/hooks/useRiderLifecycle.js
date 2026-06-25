@@ -33,6 +33,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const lastKnownAddress = useSelector(selectLastAddress);
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined); 
+  const lastEstimatedOriginRef = useRef(null);
+  const lastEstimatedDestRef = useRef(null); 
 
   const [currentAddress, setCurrentAddress] = useState(lastKnownAddress || 'Recherche GPS...');
   const [destination, setDestination] = useState(null);
@@ -159,13 +161,63 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     if (rideToRate || !currentRide || currentRide?.status === 'cancelled' || currentRide?.status === 'timeout') {
       setDestination(null);
       setSelectedVehicle(null);
+      lastEstimatedOriginRef.current = null;
+      lastEstimatedDestRef.current = null;
       setTimeout(() => {
         if (mapRef.current) mapRef.current.centerOnUser();
       }, 300);
     }
   }, [rideToRate, currentRide, mapRef]);
 
-  // CORRECTION : Normalisation et affectation uniquement a la destination
+  // Ré-estimation réactive et robuste (anti-gigue)
+  useEffect(() => {
+    if (!effectiveOrigin || !destination) {
+      if (!destination) {
+        lastEstimatedOriginRef.current = null;
+        lastEstimatedDestRef.current = null;
+      }
+      return;
+    }
+
+    const oLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
+    const oLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
+    const dLat = Number(destination.latitude || destination.lat || 0);
+    const dLng = Number(destination.longitude || destination.lng || 0);
+
+    if (!oLat || !oLng || !dLat || !dLng) return;
+
+    let shouldEstimate = false;
+
+    if (!lastEstimatedOriginRef.current || !lastEstimatedDestRef.current) {
+      shouldEstimate = true;
+    } else {
+      const distOrigin = getDistance(
+        oLat, oLng,
+        lastEstimatedOriginRef.current.latitude, lastEstimatedOriginRef.current.longitude
+      );
+      const distDest = getDistance(
+        dLat, dLng,
+        lastEstimatedDestRef.current.latitude, lastEstimatedDestRef.current.longitude
+      );
+
+      if (distOrigin > 15 || distDest > 5) {
+        shouldEstimate = true;
+      }
+    }
+
+    if (shouldEstimate) {
+      lastEstimatedOriginRef.current = { latitude: oLat, longitude: oLng };
+      lastEstimatedDestRef.current = { latitude: dLat, longitude: dLng };
+
+      estimateRide({
+        pickupLat: oLat,
+        pickupLng: oLng,
+        dropoffLat: dLat,
+        dropoffLng: dLng
+      }, false);
+    }
+  }, [effectiveOrigin, destination, estimateRide]);
+
   const handlePlaceSelect = async (selectedPlace) => {
     const pLat = selectedPlace.latitude || selectedPlace.lat;
     const pLng = selectedPlace.longitude || selectedPlace.lng;
@@ -188,16 +240,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
 
     setDestination(normalizedPlace);
     setSelectedVehicle(null);
-    
-    if (effectiveOrigin && mapRef.current) {
-      const oLat = effectiveOrigin.latitude || effectiveOrigin.lat;
-      const oLng = effectiveOrigin.longitude || effectiveOrigin.lng;
-      estimateRide({
-        pickupLat: oLat, pickupLng: oLng,
-        dropoffLat: normalizedPlace.latitude, dropoffLng: normalizedPlace.longitude
-      });
-    }
-    
     setIsSearchModalVisible(false);
   };
 

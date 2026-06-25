@@ -19,6 +19,28 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * c; 
 };
 
+const hasMovedSignificantly = (loc1, loc2, threshold = 15) => {
+  if (!loc1 && !loc2) return false;
+  if (!loc1 || !loc2) return true;
+  const dist = getDistance(loc1.latitude, loc1.longitude, loc2.latitude, loc2.longitude);
+  return dist > threshold;
+};
+
+const markersMovedSignificantly = (markers1, markers2, threshold = 15) => {
+  if (!markers1 || !markers2) return true;
+  if (markers1.length !== markers2.length) return true;
+  for (let i = 0; i < markers1.length; i++) {
+    const m1 = markers1[i];
+    const m2 = markers2[i];
+    if (!m1 || !m2) return true;
+    if (m1.type !== m2.type) return true;
+    if (getDistance(m1.latitude, m1.longitude, m2.latitude, m2.longitude) > threshold) {
+      return true;
+    }
+  }
+  return false;
+};
+
 const useMapAutoFitter = ({
   isMapReady,
   cameraRef, 
@@ -32,10 +54,24 @@ const useMapAutoFitter = ({
   const lastUpdateRef = useRef(0);
   const isInitialFitDone = useRef(false);
   const timeoutRef = useRef(null);
+  const lastFittedLocationRef = useRef(null);
+  const lastFittedDriverLocationRef = useRef(null);
+  const lastFittedMarkersRef = useRef([]);
 
   useEffect(() => {
     if (!isMapReady || !cameraRef.current) return;
     if (isUserInteracting) return;
+
+    const isInitial = !isInitialFitDone.current;
+    
+    // Contrainte de mouvement pour éviter le jittering (micro-mouvements/bruits GPS)
+    const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 15);
+    const driverLocChanged = hasMovedSignificantly(driverLocation, lastFittedDriverLocationRef.current, 15);
+    const markersChanged = markersMovedSignificantly(markers, lastFittedMarkersRef.current, 15);
+
+    if (!isInitial && !locChanged && !driverLocChanged && !markersChanged) {
+      return;
+    }
 
     let coordsToFit = [];
 
@@ -62,6 +98,9 @@ const useMapAutoFitter = ({
           animationDuration: 800
         });
         isInitialFitDone.current = true;
+        lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+        lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
+        lastFittedMarkersRef.current = markers.map(m => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
       }
       return;
     }
@@ -97,6 +136,9 @@ const useMapAutoFitter = ({
             animationDuration: isInitialFitDone.current ? 1000 : 2000,
           });
           isInitialFitDone.current = true;
+          lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+          lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
+          lastFittedMarkersRef.current = markers.map(m => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
           return;
         }
 
@@ -132,6 +174,9 @@ const useMapAutoFitter = ({
         });
 
         isInitialFitDone.current = true;
+        lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+        lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
+        lastFittedMarkersRef.current = markers.map(m => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
       }, delay);
     }
 

@@ -251,7 +251,7 @@ const useGeolocation = (options = {}) => {
     initTracking();
   }, [initTracking]);
 
-  return { location, error, isLoading, forceRefresh };
+  return { location, errorMsg: error, isLoading, forceRefresh };
 };
 
 export default useGeolocation;
