@@ -50,7 +50,7 @@ const PaymentFailureScreen = ({ navigation }) => {
             <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
           </TouchableOpacity>
 
-          <Ionicons name="close-circle" size={80} color={THEME.COLORS.error} style={{ marginTop: 20 }} />
+          <Ionicons name="close-circle" size={80} color="#FF4D4D" style={{ marginTop: 20 }} />
           <Text style={styles.title}>Paiement Refusé</Text>
           
           <Text style={styles.reasonTitle}>Motif du refus :</Text>
@@ -78,7 +78,7 @@ const PaymentFailureScreen = ({ navigation }) => {
               title="Se déconnecter" 
               onPress={handleLogout} 
               style={[styles.btn, styles.logoutBtn]} 
-              textStyle={{ color: THEME.COLORS.error }} 
+              textStyle={{ color: '#FF4D4D', fontWeight: 'bold' }} 
             />
           </View>
         </GlassCard>
@@ -109,7 +109,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: THEME.COLORS.error,
+    color: '#FF4D4D', // Rouge vibrant contrasté pour lisibilité
     marginTop: 15,
     marginBottom: 25,
     textAlign: 'center',
@@ -136,13 +136,13 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {
     backgroundColor: 'transparent',
-    borderColor: THEME.COLORS.error,
-    borderWidth: 1,
+    borderColor: '#FF4D4D', // Rouge vibrant
+    borderWidth: 1.5,
   },
   dashboardBtn: {
     backgroundColor: 'transparent',
     borderColor: THEME.COLORS.textSecondary,
-    borderWidth: 1,
+    borderWidth: 1.5,
   }
 });
 

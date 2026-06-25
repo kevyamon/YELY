@@ -112,8 +112,8 @@ const styles = StyleSheet.create({
   iconName: { color: THEME.COLORS.textSecondary, fontSize: 10, marginTop: 8, textAlign: 'center', fontWeight: 'bold' },
   familyName: { color: 'rgba(255,255,255,0.3)', fontSize: 8, marginTop: 2, textAlign: 'center' },
   emptyText: { color: THEME.COLORS.textSecondary, textAlign: 'center', marginTop: 20, fontStyle: 'italic' },
-  closeButton: { backgroundColor: 'rgba(231, 76, 60, 0.2)', borderWidth: 1, borderColor: THEME.COLORS.error, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 10 },
-  closeButtonText: { color: THEME.COLORS.error, fontWeight: 'bold', fontSize: 16 }
+  closeButton: { backgroundColor: 'rgba(231, 76, 60, 0.2)', borderWidth: 1, borderColor: THEME.COLORS.danger, paddingVertical: 12, borderRadius: 12, alignItems: 'center', marginTop: 10 },
+  closeButtonText: { color: THEME.COLORS.danger, fontWeight: 'bold', fontSize: 16 }
 });
 
 export default IconPickerModal;

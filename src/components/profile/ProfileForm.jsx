@@ -122,22 +122,24 @@ const ProfileForm = ({
               <TouchableOpacity
                 style={[
                   styles.typeOption,
-                  form.vehicleType === 'salonie' && styles.typeOptionActive,
+                  form.vehicleType === 'tvs' && styles.typeOptionActive,
                   isLocked && styles.typeOptionDisabled
                 ]}
-                onPress={() => !isLocked && setForm({ ...form, vehicleType: 'salonie' })}
+                onPress={() => !isLocked && setForm({ ...form, vehicleType: 'tvs' })}
                 disabled={isLocked}
                 activeOpacity={0.8}
               >
-                <View style={styles.typeIconContainer}>
-                  <Ionicons 
-                    name="car" 
-                    size={28} 
-                    color={form.vehicleType === 'salonie' ? THEME.COLORS.primary : THEME.COLORS.textSecondary} 
-                  />
-                </View>
-                <Text style={[styles.typeTitle, form.vehicleType === 'salonie' && styles.typeTitleActive]}>
-                  Salonie
+                <Image 
+                  source={{ uri: 'https://res.cloudinary.com/dskdkrwhq/image/upload/v1782412187/dbfe2987-242f-4055-9e4d-2bff6b35adce.png' }} 
+                  style={[
+                    styles.typeOptionImage,
+                    form.vehicleType === 'tvs' && styles.typeOptionImageActive,
+                    isLocked && styles.typeOptionImageDisabled
+                  ]} 
+                  accessibilityLabel="Tricycle TVS 4 places"
+                />
+                <Text style={[styles.typeTitle, form.vehicleType === 'tvs' && styles.typeTitleActive]}>
+                  TVS
                 </Text>
                 <Text style={styles.typeDesc}>4 places max. Plus confortable, requis pour trajets Privés.</Text>
               </TouchableOpacity>
@@ -152,13 +154,15 @@ const ProfileForm = ({
                 disabled={isLocked}
                 activeOpacity={0.8}
               >
-                <View style={styles.typeIconContainer}>
-                  <Ionicons 
-                    name="bus" 
-                    size={28} 
-                    color={form.vehicleType === 'apsonic' ? THEME.COLORS.primary : THEME.COLORS.textSecondary} 
-                  />
-                </View>
+                <Image 
+                  source={{ uri: 'https://res.cloudinary.com/dskdkrwhq/image/upload/v1782412162/54ef1daa-dd2e-48ad-8046-261a4753da1c.png' }} 
+                  style={[
+                    styles.typeOptionImage,
+                    form.vehicleType === 'apsonic' && styles.typeOptionImageActive,
+                    isLocked && styles.typeOptionImageDisabled
+                  ]} 
+                  accessibilityLabel="Tricycle Apsonic 6 places"
+                />
                 <Text style={[styles.typeTitle, form.vehicleType === 'apsonic' && styles.typeTitleActive]}>
                   Apsonic
                 </Text>
@@ -418,15 +422,12 @@ const styles = StyleSheet.create({
     resizeMode: 'cover',
   },
 
-  // RGPD note card
+  // RGPD note card - Aéré sans fond ni bordure pour ne pas ressembler à un bouton
   rgpdCard: {
     flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 10,
-    padding: 12,
+    paddingVertical: 8,
     marginBottom: 20,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    alignItems: 'center',
   },
   rgpdText: {
     flex: 1,
@@ -437,12 +438,8 @@ const styles = StyleSheet.create({
   rgpdInfoContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderRadius: 10,
-    padding: 15,
+    paddingVertical: 10,
     marginVertical: 10,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
   },
   rgpdInfoText: {
     flex: 1,
@@ -450,6 +447,21 @@ const styles = StyleSheet.create({
     fontSize: 12,
     lineHeight: 18,
     marginLeft: 12,
+  },
+  typeOptionImage: {
+    width: 66,
+    height: 66,
+    borderRadius: 33, // Parfaitement rond
+    marginBottom: 10,
+    resizeMode: 'cover',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  typeOptionImageActive: {
+    borderColor: THEME.COLORS.primary,
+  },
+  typeOptionImageDisabled: {
+    opacity: 0.6,
   },
 
   // Submit button

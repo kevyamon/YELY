@@ -137,7 +137,7 @@ const MapManagement = () => {
           <Ionicons name="create-outline" size={22} color={THEME.COLORS.info} />
         </TouchableOpacity>
         <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={22} color={THEME.COLORS.error} />
+          <Ionicons name="trash-outline" size={22} color={THEME.COLORS.danger} />
         </TouchableOpacity>
       </View>
     </View>

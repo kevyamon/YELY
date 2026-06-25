@@ -60,7 +60,7 @@ const ProfileScreen = ({ navigation }) => {
     phone: initialPhone, 
     vehicleModel: currentUser?.vehicle?.model || '',
     vehiclePlate: currentUser?.vehicle?.plate || '',
-    vehicleType: currentUser?.vehicle?.type || 'salonie',
+    vehicleType: currentUser?.vehicle?.type || 'tvs',
     idCardFront: null,
     idCardBack: null,
   });
@@ -80,7 +80,7 @@ const ProfileScreen = ({ navigation }) => {
         phone: localPhone,
         vehicleModel: p.vehicle?.model || '',
         vehiclePlate: p.vehicle?.plate || '',
-        vehicleType: p.vehicle?.type || prev.vehicleType || 'salonie',
+        vehicleType: p.vehicle?.type || prev.vehicleType || 'tvs',
       }));
     }
   }, [profileData]);

@@ -112,7 +112,7 @@ const IdentityValidationCenter = ({ navigation }) => {
         <View style={styles.cardHeader}>
           <View style={styles.typeBadge}>
             <Text style={styles.typeText}>
-              {item.vehicle?.type === 'salonie' ? 'SALONIE (4 PLACES)' : 'APSONIC (6 PLACES)'}
+              {item.vehicle?.type === 'apsonic' ? 'APSONIC (6 PLACES)' : 'TVS (4 PLACES)'}
             </Text>
           </View>
           <Text style={styles.dateText}>{new Date(item.createdAt).toLocaleDateString('fr-FR')}</Text>
