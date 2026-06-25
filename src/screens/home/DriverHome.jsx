@@ -165,6 +165,26 @@ const DriverHome = ({ navigation, route }) => {
     isDisabled: isBlocked 
   });
 
+  const handleToggleOrRedirect = () => {
+    if (isBlocked) {
+      if (isBlockedByVerification) {
+        navigation.navigate('Profile');
+      } else {
+        const { setSubscriptionModalDismissed } = require('../../store/slices/authSlice');
+        dispatch(setSubscriptionModalDismissed(false));
+        if (isPending) {
+          navigation.navigate('WaitSubscription');
+        } else if (subStatusRedux?.isRejected) {
+          navigation.navigate('PaymentFailure');
+        } else {
+          navigation.navigate('Subscription');
+        }
+      }
+    } else {
+      handleToggleAvailability();
+    }
+  };
+
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(
     currentRide, 
     isRideActive,
@@ -324,19 +344,23 @@ const DriverHome = ({ navigation, route }) => {
         {renderVerificationBanner()}
       </View>
 
+      <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+        {isRideActive ? (
+          <DriverRideOverlay />
+        ) : (
+          <SmartFooter 
+            isAvailable={isAvailable} 
+            isToggling={isToggling}
+            onToggleAvailability={handleToggleOrRedirect}
+            isBlocked={isBlocked}
+            isBlockedByVerification={isBlockedByVerification}
+            promoMode={promoMode}
+          />
+        )}
+      </View>
+
       {!isBlocked && (
         <>
-          <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
-            {isRideActive ? (
-              <DriverRideOverlay />
-            ) : (
-              <SmartFooter 
-                isAvailable={isAvailable} 
-                isToggling={isToggling}
-                onToggleAvailability={handleToggleAvailability}
-              />
-            )}
-          </View>
           <DriverRequestModal />
           
           <ArrivalConfirmModal 

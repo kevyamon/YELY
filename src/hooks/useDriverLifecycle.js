@@ -157,9 +157,11 @@ const useDriverLifecycle = ({
     isAutoOfflineInProgressRef.current = true;
 
     const triggerAutoOffline = async () => {
+      // Étape 1 : Mise à jour optimiste immédiate dans Redux pour couper la boucle d'effets
+      dispatch(updateUserInfo({ isAvailable: false }));
+      
       try {
         await updateAvailabilityRef.current({ isAvailable: false }).unwrap();
-        dispatch(updateUserInfo({ isAvailable: false }));
         dispatch(showErrorToast({
           title: 'Hors zone / Hors service',
           message: !isDriverInZone

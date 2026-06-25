@@ -13,9 +13,8 @@ import { isLocationInMafereZone } from '../utils/mafereZone';
 import { selectLastAddress, updateAddress } from '../store/slices/locationSlice';
 
 const MOCK_VEHICLES = [
-  { id: '1', type: 'echo', name: 'Echo', duration: '5' },
-  { id: '2', type: 'standard', name: 'Standard', duration: '3' },
-  { id: '3', type: 'vip', name: 'VIP', duration: '8' }
+  { id: '1', type: 'echo', name: 'Partagé', duration: '5' },
+  { id: '2', type: 'vip', name: 'Privé (Seul)', duration: '8' }
 ];
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
@@ -151,8 +150,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
 
   useEffect(() => {
     if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
-      const standardOption = displayVehicles.find(v => v.type === 'standard');
-      setSelectedVehicle(standardOption || displayVehicles[0]);
+      const echoOption = displayVehicles.find(v => v.type === 'echo');
+      setSelectedVehicle(echoOption || displayVehicles[0]);
     }
   }, [destination, displayVehicles, selectedVehicle]);
 

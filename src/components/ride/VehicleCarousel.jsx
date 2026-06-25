@@ -1,7 +1,9 @@
 // src/components/ride/VehicleCarousel.jsx
-// CARROUSEL DES FORFAITS - Affiche la liste des options et gère la sélection
+// CARROUSEL DES FORFAITS - Redessiné pour afficher les 2 forfaits côte à côte
+// CSCSM Level: Bank Grade
 
-import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import THEME from '../../theme/theme';
 import VehicleCard from './VehicleCard';
 
@@ -29,16 +31,15 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
     return null;
   }
 
+  // Filtrage de sécurité : on n'affiche que Echo et VIP pour correspondre aux 2 forfaits officiels
+  const activeVehicles = vehicles.filter(v => 
+    v.type?.toLowerCase() === 'echo' || v.type?.toLowerCase() === 'vip'
+  );
+
   return (
     <View style={styles.container}>
-      <ScrollView
-        horizontal
-        showsHorizontalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-        decelerationRate="fast"
-        snapToInterval={132} // Largeur carte (120) + marge (12)
-      >
-        {vehicles.map((vehicle) => (
+      <View style={styles.row}>
+        {activeVehicles.map((vehicle) => (
           <VehicleCard
             key={vehicle.type || vehicle.id}
             vehicle={vehicle}
@@ -46,19 +47,21 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
             onPress={onSelect}
           />
         ))}
-      </ScrollView>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    height: 150, // Hauteur fixe pour éviter les sauts de layout
+    height: 145, // Ajusté pour les cartes côte à côte
     width: '100%',
   },
-  scrollContent: {
-    paddingHorizontal: THEME.LAYOUT.spacing.lg,
-    paddingVertical: 5, // Laisse la place pour l'ombre de sélection
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    gap: 12,
+    width: '100%',
   },
   centerContainer: {
     height: 140,
@@ -69,8 +72,7 @@ const styles = StyleSheet.create({
     borderRadius: 16,
     borderWidth: 1,
     borderColor: THEME.COLORS.glassBorder,
-    marginHorizontal: THEME.LAYOUT.spacing.lg,
-    alignSelf: 'center', // Fixe la largeur sur l'écran
+    alignSelf: 'center',
   },
   loadingText: {
     color: THEME.COLORS.textSecondary,

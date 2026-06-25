@@ -1,7 +1,9 @@
 // src/components/ride/VehicleCard.jsx
-// CARTE VÉHICULE - GLOW UP UI (Réparé : dimensions strictes conservées)
+// CARTE VÉHICULE - Redessinée pour s'adapter à la largeur disponible (côte à côte)
+// CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import THEME from '../../theme/theme';
@@ -15,25 +17,27 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
     };
   });
 
-  // Définition de l'icône selon la gamme
+  // Définition de l'icône selon la gamme (Echo: Partagé, VIP: Privé)
   const getIconConfig = (type) => {
     switch (type?.toLowerCase()) {
       case 'echo':
-        return { name: 'leaf', color: THEME.COLORS.success };
+        return { name: 'people-outline', color: THEME.COLORS.success || '#4CD964' };
       case 'vip':
-        return { name: 'star', color: THEME.COLORS.champagneGold };
-      case 'standard':
+        return { name: 'star-outline', color: THEME.COLORS.champagneGold || '#D4AF37' };
       default:
-        return { name: 'car', color: THEME.COLORS.textSecondary };
+        return { name: 'car-outline', color: THEME.COLORS.textSecondary };
     }
   };
 
   const iconConfig = getIconConfig(vehicle.type);
 
+  // Correction de nommage si le type est Echo -> affiche Partagé
+  const displayName = vehicle.type?.toLowerCase() === 'echo' ? 'Partagé' : (vehicle.name || 'Option');
+
   return (
     <Animated.View style={[styles.cardWrapper, animatedStyle]}>
       <Pressable
-        onPressIn={() => (scale.value = withSpring(0.95))}
+        onPressIn={() => (scale.value = withSpring(0.96))}
         onPressOut={() => (scale.value = withSpring(1))}
         onPress={() => onPress(vehicle)}
         style={[
@@ -41,33 +45,34 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
           isSelected && styles.cardSelected
         ]}
       >
-        {/* Badge VIP/Promo Optionnel */}
+        {/* Badge VIP Optionnel */}
         {vehicle.type?.toLowerCase() === 'vip' && (
           <View style={styles.badge}>
-            <Text style={styles.badgeText}>PREMIUM</Text>
+            <Text style={styles.badgeText}>PRIVÉ</Text>
           </View>
         )}
 
-        {/* Conteneur d'icône avec le nouveau style */}
+        {/* Conteneur d'icône */}
         <View style={[styles.iconWrapper, isSelected && styles.iconWrapperSelected]}>
-          <Ionicons name={iconConfig.name} size={26} color={iconConfig.color} />
+          <Ionicons name={iconConfig.name} size={22} color={iconConfig.color} />
         </View>
 
+        {/* Titre et Durée */}
         <View style={styles.detailsContainer}>
-          <Text style={[styles.vehicleName, isSelected && styles.textGold]}>
-            Yély {vehicle.name}
+          <Text style={[styles.vehicleName, isSelected && styles.textGold]} numberOfLines={1}>
+            {displayName}
           </Text>
           
           <View style={styles.etaRow}>
-             <Ionicons name="time-outline" size={12} color={THEME.COLORS.textTertiary} />
+             <Ionicons name="time-outline" size={11} color={THEME.COLORS.textTertiary} />
              <Text style={styles.etaText}>~{vehicle.duration} min</Text>
           </View>
         </View>
 
-        {/* Pied de carte avec le tarif fixe retourné par l'estimation */}
+        {/* Pied de carte avec le tarif fixe ou chargement */}
         <View style={[styles.priceFooter, isSelected && styles.priceFooterSelected]}>
-          <Text style={[styles.priceText, isSelected && styles.textGold]}>
-            {vehicle.price ? `${vehicle.price} FCFA` : 'Calcul...'}
+          <Text style={[styles.priceText, isSelected && styles.textGold]} numberOfLines={1}>
+            {vehicle.price ? `${vehicle.price} F` : 'Calcul...'}
           </Text>
           <Text style={[styles.subPriceText, isSelected && styles.textGold]}>
             Tarif fixe
@@ -80,73 +85,72 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
 
 const styles = StyleSheet.create({
   cardWrapper: {
-    marginRight: 12, // RETOUR À L'ORIGINAL : vital pour le snapToInterval=132 du parent
+    flex: 1, // Permet le partage équitable côte à côte
   },
   card: {
     flexDirection: 'column',
     justifyContent: 'space-between',
-    width: 120, // RETOUR À L'ORIGINAL
-    height: 140, // RETOUR À L'ORIGINAL : vital pour rentrer dans les 150px du parent
+    height: 135,
     backgroundColor: THEME.COLORS.glassSurface,
-    borderRadius: 16, // Maintenu à 16 pour éviter les bugs de bordures
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    paddingTop: 8, // Ajustement interne
+    borderRadius: 18,
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.border || 'rgba(255, 255, 255, 0.08)',
+    paddingTop: 10,
     position: 'relative',
     overflow: 'hidden',
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cardSelected: {
-    backgroundColor: 'rgba(212, 175, 55, 0.05)', 
-    borderColor: THEME.COLORS.champagneGold,
+    backgroundColor: 'rgba(212, 175, 55, 0.04)', 
+    borderColor: THEME.COLORS.champagneGold || '#D4AF37',
     borderWidth: 2,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3, 
-    shadowRadius: 6,
-    elevation: 4,
+    shadowColor: THEME.COLORS.champagneGold || '#D4AF37',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.25, 
+    shadowRadius: 10,
+    elevation: 5,
   },
   badge: {
     position: 'absolute',
     top: 0,
     right: 0,
-    backgroundColor: THEME.COLORS.champagneGold,
+    backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderBottomLeftRadius: 8,
     zIndex: 10,
   },
   badgeText: {
-    fontSize: 8,
+    fontSize: 7,
     fontWeight: '900',
     color: '#121418',
     letterSpacing: 0.5,
   },
   iconWrapper: {
-    marginLeft: 8,
-    width: 38,
-    height: 38,
-    borderRadius: 19,
-    backgroundColor: THEME.COLORS.glassLight,
+    marginLeft: 10,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: THEME.COLORS.glassLight || 'rgba(255,255,255,0.03)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   iconWrapperSelected: {
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
   },
   detailsContainer: {
     flex: 1,
     justifyContent: 'center',
-    paddingHorizontal: 8,
-    marginTop: 2,
+    paddingHorizontal: 10,
+    marginTop: 4,
   },
   vehicleName: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 14,
+    color: THEME.COLORS.textPrimary || '#FFFFFF',
+    fontSize: 13,
     fontWeight: '800',
     marginBottom: 2,
   },
@@ -155,37 +159,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   etaText: {
-    color: THEME.COLORS.textTertiary,
-    fontSize: 11,
-    marginLeft: 4,
-    fontWeight: '500',
+    color: THEME.COLORS.textTertiary || '#718096',
+    fontSize: 10,
+    marginLeft: 3,
+    fontWeight: '600',
   },
   priceFooter: {
     marginTop: 'auto',
-    backgroundColor: 'rgba(0,0,0,0.03)',
-    paddingVertical: 8,
-    paddingHorizontal: 8,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(255,255,255,0.05)',
+    borderTopColor: 'rgba(255,255,255,0.04)',
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 4
   },
   priceFooterSelected: {
     backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    borderTopColor: 'rgba(212, 175, 55, 0.2)',
+    borderTopColor: 'rgba(212, 175, 55, 0.15)',
   },
   priceText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 13,
+    color: THEME.COLORS.textPrimary || '#FFFFFF',
+    fontSize: 12,
     fontWeight: '900',
-    letterSpacing: 0.5,
+    letterSpacing: 0.3,
   },
   subPriceText: {
-    color: THEME.COLORS.textTertiary,
+    color: THEME.COLORS.textTertiary || '#718096',
     fontSize: 8,
-    marginTop: 2,
-    fontWeight: '500',
+    fontWeight: '600',
+    textTransform: 'uppercase',
   },
   textGold: {
-    color: THEME.COLORS.champagneGold,
+    color: THEME.COLORS.champagneGold || '#D4AF37',
   }
 });
 

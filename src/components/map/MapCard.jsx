@@ -118,6 +118,34 @@ const MapCard = forwardRef(({
   const safeLocation = location?.latitude && location?.longitude ? location : MAFERE_CENTER;
   const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
+  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
+  
+  const safeRouteCoordinates = routeCoordinates
+    .filter(p => p && p.length === 2 && !isNaN(parseFloat(p[0])) && !isNaN(parseFloat(p[1])))
+    .map(p => [parseFloat(p[0]), parseFloat(p[1])])
+    .reduce((acc, current) => {
+       if (acc.length === 0) return [current];
+       const prev = acc[acc.length - 1];
+       if (prev[0] !== current[0] || prev[1] !== current[1]) {
+           acc.push(current);
+       }
+       return acc;
+    }, []);
+
+  const isRouteValid = safeRouteCoordinates.length > 1;
+
+  const routeDrawTimestampRef = useRef(0);
+  const prevRouteValidRef = useRef(false);
+
+  useEffect(() => {
+    if (isRouteValid && !prevRouteValidRef.current) {
+      // Nouvelle route détectée ! On force l'auto-fit de la caméra et on bloque le pan/zoom pour 5s
+      setIsUserInteracting(false);
+      routeDrawTimestampRef.current = Date.now();
+    }
+    prevRouteValidRef.current = isRouteValid;
+  }, [isRouteValid]);
+
   // On ne charge les POIs que si demande (Economie de bande passante et stabilite)
   usePoiSocketEvents(hidePOIs);
   const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
@@ -127,6 +155,10 @@ const MapCard = forwardRef(({
     const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
     
     if (isHumanInteraction) {
+      // Bloquer les manipulations de carte si une route a été tracée il y a moins de 5 secondes
+      if (isRouteValid && Date.now() - routeDrawTimestampRef.current < 5000) {
+        return;
+      }
       wakeUpButton();
       setIsUserInteracting(true);
       clearTimeout(interactionTimeout.current);
@@ -180,21 +212,7 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
-  const routeCoordinates = visibleRoutePoints.map(p => [p.longitude, p.latitude]);
-  
-  const safeRouteCoordinates = routeCoordinates
-    .filter(p => p && p.length === 2 && !isNaN(parseFloat(p[0])) && !isNaN(parseFloat(p[1])))
-    .map(p => [parseFloat(p[0]), parseFloat(p[1])])
-    .reduce((acc, current) => {
-       if (acc.length === 0) return [current];
-       const prev = acc[acc.length - 1];
-       if (prev[0] !== current[0] || prev[1] !== current[1]) {
-           acc.push(current);
-       }
-       return acc;
-    }, []);
 
-  const isRouteValid = safeRouteCoordinates.length > 1;
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
   const isCinematicMode = isRouteValid || rideStatus !== null;
