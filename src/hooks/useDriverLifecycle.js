@@ -59,6 +59,12 @@ const useDriverLifecycle = ({
   // Anti-spam : empêche plusieurs appels simultanés à l'auto-offline
   const isAutoOfflineInProgressRef = useRef(false);
 
+  // Verrous temporels (cooldowns) contre les boucles infinies en cas de panne réseau
+  const lastPickupAttemptTimeRef = useRef(0);
+  const lastStartAttemptTimeRef = useRef(0);
+  const lastCompleteAttemptTimeRef = useRef(0);
+  const lastOfflineAttemptTimeRef = useRef(0);
+
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
@@ -153,6 +159,11 @@ const useDriverLifecycle = ({
     if (!user?.isAvailable) return; // Déjà offline → rien à faire
     if (!(isDisabled || !isDriverInZone)) return; // Conditions non réunies
     if (isAutoOfflineInProgressRef.current) return; // Anti-spam
+
+    // Sécurité contre le flickering et les appels répétés en boucle
+    const now = Date.now();
+    if (now - lastOfflineAttemptTimeRef.current < 5000) return;
+    lastOfflineAttemptTimeRef.current = now;
 
     isAutoOfflineInProgressRef.current = true;
 
@@ -290,6 +301,14 @@ const useDriverLifecycle = ({
 
   const handleConfirmArrival = async () => {
     if (isSubmittingRef.current) return;
+
+    // Protection anti-boucle : cooldown de 5 secondes entre les tentatives de clôture automatique
+    const now = Date.now();
+    if (now - lastCompleteAttemptTimeRef.current < 5000) {
+      return;
+    }
+    lastCompleteAttemptTimeRef.current = now;
+
     isSubmittingRef.current = true;
 
     if (!currentRide) {
@@ -337,6 +356,7 @@ const useDriverLifecycle = ({
 
     const status = currentRide.status;
     const speed = location.speed || 0; 
+    const now = Date.now();
 
     if (status === 'accepted' && !isProcessingPickupRef.current) {
       const target = currentRide.origin;
@@ -350,15 +370,19 @@ const useDriverLifecycle = ({
         );
 
         if (distance <= PICKUP_RADIUS_METERS) {
-          isProcessingPickupRef.current = true;
-          
-          dispatch(updateRideStatus({ arrivedAt: Date.now(), status: 'arrived' }));
-          
-          const rideId = currentRide._id || currentRide.id || currentRide.rideId;
-          if (rideId) {
-            markAsArrived({ rideId }).unwrap().catch(err => {
-              isProcessingPickupRef.current = false; 
-            });
+          // Cooldown de 5s pour éviter tout emballement en cas d'erreur de mutation
+          if (now - lastPickupAttemptTimeRef.current >= 5000) {
+            lastPickupAttemptTimeRef.current = now;
+            isProcessingPickupRef.current = true;
+            
+            dispatch(updateRideStatus({ arrivedAt: Date.now(), status: 'arrived' }));
+            
+            const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+            if (rideId) {
+              markAsArrived({ rideId }).unwrap().catch(err => {
+                isProcessingPickupRef.current = false; 
+              });
+            }
           }
         }
       }
@@ -376,22 +400,26 @@ const useDriverLifecycle = ({
         );
 
         if (distance > AUTO_START_RADIUS_METERS || speed > AUTO_START_SPEED_MS) {
-          isProcessingStartRef.current = true;
-          
-          dispatch(updateRideStatus({ status: 'in_progress' }));
-          
-          const rideId = currentRide._id || currentRide.id || currentRide.rideId;
-          if (rideId) {
-            startRide({ rideId }).unwrap()
-              .then(() => {
-                dispatch(showSuccessToast({
-                  title: 'En route',
-                  message: 'Course demarree automatiquement.',
-                }));
-              })
-              .catch(err => {
-                isProcessingStartRef.current = false;
-              });
+          // Cooldown de 5s pour éviter tout emballement en cas d'erreur de mutation
+          if (now - lastStartAttemptTimeRef.current >= 5000) {
+            lastStartAttemptTimeRef.current = now;
+            isProcessingStartRef.current = true;
+            
+            dispatch(updateRideStatus({ status: 'in_progress' }));
+            
+            const rideId = currentRide._id || currentRide.id || currentRide.rideId;
+            if (rideId) {
+              startRide({ rideId }).unwrap()
+                .then(() => {
+                  dispatch(showSuccessToast({
+                    title: 'En route',
+                    message: 'Course demarree automatiquement.',
+                  }));
+                })
+                .catch(err => {
+                  isProcessingStartRef.current = false;
+                });
+            }
           }
         }
       }

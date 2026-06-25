@@ -6,7 +6,7 @@ import { useEffect } from 'react';
 import { useDispatch } from 'react-redux';
 import socketService from '../services/socketService';
 import { apiSlice } from '../store/slices/apiSlice';
-import { logout, updatePromoMode, updateSubscriptionStatus } from '../store/slices/authSlice';
+import { logout, updatePromoMode, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
 import { showSuccessToast } from '../store/slices/uiSlice'; // AJOUT : Import du Toast
 import useAdminSocketEvents from './useAdminSocketEvents';
 import usePoiSocketEvents from './usePoiSocketEvents';
@@ -30,12 +30,26 @@ const useSocketEvents = () => {
     const handleSubscriptionRejected = (data) => {
       console.info("[SOCKET] Abonnement refuse:", data);
       dispatch(updateSubscriptionStatus({ isPending: false, isRejected: true, rejectionReason: data?.reason }));
+      dispatch(updateUserInfo({
+        subscription: {
+          isActive: false,
+          isPending: false,
+          expiresAt: null
+        }
+      }));
       dispatch(apiSlice.util.invalidateTags(['Subscription']));
     };
 
     const handleSubscriptionValidated = (data) => {
       console.info("[SOCKET] Abonnement valide:", data);
       dispatch(updateSubscriptionStatus({ isPending: false, isRejected: false, isActive: true, expiresAt: data?.expiresAt }));
+      dispatch(updateUserInfo({
+        subscription: {
+          isActive: true,
+          isPending: false,
+          expiresAt: data?.expiresAt
+        }
+      }));
       dispatch(apiSlice.util.invalidateTags(['Subscription', 'User', 'Stats']));
       
       // AJOUT : Notification globale informant de l'activation, visible n'importe où dans l'app
@@ -43,6 +57,15 @@ const useSocketEvents = () => {
         title: "Pass Yely Actif", 
         message: "Votre abonnement a ete valide avec succes." 
       }));
+    };
+
+    const handleIdentityUpdate = (data) => {
+      console.info("[SOCKET] Mise a jour identite recue:", data);
+      dispatch(updateUserInfo({ 
+        verificationStatus: data?.status,
+        rejectionReason: data?.reason
+      }));
+      dispatch(apiSlice.util.invalidateTags(['User']));
     };
 
     const handleUserBanned = (data) => {
@@ -73,6 +96,7 @@ const useSocketEvents = () => {
     socketService.on('promo_updated', handlePromoUpdated);
     socketService.on('subscription_rejected', handleSubscriptionRejected);
     socketService.on('subscription_validated', handleSubscriptionValidated);
+    socketService.on('identity_verification_update', handleIdentityUpdate);
     socketService.on('user_banned', handleUserBanned);
     socketService.on('force_logout', handleForceLogout);
     socketService.on('new_order', handleNewOrder);
@@ -83,6 +107,7 @@ const useSocketEvents = () => {
       socketService.off('promo_updated', handlePromoUpdated);
       socketService.off('subscription_rejected', handleSubscriptionRejected);
       socketService.off('subscription_validated', handleSubscriptionValidated);
+      socketService.off('identity_verification_update', handleIdentityUpdate);
       socketService.off('user_banned', handleUserBanned);
       socketService.off('force_logout', handleForceLogout);
       socketService.off('new_order', handleNewOrder);

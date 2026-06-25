@@ -30,8 +30,8 @@ const ProfileForm = ({
       case 'approved':
         return (
           <View style={[styles.banner, styles.bannerApproved]}>
-            <Ionicons name="checkmark-circle" size={20} color="#FFF" />
-            <Text style={styles.bannerText}>Identité vérifiée & validée ✅</Text>
+            <Ionicons name="shield-checkmark" size={20} color="#FFF" />
+            <Text style={styles.bannerText}>Identité vérifiée</Text>
           </View>
         );
       case 'pending':
@@ -46,7 +46,7 @@ const ProfileForm = ({
           <View style={[styles.banner, styles.bannerRejected]}>
             <Ionicons name="alert-circle" size={20} color="#FFF" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.bannerText}>Vérification rejetée ❌</Text>
+              <Text style={styles.bannerText}>Vérification rejetée</Text>
               {rejectionReason ? (
                 <Text style={styles.bannerSubtext}>Motif : {rejectionReason}</Text>
               ) : null}
@@ -92,28 +92,8 @@ const ProfileForm = ({
       </GlassCard>
 
       {isDriver && (
-        <>
-          <GlassCard style={styles.card}>
-            <Text style={styles.sectionTitle}>Véhicule</Text>
-            
-            <Text style={styles.label}>Modèle</Text>
-            <GlassInput 
-              value={form.vehicleModel}
-              onChangeText={(txt) => setForm({...form, vehicleModel: txt})}
-              placeholder="Ex: Toyota Corolla"
-            />
-
-            <Text style={styles.label}>Plaque d'immatriculation</Text>
-            <GlassInput 
-              value={form.vehiclePlate}
-              onChangeText={(txt) => setForm({...form, vehiclePlate: txt})}
-              placeholder="Ex: 1234 AB 01"
-              autoCapitalize="characters"
-            />
-          </GlassCard>
-
-          <GlassCard style={styles.card}>
-            <Text style={styles.sectionTitle}>Vérification Chauffeur</Text>
+        <GlassCard style={styles.card}>
+          <Text style={styles.sectionTitle}>Vérification Chauffeur</Text>
             
             {renderVerificationBanner()}
 
@@ -174,14 +154,14 @@ const ProfileForm = ({
               <View style={styles.rgpdInfoContainer}>
                 <Ionicons name="shield-checkmark" size={24} color={THEME.COLORS.success} />
                 <Text style={styles.rgpdInfoText}>
-                  Vos pièces d'identité ont été validées puis supprimées définitivement de nos serveurs de stockage temporaire (Cloudinary) conformément aux exigences RGPD.
+                  Vos pièces d'identité ont été validées puis supprimées définitivement de l'espace de stockage temporaire conformément aux exigences RGPD.
                 </Text>
               </View>
             ) : verificationStatus === 'pending' ? (
               <View style={styles.rgpdInfoContainer}>
                 <Ionicons name="shield-half" size={24} color={THEME.COLORS.warning} />
                 <Text style={styles.rgpdInfoText}>
-                  Vos pièces d'identité ont bien été soumises et sont en cours d'examen. Dès validation par l'administration, elles seront définitivement effacées de nos serveurs.
+                  Vos pièces d'identité ont bien été soumises et sont en cours d'examen. Dès validation par l'administration, elles seront définitivement effacées de l'espace de stockage temporaire.
                 </Text>
               </View>
             ) : (
@@ -233,7 +213,7 @@ const ProfileForm = ({
                   <Ionicons name="shield-outline" size={20} color={THEME.COLORS.textSecondary} style={{ marginRight: 8 }} />
                   <Text style={styles.rgpdText}>
                     <Text style={{ fontWeight: 'bold' }}>Respect de la vie privée (RGPD) : </Text>
-                    Les images de votre pièce d'identité servent exclusivement à vérifier votre identité. Elles seront définitivement supprimées du stockage cloud dès que votre compte sera approuvé ou rejeté.
+                    Les images de votre pièce d'identité servent exclusivement à vérifier votre identité. Elles seront définitivement supprimées de l'espace de stockage temporaire dès que votre compte sera approuvé ou rejeté.
                   </Text>
                 </View>
 
@@ -258,7 +238,6 @@ const ProfileForm = ({
               </>
             )}
           </GlassCard>
-        </>
       )}
     </>
   );
