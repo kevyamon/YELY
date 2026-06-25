@@ -54,11 +54,17 @@ const useDriverLifecycle = ({
   const appState = useRef(AppState.currentState);
   const previousFetchDataRef = useRef(undefined);
   const hasForcedOnlineRef = useRef(false);
+  // Ref stable pour la mutation RTK Query : évite de la mettre dans les deps et d'ouvrir une boucle infinie
+  const updateAvailabilityRef = useRef(null);
+  // Anti-spam : empêche plusieurs appels simultanés à l'auto-offline
+  const isAutoOfflineInProgressRef = useRef(false);
 
   const [currentAddress, setCurrentAddress] = useState('Recherche GPS...');
   const [isArrivalModalVisible, setIsArrivalModalVisible] = useState(false);
 
   const [updateAvailability] = useUpdateAvailabilityMutation();
+  // Synchronisation de la ref stable à chaque render (sans déclencher d'effet)
+  updateAvailabilityRef.current = updateAvailability;
   const [markAsArrived] = useMarkAsArrivedMutation();
   const [startRide] = useStartRideMutation();
   const [completeRide, { isLoading: isCompletingRide }] = useCompleteRideMutation();
@@ -140,26 +146,37 @@ const useDriverLifecycle = ({
   }, [location, user?.isAvailable, isDisabled, isDriverInZone]);
 
   useEffect(() => {
-    const handleAutoOffline = async () => {
-      if (isRefreshing) return;
-      
-      // Si le chauffeur est en ligne mais devient bloqué ou sort de la zone, on le passe offline automatiquement
-      if (user?.isAvailable && (isDisabled || !isDriverInZone)) {
-        try {
-          await updateAvailability({ isAvailable: false }).unwrap();
-          dispatch(updateUserInfo({ isAvailable: false }));
-          dispatch(showErrorToast({
-            title: 'Hors zone / Hors service',
-            message: !isDriverInZone ? 'Vous êtes sorti de la zone de service (Maféré).' : 'Votre accès chauffeur a été désactivé.',
-          }));
-        } catch (err) {
-          console.warn('[DriverLifecycle] Echec de mise hors ligne automatique', err);
-        }
+    // GARDE CRITIQUE : on ne déclenche l'auto-offline que si le chauffeur EST VRAIMENT en ligne
+    // et que les conditions le justifient. On ne met PAS `updateAvailability` dans les deps
+    // car c'est une mutation RTK Query dont la référence est instable → boucle infinie garantie.
+    if (isRefreshing) return;
+    if (!user?.isAvailable) return; // Déjà offline → rien à faire
+    if (!(isDisabled || !isDriverInZone)) return; // Conditions non réunies
+    if (isAutoOfflineInProgressRef.current) return; // Anti-spam
+
+    isAutoOfflineInProgressRef.current = true;
+
+    const triggerAutoOffline = async () => {
+      try {
+        await updateAvailabilityRef.current({ isAvailable: false }).unwrap();
+        dispatch(updateUserInfo({ isAvailable: false }));
+        dispatch(showErrorToast({
+          title: 'Hors zone / Hors service',
+          message: !isDriverInZone
+            ? 'Vous êtes sorti de la zone de service (Maféré).'
+            : 'Votre accès chauffeur a été désactivé.',
+        }));
+      } catch (err) {
+        console.warn('[DriverLifecycle] Echec de mise hors ligne automatique', err);
+      } finally {
+        isAutoOfflineInProgressRef.current = false;
       }
     };
 
-    handleAutoOffline();
-  }, [isDisabled, isDriverInZone, user?.isAvailable, updateAvailability, dispatch, isRefreshing]);
+    triggerAutoOffline();
+    // NOTE : `updateAvailabilityRef` (stable via ref) est intentionnellement absent des deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isDisabled, isDriverInZone, user?.isAvailable, dispatch, isRefreshing]);
 
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
