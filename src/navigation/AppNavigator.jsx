@@ -180,7 +180,7 @@ const AppNavigator = () => {
     };
   }, [userRole, subStatus?.isActive, subStatus?.isPending, subStatus?.isRejected, promoMode?.isActive]);
 
-  const { isDriver, isSeller, isAdmin, isSubscriptionRejected, isSubscriptionPending, isDriverBlocked, isSellerBlocked } = routingStatus;
+  const { isAdmin } = routingStatus;
 
   if (!isAuthReady) {
     return (
@@ -227,19 +227,6 @@ const AppNavigator = () => {
             <Stack.Screen name="AdminJournal" component={AdminJournal} />
             <Stack.Screen name="AdminReports" component={AdminReports} />
             <Stack.Screen name="MapManagement" component={MapManagement} />
-          </Stack.Group>
-        ) : isSubscriptionRejected ? (
-          <Stack.Group>
-            <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
-            <Stack.Screen name="Subscription" component={SubscriptionScreen} />
-          </Stack.Group>
-        ) : isSubscriptionPending ? (
-          <Stack.Group>
-            <Stack.Screen name="WaitSubscription" component={WaitScreen} />
-          </Stack.Group>
-        ) : (isDriverBlocked || isSellerBlocked) ? (  
-          <Stack.Group>
-            <Stack.Screen name="SubscriptionBlocker" component={SubscriptionScreen} />
           </Stack.Group>
         ) : (
           <Stack.Group>

@@ -24,7 +24,8 @@ const initialState = {
   promoMode: {
     isActive: false,
     message: ""
-  }
+  },
+  isSubscriptionModalDismissed: false
 };
 
 const safeStorageSet = (key, value) => {
@@ -109,6 +110,10 @@ const authSlice = createSlice({
       };
     },
 
+    setSubscriptionModalDismissed: (state, action) => {
+      state.isSubscriptionModalDismissed = action.payload;
+    },
+
     logout: (state, action) => {
       const reason = action.payload?.reason || 'USER_INITIATED';
       console.warn(`[AUTH] Deconnexion declenchee. Raison: ${reason}`);
@@ -120,6 +125,7 @@ const authSlice = createSlice({
       state.isAuthenticated = false;
       state.isRefreshing = false;
       state.subscriptionStatus = { isActive: false, isPending: false, isRejected: false, rejectionReason: null, expiresAt: null };
+      state.isSubscriptionModalDismissed = false;
       
       safeStorageRemove('userInfo');
       safeStorageRemove('token');
@@ -135,6 +141,7 @@ const authSlice = createSlice({
       
       state.tokenAcquiredAt = tokenAcquiredAt ? Number(tokenAcquiredAt) : 0; 
       state.isAuthenticated = !!token;
+      state.isSubscriptionModalDismissed = false;
       
       if (user && user.subscription && typeof user.subscription === 'object') {
         state.subscriptionStatus = {
@@ -159,7 +166,8 @@ export const {
   updatePromoMode,
   logout, 
   restoreAuth, 
-  setRefreshing 
+  setRefreshing,
+  setSubscriptionModalDismissed 
 } = authSlice.actions;
 
 export const fetchPromoConfig = () => async (dispatch, getState) => {
@@ -274,3 +282,4 @@ export const selectToken = (state) => state.auth.token;
 export const selectIsRefreshing = (state) => state.auth.isRefreshing;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
 export const selectPromoMode = (state) => state.auth.promoMode;
+export const selectIsSubscriptionModalDismissed = (state) => state.auth.isSubscriptionModalDismissed;

@@ -10,7 +10,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const WaitScreen = ({ navigation }) => {
@@ -39,8 +39,12 @@ const WaitScreen = ({ navigation }) => {
   };
 
   const handleClose = () => {
-    dispatch(updateSubscriptionStatus({ isPending: false }));
-    navigation.navigate(homeScreen);
+    dispatch(setSubscriptionModalDismissed(true));
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate(homeScreen);
+    }
   };
 
   return (
@@ -48,11 +52,9 @@ const WaitScreen = ({ navigation }) => {
       <View style={[styles.container, { paddingTop: insets.top + 40 }]}>
         <GlassCard style={styles.contentCard}>
           
-          {canGoToDashboard && (
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-              <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
+          </TouchableOpacity>
 
           <View style={styles.iconContainer}>
             <Ionicons name="time-outline" size={80} color={THEME.COLORS.champagneGold} />

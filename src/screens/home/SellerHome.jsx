@@ -21,12 +21,13 @@ import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native
 import { useSelector, useDispatch } from 'react-redux';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
+import { useIsFocused } from '@react-navigation/native';
 
 import SmartHeader from '../../components/ui/SmartHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 
-import { selectCurrentUser, logout } from '../../store/slices/authSlice';
+import { selectCurrentUser, logout, selectSubscriptionStatus, selectPromoMode, selectIsSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import ShopLocationModal from '../../components/ui/ShopLocationModal';
 import { useGetMyProductsQuery, useGetLedgerStatsQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
@@ -43,6 +44,73 @@ const SellerHome = ({ navigation }) => {
   const dispatch = useDispatch();
   const [isShareModalVisible, setIsShareModalVisible] = useState(false);
   const [isLocationModalVisible, setIsLocationModalVisible] = useState(false);
+
+  const subStatus = useSelector(selectSubscriptionStatus);
+  const promoMode = useSelector(selectPromoMode);
+  const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
+  const isFocused = useIsFocused();
+
+  const isActive = subStatus?.isActive === true;
+  const isPending = subStatus?.isPending === true;
+  const isBlocked = !isActive && !promoMode?.isActive;
+
+  React.useEffect(() => {
+    if (isFocused && !isSubscriptionModalDismissed) {
+      if (isBlocked) {
+        if (isPending) {
+          navigation.navigate('WaitSubscription');
+        } else if (subStatus?.isRejected) {
+          navigation.navigate('PaymentFailure');
+        } else {
+          navigation.navigate('Subscription');
+        }
+      }
+    }
+  }, [isFocused, isBlocked, isPending, subStatus?.isRejected, isSubscriptionModalDismissed, navigation]);
+
+  const renderSubscriptionBanner = () => {
+    if (isActive || promoMode?.isActive) return null;
+
+    return (
+      <TouchableOpacity 
+        style={[
+          styles.bannerContainer, 
+          isPending ? styles.bannerPending : styles.bannerBlocked
+        ]} 
+        onPress={() => {
+          const { setSubscriptionModalDismissed } = require('../../store/slices/authSlice');
+          dispatch(setSubscriptionModalDismissed(false));
+          if (isPending) {
+            navigation.navigate('WaitSubscription');
+          } else if (subStatus?.isRejected) {
+            navigation.navigate('PaymentFailure');
+          } else {
+            navigation.navigate('Subscription');
+          }
+        }}
+        activeOpacity={0.9}
+      >
+        <View style={styles.bannerLeft}>
+          <Ionicons 
+            name={isPending ? "time-outline" : "warning-outline"} 
+            size={20} 
+            color={isPending ? "#000" : "#FFF"} 
+          />
+          <Text style={[styles.bannerText, isPending && { color: '#000' }]} numberOfLines={2}>
+            {isPending 
+              ? "Paiement en attente de validation... [Détails]" 
+              : "Abonnement expiré. Vos fonctions de vente sont désactivées. [S'abonner]"
+            }
+          </Text>
+        </View>
+        <Ionicons 
+          name="chevron-forward" 
+          size={16} 
+          color={isPending ? "#000" : "#FFF"} 
+        />
+      </TouchableOpacity>
+    );
+  };
 
   const isLocationSet = user?.currentLocation?.coordinates && 
     !(user.currentLocation.coordinates[0] === 0 && user.currentLocation.coordinates[1] === 0);
@@ -257,6 +325,9 @@ const SellerHome = ({ navigation }) => {
             scrollEventThrottle={16}
           >
             <View style={styles.spacer} />
+
+            {/* BANNER D'ABONNEMENT */}
+            {renderSubscriptionBanner()}
 
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeTitle}>Ma Boutique</Text>
@@ -702,6 +773,42 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.deepAsphalt || '#121418',
     fontWeight: '800',
     fontSize: 12.5,
+  },
+  bannerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginBottom: 20,
+    borderRadius: 14,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  bannerPending: {
+    backgroundColor: '#FFCC00', // Jaune attention
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  bannerBlocked: {
+    backgroundColor: '#E74C3C', // Rouge danger
+  },
+  bannerLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    flex: 1,
+  },
+  bannerText: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginRight: 10,
   }
 });
 

@@ -11,7 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -61,6 +61,15 @@ const SubscriptionScreen = ({ navigation }) => {
   const [selectedPlan, setSelectedPlan] = useState(null);
   const [senderPhone, setSenderPhone] = useState('');
   const [proofImage, setProofImage] = useState(null);
+
+  const handleClose = () => {
+    dispatch(setSubscriptionModalDismissed(true));
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate(userRole === 'seller' ? 'SellerHome' : 'DriverHome');
+    }
+  };
 
   useEffect(() => {
     if (configData?.data) {
@@ -164,18 +173,28 @@ const SubscriptionScreen = ({ navigation }) => {
   };
 
   const renderHeader = () => {
-    const isBackVisible = currentStep !== STEPS.DASHBOARD && 
-                          statusData?.data && 
-                          (statusData.data.isActive || promoMode?.isActive);
+    // Back is visible if we are in UPLOAD_PROOF, or if we are in CHOOSE_PLAN and have active status to go back to DASHBOARD
+    const canGoBack = currentStep === STEPS.UPLOAD_PROOF || 
+                      (currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive));
+
+    const handleBackPress = () => {
+      if (currentStep === STEPS.UPLOAD_PROOF) {
+        setCurrentStep(STEPS.CHOOSE_PLAN);
+      } else if (currentStep === STEPS.CHOOSE_PLAN) {
+        setCurrentStep(STEPS.DASHBOARD);
+      }
+    };
 
     return (
       <View style={styles.header}>
-        {isBackVisible ? (
-          <TouchableOpacity onPress={() => setCurrentStep(STEPS.DASHBOARD)} style={styles.headerButton}>
+        {canGoBack ? (
+          <TouchableOpacity onPress={handleBackPress} style={styles.headerButton}>
             <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
           </TouchableOpacity>
         ) : (
-          <View style={styles.headerSpacer} />
+          <TouchableOpacity onPress={handleClose} style={styles.headerButton}>
+            <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+          </TouchableOpacity>
         )}
         
         <Text style={styles.headerTitle}>Pass Yely</Text>

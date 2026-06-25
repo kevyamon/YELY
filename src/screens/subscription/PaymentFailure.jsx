@@ -8,7 +8,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser } from '../../store/slices/authSlice';
+import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
 const PaymentFailureScreen = ({ navigation }) => {
@@ -32,8 +32,13 @@ const PaymentFailureScreen = ({ navigation }) => {
   };
 
   const handleDashboard = () => {
+    dispatch(setSubscriptionModalDismissed(true));
     dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
-    navigation.navigate(homeScreen);
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate(homeScreen);
+    }
   };
 
   return (
@@ -41,11 +46,9 @@ const PaymentFailureScreen = ({ navigation }) => {
       <View style={styles.container}>
         <GlassCard style={styles.card}>
           
-          {canGoToDashboard && (
-            <TouchableOpacity style={styles.closeButton} onPress={handleDashboard}>
-              <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
-            </TouchableOpacity>
-          )}
+          <TouchableOpacity style={styles.closeButton} onPress={handleDashboard}>
+            <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
+          </TouchableOpacity>
 
           <Ionicons name="close-circle" size={80} color={THEME.COLORS.error} style={{ marginTop: 20 }} />
           <Text style={styles.title}>Paiement Refusé</Text>

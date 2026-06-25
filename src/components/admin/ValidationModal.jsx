@@ -62,17 +62,20 @@ const ValidationModal = ({ visible, transaction, onClose, onApprove, onReject, i
               </TouchableOpacity>
             </View>
 
-            <View style={styles.infoSection}>
-              <Text style={styles.infoText}>
-                <Text style={styles.bold}>Type :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE (1200 FCFA)' : transaction.planId === 'MONTHLY' ? 'MENSUEL (6000 FCFA)' : 'INCONNU'}
-              </Text>
-              <Text style={styles.infoText}>
-                <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}
-              </Text>
-              <Text style={styles.infoText}>
-                <Text style={styles.bold}>Date :</Text> {new Date(transaction.createdAt).toLocaleString('fr-FR')}
-              </Text>
-            </View>
+             <View style={styles.infoSection}>
+               <Text style={styles.infoText}>
+                 <Text style={styles.bold}>Plan :</Text> {transaction.planId === 'WEEKLY' ? 'HEBDOMADAIRE' : transaction.planId === 'MONTHLY' ? 'MENSUEL' : 'INCONNU'}
+               </Text>
+               <Text style={styles.infoText}>
+                 <Text style={styles.bold}>Montant :</Text> {transaction.amount || (transaction.planId === 'MONTHLY' ? 2000 : 1200)} FCFA
+               </Text>
+               <Text style={styles.infoText}>
+                 <Text style={styles.bold}>Tel. Paiement :</Text> {senderPhone}
+               </Text>
+               <Text style={styles.infoText}>
+                 <Text style={styles.bold}>Date :</Text> {new Date(transaction.createdAt).toLocaleString('fr-FR')}
+               </Text>
+             </View>
 
             <View style={styles.imageContainer}>
               {secureImageUrl ? (

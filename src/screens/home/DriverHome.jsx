@@ -29,7 +29,7 @@ import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 import { useGetRideByIdQuery } from '../../store/api/ridesApiSlice';
 
-import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus } from '../../store/slices/authSlice';
+import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus, selectIsSubscriptionModalDismissed } from '../../store/slices/authSlice';
 import { selectCurrentRide, setIncomingRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -93,6 +93,21 @@ const DriverHome = ({ navigation, route }) => {
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   
   const isBlocked = !isActive && !promoMode?.isActive;
+  const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
+
+  useEffect(() => {
+    if (isFocused && !isSubscriptionModalDismissed) {
+      if (isBlocked) {
+        if (isPending) {
+          navigation.navigate('WaitSubscription');
+        } else if (subStatusRedux?.isRejected) {
+          navigation.navigate('PaymentFailure');
+        } else {
+          navigation.navigate('Subscription');
+        }
+      }
+    }
+  }, [isFocused, isBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, navigation]);
 
   useEffect(() => {
     const checkFirstVisit = async () => {
@@ -164,41 +179,45 @@ const DriverHome = ({ navigation, route }) => {
     if (height > 0) setFooterHeight(height);
   };
 
-  const renderSubscriptionBlocker = () => {
+  const renderSubscriptionBanner = () => {
     if (isActive || promoMode?.isActive) return null; 
     
-    if (isSubscriptionLoading && !isSubscriptionError) {
-      return (
-        <View style={styles.blockerOverlay}>
-          <GlobalSkeleton visible={true} fullScreen={false} />
-          <Text style={styles.blockerText}>Verification des acces...</Text>
-        </View>
-      );
-    }
-    
-    if (!isBlocked) return null;
-    
     return (
-      <View style={styles.blockerOverlay}>
-        <GlassCard style={styles.blockerCard}>
-          {isPending ? (
-            <>
-              <Text style={styles.blockerTitle}>Verification en cours</Text>
-              <Text style={styles.blockerDesc}>Votre paiement a ete recu. Un administrateur valide votre acces.</Text>
-              <View style={styles.loaderSpacing}>
-                <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-              </View>
-              <GoldButton title="SE DECONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
-            </>
-          ) : (
-            <>
-              <Text style={styles.blockerTitle}>Acces Expire</Text>
-              <Text style={styles.blockerDesc}>Votre abonnement est arrive a terme. Vous ne pouvez plus recevoir de requetes.</Text>
-              <GoldButton title="Renouveler mon abonnement" onPress={() => navigation.navigate('Subscription')} style={styles.fullWidthButton} />
-            </>
-          )}
-        </GlassCard>
-      </View>
+      <TouchableOpacity 
+        style={[
+          styles.bannerContainer, 
+          isPending ? styles.bannerPending : styles.bannerBlocked
+        ]} 
+        onPress={() => {
+          const { setSubscriptionModalDismissed } = require('../../store/slices/authSlice');
+          dispatch(setSubscriptionModalDismissed(false));
+          if (isPending) {
+            navigation.navigate('WaitSubscription');
+          } else if (subStatusRedux?.isRejected) {
+            navigation.navigate('PaymentFailure');
+          } else {
+            navigation.navigate('Subscription');
+          }
+        }}
+        activeOpacity={0.9}
+      >
+        <Ionicons 
+          name={isPending ? "time-outline" : "warning-outline"} 
+          size={20} 
+          color={isPending ? "#000" : "#FFF"} 
+        />
+        <Text style={[styles.bannerText, isPending && { color: '#000' }]} numberOfLines={1}>
+          {isPending 
+            ? "Paiement en attente de validation... [Détails]" 
+            : "Abonnement expiré. Vos fonctions de conduite sont désactivées. [S'abonner]"
+          }
+        </Text>
+        <Ionicons 
+          name="chevron-forward" 
+          size={16} 
+          color={isPending ? "#000" : "#FFF"} 
+        />
+      </TouchableOpacity>
     );
   };
 
@@ -262,9 +281,8 @@ const DriverHome = ({ navigation, route }) => {
             });
           }}
         />
+        {renderSubscriptionBanner()}
       </View>
-
-      {renderSubscriptionBlocker()}
 
       {!isBlocked && (
         <>
@@ -336,7 +354,39 @@ const styles = StyleSheet.create({
   blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
   blockerText: { color: '#FFFFFF', marginTop: 15, fontSize: 16 },
   loaderSpacing: { marginTop: 10, marginBottom: 25, width: '100%', alignItems: 'center' },
-  fullWidthButton: { width: '100%' }
+  fullWidthButton: { width: '100%' },
+
+  bannerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: 12,
+    paddingHorizontal: 16,
+    marginHorizontal: 15,
+    marginTop: 10,
+    borderRadius: 12,
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 3,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.05)',
+  },
+  bannerPending: {
+    backgroundColor: '#FFCC00', // Jaune attention
+    borderColor: 'rgba(0,0,0,0.05)',
+  },
+  bannerBlocked: {
+    backgroundColor: '#E74C3C', // Rouge danger
+  },
+  bannerText: {
+    flex: 1,
+    color: '#FFF',
+    fontSize: 13,
+    fontWeight: 'bold',
+    marginHorizontal: 10,
+  }
 });
 
 export default DriverHome;
