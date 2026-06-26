@@ -19,10 +19,21 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
   }
 
   if (error) {
+    const getErrorMessage = (err) => {
+      if (!err) return 'Veuillez réessayer.';
+      if (typeof err === 'string') return err;
+      if (err.data?.message) return err.data.message;
+      if (err.message) return err.message;
+      if (err.error) return err.error;
+      return 'Veuillez réessayer.';
+    };
+
     return (
       <View style={styles.centerContainer}>
         <Text style={styles.errorText}>Impossible d'analyser le trajet.</Text>
-        <Text style={styles.errorSubtext}>Veuillez réessayer.</Text>
+        <Text style={[styles.errorSubtext, { textAlign: 'center', paddingHorizontal: 15 }]} numberOfLines={2}>
+          {getErrorMessage(error)}
+        </Text>
       </View>
     );
   }

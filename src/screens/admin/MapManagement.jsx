@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, Alert, Platform } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -111,14 +111,23 @@ const MapManagement = () => {
   };
 
   const handleAutoImport = () => {
-    Alert.alert(
-      "Importation OSM (Maféré)",
-      "Voulez-vous importer automatiquement tous les points d'intérêts de Maféré (écoles, hôpitaux, stations, etc.) à partir d'OpenStreetMap ?\n\nLe script filtrera les points en fonction des limites KML de la commune.",
-      [
-        { text: "Annuler", style: "cancel" },
-        { text: "Importer (Rayon 6km)", onPress: () => triggerAutoImport(6000) }
-      ]
-    );
+    const message = "Voulez-vous importer automatiquement tous les points d'intérêts de Maféré (écoles, hôpitaux, stations, etc.) à partir d'OpenStreetMap ?\n\nLe script filtrera les points en fonction des limites KML de la commune.";
+    
+    if (Platform.OS === 'web') {
+      const confirmImport = window.confirm(`Importation OSM (Maféré)\n\n${message}`);
+      if (confirmImport) {
+        triggerAutoImport(6000);
+      }
+    } else {
+      Alert.alert(
+        "Importation OSM (Maféré)",
+        message,
+        [
+          { text: "Annuler", style: "cancel" },
+          { text: "Importer (Rayon 6km)", onPress: () => triggerAutoImport(6000) }
+        ]
+      );
+    }
   };
 
   const triggerAutoImport = async (radius) => {

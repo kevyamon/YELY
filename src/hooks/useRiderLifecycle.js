@@ -206,15 +206,21 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
 
     if (shouldEstimate) {
-      lastEstimatedOriginRef.current = { latitude: oLat, longitude: oLng };
-      lastEstimatedDestRef.current = { latitude: dLat, longitude: dLng };
+      // SÉCURITÉ : Ne pas lancer l'estimation si l'origine ou la destination est hors zone
+      const originInZone = isLocationInMafereZone({ latitude: oLat, longitude: oLng });
+      const destInZone = isLocationInMafereZone({ latitude: dLat, longitude: dLng });
 
-      estimateRide({
-        pickupLat: oLat,
-        pickupLng: oLng,
-        dropoffLat: dLat,
-        dropoffLng: dLng
-      }, false);
+      if (originInZone && destInZone) {
+        lastEstimatedOriginRef.current = { latitude: oLat, longitude: oLng };
+        lastEstimatedDestRef.current = { latitude: dLat, longitude: dLng };
+
+        estimateRide({
+          pickupLat: oLat,
+          pickupLng: oLng,
+          dropoffLat: dLat,
+          dropoffLng: dLng
+        }, false);
+      }
     }
   }, [effectiveOrigin, destination, estimateRide]);
 

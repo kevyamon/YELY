@@ -97,7 +97,7 @@ const SmartFooter = ({
                 selectedVehicle={selectedVehicle}
                 onSelect={onSelectVehicle}
                 isLoading={isEstimating}
-                error={estimateError}
+                error={!isUserInZone ? { message: "Vous êtes en dehors de la zone de couverture Yély (Maféré)." } : estimateError}
               />
               
               {/* Explication du forfait */}
