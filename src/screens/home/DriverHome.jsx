@@ -29,8 +29,9 @@ import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import { Ionicons } from '@expo/vector-icons';
 import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 import { useGetRideByIdQuery } from '../../store/api/ridesApiSlice';
+import { useGetUserProfileQuery } from '../../store/api/usersApiSlice';
 
-import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus, selectIsSubscriptionModalDismissed } from '../../store/slices/authSlice';
+import { logout, selectCurrentUser, selectPromoMode, selectSubscriptionStatus, selectIsSubscriptionModalDismissed, updateUserInfo } from '../../store/slices/authSlice';
 import { selectCurrentRide, setIncomingRide } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
@@ -86,6 +87,8 @@ const DriverHome = ({ navigation, route }) => {
     refetch: refetchSubscription 
   } = useGetSubscriptionStatusQuery(undefined, { skip: !isFocused });
 
+  const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
+
   const isSubscriptionLoading = isSubLoading || isFetching;
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
@@ -94,12 +97,20 @@ const DriverHome = ({ navigation, route }) => {
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   
   const isBlockedByVerification = user?.verificationStatus !== 'approved';
-  const isBlocked = (!isActive && !promoMode?.isActive) || isBlockedByVerification;
+  const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
+  const isBlocked = isSubscriptionBlocked || isBlockedByVerification;
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
+
+  // Synchronisation en temps réel des infos de l'utilisateur (identités + abonnements)
+  useEffect(() => {
+    if (profileResponse?.data) {
+      dispatch(updateUserInfo(profileResponse.data));
+    }
+  }, [profileResponse, dispatch]);
 
   useEffect(() => {
     if (isFocused && !isSubscriptionModalDismissed) {
-      if (isBlocked) {
+      if (isSubscriptionBlocked) {
         if (isPending) {
           navigation.navigate('WaitSubscription');
         } else if (subStatusRedux?.isRejected) {
@@ -109,7 +120,7 @@ const DriverHome = ({ navigation, route }) => {
         }
       }
     }
-  }, [isFocused, isBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, navigation]);
+  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, navigation]);
 
   useEffect(() => {
     const checkFirstVisit = async () => {
@@ -134,8 +145,9 @@ const DriverHome = ({ navigation, route }) => {
   useEffect(() => {
     if (isFocused) {
       refetchSubscription();
+      refetchProfile();
     }
-  }, [isFocused, refetchSubscription]);
+  }, [isFocused, refetchSubscription, refetchProfile]);
 
   const { location, errorMsg } = useGeolocation();
   const effectiveLocation = simulatedLocation || location;

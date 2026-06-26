@@ -27,9 +27,10 @@ import SmartHeader from '../../components/ui/SmartHeader';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 
-import { selectCurrentUser, logout, selectSubscriptionStatus, selectPromoMode, selectIsSubscriptionModalDismissed } from '../../store/slices/authSlice';
+import { selectCurrentUser, logout, selectSubscriptionStatus, selectPromoMode, selectIsSubscriptionModalDismissed, updateUserInfo } from '../../store/slices/authSlice';
 import ShopLocationModal from '../../components/ui/ShopLocationModal';
 import { useGetMyProductsQuery, useGetLedgerStatsQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetUserProfileQuery } from '../../store/api/usersApiSlice';
 import THEME from '../../theme/theme';
 import ENV from '../../config/env';
 import useGeolocation from '../../hooks/useGeolocation';
@@ -50,9 +51,23 @@ const SellerHome = ({ navigation }) => {
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
   const isFocused = useIsFocused();
 
+  const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
+
   const isActive = subStatus?.isActive === true;
   const isPending = subStatus?.isPending === true;
   const isBlocked = !isActive && !promoMode?.isActive;
+
+  React.useEffect(() => {
+    if (profileResponse?.data) {
+      dispatch(updateUserInfo(profileResponse.data));
+    }
+  }, [profileResponse, dispatch]);
+
+  React.useEffect(() => {
+    if (isFocused) {
+      refetchProfile();
+    }
+  }, [isFocused, refetchProfile]);
 
   React.useEffect(() => {
     if (isFocused && !isSubscriptionModalDismissed) {

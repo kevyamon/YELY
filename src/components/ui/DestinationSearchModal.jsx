@@ -1,8 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions, useColorScheme } from 'react-native';
+import { useDispatch } from 'react-redux';
 
-import { useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
+import { useGetAllPOIsQuery, useSearchPOIsQuery, useResolveExternalPOIMutation } from '../../store/api/poiApiSlice';
+import { showLoading, hideLoading } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
@@ -14,7 +16,9 @@ const normalizeSearchText = (text) => {
 };
 
 const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
+  const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
 
@@ -37,9 +41,27 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
     refetchOnMountOrArgChange: true, 
   });
 
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedQuery(searchQuery);
+    }, 450); // Debounce de 450ms pour économiser les requêtes réseau
+    return () => clearTimeout(handler);
+  }, [searchQuery]);
+
+  const { data: searchResponse, isFetching: isSearching } = useSearchPOIsQuery(debouncedQuery, {
+    skip: !visible || debouncedQuery.length < 2,
+    refetchOnMountOrArgChange: true
+  });
+
+  const [resolveExternal] = useResolveExternalPOIMutation();
+
   const pois = poiResponse?.data || [];
 
   const filteredPOIs = useMemo(() => {
+    if (debouncedQuery.length >= 2) {
+      return searchResponse?.data || [];
+    }
+
     const normalizedQuery = normalizeSearchText(searchQuery);
     
     if (!normalizedQuery) {
@@ -51,20 +73,41 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
     );
 
     return results.slice(0, 10);
-  }, [pois, searchQuery]);
+  }, [pois, searchQuery, debouncedQuery, searchResponse]);
 
-  const handleSelectPlace = useCallback((item) => {
+  const handleSelectPlace = useCallback(async (item) => {
     Keyboard.dismiss(); 
     
+    let finalItem = item;
+    if (item.isExternal) {
+      try {
+        dispatch(showLoading({ message: 'Validation du lieu...' }));
+        const res = await resolveExternal({
+          name: item.name,
+          latitude: item.latitude,
+          longitude: item.longitude,
+          icon: item.icon,
+          iconColor: item.iconColor
+        }).unwrap();
+        if (res.data) {
+          finalItem = res.data;
+        }
+      } catch (err) {
+        // En cas d'erreur de cache, on utilise les coordonnées d'origine
+      } finally {
+        dispatch(hideLoading());
+      }
+    }
+
     onPlaceSelect({
-      address: item.name,
-      latitude: item.latitude,
-      longitude: item.longitude
+      address: finalItem.name,
+      latitude: finalItem.latitude,
+      longitude: finalItem.longitude
     });
     
     setSearchQuery('');
     onClose(); 
-  }, [onPlaceSelect, onClose]);
+  }, [onPlaceSelect, onClose, resolveExternal, dispatch]);
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity 
@@ -84,13 +127,16 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
       </View>
       <View style={styles.suggestionTextContainer}>
         <Text style={[styles.mainText, { color: dynamicTitleColor }, isSmallScreen && { fontSize: 13 }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.secondaryText, { color: dynamicSubtitleColor }, isSmallScreen && { fontSize: 11 }]} numberOfLines={1}>Maféré, Côte d'Ivoire</Text>
+        <Text style={[styles.secondaryText, { color: dynamicSubtitleColor }, isSmallScreen && { fontSize: 11 }]} numberOfLines={1}>
+          {item.isExternal ? "Point suggéré" : "Maféré, Côte d'Ivoire"}
+        </Text>
       </View>
       <Ionicons name="chevron-forward" size={14} color={isDarkMode ? 'rgba(212, 175, 55, 0.6)' : 'rgba(212, 175, 55, 0.8)'} />
     </TouchableOpacity>
   ), [handleSelectPlace, isSmallScreen, isDarkMode, dynamicItemBg, dynamicItemBorder, dynamicTitleColor, dynamicSubtitleColor]);
 
   const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.22 : 0.28);
+  const isLoaderActive = isLoading || (isSearching && searchQuery.length >= 2);
 
   return (
     <GlassModal
@@ -127,7 +173,7 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
         </Text>
       </View>
 
-      {isLoading ? (
+      {isLoaderActive ? (
         <View style={styles.centerContainer}>
           <ActivityIndicator size="large" color={dynamicLoaderColor} />
           <Text style={styles.loadingText}>Synchronisation de la carte...</Text>

@@ -3,6 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
+import { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
@@ -20,6 +21,12 @@ const PaymentFailureScreen = ({ navigation }) => {
 
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
   const homeScreen = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
+
+  useEffect(() => {
+    return () => {
+      dispatch(setSubscriptionModalDismissed(true));
+    };
+  }, [dispatch]);
 
   const handleLogout = () => {
     dispatch(logout());

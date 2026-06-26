@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 import socketService from '../../services/socketService';
 import SecureStorageAdapter from '../secureStoreAdapter';
 import { logout, setCredentials } from './authSlice';
-import { showErrorToast } from './uiSlice';
+import { showErrorToast, setServerWaking } from './uiSlice';
 
 const mutex = new Mutex();
 const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
@@ -65,6 +65,13 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
     console.warn(`[API] Micro-decrochage reseau sur ${requestUrl}. Auto-Retry silencieux dans 1.5s...`);
     await sleep(1500);
     result = await baseQuery(args, api, extraOptions);
+  }
+
+  // Désactiver l'overlay de démarrage si une requête aboutit (serveur réveillé)
+  if (!result.error || (result.error.status && result.error.status !== 'FETCH_ERROR' && result.error.status !== 'TIMEOUT_ERROR')) {
+    if (api.getState().ui.isServerWaking) {
+      api.dispatch(setServerWaking(false));
+    }
   }
 
   if (result.error) {

@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import * as DocumentPicker from 'expo-document-picker';
 import { useMemo, useRef, useState } from 'react';
-import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { FlatList, StyleSheet, Text, TouchableOpacity, View, Alert } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
@@ -18,7 +18,7 @@ import GlassInput from '../../components/ui/GlassInput';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import UniversalIcon from '../../components/ui/UniversalIcon';
-import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAllPOIsQuery } from '../../store/api/poiApiSlice';
+import { useBulkImportPOIsMutation, useDeletePOIMutation, useGetAdminPOIsQuery, useAutoImportPOIsMutation, useUpdatePOIMutation } from '../../store/api/poiApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
@@ -40,8 +40,10 @@ const MapManagement = () => {
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [poiToDelete, setPoiToDelete] = useState(null);
 
-  const { data: poiResponse, isLoading: isFetching } = useGetAllPOIsQuery();
+  const { data: poiResponse, isLoading: isFetching } = useGetAdminPOIsQuery();
   const [deletePOI] = useDeletePOIMutation();
+  const [updatePOI, { isLoading: isValidating }] = useUpdatePOIMutation();
+  const [autoImport, { isLoading: isAutoImporting }] = useAutoImportPOIsMutation();
   const [bulkImport, { isLoading: isImporting }] = useBulkImportPOIsMutation();
 
   const pois = poiResponse?.data || [];
@@ -99,6 +101,36 @@ const MapManagement = () => {
     }
   };
 
+  const handleValidatePoi = async (poi) => {
+    try {
+      await updatePOI({ id: poi._id, isActive: true, isSuggested: false }).unwrap();
+      dispatch(showToast({ message: `Lieu "${poi.name}" approuvé et activé !`, type: 'success' }));
+    } catch (err) {
+      dispatch(showToast({ message: 'Erreur lors de la validation', type: 'error' }));
+    }
+  };
+
+  const handleAutoImport = () => {
+    Alert.alert(
+      "Importation OSM (Maféré)",
+      "Voulez-vous importer automatiquement tous les points d'intérêts de Maféré (écoles, hôpitaux, stations, etc.) à partir d'OpenStreetMap ?\n\nLe script filtrera les points en fonction des limites KML de la commune.",
+      [
+        { text: "Annuler", style: "cancel" },
+        { text: "Importer (Rayon 6km)", onPress: () => triggerAutoImport(6000) }
+      ]
+    );
+  };
+
+  const triggerAutoImport = async (radius) => {
+    try {
+      dispatch(showToast({ message: "Importation OSM en cours...", type: "info" }));
+      const res = await autoImport({ radius }).unwrap();
+      dispatch(showToast({ message: res.message || "Importation réussie", type: "success" }));
+    } catch (err) {
+      dispatch(showToast({ message: err.data?.message || "Erreur d'importation", type: "error" }));
+    }
+  };
+
   const handleBulkImport = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({ type: 'application/json' });
@@ -119,29 +151,46 @@ const MapManagement = () => {
     }
   };
 
-  const renderPoiItem = ({ item }) => (
-    <View style={styles.poiCard}>
-      <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
-        <UniversalIcon 
-          iconString={item.icon || 'Ionicons/location'} 
-          size={28} 
-          color={item.iconColor || THEME.COLORS.champagneGold} 
-        />
+  const renderPoiItem = ({ item }) => {
+    const isSuggested = item.isSuggested || !item.isActive;
+    return (
+      <View style={[styles.poiCard, isSuggested && styles.suggestedCard]}>
+        <View style={[styles.iconContainer, { backgroundColor: `${item.iconColor}15` }]}>
+          <UniversalIcon 
+            iconString={item.icon || 'Ionicons/location'} 
+            size={28} 
+            color={item.iconColor || THEME.COLORS.champagneGold} 
+          />
+        </View>
+        <View style={styles.poiInfo}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap' }}>
+            <Text style={styles.poiName}>{item.name}</Text>
+            {isSuggested && (
+              <View style={styles.suggestedBadge}>
+                <Text style={styles.suggestedBadgeText}>Suggestion</Text>
+              </View>
+            )}
+          </View>
+          <Text style={styles.poiCoords}>Lat: {item.latitude.toFixed(5)} | Lng: {item.longitude.toFixed(5)}</Text>
+        </View>
+        <View style={styles.actionButtons}>
+          {isSuggested && (
+            <TouchableOpacity onPress={() => handleValidatePoi(item)} style={styles.validateBtn}>
+              <Ionicons name="checkmark-circle-outline" size={22} color={THEME.COLORS.success || '#2ecc71'} />
+            </TouchableOpacity>
+          )}
+          <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editBtn}>
+            <Ionicons name="create-outline" size={22} color={THEME.COLORS.info} />
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteBtn}>
+            <Ionicons name="trash-outline" size={22} color={THEME.COLORS.danger} />
+          </TouchableOpacity>
+        </View>
       </View>
-      <View style={styles.poiInfo}>
-        <Text style={styles.poiName}>{item.name}</Text>
-        <Text style={styles.poiCoords}>Lat: {item.latitude.toFixed(5)} | Lng: {item.longitude.toFixed(5)}</Text>
-      </View>
-      <View style={styles.actionButtons}>
-        <TouchableOpacity onPress={() => openEditModal(item)} style={styles.editBtn}>
-          <Ionicons name="create-outline" size={22} color={THEME.COLORS.info} />
-        </TouchableOpacity>
-        <TouchableOpacity onPress={() => confirmDelete(item)} style={styles.deleteBtn}>
-          <Ionicons name="trash-outline" size={22} color={THEME.COLORS.danger} />
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+    );
+  };
+
+  const isLoadingState = isFetching || isImporting || isAutoImporting || isValidating;
 
   return (
     <ScreenWrapper>
@@ -153,6 +202,9 @@ const MapManagement = () => {
         <Text style={styles.headerTitle}>Gestion de la Carte</Text>
         
         <View style={styles.headerActions}>
+          <TouchableOpacity onPress={handleAutoImport} style={[styles.bulkBtn, { marginRight: 10 }]}>
+            <Ionicons name="earth" size={20} color={THEME.COLORS.champagneGold} />
+          </TouchableOpacity>
           <TouchableOpacity onPress={() => setIsSelectionMapVisible(true)} style={[styles.bulkBtn, { marginRight: 10 }]}>
             <Ionicons name="map-outline" size={20} color={THEME.COLORS.champagneGold} />
           </TouchableOpacity>
@@ -172,8 +224,8 @@ const MapManagement = () => {
           />
         </View>
 
-        <GlobalSkeleton visible={isFetching || isImporting} style={{ flex: 1 }}>
-          {isFetching || isImporting ? (
+        <GlobalSkeleton visible={isLoadingState} style={{ flex: 1 }}>
+          {isLoadingState ? (
             <View style={styles.listContent}>
               {[1, 2, 3, 4, 5, 6].map((key) => (
                 <View key={key} style={styles.poiCard}>
@@ -246,11 +298,15 @@ const styles = StyleSheet.create({
   searchWrapper: { marginBottom: 15 },
   listContent: { paddingBottom: 100 },
   poiCard: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassDark, marginBottom: 12, padding: 15, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
+  suggestedCard: { borderColor: 'rgba(241, 196, 15, 0.4)', borderWidth: 1.5 },
+  suggestedBadge: { backgroundColor: 'rgba(241, 196, 15, 0.15)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8, marginLeft: 8 },
+  suggestedBadgeText: { color: '#f1c40f', fontSize: 10, fontWeight: 'bold' },
   iconContainer: { width: 54, height: 54, borderRadius: 27, justifyContent: 'center', alignItems: 'center' },
   poiInfo: { flex: 1, marginLeft: 15 },
   poiName: { color: THEME.COLORS.textPrimary, fontWeight: 'bold', fontSize: 16, marginBottom: 4 },
   poiCoords: { color: THEME.COLORS.textSecondary, fontSize: 12 },
   actionButtons: { flexDirection: 'row' },
+  validateBtn: { padding: 10, backgroundColor: 'rgba(46, 204, 113, 0.1)', borderRadius: 12, marginRight: 8 },
   editBtn: { padding: 10, backgroundColor: 'rgba(52, 152, 219, 0.1)', borderRadius: 12, marginRight: 8 },
   deleteBtn: { padding: 10, backgroundColor: 'rgba(231, 76, 60, 0.1)', borderRadius: 12 },
   fab: { position: 'absolute', bottom: 30, right: 20, width: 64, height: 64, borderRadius: 32, backgroundColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', ...THEME.SHADOWS.strong },

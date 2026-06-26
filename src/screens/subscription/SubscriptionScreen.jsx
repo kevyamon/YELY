@@ -102,6 +102,12 @@ const SubscriptionScreen = ({ navigation }) => {
     };
   }, [refetchConfig, refetchStatus]);
 
+  useEffect(() => {
+    return () => {
+      dispatch(setSubscriptionModalDismissed(true));
+    };
+  }, [dispatch]);
+
   useFocusEffect(
     useCallback(() => {
       refetchConfig();

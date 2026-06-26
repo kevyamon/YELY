@@ -12,6 +12,48 @@ export const poiApiSlice = apiSlice.injectEndpoints({
       providesTags: ['POI'], // Permet de rafraîchir automatiquement si on modifie un lieu
     }),
     
+    // Récupérer tous les lieux pour l'administration (actifs et inactifs)
+    getAdminPOIs: builder.query({
+      query: () => '/pois/admin',
+      providesTags: ['POI'],
+    }),
+
+    // Rechercher des lieux dynamiquement (local + Nominatim/Google)
+    searchPOIs: builder.query({
+      query: (q) => `/pois/search?q=${encodeURIComponent(q)}`,
+      providesTags: ['POI'],
+    }),
+
+    // Résoudre et mettre en cache un lieu externe sélectionné
+    resolveExternalPOI: builder.mutation({
+      query: (poi) => ({
+        url: '/pois/resolve-external',
+        method: 'POST',
+        body: poi,
+      }),
+      invalidatesTags: ['POI'],
+    }),
+
+    // Proposer un lieu (Riders/Drivers)
+    suggestPOI: builder.mutation({
+      query: (poi) => ({
+        url: '/pois/suggest',
+        method: 'POST',
+        body: poi,
+      }),
+      invalidatesTags: ['POI'],
+    }),
+
+    // Importation automatique depuis OSM
+    autoImportPOIs: builder.mutation({
+      query: (body) => ({
+        url: '/pois/auto-import',
+        method: 'POST',
+        body,
+      }),
+      invalidatesTags: ['POI'],
+    }),
+    
     // Créer un lieu (SuperAdmin)
     createPOI: builder.mutation({
       query: (newPOI) => ({
@@ -26,7 +68,7 @@ export const poiApiSlice = apiSlice.injectEndpoints({
     updatePOI: builder.mutation({
       query: ({ id, ...updatedData }) => ({
         url: `/pois/${id}`,
-      method: 'PUT',
+        method: 'PUT',
         body: updatedData,
       }),
       invalidatesTags: ['POI'],
@@ -55,6 +97,11 @@ export const poiApiSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetAllPOIsQuery,
+  useGetAdminPOIsQuery,
+  useSearchPOIsQuery,
+  useResolveExternalPOIMutation,
+  useSuggestPOIMutation,
+  useAutoImportPOIsMutation,
   useCreatePOIMutation,
   useUpdatePOIMutation,
   useDeletePOIMutation,

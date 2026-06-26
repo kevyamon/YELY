@@ -49,7 +49,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     refetchOnMountOrArgChange: true
   });
 
-  const displayVehicles = estimationData?.vehicles || MOCK_VEHICLES;
+  const displayVehicles = estimationData?.data?.vehicles || estimationData?.vehicles || MOCK_VEHICLES;
   
   // CORRECTION : L'origine effective est strictement la position GPS
   const effectiveOrigin = location;

@@ -34,6 +34,12 @@ const WaitScreen = ({ navigation }) => {
     }
   }, [subStatus?.isRejected, subStatus?.isActive, subStatus?.isPending, navigation, homeScreen]);
 
+  useEffect(() => {
+    return () => {
+      dispatch(setSubscriptionModalDismissed(true));
+    };
+  }, [dispatch]);
+
   const handleLogout = () => {
     dispatch(logout());
   };

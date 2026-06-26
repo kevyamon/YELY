@@ -11,21 +11,16 @@ export const MAFERE_CENTER = {
 // 🚀 ZONE KML MAFÉRÉ V2 (Mise à jour suite au relevé topographique "Maféré 2")
 // Ce polygone est plus précis et couvre l'expansion réelle de la ville.
 export const MAFERE_KML_ZONE = [
-  { latitude: 5.399031034336893, longitude: -3.049977159237306 },
-  { latitude: 5.396533530602768, longitude: -3.039240846090227 },
-  { latitude: 5.402883250165573, longitude: -3.022268123621838 },
-  { latitude: 5.398864024638002, longitude: -3.006604056658062 },
-  { latitude: 5.411066839769147, longitude: -3.000589690214418 },
-  { latitude: 5.419077431907107, longitude: -3.010884090788243 },
-  { latitude: 5.42819734613291,  longitude: -3.01724570713425 },
-  { latitude: 5.439339076645838, longitude: -3.027251167463914 },
-  { latitude: 5.443699158653338, longitude: -3.033733326531315 },
-  { latitude: 5.438598907936526, longitude: -3.040823722486742 },
-  { latitude: 5.431327875881577, longitude: -3.04648564109407 },
-  { latitude: 5.426230049035072, longitude: -3.050302653433072 },
-  { latitude: 5.416122353529494, longitude: -3.052910524503075 },
-  { latitude: 5.405230303678057, longitude: -3.055627252222842 },
-  { latitude: 5.399031034336893, longitude: -3.049977159237306 } // Fermeture de la boucle
+  { latitude: 5.389355738252305, longitude: -3.051197610717613 },
+  { latitude: 5.389703322002365, longitude: -2.984380345561231 },
+  { latitude: 5.427887081546217, longitude: -2.987065237052784 },
+  { latitude: 5.443134554765992, longitude: -2.987269034128919 },
+  { latitude: 5.449104421664392, longitude: -3.036311394541528 },
+  { latitude: 5.445598242581576, longitude: -3.06092929087994 },
+  { latitude: 5.433245102067395, longitude: -3.075460658993872 },
+  { latitude: 5.417993563246123, longitude: -3.079244234523882 },
+  { latitude: 5.404791835726621, longitude: -3.078000651410526 },
+  { latitude: 5.389355738252305, longitude: -3.051197610717613 }
 ];
 
 /**
