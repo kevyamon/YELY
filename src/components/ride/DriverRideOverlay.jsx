@@ -317,7 +317,7 @@ const DriverRideOverlay = () => {
         onTouchStart={startMinimizeTimer}
       >
 
-        {/* Poignee de tiroir / Bouton de masquage manuel */}
+        {/* Poignee de tiroir / Masquage & Verrouillage */}
         <View style={styles.dragHandleWrapper}>
           <TouchableOpacity 
             style={styles.dragHandleContainer} 
@@ -328,7 +328,10 @@ const DriverRideOverlay = () => {
             <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.lockButton} 
+            style={[
+              styles.lockButton,
+              isLocked && styles.lockButtonActive
+            ]} 
             onPress={() => {
               const nextLocked = !isLocked;
               setIsLocked(nextLocked);
@@ -341,10 +344,13 @@ const DriverRideOverlay = () => {
             activeOpacity={0.7}
           >
             <Ionicons 
-              name={isLocked ? "pin" : "pin-outline"} 
-              size={18} 
-              color={isLocked ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} 
+              name={isLocked ? "lock-closed" : "lock-open-outline"} 
+              size={12} 
+              color={isLocked ? '#121418' : THEME.COLORS.champagneGold} 
             />
+            <Text style={[styles.lockButtonText, isLocked && styles.lockButtonTextActive]}>
+              {isLocked ? "Verrouillé" : "Épingler"}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -621,10 +627,28 @@ const styles = StyleSheet.create({
   lockButton: {
     position: 'absolute',
     right: 16,
-    height: 28,
-    justifyContent: 'center',
+    flexDirection: 'row',
     alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderRadius: 12,
+    paddingVertical: 4,
     paddingHorizontal: 8,
+    gap: 4,
+  },
+  lockButtonActive: {
+    backgroundColor: THEME.COLORS.champagneGold,
+    borderColor: THEME.COLORS.champagneGold,
+  },
+  lockButtonText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.COLORS.champagneGold,
+    textTransform: 'uppercase',
+  },
+  lockButtonTextActive: {
+    color: '#121418',
   },
   dragHandle: {
     width: 40,

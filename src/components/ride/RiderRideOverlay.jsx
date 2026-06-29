@@ -46,9 +46,11 @@ const RiderRideOverlay = () => {
   const translateY = useSharedValue(300);
 
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const hideTimerRef = useRef(null);
 
   const startMinimizeTimer = () => {
+    if (isLocked) return;
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
     hideTimerRef.current = setTimeout(() => {
       setIsMinimized(true);
@@ -63,6 +65,16 @@ const RiderRideOverlay = () => {
     if (hideTimerRef.current) {
       clearTimeout(hideTimerRef.current);
       hideTimerRef.current = null;
+    }
+  };
+
+  const toggleLock = () => {
+    const nextLocked = !isLocked;
+    setIsLocked(nextLocked);
+    if (nextLocked) {
+      cancelMinimizeTimer();
+    } else {
+      startMinimizeTimer();
     }
   };
 
@@ -181,15 +193,34 @@ const RiderRideOverlay = () => {
         onTouchStart={startMinimizeTimer}
       >
 
-        {/* Poignee de tiroir / Bouton de masquage manuel */}
-        <TouchableOpacity 
-          style={styles.dragHandleContainer} 
-          onPress={toggleMinimize}
-          activeOpacity={0.7}
-        >
-          <View style={styles.dragHandle} />
-          <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
-        </TouchableOpacity>
+        {/* Poignee de tiroir / Masquage & Verrouillage */}
+        <View style={styles.dragHandleWrapper}>
+          <TouchableOpacity 
+            style={styles.dragHandleContainer} 
+            onPress={toggleMinimize}
+            activeOpacity={0.7}
+          >
+            <View style={styles.dragHandle} />
+            <Ionicons name="chevron-down" size={16} color={THEME.COLORS.textSecondary} style={styles.dragIcon} />
+          </TouchableOpacity>
+          <TouchableOpacity 
+            style={[
+              styles.lockButton,
+              isLocked && styles.lockButtonActive
+            ]} 
+            onPress={toggleLock}
+            activeOpacity={0.7}
+          >
+            <Ionicons 
+              name={isLocked ? "lock-closed" : "lock-open-outline"} 
+              size={12} 
+              color={isLocked ? '#121418' : THEME.COLORS.champagneGold} 
+            />
+            <Text style={[styles.lockButtonText, isLocked && styles.lockButtonTextActive]}>
+              {isLocked ? "Verrouillé" : "Épingler"}
+            </Text>
+          </TouchableOpacity>
+        </View>
 
       <View style={styles.statusBanner}>
         <View style={styles.statusIndicator}>
@@ -295,12 +326,46 @@ const styles = StyleSheet.create({
   priceLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 'bold' },
   priceValue: { fontSize: 24, fontWeight: '900', color: THEME.COLORS.textPrimary },
   dragHandleContainer: {
-    width: '100%',
+    width: '70%',
     height: 28,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  dragHandleWrapper: {
+    width: '100%',
+    height: 28,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    position: 'relative',
     marginTop: -4,
     marginBottom: THEME.SPACING.xs,
+  },
+  lockButton: {
+    position: 'absolute',
+    right: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderRadius: 12,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    gap: 4,
+  },
+  lockButtonActive: {
+    backgroundColor: THEME.COLORS.champagneGold,
+    borderColor: THEME.COLORS.champagneGold,
+  },
+  lockButtonText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: THEME.COLORS.champagneGold,
+    textTransform: 'uppercase',
+  },
+  lockButtonTextActive: {
+    color: '#121418',
   },
   dragHandle: {
     width: 40,
