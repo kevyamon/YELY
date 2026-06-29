@@ -3,7 +3,7 @@
 // CSCSM Level: Bank Grade
 
 import { useEffect } from 'react';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../services/socketService';
 import { apiSlice } from '../store/slices/apiSlice';
 import { logout, updatePromoMode, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
