@@ -319,15 +319,17 @@ const MapCard = forwardRef(({
             <UserLocationMarker coordinate={safeLocation} />
           )}
 
-          {actualDriverLocation && actualDriverLocation.latitude && actualDriverLocation.longitude && (
+          {actualDriverLocation && !isNaN(Number(actualDriverLocation.latitude)) && !isNaN(Number(actualDriverLocation.longitude)) && (
             <SmoothDriverMarker
-              coordinate={actualDriverLocation}
-              heading={actualDriverLocation.heading}
+              coordinate={{ latitude: Number(actualDriverLocation.latitude), longitude: Number(actualDriverLocation.longitude) }}
+              heading={Number(actualDriverLocation.heading) || 0}
             />
           )}
 
           {markers.map((marker, index) => {
-            if (!marker.latitude || !marker.longitude) return null;
+            const mLat = Number(marker.latitude);
+            const mLng = Number(marker.longitude);
+            if (isNaN(mLat) || isNaN(mLng) || !marker.latitude || !marker.longitude) return null;
 
             if (marker.type === 'pickup') {
               if (isDriver) {

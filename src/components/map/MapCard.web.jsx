@@ -280,16 +280,18 @@ const MapCard = forwardRef(({
           />
         ))}
 
-        {showUserMarker && !isOngoingRide && location && !isDriver && (
-          <Marker position={[location.latitude, location.longitude]} icon={userIcon} />
+        {showUserMarker && !isOngoingRide && location && !isDriver && !isNaN(Number(location.latitude)) && !isNaN(Number(location.longitude)) && (
+          <Marker position={[Number(location.latitude), Number(location.longitude)]} icon={userIcon} />
         )}
 
-        {driverLocation?.latitude && driverLocation?.longitude && (
-          <Marker position={[driverLocation.latitude, driverLocation.longitude]} icon={driverIcon} />
+        {driverLocation && !isNaN(Number(driverLocation.latitude)) && !isNaN(Number(driverLocation.longitude)) && (
+          <Marker position={[Number(driverLocation.latitude), Number(driverLocation.longitude)]} icon={driverIcon} />
         )}
 
         {markers.map((marker, index) => {
-          if (!marker.latitude || !marker.longitude) return null;
+          const mLat = Number(marker.latitude);
+          const mLng = Number(marker.longitude);
+          if (isNaN(mLat) || isNaN(mLng) || !marker.latitude || !marker.longitude) return null;
 
           let markerIcon = defaultIcon;
           

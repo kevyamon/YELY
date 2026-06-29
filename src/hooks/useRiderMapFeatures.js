@@ -21,19 +21,27 @@ const useRiderMapFeatures = ({
   const destLat = currentRide?.destination?.coordinates?.[1] ?? currentRide?.destination?.latitude;
   const destLng = currentRide?.destination?.coordinates?.[0] ?? currentRide?.destination?.longitude;
 
+  const safeOriginLat = originLat != null ? Number(originLat) : NaN;
+  const safeOriginLng = originLng != null ? Number(originLng) : NaN;
+  const safeDestLat = destLat != null ? Number(destLat) : NaN;
+  const safeDestLng = destLng != null ? Number(destLng) : NaN;
+
   const driverLocationObj = currentRide?.driverLocation;
   const driverLat = driverLocationObj?.coordinates?.[1] ?? driverLocationObj?.latitude;
   const driverLng = driverLocationObj?.coordinates?.[0] ?? driverLocationObj?.longitude;
   const driverHeading = driverLocationObj?.heading ?? 0;
 
+  const safeDriverLat = driverLat != null ? Number(driverLat) : NaN;
+  const safeDriverLng = driverLng != null ? Number(driverLng) : NaN;
+
   const driverLatLng = useMemo(() => {
-    if (!driverLat || !driverLng) return null;
+    if (isNaN(safeDriverLat) || isNaN(safeDriverLng)) return null;
     return {
-      latitude: Number(driverLat),
-      longitude: Number(driverLng),
-      heading: Number(driverHeading),
+      latitude: safeDriverLat,
+      longitude: safeDriverLng,
+      heading: Number(driverHeading) || 0,
     };
-  }, [driverLat, driverLng, driverHeading]);
+  }, [safeDriverLat, safeDriverLng, driverHeading]);
 
   const mapMarkers = useMemo(() => {
     if (isRideActive && rideStatus) {
@@ -42,12 +50,12 @@ const useRiderMapFeatures = ({
       if (isOngoing) {
         const markers = [];
 
-        if (destLat && destLng) {
+        if (!isNaN(safeDestLat) && !isNaN(safeDestLng)) {
           markers.push({
             id: 'destination',
             type: 'destination',
-            latitude: Number(destLat),
-            longitude: Number(destLng),
+            latitude: safeDestLat,
+            longitude: safeDestLng,
             title: currentRide?.destination?.address || 'Destination',
             iconColor: THEME.COLORS.danger,
           });
@@ -56,29 +64,33 @@ const useRiderMapFeatures = ({
         return markers;
       }
 
-      if (!originLat || !originLng) return [];
+      if (isNaN(safeOriginLat) || isNaN(safeOriginLng)) return [];
 
       return [{
         id: 'pickup',
         type: 'pickup',
-        latitude: Number(originLat),
-        longitude: Number(originLng),
+        latitude: safeOriginLat,
+        longitude: safeOriginLng,
         title: currentRide?.origin?.address || 'Point de rencontre',
         iconColor: THEME.COLORS.info,
       }];
     }
 
     if (!destination) return [];
+    
+    const destLatitude = Number(destination.latitude);
+    const destLongitude = Number(destination.longitude);
+    if (isNaN(destLatitude) || isNaN(destLongitude)) return [];
 
     return [{
       id: 'destination',
-      latitude: Number(destination.latitude),
-      longitude: Number(destination.longitude),
+      latitude: destLatitude,
+      longitude: destLongitude,
       title: destination.address,
       iconColor: THEME.COLORS.danger,
       type: 'destination',
     }];
-  }, [destination, isRideActive, rideStatus, originLat, originLng, destLat, destLng, currentRide?.origin?.address, currentRide?.destination?.address]);
+  }, [destination, isRideActive, rideStatus, safeOriginLat, safeOriginLng, safeDestLat, safeDestLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
   const mapTopPadding = dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : 140; 
   const mapBottomPadding = dynamicFooterHeight > 0 ? dynamicFooterHeight + 20 : (isRideActive ? 320 : (destination ? 380 : 240));

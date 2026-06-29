@@ -21,9 +21,9 @@ const PancarteScreen = ({ navigation }) => {
   const isDriver = user?.role === 'driver';
   const vehicle = isDriver ? user?.vehicle : currentRide?.vehicle;
   
-  const vehiclePlate = vehicle?.plate && vehicle.plate !== 'NON SPECIFIE' ? vehicle.plate : 'PLAQUE NON RENSEIGNÉE';
-  const vehicleColor = vehicle?.color && vehicle.color !== 'Non specifie' ? vehicle.color : 'Couleur non renseignée';
-  const vehicleModel = vehicle?.model && vehicle.model !== 'Vehicule' ? vehicle.model : 'Modèle non renseigné';
+  const vehiclePlate = vehicle?.plate && vehicle?.plate !== 'NON SPECIFIE' ? vehicle.plate : 'PLAQUE NON RENSEIGNÉE';
+  const vehicleColor = vehicle?.color && vehicle?.color !== 'Non specifie' ? vehicle.color : 'Couleur non renseignée';
+  const vehicleModel = vehicle?.model && vehicle?.model !== 'Vehicule' ? vehicle.model : 'Modèle non renseigné';
 
   // Fermeture automatique de la pancarte dès que le statut passe en cours
   // Ceci est déclenché silencieusement par le Geofencing dans DriverHome
