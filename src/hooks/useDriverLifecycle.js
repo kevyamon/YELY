@@ -58,6 +58,7 @@ const useDriverLifecycle = ({
   const updateAvailabilityRef = useRef(null);
   // Anti-spam : empêche plusieurs appels simultanés à l'auto-offline
   const isAutoOfflineInProgressRef = useRef(false);
+  const mountTimeRef = useRef(Date.now());
 
   // Verrous temporels (cooldowns) contre les boucles infinies en cas de panne réseau
   const lastPickupAttemptTimeRef = useRef(0);
@@ -159,6 +160,9 @@ const useDriverLifecycle = ({
     if (!user?.isAvailable) return; // Déjà offline → rien à faire
     if (!(isDisabled || !isDriverInZone)) return; // Conditions non réunies
     if (isAutoOfflineInProgressRef.current) return; // Anti-spam
+
+    // Grâce de démarrage : on attend 10 secondes après le montage que le GPS se stabilise
+    if (Date.now() - mountTimeRef.current < 10000) return;
 
     // Sécurité contre le flickering et les appels répétés en boucle
     const now = Date.now();

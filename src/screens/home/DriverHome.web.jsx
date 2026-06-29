@@ -130,6 +130,8 @@ const DriverHome = ({ navigation, route }) => {
   const {
     isAvailable,
     currentAddress,
+    isToggling,
+    handleToggleAvailability,
     isArrivalModalVisible,
     isCompletingRide,
     handleConfirmArrival,
@@ -137,6 +139,26 @@ const DriverHome = ({ navigation, route }) => {
   } = useDriverLifecycle({
     user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isSubscriptionLoading ? false : isBlocked 
   });
+
+  const handleToggleOrRedirect = () => {
+    if (isBlocked) {
+      if (isBlockedByVerification) {
+        navigation.navigate('Profile');
+      } else {
+        const { setSubscriptionModalDismissed } = require('../../store/slices/authSlice');
+        dispatch(setSubscriptionModalDismissed(false));
+        if (isPending) {
+          navigation.navigate('WaitSubscription');
+        } else if (subStatusRedux?.isRejected) {
+          navigation.navigate('PaymentFailure');
+        } else {
+          navigation.navigate('Subscription');
+        }
+      }
+    } else {
+      handleToggleAvailability();
+    }
+  };
 
   // WAKE LOCK INTEGRATION - Maintien de l'écran allumé (iOS Safari / Web PWA)
   useEffect(() => {
@@ -296,7 +318,13 @@ const DriverHome = ({ navigation, route }) => {
             {isRideActive ? (
               <DriverRideOverlay />
             ) : (
-              <SmartFooter isAvailable={isAvailable} />
+              <SmartFooter 
+                isAvailable={isAvailable} 
+                isToggling={isToggling}
+                onToggleAvailability={handleToggleOrRedirect}
+                isBlocked={isBlocked}
+                isBlockedByVerification={isBlockedByVerification}
+              />
             )}
           </View>
 

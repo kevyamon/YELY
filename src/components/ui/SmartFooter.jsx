@@ -171,14 +171,6 @@ const SmartFooter = ({
             </>
           ) : (
             <View style={styles.offlineWrapper}>
-              
-              {/* Badge VIP Gratuit Actif */}
-              {promoMode?.isActive && (
-                <View style={styles.promoBadge}>
-                  <Ionicons name="gift-outline" size={14} color={THEME.COLORS.champagneGold || '#D4AF37'} style={{ marginRight: 6 }} />
-                  <Text style={styles.promoBadgeText}>Accès Libre Actif (VIP Gratuit)</Text>
-                </View>
-              )}
 
               {isBlocked ? (
                 /* CHAUFFEUR BLOQUÉ (Vérification ou Abonnement) */
@@ -209,7 +201,6 @@ const SmartFooter = ({
               ) : (
                 /* CHAUFFEUR DEBOUT (Prêt à se connecter) */
                 <>
-                  <Text style={styles.offlineStatusText}>Vous êtes hors ligne</Text>
                   <TouchableOpacity 
                     style={styles.onlinePrimaryButton} 
                     onPress={onToggleAvailability}

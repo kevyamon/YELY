@@ -84,6 +84,10 @@ class SocketService {
       this.isConnected = true;
       this.reconnectAttempts = 0;
       if (__DEV__) console.log('[SOCKET_SERVICE] Connecte avec succes au backend.');
+      if (this.currentRoom) {
+        this.socket.emit('join_room', this.currentRoom);
+        if (__DEV__) console.log('[SOCKET_SERVICE] Rejoint automatiquement la room :', this.currentRoom);
+      }
     });
 
     this.socket.on('disconnect', (reason) => {
@@ -149,14 +153,22 @@ class SocketService {
   }
 
   joinRoom(roomId) {
-    if (this.socket?.connected && roomId) {
+    if (!roomId) return;
+    this.currentRoom = roomId;
+    if (this.socket?.connected) {
       this.socket.emit('join_room', roomId);
+      if (__DEV__) console.log(`[SOCKET_SERVICE] Rejoint la room : ${roomId}`);
     }
   }
 
   leaveRoom(roomId) {
-    if (this.socket?.connected && roomId) {
+    if (!roomId) return;
+    if (this.currentRoom === roomId) {
+      this.currentRoom = null;
+    }
+    if (this.socket?.connected) {
       this.socket.emit('leave_room', roomId);
+      if (__DEV__) console.log(`[SOCKET_SERVICE] Quitte la room : ${roomId}`);
     }
   }
 

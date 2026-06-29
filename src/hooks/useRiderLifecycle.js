@@ -45,8 +45,10 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
   
+  const isWaiting = currentRide && ['searching', 'negotiating', 'accepted', 'arrived'].includes(currentRide.status);
   const { data: fetchedRideData, isSuccess: isFetchSuccess, refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, {
-    refetchOnMountOrArgChange: true
+    refetchOnMountOrArgChange: true,
+    pollingInterval: isWaiting ? 4000 : 0
   });
 
   const displayVehicles = estimationData?.data?.vehicles || estimationData?.vehicles || MOCK_VEHICLES;
