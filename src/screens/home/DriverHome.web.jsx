@@ -122,6 +122,26 @@ const DriverHome = ({ navigation, route }) => {
     }
   }, [isFocused, refetchSubscription]);
 
+  const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
+  const [simulatedLocation, setSimulatedLocation] = useState(null);
+  
+  const location = simulatedLocation || realLocation;
+
+  const isDriverInZone = location ? isLocationInMafereZone(location) : true;
+  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
+
+  // NETTOYAGE STRICT : Suppression des fonctions liées au bouton
+  const {
+    isAvailable,
+    currentAddress,
+    isArrivalModalVisible,
+    isCompletingRide,
+    handleConfirmArrival,
+    handleSnoozeArrival
+  } = useDriverLifecycle({
+    user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
+  });
+
   // WAKE LOCK INTEGRATION - Maintien de l'écran allumé (iOS Safari / Web PWA)
   useEffect(() => {
     let wakeLock = null;
@@ -168,26 +188,6 @@ const DriverHome = ({ navigation, route }) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [isAvailable]);
-
-  const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
-  const [simulatedLocation, setSimulatedLocation] = useState(null);
-  
-  const location = simulatedLocation || realLocation;
-
-  const isDriverInZone = location ? isLocationInMafereZone(location) : true;
-  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
-
-  // NETTOYAGE STRICT : Suppression des fonctions liées au bouton
-  const {
-    isAvailable,
-    currentAddress,
-    isArrivalModalVisible,
-    isCompletingRide,
-    handleConfirmArrival,
-    handleSnoozeArrival
-  } = useDriverLifecycle({
-    user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
-  });
 
   const { mapMarkers, mapTopPadding, mapBottomPadding } = useDriverMapFeatures(
     currentRide, 
