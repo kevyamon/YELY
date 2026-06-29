@@ -65,7 +65,7 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
 
 const styles = StyleSheet.create({
   container: {
-    height: 145, // Ajusté pour les cartes côte à côte
+    height: 110,
     width: '100%',
   },
   row: {
@@ -75,7 +75,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   centerContainer: {
-    height: 140,
+    height: 110,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',

@@ -279,8 +279,8 @@ const styles = StyleSheet.create({
   descriptionText: {
     flex: 1,
     color: THEME.COLORS.textSecondary || '#A0AEC0',
-    fontSize: 11,
-    lineHeight: 15,
+    fontSize: 13,
+    lineHeight: 18,
   },
 
   statsContainer: { flexDirection: 'row', justifyContent: 'space-between', gap: 10 },

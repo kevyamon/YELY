@@ -177,7 +177,7 @@ const DriverHome = ({ navigation, route }) => {
     mapRef, 
     errorMsg, 
     isRideActive, 
-    isDisabled: isBlocked 
+    isDisabled: isSubscriptionLoading ? false : isBlocked 
   });
 
   const handleToggleOrRedirect = () => {

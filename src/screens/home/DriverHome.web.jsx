@@ -87,14 +87,16 @@ const DriverHome = ({ navigation, route }) => {
     skip: !isFocused 
   });
 
-  const isSubscriptionLoading = isSubLoading || isFetching;
+  const isSubscriptionLoading = isSubLoading;
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
 
   const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
   const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
   
-  const isBlocked = !isActive && !promoMode?.isActive;
+  const isBlockedByVerification = user?.verificationStatus !== 'approved';
+  const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
+  const isBlocked = isSubscriptionBlocked || isBlockedByVerification;
 
   useEffect(() => {
     const checkFirstVisit = async () => {
@@ -116,12 +118,6 @@ const DriverHome = ({ navigation, route }) => {
     checkFirstVisit();
   }, [user]);
 
-  useEffect(() => {
-    if (isFocused) {
-      refetchSubscription();
-    }
-  }, [isFocused, refetchSubscription]);
-
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   
@@ -139,7 +135,7 @@ const DriverHome = ({ navigation, route }) => {
     handleConfirmArrival,
     handleSnoozeArrival
   } = useDriverLifecycle({
-    user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isBlocked 
+    user, currentRide, location, simulatedLocation, setSimulatedLocation, isDriverInZone, mapRef, errorMsg, isRideActive, isDisabled: isSubscriptionLoading ? false : isBlocked 
   });
 
   // WAKE LOCK INTEGRATION - Maintien de l'écran allumé (iOS Safari / Web PWA)
