@@ -122,6 +122,53 @@ const DriverHome = ({ navigation, route }) => {
     }
   }, [isFocused, refetchSubscription]);
 
+  // WAKE LOCK INTEGRATION - Maintien de l'écran allumé (iOS Safari / Web PWA)
+  useEffect(() => {
+    let wakeLock = null;
+
+    const requestWakeLock = async () => {
+      try {
+        if ('wakeLock' in navigator) {
+          wakeLock = await navigator.wakeLock.request('screen');
+          if (__DEV__) console.log('[WAKE LOCK] Verrou d\'activation d\'écran actif.');
+        }
+      } catch (err) {
+        if (__DEV__) console.warn(`[WAKE LOCK] Échec d\'activation : ${err.message}`);
+      }
+    };
+
+    const releaseWakeLock = async () => {
+      try {
+        if (wakeLock) {
+          await wakeLock.release();
+          wakeLock = null;
+          if (__DEV__) console.log('[WAKE LOCK] Verrou libéré.');
+        }
+      } catch (err) {
+        if (__DEV__) console.warn(`[WAKE LOCK] Échec de libération : ${err.message}`);
+      }
+    };
+
+    if (isAvailable) {
+      requestWakeLock();
+    } else {
+      releaseWakeLock();
+    }
+
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'visible' && isAvailable) {
+        await requestWakeLock();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      releaseWakeLock();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [isAvailable]);
+
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
   
@@ -160,16 +207,17 @@ const DriverHome = ({ navigation, route }) => {
   };
 
   const renderSubscriptionBlocker = () => {
-    if (isActive || promoMode?.isActive) return null;
-    
-    if (isSubscriptionLoading && !isSubscriptionError) {
+    // Sécurité Senior : Afficher l'overlay de chargement propre tant que les configs n'ont pas fini de charger
+    if (promoMode === null || (isSubscriptionLoading && !isSubscriptionError)) {
       return (
         <View style={styles.blockerOverlay}>
           <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-          <Text style={styles.blockerText}>Verification des acces...</Text>
+          <Text style={styles.blockerText}>Vérification des accès...</Text>
         </View>
       );
     }
+
+    if (isActive || promoMode?.isActive) return null;
     
     if (!isBlocked) return null;
     

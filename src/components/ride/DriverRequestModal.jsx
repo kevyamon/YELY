@@ -256,7 +256,7 @@ const DriverRequestModal = () => {
             title={
               loadingStep === 'locking' ? "Réservation..." : 
               loadingStep === 'submitting' ? (isDelivery ? "Acceptation..." : "Envoi...") : 
-              (isDelivery ? "Accepter la livraison" : "Proposer ce prix")
+              (isDelivery ? "Accepter la livraison" : "Accepter la course")
             }
             onPress={handleAcceptAndPropose}
             style={styles.acceptButton}
@@ -465,7 +465,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   acceptButton: {
-    flex: 2,
+    flex: 1,
     marginTop: 0,
   },
 });

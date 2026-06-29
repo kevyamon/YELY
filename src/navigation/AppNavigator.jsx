@@ -96,8 +96,8 @@ const AppNavigator = () => {
   useEffect(() => {
     let isMounted = true;
     const checkPromoAtStartup = async () => {
-      // On ne check que si authentifié, driver, et qu'on n'a pas encore checké dans cette session
-      if (isAuthenticated && userRole === 'driver' && !promoMode?.isActive && !hasCheckedPromo.current) {
+      // On ne check que si authentifié, driver ou seller, et qu'on n'a pas encore checké dans cette session
+      if (isAuthenticated && (userRole === 'driver' || userRole === 'seller') && !promoMode?.isActive && !hasCheckedPromo.current) {
         hasCheckedPromo.current = true; // On marque immédiatement comme checké
         try {
           const data = await dispatch(fetchPromoConfig()).unwrap().catch(() => null);

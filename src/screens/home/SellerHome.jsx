@@ -70,6 +70,9 @@ const SellerHome = ({ navigation }) => {
   }, [isFocused, refetchProfile]);
 
   React.useEffect(() => {
+    // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
+    if (promoMode === null || !subStatus) return;
+
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isBlocked) {
         if (isPending) {
@@ -81,7 +84,7 @@ const SellerHome = ({ navigation }) => {
         }
       }
     }
-  }, [isFocused, isBlocked, isPending, subStatus?.isRejected, isSubscriptionModalDismissed, navigation]);
+  }, [isFocused, isBlocked, isPending, subStatus, isSubscriptionModalDismissed, promoMode, navigation]);
 
   const renderSubscriptionBanner = () => {
     if (isActive || promoMode?.isActive) return null;

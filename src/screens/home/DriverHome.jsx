@@ -109,6 +109,9 @@ const DriverHome = ({ navigation, route }) => {
   }, [profileResponse, dispatch]);
 
   useEffect(() => {
+    // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
+    if (promoMode === null || isSubscriptionLoading) return;
+
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isSubscriptionBlocked) {
         if (isPending) {
@@ -120,7 +123,7 @@ const DriverHome = ({ navigation, route }) => {
         }
       }
     }
-  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, navigation]);
+  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubscriptionLoading, navigation]);
 
   useEffect(() => {
     const checkFirstVisit = async () => {

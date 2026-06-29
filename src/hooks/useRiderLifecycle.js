@@ -244,6 +244,10 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       return;
     }
 
+    // Forcer le re-calcul lors de la sélection explicite d'une nouvelle destination
+    lastEstimatedOriginRef.current = null;
+    lastEstimatedDestRef.current = null;
+
     setDestination(normalizedPlace);
     setSelectedVehicle(null);
     setIsSearchModalVisible(false);
@@ -252,6 +256,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const handleCancelDestination = () => {
     setDestination(null);
     setSelectedVehicle(null);
+    lastEstimatedOriginRef.current = null;
+    lastEstimatedDestRef.current = null;
     if (effectiveOrigin && mapRef.current) {
       mapRef.current.centerOnUser();
     }
