@@ -10,6 +10,7 @@ import cartReducer from './slices/cartSlice';
 import rideReducer from './slices/rideSlice';
 import uiReducer from './slices/uiSlice';
 import locationReducer from './slices/locationSlice';
+import callReducer from './slices/callSlice';
 
 const appReducer = combineReducers({
   [apiSlice.reducerPath]: apiSlice.reducer,
@@ -18,6 +19,7 @@ const appReducer = combineReducers({
   ride: rideReducer,
   cart: cartReducer,
   location: locationReducer,
+  call: callReducer,
 });
 
 // Le super-gestionnaire (Root Reducer)

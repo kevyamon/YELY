@@ -28,9 +28,11 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useCompleteRideMutation, useCollectPointMutation } from '../../store/api/ridesApiSlice';
-import { updateUserInfo } from '../../store/slices/authSlice';
+import { updateUserInfo, selectCurrentUser } from '../../store/slices/authSlice';
 import { selectCurrentRide, selectEffectiveLocation, updateRideStatus } from '../../store/slices/rideSlice';
+import { startCall } from '../../store/slices/callSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters } from '../../utils/distanceUtils';
 import RideRouteDisplay from './RideRouteDisplay';
@@ -69,6 +71,7 @@ const DriverRideOverlay = () => {
 
   const currentRide = useSelector(selectCurrentRide);
   const effectiveLocation = useSelector(selectEffectiveLocation);
+  const currentUser = useSelector(selectCurrentUser);
 
   const [localStatus, setLocalStatus] = useState(currentRide?.status);
   const [showNavModal, setShowNavModal] = useState(currentRide?.status === 'accepted');
@@ -221,12 +224,28 @@ const DriverRideOverlay = () => {
     : bannerConfig.subLabel || null;
 
   const handleCallRider = () => {
-    // Si c'est une livraison et qu'on n'a pas encore le colis, on appelle peut-être le vendeur ?
-    // Mais par simplicité on garde le contact principal de la course
-    const phoneUrl = `tel:${currentRide.riderPhone || '0000000000'}`;
-    Linking.openURL(phoneUrl).catch(() => {
-      dispatch(showErrorToast({ title: 'Erreur', message: "Impossible de lancer l'appel." }));
+    const riderId = currentRide.rider?._id || currentRide.rider || currentRide.riderId;
+    if (!riderId) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Client introuvable pour l\'appel.' }));
+      return;
+    }
+    
+    const payload = {
+      targetUserId: riderId.toString(),
+      targetName: currentRide.riderName || 'Client Yely',
+      targetAvatar: currentRide.riderProfilePicture || '',
+      targetPhone: currentRide.riderPhone || 'Masqué',
+    };
+    
+    socketService.emit('voice_call_request', {
+      targetUserId: payload.targetUserId,
+      callerName: currentUser?.name || 'Chauffeur',
+      callerAvatar: currentUser?.profilePicture || '',
+      callerPhone: currentUser?.phone || 'Masqué',
+      rideId: currentRide._id || currentRide.id || currentRide.rideId
     });
+    
+    dispatch(startCall(payload));
   };
 
   const handleOpenGPS = (forcedCoords = null) => {
@@ -296,17 +315,17 @@ const DriverRideOverlay = () => {
 
             <TouchableOpacity
               style={styles.modalGpsButton}
-              onPress={() => { setShowNavModal(false); handleOpenGPS(); }}
+              onPress={() => setShowNavModal(false)}
             >
-              <Ionicons name="navigate" size={20} color={THEME.COLORS.background} style={{ marginRight: 8 }} />
-              <Text style={styles.modalGpsButtonText}>Lancer le GPS</Text>
+              <Text style={styles.modalGpsButtonText}>Continuer</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
               style={styles.modalDismissButton}
-              onPress={() => setShowNavModal(false)}
+              onPress={() => { setShowNavModal(false); handleOpenGPS(); }}
             >
-              <Text style={styles.modalDismissText}>Continuer sans GPS</Text>
+              <Ionicons name="navigate" size={16} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
+              <Text style={styles.modalDismissText}>Lancer le GPS externe</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -361,7 +380,7 @@ const DriverRideOverlay = () => {
           <Text style={styles.statusText}>
             {isOngoing || isArrived 
               ? (isDelivery ? 'Livraison Client' : 'Direction Destination') 
-              : (isDelivery ? 'Récupérer le colis' : 'Aller chercher le client')}
+              : (isDelivery ? 'Récuperez le colis' : 'Allez chercher le client')}
           </Text>
         </View>
 
@@ -386,14 +405,6 @@ const DriverRideOverlay = () => {
           </View>
 
           <View style={styles.topActionsGroup}>
-            {!isOngoing && !isDelivery && (
-              <TouchableOpacity
-                style={styles.pancarteButton}
-                onPress={() => navigation.navigate('Pancarte')}
-              >
-                <Ionicons name="tablet-landscape" size={20} color={THEME.COLORS.champagneGold} />
-              </TouchableOpacity>
-            )}
             <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
               <Ionicons name="call" size={22} color="#FFF" />
             </TouchableOpacity>
@@ -484,6 +495,14 @@ const DriverRideOverlay = () => {
           )}
         </View>
 
+        {/* Affichage du prix de la course */}
+        <View style={styles.priceDisplayWrapper}>
+          <Text style={styles.priceLabel}>Montant de la course</Text>
+          <Text style={styles.priceValue}>
+            {currentRide.proposedPrice || currentRide.price} FCFA
+          </Text>
+        </View>
+
       </Animated.View>
 
       {isMinimized && (
@@ -509,8 +528,8 @@ const styles = StyleSheet.create({
   modalSubtitle: { fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', marginBottom: THEME.SPACING.xl, lineHeight: 20 },
   modalGpsButton: { flexDirection: 'row', backgroundColor: THEME.COLORS.champagneGold, width: '100%', paddingVertical: 16, borderRadius: 30, justifyContent: 'center', alignItems: 'center', marginBottom: THEME.SPACING.md, elevation: 4 },
   modalGpsButtonText: { color: THEME.COLORS.background, fontWeight: '900', fontSize: 16 },
-  modalDismissButton: { paddingVertical: 12, width: '100%', alignItems: 'center' },
-  modalDismissText: { color: THEME.COLORS.textSecondary, fontWeight: 'bold', fontSize: 15 },
+  modalDismissButton: { flexDirection: 'row', paddingVertical: 12, width: '100%', alignItems: 'center', justifyContent: 'center' },
+  modalDismissText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold', fontSize: 15 },
   container: { position: 'absolute', bottom: 0, width: width, backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: THEME.SPACING.lg, paddingTop: THEME.SPACING.md, borderWidth: 1, borderColor: THEME.COLORS.border, elevation: 20, zIndex: 10 },
   statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: THEME.SPACING.md },
   statusIndicator: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(212, 175, 55, 0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
@@ -683,6 +702,26 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
+  },
+  priceDisplayWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingTop: THEME.SPACING.md,
+    borderTopWidth: 1,
+    borderTopColor: THEME.COLORS.border,
+    marginTop: THEME.SPACING.sm,
+  },
+  priceLabel: {
+    fontSize: 12,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+  },
+  priceValue: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: THEME.COLORS.champagneGold,
   },
 });
 

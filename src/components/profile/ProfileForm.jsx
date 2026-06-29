@@ -93,9 +93,23 @@ const ProfileForm = ({
 
       {isDriver && (
         <GlassCard style={styles.card}>
-          <Text style={styles.sectionTitle}>Vérification Chauffeur</Text>
+          <Text style={styles.sectionTitle}>Vérification Chauffeur & Véhicule</Text>
             
             {renderVerificationBanner()}
+
+            <Text style={styles.label}>Modèle du Véhicule (Marque, Couleur, etc.)</Text>
+            <GlassInput 
+              value={form.vehicleModel}
+              onChangeText={(txt) => setForm({...form, vehicleModel: txt})}
+              placeholder="Ex: TVS King Rouge"
+            />
+
+            <Text style={styles.label}>Numéro de Plaque d'Immatriculation</Text>
+            <GlassInput 
+              value={form.vehiclePlate}
+              onChangeText={(txt) => setForm({...form, vehiclePlate: txt})}
+              placeholder="Ex: AA-123-BB ou N° Châssis"
+            />
 
             <Text style={styles.label}>Type de Tricycle</Text>
             <View style={styles.typeSelectorContainer}>

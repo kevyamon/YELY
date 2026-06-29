@@ -7,6 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import useServerWakeup from '../hooks/useServerWakeup';
 import useSocketEvents from '../hooks/useSocketEvents';
 import SecureStorageAdapter from '../store/secureStoreAdapter';
+import VoipCallOverlay from '../components/ride/VoipCallOverlay';
 
 import {
   fetchPromoConfig,
@@ -272,6 +273,8 @@ const AppNavigator = () => {
         message={promoAlert.message}
         onClose={() => setPromoAlert({ ...promoAlert, visible: false })}
       />
+
+      <VoipCallOverlay />
 
       {showSplash && (
         <SplashScreenComponent 

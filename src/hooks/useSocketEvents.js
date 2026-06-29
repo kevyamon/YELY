@@ -12,9 +12,11 @@ import useAdminSocketEvents from './useAdminSocketEvents';
 import usePoiSocketEvents from './usePoiSocketEvents';
 import useReportSocketEvents from './useReportSocketEvents';
 import useRideSocketEvents from './useRideSocketEvents';
+import useCallSocketEvents from './useCallSocketEvents';
 
 const useSocketEvents = () => {
   const dispatch = useDispatch();
+  const { isAuthenticated } = useSelector((state) => state.auth);
 
   useEffect(() => {
     const handlePromoModeChange = (data) => {
@@ -29,62 +31,40 @@ const useSocketEvents = () => {
 
     const handleSubscriptionRejected = (data) => {
       console.info("[SOCKET] Abonnement refuse:", data);
-      dispatch(updateSubscriptionStatus({ isPending: false, isRejected: true, rejectionReason: data?.reason }));
-      dispatch(updateUserInfo({
-        subscription: {
-          isActive: false,
-          isPending: false,
-          expiresAt: null
-        }
-      }));
+      dispatch(updateSubscriptionStatus({ status: 'inactive', isRejected: true, rejectionReason: data.reason }));
+      dispatch(updateUserInfo({ subscriptionStatus: 'inactive' }));
       dispatch(apiSlice.util.invalidateTags(['Subscription']));
     };
 
     const handleSubscriptionValidated = (data) => {
       console.info("[SOCKET] Abonnement valide:", data);
-      dispatch(updateSubscriptionStatus({ isPending: false, isRejected: false, isActive: true, expiresAt: data?.expiresAt }));
-      dispatch(updateUserInfo({
-        subscription: {
-          isActive: true,
-          isPending: false,
-          expiresAt: data?.expiresAt
-        }
-      }));
-      dispatch(apiSlice.util.invalidateTags(['Subscription', 'User', 'Stats']));
-      
-      // AJOUT : Notification globale informant de l'activation, visible n'importe où dans l'app
-      dispatch(showSuccessToast({ 
-        title: "Pass Yely Actif", 
-        message: "Votre abonnement a ete valide avec succes." 
-      }));
+      dispatch(updateSubscriptionStatus({ status: 'active', isRejected: false, rejectionReason: null }));
+      dispatch(updateUserInfo({ subscriptionStatus: 'active' }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription']));
     };
 
     const handleIdentityUpdate = (data) => {
       console.info("[SOCKET] Mise a jour identite recue:", data);
-      dispatch(updateUserInfo({ 
-        verificationStatus: data?.status,
-        rejectionReason: data?.reason
-      }));
-      dispatch(apiSlice.util.invalidateTags(['User']));
+      dispatch(updateUserInfo({ verificationStatus: data.status, rejectionReason: data.reason || null }));
     };
 
-    const handleUserBanned = (data) => {
+    const handleUserBanned = () => {
       console.warn("[SOCKET] Utilisateur banni en direct ! Ejection.");
-      dispatch(logout({ reason: 'BANNED_BY_ADMIN' }));
+      dispatch(logout());
     };
 
-    const handleForceLogout = (data) => {
+    const handleForceLogout = () => {
       console.warn("[SOCKET] Droits revoques en direct ! Ejection.");
-      dispatch(logout({ reason: 'RIGHTS_REVOKED_BY_ADMIN' }));
+      dispatch(logout());
     };
 
     const handleNewOrder = (data) => {
       console.info("[SOCKET] Nouvelle commande recue:", data);
-      dispatch(showSuccessToast({ 
-        title: "Nouvelle Commande ! 🛍️", 
-        message: `Vous avez reçu une commande de ${data?.totalPrice?.toLocaleString() || '...'} FCFA.` 
+      dispatch(apiSlice.util.invalidateTags(['Order']));
+      dispatch(showSuccessToast({
+        title: "Nouvelle commande",
+        message: `Commande #${data.orderId?.slice(-6)} recue.`
       }));
-      dispatch(apiSlice.util.invalidateTags(['Notification', 'Order', 'Stats']));
     };
 
     const handleNotificationReceived = (data) => {
@@ -113,12 +93,13 @@ const useSocketEvents = () => {
       socketService.off('new_order', handleNewOrder);
       socketService.off('notification_received', handleNotificationReceived);
     };
-  }, [dispatch]);
+  }, [isAuthenticated, dispatch]);
 
   useRideSocketEvents();
   useAdminSocketEvents();
   useReportSocketEvents();
   usePoiSocketEvents();
+  useCallSocketEvents();
 };
 
 export default useSocketEvents;
