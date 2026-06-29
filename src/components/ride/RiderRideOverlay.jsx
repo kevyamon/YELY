@@ -8,6 +8,7 @@ import {
   Dimensions,
   Image,
   Linking,
+  Modal,
   StyleSheet,
   Text,
   TouchableOpacity,
