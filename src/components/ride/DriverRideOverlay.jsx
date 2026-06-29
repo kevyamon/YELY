@@ -373,15 +373,20 @@ const DriverRideOverlay = () => {
           </TouchableOpacity>
         </View>
 
-        <View style={styles.statusBanner}>
-          <View style={styles.statusIndicator}>
-            <View style={[styles.dot, bannerConfig.dotStyle && styles[bannerConfig.dotStyle]]} />
+        <View style={styles.statusHeaderContainer}>
+          <View style={styles.statusBanner}>
+            <View style={styles.statusIndicator}>
+              <View style={[styles.dot, bannerConfig.dotStyle && styles[bannerConfig.dotStyle]]} />
+            </View>
+            <Text style={styles.statusText}>
+              {isOngoing || isArrived 
+                ? (isDelivery ? 'Livraison Client' : 'Direction Destination') 
+                : (isDelivery ? 'Récuperez le colis' : 'Allez chercher le client')}
+            </Text>
           </View>
-          <Text style={styles.statusText}>
-            {isOngoing || isArrived 
-              ? (isDelivery ? 'Livraison Client' : 'Direction Destination') 
-              : (isDelivery ? 'Récuperez le colis' : 'Allez chercher le client')}
-          </Text>
+          {distanceLabel ? (
+            <Text style={styles.statusSubtitle}>{distanceLabel}</Text>
+          ) : null}
         </View>
 
         <View style={styles.riderInfoCard}>
@@ -482,17 +487,7 @@ const DriverRideOverlay = () => {
                 <Text style={styles.manualCompleteText}>Terminer plus tôt</Text>
               </TouchableOpacity>
             </>
-          ) : isDelivery && !isOngoing ? null : (
-            <View style={[
-              styles.passiveStatusContainer,
-              bannerConfig.containerStyle && styles[bannerConfig.containerStyle],
-            ]}>
-              <Text style={styles.passiveStatusTitle}>{bannerConfig.label}</Text>
-              {distanceLabel ? (
-                <Text style={styles.passiveStatusDistance}>{distanceLabel}</Text>
-              ) : null}
-            </View>
-          )}
+          ) : null}
         </View>
 
         {/* Affichage du prix de la course */}
@@ -531,7 +526,9 @@ const styles = StyleSheet.create({
   modalDismissButton: { flexDirection: 'row', paddingVertical: 12, width: '100%', alignItems: 'center', justifyContent: 'center' },
   modalDismissText: { color: THEME.COLORS.champagneGold, fontWeight: 'bold', fontSize: 15 },
   container: { position: 'absolute', bottom: 0, width: width, backgroundColor: THEME.COLORS.background, borderTopLeftRadius: 32, borderTopRightRadius: 32, paddingHorizontal: THEME.SPACING.lg, paddingTop: THEME.SPACING.md, borderWidth: 1, borderColor: THEME.COLORS.border, elevation: 20, zIndex: 10 },
-  statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', marginBottom: THEME.SPACING.md },
+  statusBanner: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
+  statusHeaderContainer: { alignItems: 'center', marginBottom: THEME.SPACING.md },
+  statusSubtitle: { fontSize: 12, color: THEME.COLORS.champagneGold, fontWeight: 'bold', marginTop: 2, textAlign: 'center' },
   statusIndicator: { width: 24, height: 24, borderRadius: 12, backgroundColor: 'rgba(212, 175, 55, 0.2)', justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: THEME.COLORS.champagneGold },
   dotOngoing: { backgroundColor: THEME.COLORS.success },
@@ -713,14 +710,14 @@ const styles = StyleSheet.create({
     marginTop: THEME.SPACING.sm,
   },
   priceLabel: {
-    fontSize: 12,
-    color: THEME.COLORS.textSecondary,
-    fontWeight: '700',
+    fontSize: 13,
+    color: THEME.COLORS.textPrimary,
+    fontWeight: '800',
     textTransform: 'uppercase',
   },
   priceValue: {
-    fontSize: 22,
-    fontWeight: '900',
+    fontSize: 28,
+    fontWeight: '950',
     color: THEME.COLORS.champagneGold,
   },
 });

@@ -209,6 +209,8 @@ const RiderRideOverlay = () => {
 
   const driverAvatar = currentRide.driverProfilePicture || currentRide.driverAvatar || currentRide.driver?.profilePicture || currentRide.driver?.avatar;
   const driverName = currentRide.driverName || currentRide.driver?.name || 'Chauffeur Assigne';
+  const hasPlate = !!(currentRide?.vehicle?.plate && currentRide?.vehicle?.plate !== 'NON SPECIFIE');
+  const hasModel = !!(currentRide?.vehicle?.model && currentRide?.vehicle?.model !== 'Vehicule');
 
   return (
     <>
@@ -277,9 +279,9 @@ const RiderRideOverlay = () => {
           <Text style={styles.driverName}>
             {driverName}
           </Text>
-          <View style={[styles.carBadge, !(currentRide.vehicle?.plate && currentRide.vehicle.plate !== 'NON SPECIFIE') && styles.carBadgeWarning]}>
-            <Text style={[styles.carText, !(currentRide.vehicle?.plate && currentRide.vehicle.plate !== 'NON SPECIFIE') && styles.carTextWarning]}>
-              {currentRide.vehicle?.plate && currentRide.vehicle.plate !== 'NON SPECIFIE' ? 'Véhicule immatriculé' : 'Plaque non renseignée'}
+          <View style={[styles.carBadge, !hasPlate && styles.carBadgeWarning]}>
+            <Text style={[styles.carText, !hasPlate && styles.carTextWarning]}>
+              {hasPlate ? 'Véhicule immatriculé' : 'Plaque non renseignée'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -366,8 +368,8 @@ const RiderRideOverlay = () => {
             <View style={styles.profileDetailTexts}>
               <Text style={styles.profileDetailLabel}>Modèle de véhicule</Text>
               <Text style={styles.profileDetailVal}>
-                {currentRide.vehicle?.model && currentRide.vehicle.model !== 'Vehicule' ? (
-                  `${currentRide.vehicle.model} (${currentRide.vehicle.color || 'Couleur non renseignée'})`
+                {hasModel ? (
+                  `${currentRide?.vehicle?.model} (${currentRide?.vehicle?.color || 'Couleur non renseignée'})`
                 ) : (
                   'Modèle non renseigné'
                 )}
@@ -379,10 +381,10 @@ const RiderRideOverlay = () => {
             <Ionicons name="barcode" size={22} color={THEME.COLORS.champagneGold} />
             <View style={styles.profileDetailTexts}>
               <Text style={styles.profileDetailLabel}>Plaque d'immatriculation</Text>
-              {currentRide.vehicle?.plate && currentRide.vehicle.plate !== 'NON SPECIFIE' ? (
+              {hasPlate ? (
                 <View style={styles.profilePlateBadge}>
                   <Text style={styles.profilePlateText}>
-                    {currentRide.vehicle.plate}
+                    {currentRide?.vehicle?.plate}
                   </Text>
                 </View>
               ) : (
