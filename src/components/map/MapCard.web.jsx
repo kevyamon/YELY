@@ -1,6 +1,6 @@
 // src/components/map/MapCard.web.jsx
 // COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready (Force Light Theme)
-// CSCSM Level: Bank Grade (Avec Cinematic Focus UX)
+// CSCSM Level: Bank Grade (Avec Cinematic Focus UX et Aération intelligente des POIs)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -28,10 +28,19 @@ import {
 const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
 
-// Algorithme de désambiguïsation géographique des labels de POI pour éviter les chevauchements
-const resolvePoiCollisions = (pois) => {
+// Algorithme de désencombrement géographique dynamique des POIs pour éviter les chevauchements
+const resolvePoiCollisions = (pois, zoom) => {
   if (!pois || pois.length === 0) return [];
-  const LAT_LNG_THRESHOLD = 0.0006; // environ 70 mètres
+  
+  // Seuil de collision dynamique (en degrés) selon le niveau de zoom
+  let threshold = 0.0006;
+  if (zoom >= 18) threshold = 0.00015;      // Zoom maximum -> quasi tous les POIs visibles
+  else if (zoom === 17) threshold = 0.0004;
+  else if (zoom === 16) threshold = 0.0008;
+  else if (zoom === 15) threshold = 0.0018; // Zoom initial -> fortement aéré (approx. 200m)
+  else if (zoom === 14) threshold = 0.0035;
+  else threshold = 0.0070;                 // Zoom arrière -> masquer presque tout pour rester propre
+
   const processed = [];
 
   for (let i = 0; i < pois.length; i++) {
@@ -41,17 +50,20 @@ const resolvePoiCollisions = (pois) => {
 
     let hasCollision = false;
     for (const p of processed) {
-      if (p.showLabel === false) continue;
       const pLat = Number(p.latitude);
       const pLng = Number(p.longitude);
 
-      if (Math.abs(curLat - pLat) < LAT_LNG_THRESHOLD && Math.abs(curLng - pLng) < LAT_LNG_THRESHOLD) {
+      if (Math.abs(curLat - pLat) < threshold && Math.abs(curLng - pLng) < threshold) {
         hasCollision = true;
         break;
       }
     }
-    current.showLabel = !hasCollision;
-    processed.push(current);
+    
+    // Si pas de collision, on conserve le point d'intérêt entier
+    if (!hasCollision) {
+      current.showLabel = true;
+      processed.push(current);
+    }
   }
   return processed;
 };
@@ -95,12 +107,21 @@ const MapInteractionTracker = ({ onInteract }) => {
   return null;
 };
 
+const MapEventsHandler = ({ onZoomChange }) => {
+  const map = useMapEvents({
+    zoomend: () => {
+      onZoomChange(map.getZoom());
+    }
+  });
+  return null;
+};
+
 const MapCard = forwardRef(({
   location,
   driverLocation,
   markers = [],
   isDriver = false,
-  rideStatus = null, // AJOUT : Indispensable pour le Cinematic Focus
+  rideStatus = null, 
   showUserMarker = true,
   showRecenterButton = true,
   mapTopPadding = 140,
@@ -117,6 +138,7 @@ const MapCard = forwardRef(({
   const buttonOpacity = useRef(new Animated.Value(1)).current;
   const [isButtonActive, setIsButtonActive] = useState(true);
   const buttonSleepTimeout = useRef(null);
+  const [currentZoom, setCurrentZoom] = useState(15);
 
   useEffect(() => {
     if (typeof document !== 'undefined') {
@@ -208,7 +230,7 @@ const MapCard = forwardRef(({
 
   // --- UX : CINEMATIC FOCUS (Version Web) ---
   const isCinematicMode = isRouteValid || rideStatus !== null;
-  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs);
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs, currentZoom);
 
   return (
     <View style={[styles.container, style]}>
@@ -220,7 +242,7 @@ const MapCard = forwardRef(({
           marker.icon ? <UniversalIcon key={`preload-marker-${index}`} iconString={marker.icon} size={10} color="transparent" /> : null
         ))}
       </View>
-
+ 
       <MapContainer
         center={center}
         zoom={15}
@@ -230,6 +252,7 @@ const MapCard = forwardRef(({
         ref={(mapInstance) => { if (mapInstance) mapInstanceRef.current = mapInstance; }}
         whenReady={() => onMapReady?.()}
       >
+        <MapEventsHandler onZoomChange={setCurrentZoom} />
         <MapInteractionTracker onInteract={handleMapInteraction} />
 
         <TileLayer
@@ -247,7 +270,7 @@ const MapCard = forwardRef(({
           mapBottomPadding={mapBottomPadding}
         />
 
-        {/* Cinematic Focus appliqué ici : on map sur visiblePOIs et non mapPOIs */}
+        {/* Cinematic Focus appliqué ici : on map sur visiblePOIs */}
         {visiblePOIs.map((poi) => (
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
@@ -278,7 +301,6 @@ const MapCard = forwardRef(({
             }
           }
           else if (marker.type === 'destination') {
-            // Héritage Visuel de la destination
             if (marker.icon) {
                 markerIcon = createPoiIcon({
                   icon: marker.icon,
@@ -386,7 +408,7 @@ const arePropsEqual = (prevProps, nextProps) => {
     prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
     prevProps.showUserMarker === nextProps.showUserMarker &&
     prevProps.isDriver === nextProps.isDriver &&
-    prevProps.rideStatus === nextProps.rideStatus // CORRECTION : Forcer le re-rendu lors des changements de statut
+    prevProps.rideStatus === nextProps.rideStatus 
   );
 };
 

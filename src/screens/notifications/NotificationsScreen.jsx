@@ -3,8 +3,8 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect, useRef, useState } from 'react';
-import { FlatList, Linking, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { FlatList, Linking, Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { ConfirmModal } from '../../components/admin/AdminModals';
@@ -26,6 +26,49 @@ const NOTIF_ICONS = {
   ORDER_UPDATE: { icon: 'receipt', color: THEME.COLORS.info },
 };
 
+const NotificationDetailModal = ({ visible, item, onClose, onAction }) => {
+  if (!item) return null;
+  const config = NOTIF_ICONS[item.type] || NOTIF_ICONS.SYSTEM;
+  const hasAction =
+    (item.metadata && item.metadata.reportId) ||
+    (item.metadata && (item.type === 'NEW_ORDER' || item.type === 'ORDER_UPDATE')) ||
+    (item.metadata && item.metadata.updateUrl);
+
+  return (
+    <Modal visible={visible} transparent={true} animationType="fade" onRequestClose={onClose}>
+      <View style={styles.modalOverlay}>
+        <View style={styles.modalCard}>
+          <View style={[styles.modalIconWrap, { backgroundColor: config.color + '20' }]}>
+            <Ionicons name={config.icon} size={28} color={config.color} />
+          </View>
+          <Text style={styles.modalTitle}>{item.title}</Text>
+          <Text style={styles.modalTime}>
+            {new Date(item.createdAt).toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              hour: '2-digit',
+              minute: '2-digit',
+            })}
+          </Text>
+          <Text style={styles.modalMessage}>{item.message}</Text>
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity style={styles.modalCloseBtn} onPress={onClose} activeOpacity={0.8}>
+              <Text style={styles.modalCloseBtnText}>Fermer</Text>
+            </TouchableOpacity>
+            {hasAction && (
+              <TouchableOpacity style={styles.modalActionBtn} onPress={onAction} activeOpacity={0.8}>
+                <Text style={styles.modalActionBtnText}>Consulter</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
 const NotificationsScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const flatListRef = useRef(null);
@@ -38,6 +81,9 @@ const NotificationsScreen = ({ navigation, route }) => {
   const [notifToDelete, setInterceptionId] = useState(null);
   const [selectedReportId, setSelectedReportId] = useState(null);
   const [isReportModalVisible, setIsReportModalVisible] = useState(false);
+
+  const [selectedNotif, setSelectedNotif] = useState(null);
+  const [isDetailModalVisible, setIsDetailModalVisible] = useState(false);
 
   const notifications = data?.data?.notifications || [];
 
@@ -70,7 +116,11 @@ const NotificationsScreen = ({ navigation, route }) => {
     if (!item.isRead) {
       await markRead(item._id);
     }
-    
+    setSelectedNotif(item);
+    setIsDetailModalVisible(true);
+  };
+
+  const handleRedirect = (item) => {
     if (item.metadata && item.metadata.reportId) {
       setSelectedReportId(item.metadata.reportId);
       setIsReportModalVisible(true);
@@ -93,6 +143,13 @@ const NotificationsScreen = ({ navigation, route }) => {
           Linking.openURL(finalUrl);
         }
       }).catch(err => console.warn('[NOTIFS] Erreur redirection mise a jour:', err));
+    }
+  };
+
+  const handleActionClick = () => {
+    setIsDetailModalVisible(false);
+    if (selectedNotif) {
+      handleRedirect(selectedNotif);
     }
   };
 
@@ -199,6 +256,13 @@ const NotificationsScreen = ({ navigation, route }) => {
         onClose={() => setIsReportModalVisible(false)}
         reportId={selectedReportId}
       />
+
+      <NotificationDetailModal
+        visible={isDetailModalVisible}
+        item={selectedNotif}
+        onClose={() => setIsDetailModalVisible(false)}
+        onAction={handleActionClick}
+      />
     </ScreenWrapper>
   );
 };
@@ -228,6 +292,90 @@ const styles = StyleSheet.create({
   pullHint: { color: THEME.COLORS.textTertiary, fontSize: 12, marginTop: 10, fontStyle: 'italic' },
   emptyCenter: { flex: 1, justifyContent: 'center', alignItems: 'center', marginTop: 100 },
   centerSkeleton: { flex: 1, paddingHorizontal: 20, paddingTop: 20 },
+
+  // Styles de la modale de détails
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 20,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 400,
+    backgroundColor: THEME.COLORS.background,
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1.5,
+    borderColor: THEME.COLORS.border || 'rgba(255, 255, 255, 0.08)',
+    alignItems: 'center',
+    elevation: 10,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+  },
+  modalIconWrap: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 18,
+    fontWeight: '800',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalTime: {
+    color: THEME.COLORS.textTertiary,
+    fontSize: 12,
+    marginBottom: 16,
+  },
+  modalMessage: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 14.5,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    width: '100%',
+    gap: 12,
+  },
+  modalCloseBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: THEME.COLORS.border,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.02)',
+  },
+  modalCloseBtnText: {
+    color: THEME.COLORS.textSecondary,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  modalActionBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 14,
+    backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalActionBtnText: {
+    color: '#121418',
+    fontSize: 14,
+    fontWeight: '800',
+  }
 });
 
 export default NotificationsScreen;
