@@ -1,6 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
-import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices } from 'react-native-webrtc';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -10,7 +9,24 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Platform
 } from 'react-native';
+
+// Support universel (Native + Web PWA)
+let RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices;
+
+if (Platform.OS === 'web') {
+  RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
+  RTCIceCandidate = window.RTCIceCandidate;
+  RTCSessionDescription = window.RTCSessionDescription;
+  mediaDevices = navigator.mediaDevices;
+} else {
+  const webrtc = require('react-native-webrtc');
+  RTCPeerConnection = webrtc.RTCPeerConnection;
+  RTCIceCandidate = webrtc.RTCIceCandidate;
+  RTCSessionDescription = webrtc.RTCSessionDescription;
+  mediaDevices = webrtc.mediaDevices;
+}
 import Animated, {
   useAnimatedStyle,
   useSharedValue,
