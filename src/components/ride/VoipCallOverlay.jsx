@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import { RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices } from 'react-native-webrtc';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -29,6 +30,12 @@ const RINGING_SOUND_URL = 'https://www.soundjay.com/phone/phone-ringing-01.mp3';
 const CALLING_SOUND_URL = 'https://www.soundjay.com/phone/phone-calling-1.mp3';
 const BEEP_SOUND_URL = 'https://www.soundjay.com/button/button-3.mp3';
 
+const configuration = {
+  iceServers: [
+    { urls: 'stun:stun.l.google.com:19302' },
+  ]
+};
+
 const VoipCallOverlay = () => {
   const dispatch = useDispatch();
   const callInfo = useSelector(selectCallInfo);
@@ -41,6 +48,8 @@ const VoipCallOverlay = () => {
 
   const soundRef = useRef(null);
   const timerRef = useRef(null);
+  const pcRef = useRef(null);
+  const localStreamRef = useRef(null);
   const pulseScale = useSharedValue(1);
 
   // 1. Gestion des effets sonores avec expo-av
@@ -84,7 +93,7 @@ const VoipCallOverlay = () => {
     };
   }, [callState]);
 
-  // 3. Compteur de durée d'appel
+  // 3. Compteur de durée d'appel et WebRTC Cleanup
   useEffect(() => {
     if (callState === 'connected') {
       let elapsed = 0;
@@ -99,10 +108,109 @@ const VoipCallOverlay = () => {
       }
     }
 
+    if (callState === 'idle') {
+      cleanupWebRTC();
+    }
+
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [callState, dispatch]);
+
+  const cleanupWebRTC = () => {
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+  };
+
+  const startWebRTC = async () => {
+    try {
+      const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
+      localStreamRef.current = stream;
+      
+      const pc = new RTCPeerConnection(configuration);
+      pcRef.current = pc;
+      
+      stream.getTracks().forEach(track => {
+        pc.addTrack(track, stream);
+      });
+
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          socketService.emit('webrtc_ice_candidate', {
+            targetUserId,
+            candidate: event.candidate
+          });
+        }
+      };
+
+      if (!isIncoming) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        socketService.emit('webrtc_offer', {
+          targetUserId,
+          sdp: pc.localDescription
+        });
+      }
+    } catch (err) {
+      console.warn("[VOIP CALL] Echec WebRTC:", err);
+    }
+  };
+
+  useEffect(() => {
+    if (callState === 'calling' || callState === 'ringing') {
+      startWebRTC();
+    }
+  }, [callState]);
+
+  useEffect(() => {
+    const handleOffer = async (data) => {
+      if (pcRef.current && data.callerId === targetUserId) {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+        const answer = await pcRef.current.createAnswer();
+        await pcRef.current.setLocalDescription(answer);
+        socketService.emit('webrtc_answer', {
+          targetUserId,
+          sdp: pcRef.current.localDescription
+        });
+      }
+    };
+
+    const handleAnswer = async (data) => {
+      if (pcRef.current && data.callerId === targetUserId) {
+        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      }
+    };
+
+    const handleIceCandidate = async (data) => {
+      if (pcRef.current && data.callerId === targetUserId) {
+        await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      }
+    };
+
+    socketService.on('webrtc_offer', handleOffer);
+    socketService.on('webrtc_answer', handleAnswer);
+    socketService.on('webrtc_ice_candidate', handleIceCandidate);
+
+    return () => {
+      socketService.off('webrtc_offer', handleOffer);
+      socketService.off('webrtc_answer', handleAnswer);
+      socketService.off('webrtc_ice_candidate', handleIceCandidate);
+    };
+  }, [targetUserId]);
+
+  useEffect(() => {
+    if (localStreamRef.current) {
+      localStreamRef.current.getAudioTracks().forEach(track => {
+        track.enabled = !isMuted;
+      });
+    }
+  }, [isMuted]);
 
   // 4. Animation de pulsation autour de l'avatar
   useEffect(() => {

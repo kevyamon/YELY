@@ -50,7 +50,6 @@ import ClientOrders from '../screens/marketplace/ClientOrders';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrders from '../screens/seller/SellerOrders';
 import LedgerHistory from '../screens/seller/LedgerHistory';
-import PancarteScreen from '../screens/ride/PancarteScreen';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import ReportScreen from '../screens/report/ReportScreen';
 import SplashScreenComponent from '../screens/SplashScreen';
@@ -254,7 +253,6 @@ const AppNavigator = () => {
             
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: true, animationDuration: 100 }} />
-              <Stack.Screen name="Pancarte" component={PancarteScreen} options={{ animation: 'slide_from_bottom' }} />
               <Stack.Screen name="Profile" component={ProfileScreen} />
               <Stack.Screen name="History" component={HistoryScreen} />
               <Stack.Screen name="Report" component={ReportScreen} />

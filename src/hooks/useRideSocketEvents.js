@@ -4,6 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Audio } from 'expo-av';
 import socketService from '../services/socketService';
 import { selectCurrentUser, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
@@ -13,7 +14,8 @@ import {
   setIncomingRide,
   setRideToRate,
   updateDriverLocation,
-  updateRideStatus
+  updateRideStatus,
+  selectIncomingRide
 } from '../store/slices/rideSlice';
 import { showErrorToast, showSuccessToast } from '../store/slices/uiSlice';
 
@@ -21,13 +23,47 @@ const useRideSocketEvents = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
   const user = useSelector(selectCurrentUser);
+  const incomingRide = useSelector(selectIncomingRide);
   const lastProcessedEventRef = useRef('');
+  const requestSoundRef = useRef(null);
 
   useEffect(() => {
     if (isAuthenticated && user?._id) {
       socketService.joinRoom(user._id.toString());
     }
   }, [isAuthenticated, user?._id]);
+
+  useEffect(() => {
+    const manageRequestSound = async () => {
+      try {
+        if (incomingRide) {
+          if (requestSoundRef.current) await requestSoundRef.current.unloadAsync();
+          const { sound } = await Audio.Sound.createAsync(
+            { uri: 'https://www.soundjay.com/phone/phone-ringing-01.mp3' },
+            { shouldPlay: true, isLooping: true }
+          );
+          requestSoundRef.current = sound;
+        } else {
+          if (requestSoundRef.current) {
+            await requestSoundRef.current.stopAsync();
+            await requestSoundRef.current.unloadAsync();
+            requestSoundRef.current = null;
+          }
+        }
+      } catch (e) {
+        console.warn("[RIDE REQUEST] Erreur son", e);
+      }
+    };
+    manageRequestSound();
+    
+    return () => {
+      if (requestSoundRef.current && !incomingRide) {
+        requestSoundRef.current.stopAsync().catch(() => {});
+        requestSoundRef.current.unloadAsync().catch(() => {});
+        requestSoundRef.current = null;
+      }
+    };
+  }, [incomingRide]);
 
   useEffect(() => {
     if (!isAuthenticated) return;

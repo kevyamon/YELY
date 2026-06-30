@@ -277,25 +277,26 @@ const RiderRideOverlay = () => {
           onPress={() => setIsProfileVisible(true)}
           activeOpacity={0.8}
         >
-          <Text style={styles.driverName}>
+          <Text style={styles.driverName} numberOfLines={1}>
             {driverName}
           </Text>
-          <View style={[styles.carBadge, !hasPlate && styles.carBadgeWarning]}>
-            <Text style={[styles.carText, !hasPlate && styles.carTextWarning]}>
-              {hasPlate ? 'Véhicule immatriculé' : 'Plaque non renseignée'}
+          <View style={styles.vehicleCompactRow}>
+            {hasPlate ? (
+              <View style={styles.plateMiniBadge}>
+                <Text style={styles.plateMiniText}>{currentRide?.vehicle?.plate}</Text>
+              </View>
+            ) : (
+              <View style={[styles.plateMiniBadge, styles.plateMiniBadgeMissing]}>
+                <Text style={[styles.plateMiniText, styles.plateMiniTextMissing]}>SANS PLAQUE</Text>
+              </View>
+            )}
+            <Text style={styles.vehicleMiniModel} numberOfLines={1}>
+              {hasModel ? `${currentRide?.vehicle?.model} • ${currentRide?.vehicle?.color || 'N/A'}` : 'Modèle non renseigné'}
             </Text>
           </View>
         </TouchableOpacity>
 
         <View style={styles.topActionsGroup}>
-          {!isOngoing && (
-            <TouchableOpacity
-              style={styles.pancarteButton}
-              onPress={() => navigation.navigate('Pancarte')}
-            >
-              <Ionicons name="tablet-landscape" size={20} color={THEME.COLORS.champagneGold} />
-            </TouchableOpacity>
-          )}
           <TouchableOpacity style={styles.callButton} onPress={handleCallDriver}>
             <Ionicons name="call" size={22} color="#FFFFFF" />
           </TouchableOpacity>
@@ -441,13 +442,14 @@ const styles = StyleSheet.create({
   avatarImage: { width: '100%', height: '100%', borderRadius: 30 },
   driverDetails: { flex: 1, marginLeft: THEME.SPACING.md },
   driverName: { fontSize: 18, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 4 },
-  carBadge: { backgroundColor: 'rgba(255, 255, 255, 0.05)', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6, alignSelf: 'flex-start', marginBottom: 4, borderWidth: 1, borderColor: THEME.COLORS.glassBorder },
-  carBadgeWarning: { backgroundColor: 'rgba(231, 76, 60, 0.08)', borderColor: 'rgba(231, 76, 60, 0.25)' },
-  carText: { fontSize: 12, color: THEME.COLORS.textSecondary, fontWeight: '600' },
-  carTextWarning: { color: THEME.COLORS.danger },
+  vehicleCompactRow: { flexDirection: 'row', alignItems: 'center', marginTop: 2, maxWidth: '95%' },
+  plateMiniBadge: { backgroundColor: '#FFFFFF', paddingHorizontal: 4, paddingVertical: 2, borderRadius: 4, borderWidth: 1, borderColor: THEME.COLORS.champagneGold, marginRight: 6 },
+  plateMiniText: { color: '#000000', fontSize: 10, fontWeight: '900', letterSpacing: 0.5 },
+  plateMiniBadgeMissing: { backgroundColor: 'rgba(231, 76, 60, 0.1)', borderColor: THEME.COLORS.danger },
+  plateMiniTextMissing: { color: THEME.COLORS.danger },
+  vehicleMiniModel: { fontSize: 11, color: THEME.COLORS.textSecondary, fontWeight: '600', flexShrink: 1 },
   callButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.success, justifyContent: 'center', alignItems: 'center' },
   topActionsGroup: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  pancarteButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: THEME.COLORS.glassDark, borderWidth: 1, borderColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center' },
   actionsContainer: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingTop: THEME.SPACING.sm },
   priceContainer: { flex: 1 },
   priceLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, textTransform: 'uppercase', letterSpacing: 1, fontWeight: 'bold' },
