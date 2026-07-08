@@ -38,6 +38,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import socketService from '../../services/socketService';
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { endCall, acceptCall, selectCallInfo, updateDuration } from '../../store/slices/callSlice';
+import { showToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const { width, height } = Dimensions.get('window');
@@ -67,6 +68,52 @@ const VoipCallOverlay = () => {
   const pcRef = useRef(null);
   const localStreamRef = useRef(null);
   const pulseScale = useSharedValue(1);
+
+  // Queues de signalisation pour contrer les race conditions
+  const pendingOfferRef = useRef(null);
+  const pendingAnswerRef = useRef(null);
+  const pendingCandidatesRef = useRef([]);
+  const pcInitializedRef = useRef(false);
+
+  const updateAudioRouting = async (speakerOn) => {
+    if (Platform.OS === 'web') return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: true,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: true,
+        shouldRouteThroughEarpieceAndroid: !speakerOn,
+        playThroughEarpieceAndroid: !speakerOn
+      });
+      console.log(`[VOIP CALL] Audio route updated: Speaker=${speakerOn}`);
+    } catch (err) {
+      console.warn('[VOIP CALL] Echec config audio mode:', err.message);
+    }
+  };
+
+  const resetAudioMode = async () => {
+    if (Platform.OS === 'web') return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS: false,
+        playsInSilentModeIOS: true,
+        staysActiveInBackground: false,
+        shouldRouteThroughEarpieceAndroid: false,
+        playThroughEarpieceAndroid: false
+      });
+      console.log('[VOIP CALL] Audio route reset to default');
+    } catch (err) {
+      console.warn('[VOIP CALL] Echec reset audio mode:', err.message);
+    }
+  };
+
+  useEffect(() => {
+    if (callState === 'connected') {
+      updateAudioRouting(isSpeakerOn);
+    } else if (callState === 'idle') {
+      resetAudioMode();
+    }
+  }, [isSpeakerOn, callState]);
 
   // 1. Gestion des effets sonores avec expo-av
   const playSound = async (url, loop = false) => {
@@ -134,6 +181,11 @@ const VoipCallOverlay = () => {
   }, [callState, dispatch]);
 
   const cleanupWebRTC = () => {
+    pcInitializedRef.current = false;
+    pendingOfferRef.current = null;
+    pendingAnswerRef.current = null;
+    pendingCandidatesRef.current = [];
+
     if (pcRef.current) {
       pcRef.current.close();
       pcRef.current = null;
@@ -142,10 +194,40 @@ const VoipCallOverlay = () => {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
     }
+
+    if (Platform.OS === 'web') {
+      const audio = document.getElementById('yely-remote-audio');
+      if (audio) {
+        audio.srcObject = null;
+        audio.remove();
+      }
+    }
   };
 
   const startWebRTC = async () => {
     try {
+      // Vérification des permissions avant d'instancier getUserMedia
+      if (Platform.OS !== 'web') {
+        const { granted } = await Audio.requestPermissionsAsync();
+        if (!granted) {
+          dispatch(showToast({
+            type: 'error',
+            title: 'Accès micro requis',
+            message: 'Yely a besoin du micro pour passer des appels vocaux.'
+          }));
+          handleHangup();
+          return;
+        }
+      } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        dispatch(showToast({
+          type: 'error',
+          title: 'Sécurité Navigateur',
+          message: 'L\'accès au micro nécessite une connexion HTTPS sécurisée.'
+        }));
+        handleHangup();
+        return;
+      }
+
       const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       
@@ -156,6 +238,25 @@ const VoipCallOverlay = () => {
         pc.addTrack(track, stream);
       });
 
+      // Gestion et routage des pistes audio distantes
+      pc.ontrack = (event) => {
+        console.log("[WebRTC] Remote track received:", event.track.kind);
+        if (event.streams && event.streams[0]) {
+          const remoteStream = event.streams[0];
+          if (Platform.OS === 'web') {
+            let audio = document.getElementById('yely-remote-audio');
+            if (!audio) {
+              audio = document.createElement('audio');
+              audio.id = 'yely-remote-audio';
+              audio.autoplay = true;
+              document.body.appendChild(audio);
+            }
+            audio.srcObject = remoteStream;
+            audio.play().catch(e => console.warn('[VOIP CALL] Echec lecture audio WebRTC:', e));
+          }
+        }
+      };
+
       pc.onicecandidate = (event) => {
         if (event.candidate) {
           socketService.emit('webrtc_ice_candidate', {
@@ -165,7 +266,23 @@ const VoipCallOverlay = () => {
         }
       };
 
-      if (!isIncoming) {
+      // PeerConnection initialisée et prête
+      pcInitializedRef.current = true;
+
+      // 1. Dépiler l'offre SDP en attente si reçue pendant le chargement (receveur)
+      if (pendingOfferRef.current) {
+        console.log("[WebRTC] Dépilage de l'offre SDP reçue en attente");
+        await pc.setRemoteDescription(new RTCSessionDescription(pendingOfferRef.current));
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        socketService.emit('webrtc_answer', {
+          targetUserId,
+          sdp: pc.localDescription
+        });
+        pendingOfferRef.current = null;
+      } else if (!isIncoming) {
+        // Émetteur : génère et envoie l'offre SDP initiale
+        console.log("[WebRTC] Création de l'offre SDP locale");
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
         socketService.emit('webrtc_offer', {
@@ -173,8 +290,31 @@ const VoipCallOverlay = () => {
           sdp: pc.localDescription
         });
       }
+
+      // 2. Dépiler la réponse SDP en attente si reçue pendant le chargement (émetteur)
+      if (pendingAnswerRef.current) {
+        console.log("[WebRTC] Dépilage de la réponse SDP reçue en attente");
+        await pc.setRemoteDescription(new RTCSessionDescription(pendingAnswerRef.current));
+        pendingAnswerRef.current = null;
+      }
+
+      // 3. Dépiler les candidats ICE accumulés
+      if (pendingCandidatesRef.current.length > 0) {
+        console.log("[WebRTC] Dépilage de candidats ICE en attente:", pendingCandidatesRef.current.length);
+        for (const candidate of pendingCandidatesRef.current) {
+          await pc.addIceCandidate(new RTCIceCandidate(candidate));
+        }
+        pendingCandidatesRef.current = [];
+      }
+
     } catch (err) {
       console.warn("[VOIP CALL] Echec WebRTC:", err);
+      dispatch(showToast({
+        type: 'error',
+        title: 'Erreur Connexion',
+        message: 'Impossible de se connecter au canal VoIP.'
+      }));
+      handleHangup();
     }
   };
 
@@ -186,26 +326,53 @@ const VoipCallOverlay = () => {
 
   useEffect(() => {
     const handleOffer = async (data) => {
-      if (pcRef.current && data.callerId === targetUserId) {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
-        const answer = await pcRef.current.createAnswer();
-        await pcRef.current.setLocalDescription(answer);
-        socketService.emit('webrtc_answer', {
-          targetUserId,
-          sdp: pcRef.current.localDescription
-        });
+      if (data.callerId === targetUserId) {
+        if (pcRef.current && pcInitializedRef.current) {
+          try {
+            await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+            const answer = await pcRef.current.createAnswer();
+            await pcRef.current.setLocalDescription(answer);
+            socketService.emit('webrtc_answer', {
+              targetUserId,
+              sdp: pcRef.current.localDescription
+            });
+          } catch (err) {
+            console.warn("[WebRTC] Echec traitement offre SDP:", err);
+          }
+        } else {
+          console.log("[WebRTC] Offre SDP en attente d'initialisation du canal.");
+          pendingOfferRef.current = data.sdp;
+        }
       }
     };
 
     const handleAnswer = async (data) => {
-      if (pcRef.current && data.callerId === targetUserId) {
-        await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+      if (data.callerId === targetUserId) {
+        if (pcRef.current && pcInitializedRef.current) {
+          try {
+            await pcRef.current.setRemoteDescription(new RTCSessionDescription(data.sdp));
+          } catch (err) {
+            console.warn("[WebRTC] Echec traitement reponse SDP:", err);
+          }
+        } else {
+          console.log("[WebRTC] Réponse SDP en attente d'initialisation du canal.");
+          pendingAnswerRef.current = data.sdp;
+        }
       }
     };
 
     const handleIceCandidate = async (data) => {
-      if (pcRef.current && data.callerId === targetUserId) {
-        await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+      if (data.callerId === targetUserId) {
+        if (pcRef.current && pcInitializedRef.current) {
+          try {
+            await pcRef.current.addIceCandidate(new RTCIceCandidate(data.candidate));
+          } catch (err) {
+            console.warn("[WebRTC] Echec ajout candidat ICE:", err);
+          }
+        } else {
+          console.log("[WebRTC] Candidat ICE en attente.");
+          pendingCandidatesRef.current.push(data.candidate);
+        }
       }
     };
 
