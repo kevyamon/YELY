@@ -30,7 +30,8 @@
         "UIBackgroundModes": [
           "location",
           "fetch",
-          "remote-notification"
+          "remote-notification",
+          "audio"
         ]
       }
     },
@@ -55,7 +56,12 @@
         "FOREGROUND_SERVICE_LOCATION",
         "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
-        "RECORD_AUDIO"
+        "RECORD_AUDIO",
+        "MODIFY_AUDIO_SETTINGS",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "BLUETOOTH",
+        "BLUETOOTH_CONNECT",
+        "WAKE_LOCK"
       ]
     },
     "web": {
