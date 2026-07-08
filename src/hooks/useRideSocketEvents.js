@@ -33,31 +33,56 @@ const useRideSocketEvents = () => {
     }
   }, [isAuthenticated, user?._id]);
 
+  // Configurer le mode audio global pour autoriser la sonnerie en arrière-plan (ex: Google Maps ouvert)
+  useEffect(() => {
+    const initAudioMode = async () => {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          staysActiveInBackground: true,
+          shouldRouteThroughEarpieceAndroid: false
+        });
+      } catch (err) {
+        console.warn("[RIDE REQUEST] Echec config audio mode:", err);
+      }
+    };
+    initAudioMode();
+  }, []);
+
   useEffect(() => {
     const manageRequestSound = async () => {
       try {
         if (incomingRide) {
-          if (requestSoundRef.current) await requestSoundRef.current.unloadAsync();
+          if (requestSoundRef.current) {
+            await requestSoundRef.current.stopAsync().catch(() => {});
+            await requestSoundRef.current.unloadAsync().catch(() => {});
+          }
+
+          // Pour personnaliser l'audio localement, déposez votre fichier dans assets/sounds/new_ride.wav et décommentez la ligne suivante :
+          // const soundSource = require('../../assets/sounds/new_ride.wav');
+          const soundSource = { uri: 'https://www.soundjay.com/phone/phone-ringing-01.mp3' };
+
           const { sound } = await Audio.Sound.createAsync(
-            { uri: 'https://www.soundjay.com/phone/phone-ringing-01.mp3' },
+            soundSource,
             { shouldPlay: true, isLooping: true }
           );
           requestSoundRef.current = sound;
         } else {
           if (requestSoundRef.current) {
-            await requestSoundRef.current.stopAsync();
-            await requestSoundRef.current.unloadAsync();
+            await requestSoundRef.current.stopAsync().catch(() => {});
+            await requestSoundRef.current.unloadAsync().catch(() => {});
             requestSoundRef.current = null;
           }
         }
       } catch (e) {
-        console.warn("[RIDE REQUEST] Erreur son", e);
+        console.warn("[RIDE REQUEST] Erreur son:", e);
       }
     };
     manageRequestSound();
     
     return () => {
-      if (requestSoundRef.current && !incomingRide) {
+      if (requestSoundRef.current) {
         requestSoundRef.current.stopAsync().catch(() => {});
         requestSoundRef.current.unloadAsync().catch(() => {});
         requestSoundRef.current = null;

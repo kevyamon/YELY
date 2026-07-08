@@ -48,11 +48,19 @@ const usePushNotifications = () => {
 
     const registerForPushNotificationsAsync = async () => {
       if (Platform.OS === 'android') {
+        await Notifications.setNotificationChannelAsync('default', {
+          name: 'Général',
+          importance: Notifications.AndroidImportance.MAX,
+          vibrationPattern: [0, 250, 250, 250],
+          lightColor: '#D4AF37',
+          sound: 'push.wav',
+        });
         await Notifications.setNotificationChannelAsync('yely_rides', {
           name: 'Yely Courses',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#D4AF37',
+          sound: 'push.wav',
         });
       }
 

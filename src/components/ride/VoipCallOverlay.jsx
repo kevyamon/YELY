@@ -1,5 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { Audio } from 'expo-av';
+import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
@@ -9,7 +10,9 @@ import {
   Text,
   TouchableOpacity,
   View,
-  Platform
+  Platform,
+  useColorScheme,
+  StatusBar
 } from 'react-native';
 
 // Support universel (Native + Web PWA)
@@ -57,6 +60,21 @@ const VoipCallOverlay = () => {
   const dispatch = useDispatch();
   const callInfo = useSelector(selectCallInfo);
   const currentUser = useSelector(selectCurrentUser);
+
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+
+  const themeColors = {
+    gradient: isDarkMode ? ['#0E1116', '#1A1F2C'] : ['#F4F6FA', '#E4E9F2'],
+    text: isDarkMode ? '#FFFFFF' : '#1C1C1E',
+    subtext: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(28, 28, 30, 0.6)',
+    cardBg: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
+    cardBorder: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
+    controlIcon: isDarkMode ? '#FFFFFF' : '#1C1C1E',
+    avatarBg: isDarkMode ? '#1C1C1E' : '#FFFFFF',
+    panelBg: isDarkMode ? 'rgba(20, 25, 35, 0.82)' : 'rgba(255, 255, 255, 0.85)',
+    panelBorder: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+  };
 
   const { callState, targetUserId, targetName, targetAvatar, targetPhone, isIncoming, callDuration } = callInfo;
 
@@ -116,11 +134,11 @@ const VoipCallOverlay = () => {
   }, [isSpeakerOn, callState]);
 
   // 1. Gestion des effets sonores avec expo-av
-  const playSound = async (url, loop = false) => {
+  const playSound = async (urlOrAsset, loop = false) => {
     try {
       await stopSound();
       const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
+        urlOrAsset,
         { shouldPlay: true, isLooping: loop }
       );
       soundRef.current = sound;
@@ -132,8 +150,8 @@ const VoipCallOverlay = () => {
   const stopSound = async () => {
     try {
       if (soundRef.current) {
-        await soundRef.current.stopAsync();
-        await soundRef.current.unloadAsync();
+        await soundRef.current.stopAsync().catch(() => {});
+        await soundRef.current.unloadAsync().catch(() => {});
         soundRef.current = null;
       }
     } catch (e) {}
@@ -142,11 +160,13 @@ const VoipCallOverlay = () => {
   // 2. Gestion de l'état d'appel et des transitions sonores
   useEffect(() => {
     if (callState === 'calling') {
-      playSound(CALLING_SOUND_URL, true);
+      playSound({ uri: CALLING_SOUND_URL }, true);
     } else if (callState === 'ringing') {
-      playSound(RINGING_SOUND_URL, true);
+      // Pour personnaliser l'audio localement, déposez votre fichier dans assets/sounds/call.wav et décommentez la ligne suivante :
+      // playSound(require('../../assets/sounds/call.wav'), true);
+      playSound({ uri: RINGING_SOUND_URL }, true);
     } else if (callState === 'connected') {
-      playSound(BEEP_SOUND_URL, false); // Beep de connexion
+      playSound({ uri: BEEP_SOUND_URL }, false); // Beep de connexion
     } else {
       stopSound();
     }
@@ -420,8 +440,19 @@ const VoipCallOverlay = () => {
     }
   }, [callState, pulseScale]);
 
-  const pulseStyle = useAnimatedStyle(() => ({
+  const pulseStyle1 = useAnimatedStyle(() => ({
     transform: [{ scale: pulseScale.value }],
+    opacity: withTiming(callState === 'connected' ? 0.3 : 0.6),
+  }));
+
+  const pulseStyle2 = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + (pulseScale.value - 1) * 2.2 }],
+    opacity: withTiming(callState === 'connected' ? 0.15 : 0.3),
+  }));
+
+  const pulseStyle3 = useAnimatedStyle(() => ({
+    transform: [{ scale: 1 + (pulseScale.value - 1) * 3.4 }],
+    opacity: withTiming(callState === 'connected' ? 0.05 : 0.12),
   }));
 
   // Actions
@@ -456,87 +487,118 @@ const VoipCallOverlay = () => {
 
   return (
     <Modal visible={callState !== 'idle'} transparent={true} animationType="slide">
-      <View style={styles.backdrop}>
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} />
+      <LinearGradient colors={themeColors.gradient} style={styles.container}>
         
-        {/* En-tête de l'appel */}
-        <View style={styles.header}>
-          <Ionicons name="shield-checkmark" size={20} color={THEME.COLORS.champagneGold} />
-          <Text style={styles.headerTitle}>Appel Vocal Sécurisé Yely</Text>
-        </View>
+        {targetAvatar && (
+          <Image 
+            source={{ uri: targetAvatar }} 
+            style={StyleSheet.absoluteFillObject} 
+            blurRadius={Platform.OS === 'ios' ? 40 : 25}
+            opacity={0.12}
+          />
+        )}
 
-        {/* Zone de l'avatar et du nom */}
-        <View style={styles.avatarSection}>
-          <Animated.View style={[styles.avatarPulseWrapper, pulseStyle]}>
-            <View style={styles.avatarContainer}>
-              {targetAvatar ? (
-                <Image source={{ uri: targetAvatar }} style={styles.avatarImage} />
-              ) : (
-                <Ionicons name="person" size={70} color={THEME.COLORS.champagneGold} />
-              )}
-            </View>
-          </Animated.View>
-
-          <Text style={styles.callerName}>{targetName || 'Correspondant'}</Text>
-          <Text style={styles.callerPhone}>Numéro : {targetPhone || 'Masqué'}</Text>
+        <View style={styles.backdrop}>
           
-          <Text style={styles.callStatus}>
-            {callState === 'calling' && 'Appel en cours...'}
-            {callState === 'ringing' && 'Ça sonne...'}
-            {callState === 'connected' && formatTime(callDuration)}
-          </Text>
-        </View>
+          {/* En-tête de l'appel */}
+          <View style={styles.header}>
+            <Ionicons name="shield-checkmark" size={18} color={THEME.COLORS.champagneGold} />
+            <Text style={styles.headerTitle}>Appel Vocal Sécurisé Yely</Text>
+          </View>
 
-        {/* Zone des boutons d'actions */}
-        <View style={styles.actionsContainer}>
-          
-          {callState === 'ringing' && isIncoming ? (
-            /* Mode Appel Entrant */
-            <View style={styles.incomingButtonsRow}>
-              <TouchableOpacity style={[styles.circleButton, styles.declineButton]} onPress={handleDecline}>
-                <Ionicons name="close" size={32} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.actionLabel}>Refuser</Text>
-              
-              <TouchableOpacity style={[styles.circleButton, styles.acceptButton]} onPress={handleAccept}>
-                <Ionicons name="call" size={32} color="#FFFFFF" />
-              </TouchableOpacity>
-              <Text style={styles.actionLabel}>Répondre</Text>
+          {/* Zone de l'avatar et du nom */}
+          <View style={styles.avatarSection}>
+            <View style={styles.pulseContainer}>
+              <Animated.View style={[styles.avatarPulseRing, pulseStyle3]} />
+              <Animated.View style={[styles.avatarPulseRing, pulseStyle2]} />
+              <Animated.View style={[styles.avatarPulseRing, pulseStyle1]} />
+              <View style={[styles.avatarContainer, { backgroundColor: themeColors.avatarBg }]}>
+                {targetAvatar ? (
+                  <Image source={{ uri: targetAvatar }} style={styles.avatarImage} />
+                ) : (
+                  <Ionicons name="person" size={60} color={THEME.COLORS.champagneGold} />
+                )}
+              </View>
             </View>
-          ) : (
-            /* Mode Appel Émis / Connecté */
-            <View style={styles.callControlPanel}>
-              <View style={styles.controlsRow}>
-                <TouchableOpacity 
-                  style={[styles.circleControl, isMuted && styles.controlActive]} 
-                  onPress={() => setIsMuted(!isMuted)}
-                >
-                  <Ionicons name={isMuted ? "mic-off" : "mic"} size={22} color={isMuted ? "#121418" : "#FFFFFF"} />
-                </TouchableOpacity>
 
-                <TouchableOpacity 
-                  style={[styles.circleControl, isSpeakerOn && styles.controlActive]} 
-                  onPress={() => setIsSpeakerOn(!isSpeakerOn)}
-                >
-                  <Ionicons name={isSpeakerOn ? "volume-high" : "volume-low"} size={22} color={isSpeakerOn ? "#121418" : "#FFFFFF"} />
+            <Text style={[styles.callerName, { color: themeColors.text }]}>{targetName || 'Correspondant'}</Text>
+            <Text style={[styles.callerPhone, { color: themeColors.subtext }]}>Numéro : {targetPhone || 'Masqué'}</Text>
+            
+            <View style={styles.callStatusContainer}>
+              <View style={[styles.statusDot, { backgroundColor: callState === 'connected' ? '#2ECC71' : '#F1C40F' }]} />
+              <Text style={styles.callStatus}>
+                {callState === 'calling' && 'Appel en cours...'}
+                {callState === 'ringing' && 'Ça sonne...'}
+                {callState === 'connected' && formatTime(callDuration)}
+              </Text>
+            </View>
+          </View>
+
+          {/* Zone des boutons d'actions - Floating Glass Panel */}
+          <View style={[styles.floatingPanel, { backgroundColor: themeColors.panelBg, borderColor: themeColors.panelBorder }]}>
+            
+            {callState === 'ringing' && isIncoming ? (
+              /* Mode Appel Entrant */
+              <View style={styles.incomingButtonsRow}>
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={[styles.circleButton, styles.declineButton]} onPress={handleDecline}>
+                    <Ionicons name="close" size={32} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <Text style={[styles.actionLabel, { color: themeColors.text }]}>Refuser</Text>
+                </View>
+                
+                <View style={styles.actionButtonWrapper}>
+                  <TouchableOpacity style={[styles.circleButton, styles.acceptButton]} onPress={handleAccept}>
+                    <Ionicons name="call" size={32} color="#FFFFFF" />
+                  </TouchableOpacity>
+                  <Text style={[styles.actionLabel, { color: themeColors.text }]}>Répondre</Text>
+                </View>
+              </View>
+            ) : (
+              /* Mode Appel Émis / Connecté */
+              <View style={styles.callControlPanel}>
+                <View style={styles.controlsRow}>
+                  <View style={styles.controlButtonWrapper}>
+                    <TouchableOpacity 
+                      style={[styles.circleControl, isMuted ? styles.controlActive : { backgroundColor: themeColors.cardBg, borderColor: themeColors.cardBorder }]} 
+                      onPress={() => setIsMuted(!isMuted)}
+                    >
+                      <Ionicons name={isMuted ? "mic-off" : "mic"} size={22} color={isMuted ? "#121418" : themeColors.controlIcon} />
+                    </TouchableOpacity>
+                    <Text style={[styles.controlLabel, { color: themeColors.subtext }]}>Silencieux</Text>
+                  </View>
+
+                  <View style={styles.controlButtonWrapper}>
+                    <TouchableOpacity 
+                      style={[styles.circleControl, isSpeakerOn ? styles.controlActive : { backgroundColor: themeColors.cardBg, borderColor: themeColors.cardBorder }]} 
+                      onPress={() => setIsSpeakerOn(!isSpeakerOn)}
+                    >
+                      <Ionicons name={isSpeakerOn ? "volume-high" : "volume-low"} size={22} color={isSpeakerOn ? "#121418" : themeColors.controlIcon} />
+                    </TouchableOpacity>
+                    <Text style={[styles.controlLabel, { color: themeColors.subtext }]}>Haut-parleur</Text>
+                  </View>
+                </View>
+
+                <TouchableOpacity style={[styles.circleButton, styles.hangupButton]} onPress={handleHangup}>
+                  <Ionicons name="call-outline" size={28} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
                 </TouchableOpacity>
               </View>
+            )}
 
-              <TouchableOpacity style={[styles.circleButton, styles.hangupButton]} onPress={handleHangup}>
-                <Ionicons name="call-outline" size={32} color="#FFFFFF" style={{ transform: [{ rotate: '135deg' }] }} />
-              </TouchableOpacity>
-            </View>
-          )}
-
+          </View>
         </View>
-      </View>
+      </LinearGradient>
     </Modal>
   );
 };
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
   backdrop: {
     flex: 1,
-    backgroundColor: '#0E1116', // Fond sombre immersif
     justifyContent: 'space-between',
     alignItems: 'center',
     paddingVertical: 50,
@@ -546,78 +608,108 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
     marginTop: 20,
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    backgroundColor: 'rgba(212, 175, 55, 0.06)',
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.2)',
+    borderColor: 'rgba(212, 175, 55, 0.15)',
     borderRadius: 20,
     paddingVertical: 8,
     paddingHorizontal: 16,
   },
   headerTitle: {
     color: THEME.COLORS.champagneGold,
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 1,
+    letterSpacing: 1.5,
   },
   avatarSection: {
     alignItems: 'center',
     justifyContent: 'center',
+    width: '100%',
   },
-  avatarPulseWrapper: {
-    width: 170,
-    height: 170,
-    borderRadius: 85,
-    backgroundColor: 'rgba(212, 175, 55, 0.05)',
+  pulseContainer: {
+    width: 200,
+    height: 200,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 30,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.1)',
+  },
+  avatarPulseRing: {
+    position: 'absolute',
+    width: 140,
+    height: 140,
+    borderRadius: 70,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    backgroundColor: 'rgba(212, 175, 55, 0.04)',
   },
   avatarContainer: {
     width: 140,
     height: 140,
     borderRadius: 70,
-    backgroundColor: THEME.COLORS.glassDark,
     borderWidth: 4,
     borderColor: THEME.COLORS.champagneGold,
     justifyContent: 'center',
     alignItems: 'center',
     overflow: 'hidden',
     shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.4,
-    shadowRadius: 15,
-    elevation: 10,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 8,
+    zIndex: 2,
   },
   avatarImage: {
     width: '100%',
     height: '100%',
   },
   callerName: {
-    fontSize: 26,
+    fontSize: 28,
     fontWeight: '900',
-    color: '#FFFFFF',
     marginBottom: 6,
     textAlign: 'center',
+    letterSpacing: 0.5,
   },
   callerPhone: {
     fontSize: 14,
-    color: THEME.COLORS.textSecondary,
     marginBottom: 20,
     fontWeight: '600',
+    letterSpacing: 0.3,
+  },
+  callStatusContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(212, 175, 55, 0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.2)',
+    paddingVertical: 6,
+    paddingHorizontal: 14,
+    borderRadius: 16,
+  },
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
   },
   callStatus: {
-    fontSize: 18,
+    fontSize: 15,
     color: THEME.COLORS.champagneGold,
     fontWeight: '800',
     letterSpacing: 0.5,
   },
-  actionsContainer: {
-    width: '100%',
+  floatingPanel: {
+    width: '90%',
+    borderRadius: 30,
+    borderWidth: 1.5,
+    paddingVertical: 25,
+    paddingHorizontal: 20,
     alignItems: 'center',
-    paddingHorizontal: 40,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.15,
+    shadowRadius: 15,
+    elevation: 10,
     marginBottom: 20,
   },
   incomingButtonsRow: {
@@ -626,6 +718,10 @@ const styles = StyleSheet.create({
     width: '100%',
     alignItems: 'center',
   },
+  actionButtonWrapper: {
+    alignItems: 'center',
+    width: '40%',
+  },
   circleButton: {
     width: 72,
     height: 72,
@@ -633,27 +729,33 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     elevation: 8,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
+    shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.3,
-    shadowRadius: 5,
+    shadowRadius: 8,
   },
   declineButton: {
-    backgroundColor: THEME.COLORS.danger || '#E74C3C',
+    backgroundColor: '#E74C3C',
+    shadowColor: '#E74C3C',
   },
   acceptButton: {
-    backgroundColor: THEME.COLORS.success || '#2ECC71',
+    backgroundColor: '#2ECC71',
+    shadowColor: '#2ECC71',
   },
   hangupButton: {
-    backgroundColor: THEME.COLORS.danger || '#E74C3C',
+    backgroundColor: '#E74C3C',
+    shadowColor: '#E74C3C',
+    width: 64,
+    height: 64,
+    borderRadius: 32,
     alignSelf: 'center',
-    marginTop: 20,
+    marginTop: 10,
   },
   actionLabel: {
-    color: '#FFFFFF',
-    fontSize: 14,
-    fontWeight: 'bold',
-    marginTop: 8,
+    fontSize: 13,
+    fontWeight: '800',
+    marginTop: 10,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
   callControlPanel: {
     alignItems: 'center',
@@ -661,22 +763,38 @@ const styles = StyleSheet.create({
   },
   controlsRow: {
     flexDirection: 'row',
-    gap: 30,
+    gap: 40,
     marginBottom: 20,
   },
+  controlButtonWrapper: {
+    alignItems: 'center',
+  },
   circleControl: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.1)',
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    borderWidth: 1.5,
     justifyContent: 'center',
     alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 2,
   },
   controlActive: {
     backgroundColor: THEME.COLORS.champagneGold,
     borderColor: THEME.COLORS.champagneGold,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+  },
+  controlLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 6,
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
   },
 });
 
