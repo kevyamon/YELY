@@ -8,7 +8,6 @@ import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
 
-import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import RatingModal from '../../components/ride/RatingModal';
@@ -35,7 +34,6 @@ const RiderHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
-  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(240);
@@ -50,25 +48,7 @@ const RiderHome = ({ navigation }) => {
     currentRide.type !== 'DELIVERY' &&
     ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
-  useEffect(() => {
-    const checkFirstVisit = async () => {
-      if (!user) return; 
-      
-      const userId = user._id || user.id || 'unknown';
-      const storageKey = `@yely_has_seen_help_rider_${userId}`;
-      
-      try {
-        const hasSeen = await AsyncStorage.getItem(storageKey);
-        if (!hasSeen) {
-          setIsHelpVisible(true);
-          await AsyncStorage.setItem(storageKey, 'true');
-        }
-      } catch (error) {
-        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide)", error);
-      }
-    };
-    checkFirstVisit();
-  }, [user]);
+
 
   const {
     effectiveOrigin,
@@ -234,11 +214,7 @@ const RiderHome = ({ navigation }) => {
       <RiderWaitModal />
       <RatingModal />
       
-      <HelpVideoModal 
-        visible={isHelpVisible} 
-        onClose={() => setIsHelpVisible(false)} 
-        role="rider" 
-      />
+
 
     </View>
   );

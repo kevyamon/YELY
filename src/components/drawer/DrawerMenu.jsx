@@ -4,17 +4,16 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View } from 'react-native';
+import { StyleSheet, TouchableOpacity, View, Linking } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
-import HelpVideoModal from '../help/HelpVideoModal';
+import ENV from '../../config/env';
 import SettingsModal from './SettingsModal';
 import { getMenuItems } from './menuConfig';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
-  const [isHelpVisible, setIsHelpVisible] = useState(false);
   
   const menuItems = getMenuItems(role);
 
@@ -22,7 +21,9 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     if (route === 'SettingsModal') {
       setIsSettingsVisible(true);
     } else if (route === 'HelpModal') {
-      setIsHelpVisible(true);
+      Linking.openURL(ENV.YT_LINK).catch(() => {
+        // Fallback en cas d'erreur de lien
+      });
     } else {
       requestAnimationFrame(() => {
         onNavigate(route);
@@ -56,7 +57,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
             ]}>
               <Ionicons
                 name={isActive ? item.icon : `${item.icon}-outline`}
-                size={20} // Icône légèrement réduite pour un look plus raffiné
+                size={20} // Icône légèrement réduite pour un look plus raffine
                 color={isActive ? activeColor : THEME.COLORS.champagneGold}
               />
             </View>
@@ -85,12 +86,6 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
         visible={isSettingsVisible} 
         onClose={() => setIsSettingsVisible(false)} 
         onNavigate={onNavigate} 
-      />
-      
-      <HelpVideoModal
-        visible={isHelpVisible}
-        onClose={() => setIsHelpVisible(false)}
-        role={role}
       />
     </View>
   );

@@ -33,7 +33,6 @@ const MarketplaceHeader = ({
         styles.collapsibleHeader, 
         { 
           height: headerHeight, 
-          opacity: headerOpacity,
           paddingTop: insets.top + THEME.SPACING.xs,
           backgroundColor: '#0B0C0E',
           borderBottomWidth: 0,
@@ -144,6 +143,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: THEME.SPACING.lg,
     backgroundColor: '#0B0C0E',
     justifyContent: 'center',
+    overflow: 'hidden',
   },
   headerTopRow: {
     flexDirection: 'row',

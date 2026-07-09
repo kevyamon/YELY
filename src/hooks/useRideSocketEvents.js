@@ -4,7 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Audio } from 'expo-av';
+import { playSound } from '../utils/soundHelper';
 import socketService from '../services/socketService';
 import { selectCurrentUser, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';
 import {
@@ -51,27 +51,23 @@ const useRideSocketEvents = () => {
   }, []);
 
   useEffect(() => {
+    let soundController = null;
     const manageRequestSound = async () => {
       try {
         if (incomingRide) {
           if (requestSoundRef.current) {
-            await requestSoundRef.current.stopAsync().catch(() => {});
-            await requestSoundRef.current.unloadAsync().catch(() => {});
+            await requestSoundRef.current.stop();
+            requestSoundRef.current = null;
           }
 
-          // Pour personnaliser l'audio localement, déposez votre fichier dans assets/sounds/new_ride.wav et décommentez la ligne suivante :
-          // const soundSource = require('../../assets/sounds/new_ride.wav');
-          const soundSource = { uri: 'https://www.soundjay.com/phone/phone-ringing-01.mp3' };
-
-          const { sound } = await Audio.Sound.createAsync(
-            soundSource,
-            { shouldPlay: true, isLooping: true }
-          );
-          requestSoundRef.current = sound;
+          const controller = await playSound('new_ride', true);
+          if (controller) {
+            requestSoundRef.current = controller;
+            soundController = controller;
+          }
         } else {
           if (requestSoundRef.current) {
-            await requestSoundRef.current.stopAsync().catch(() => {});
-            await requestSoundRef.current.unloadAsync().catch(() => {});
+            await requestSoundRef.current.stop();
             requestSoundRef.current = null;
           }
         }
@@ -82,9 +78,11 @@ const useRideSocketEvents = () => {
     manageRequestSound();
     
     return () => {
+      if (soundController) {
+        soundController.stop();
+      }
       if (requestSoundRef.current) {
-        requestSoundRef.current.stopAsync().catch(() => {});
-        requestSoundRef.current.unloadAsync().catch(() => {});
+        requestSoundRef.current.stop();
         requestSoundRef.current = null;
       }
     };

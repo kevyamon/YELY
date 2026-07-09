@@ -4,7 +4,7 @@
 
 import { useEffect } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import { Audio } from 'expo-av';
+import { playSound } from '../utils/soundHelper';
 import socketService from '../services/socketService';
 import { apiSlice } from '../store/slices/apiSlice';
 import { logout, updatePromoMode, updateSubscriptionStatus, updateUserInfo } from '../store/slices/authSlice';
@@ -68,20 +68,7 @@ const useSocketEvents = () => {
       }));
 
       try {
-        // Pour personnaliser l'audio localement, déposez votre fichier dans assets/sounds/new_order.wav et décommentez la ligne suivante :
-        // const soundSource = require('../../assets/sounds/new_order.wav');
-        const soundSource = { uri: 'https://www.soundjay.com/button/button-3.mp3' };
-
-        const { sound } = await Audio.Sound.createAsync(
-          soundSource,
-          { shouldPlay: true }
-        );
-        
-        sound.setOnPlaybackStatusUpdate((status) => {
-          if (status.didJustFinish) {
-            sound.unloadAsync().catch(() => {});
-          }
-        });
+        playSound('new_order');
       } catch (err) {
         console.warn("[SOCKET] Echec lecture son nouvelle commande:", err);
       }

@@ -1,5 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Audio } from 'expo-av';
+import { playSound } from '../../utils/soundHelper';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
 import {
@@ -133,15 +133,12 @@ const VoipCallOverlay = () => {
     }
   }, [isSpeakerOn, callState]);
 
-  // 1. Gestion des effets sonores avec expo-av
-  const playSound = async (urlOrAsset, loop = false) => {
+  // 1. Gestion des effets sonores avec soundHelper
+  const triggerSound = async (type, loop = false) => {
     try {
       await stopSound();
-      const { sound } = await Audio.Sound.createAsync(
-        urlOrAsset,
-        { shouldPlay: true, isLooping: loop }
-      );
-      soundRef.current = sound;
+      const controller = await playSound(type, loop);
+      soundRef.current = controller;
     } catch (e) {
       console.warn('[VOIP CALL] Echec lecture son:', e.message);
     }
@@ -150,8 +147,7 @@ const VoipCallOverlay = () => {
   const stopSound = async () => {
     try {
       if (soundRef.current) {
-        await soundRef.current.stopAsync().catch(() => {});
-        await soundRef.current.unloadAsync().catch(() => {});
+        await soundRef.current.stop();
         soundRef.current = null;
       }
     } catch (e) {}
@@ -160,13 +156,11 @@ const VoipCallOverlay = () => {
   // 2. Gestion de l'état d'appel et des transitions sonores
   useEffect(() => {
     if (callState === 'calling') {
-      playSound({ uri: CALLING_SOUND_URL }, true);
+      triggerSound('calling', true);
     } else if (callState === 'ringing') {
-      // Pour personnaliser l'audio localement, déposez votre fichier dans assets/sounds/call.wav et décommentez la ligne suivante :
-      // playSound(require('../../assets/sounds/call.wav'), true);
-      playSound({ uri: RINGING_SOUND_URL }, true);
+      triggerSound('ringing', true);
     } else if (callState === 'connected') {
-      playSound({ uri: BEEP_SOUND_URL }, false); // Beep de connexion
+      triggerSound('beep', false); // Beep de connexion
     } else {
       stopSound();
     }

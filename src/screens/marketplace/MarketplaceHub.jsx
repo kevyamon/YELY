@@ -89,7 +89,7 @@ const MarketplaceHub = ({ navigation }) => {
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [Platform.OS === 'ios' ? 180 : 160, 0],
+    outputRange: [Platform.OS === 'ios' ? 140 : 120, 0],
     extrapolate: 'clamp'
   });
 
@@ -180,7 +180,7 @@ const MarketplaceHub = ({ navigation }) => {
         data={categorySections}
         keyExtractor={item => item.key}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.listContent, { paddingTop: Platform.OS === 'ios' ? 180 : 160, paddingBottom: 90 }]}
+        contentContainerStyle={[styles.listContent, { paddingTop: Platform.OS === 'ios' ? 140 : 120, paddingBottom: 90 }]}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
         onRefresh={refetch}

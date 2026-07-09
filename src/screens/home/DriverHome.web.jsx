@@ -10,7 +10,6 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
-import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard.web';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
@@ -22,6 +21,7 @@ import GpsPermissionModal from '../../components/ui/GpsPermissionModal.web';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
+import SubscriptionBlocker from '../../components/driver/SubscriptionBlocker.web';
 
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
@@ -67,7 +67,6 @@ const DriverHome = ({ navigation, route }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
-  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(280);
@@ -76,6 +75,8 @@ const DriverHome = ({ navigation, route }) => {
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
   const promoMode = useSelector(selectPromoMode);
+
+  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const { 
     data: subscriptionData, 
@@ -96,27 +97,9 @@ const DriverHome = ({ navigation, route }) => {
   
   const isBlockedByVerification = user?.verificationStatus !== 'approved';
   const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
-  const isBlocked = isSubscriptionBlocked || isBlockedByVerification;
+  const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
 
-  useEffect(() => {
-    const checkFirstVisit = async () => {
-      if (!user) return;
-      
-      const userId = user._id || user.id || 'unknown';
-      const storageKey = `@yely_has_seen_help_driver_${userId}`;
-      
-      try {
-        const hasSeen = await AsyncStorage.getItem(storageKey);
-        if (!hasSeen) {
-          setIsHelpVisible(true);
-          await AsyncStorage.setItem(storageKey, 'true');
-        }
-      } catch (error) {
-        if (__DEV__) console.log("Erreur lecture AsyncStorage (Aide Web)", error);
-      }
-    };
-    checkFirstVisit();
-  }, [user]);
+
 
   const { location: realLocation, errorMsg, isLoading, isPermissionDenied, retryGeolocation } = useGeolocation();
   const [simulatedLocation, setSimulatedLocation] = useState(null);
@@ -124,7 +107,6 @@ const DriverHome = ({ navigation, route }) => {
   const location = simulatedLocation || realLocation;
 
   const isDriverInZone = location ? isLocationInMafereZone(location) : true;
-  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   // NETTOYAGE STRICT : Suppression des fonctions liées au bouton
   const {
@@ -224,42 +206,7 @@ const DriverHome = ({ navigation, route }) => {
     if (height > 0) setFooterHeight(height);
   };
 
-  const renderSubscriptionBlocker = () => {
-    // Sécurité Senior : Afficher l'overlay de chargement propre tant que les configs n'ont pas fini de charger
-    if (promoMode === null || (isSubscriptionLoading && !isSubscriptionError)) {
-      return (
-        <View style={styles.blockerOverlay}>
-          <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-          <Text style={styles.blockerText}>Vérification des accès...</Text>
-        </View>
-      );
-    }
 
-    if (isActive || promoMode?.isActive) return null;
-    
-    if (!isBlocked) return null;
-    
-    return (
-      <View style={styles.blockerOverlay}>
-        <GlassCard style={styles.blockerCard}>
-          {isPending ? (
-            <>
-              <Text style={styles.blockerTitle}>Verification en cours</Text>
-              <Text style={styles.blockerDesc}>Votre paiement a ete recu. Un administrateur valide votre acces.</Text>
-              <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} style={styles.loaderSpacing} />
-              <GoldButton title="SE DECONNECTER" onPress={() => dispatch(logout())} style={styles.fullWidthButton} />
-            </>
-          ) : (
-            <>
-              <Text style={styles.blockerTitle}>Acces Expire</Text>
-              <Text style={styles.blockerDesc}>Votre abonnement est arrive a terme. Vous ne pouvez plus recevoir de requetes.</Text>
-              <GoldButton title="Renouveler mon abonnement" onPress={() => navigation.navigate('Subscription')} style={styles.fullWidthButton} />
-            </>
-          )}
-        </GlassCard>
-      </View>
-    );
-  };
 
   return (
     <View style={styles.screenWrapper}>
@@ -302,7 +249,17 @@ const DriverHome = ({ navigation, route }) => {
         />
       </View>
 
-      {renderSubscriptionBlocker()}
+      <SubscriptionBlocker 
+        isRideActive={isRideActive}
+        promoMode={promoMode}
+        isSubscriptionLoading={isSubscriptionLoading}
+        isSubscriptionError={isSubscriptionError}
+        isActive={isActive}
+        isBlocked={isBlocked}
+        isPending={isPending}
+        dispatch={dispatch}
+        navigation={navigation}
+      />
 
       {!isBlocked && (
         <>
@@ -349,11 +306,7 @@ const DriverHome = ({ navigation, route }) => {
       <PwaIOSWarningModal isDriver={true} />
       <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
       
-      <HelpVideoModal 
-        visible={isHelpVisible} 
-        onClose={() => setIsHelpVisible(false)} 
-        role="driver" 
-      />
+
       
     </View>
   );
@@ -383,15 +336,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     zIndex: 10,
   },
-  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
-  
-  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  blockerCard: { width: '100%', alignItems: 'center' },
-  blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
-  blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
-  blockerText: { color: '#FFFFFF', marginTop: 15, fontSize: 16 },
-  loaderSpacing: { marginTop: 10, marginBottom: 25 },
-  fullWidthButton: { width: '100%' }
+  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' }
 });
 
 export default DriverHome;

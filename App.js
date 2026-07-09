@@ -37,6 +37,7 @@ import useAppStartup from './src/hooks/useAppStartup';
 import usePushNotifications from './src/hooks/usePushNotifications';
 import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
+import { unlockWebAudio } from './src/utils/soundHelper';
 
 import { hideToast, selectAppUpdate, selectLoading, selectToast, selectIsServerWaking } from './src/store/slices/uiSlice';
 
@@ -248,6 +249,12 @@ const App = () => {
       NavigationBar.setButtonStyleAsync(navBarStyle).catch(() => {});
     }
   }, [colorScheme]);
+
+  useEffect(() => {
+    if (Platform.OS === 'web') {
+      unlockWebAudio();
+    }
+  }, []);
 
   useEffect(() => {
     const initApp = async () => {

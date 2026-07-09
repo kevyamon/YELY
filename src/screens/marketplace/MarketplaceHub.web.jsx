@@ -91,7 +91,7 @@ const MarketplaceHub = ({ navigation }) => {
 
   const headerHeight = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [160, 0],
+    outputRange: [120, 0],
     extrapolate: 'clamp'
   });
 
@@ -172,7 +172,7 @@ const MarketplaceHub = ({ navigation }) => {
       <ScrollView
         ref={scrollRef}
         showsVerticalScrollIndicator={true}
-        contentContainerStyle={[styles.scrollContent, { paddingTop: 160, paddingBottom: 100 }]}
+        contentContainerStyle={[styles.scrollContent, { paddingTop: 120, paddingBottom: 100 }]}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
       >

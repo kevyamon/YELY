@@ -10,7 +10,6 @@ import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
 
 import GpsTeleporter from '../../components/debug/GpsTeleporter';
-import HelpVideoModal from '../../components/help/HelpVideoModal';
 import MapCard from '../../components/map/MapCard';
 import PoiDetailsModal from '../../components/map/PoiDetailsModal';
 import ArrivalConfirmModal from '../../components/ride/ArrivalConfirmModal';
@@ -21,6 +20,7 @@ import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
 import GoldButton from '../../components/ui/GoldButton';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
+import { VerificationBanner, SubscriptionBanner } from '../../components/driver/DriverBanners';
 
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
 import useDriverMapFeatures from '../../hooks/useDriverMapFeatures';
@@ -69,7 +69,6 @@ const DriverHome = ({ navigation, route }) => {
 
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [simulatedLocation, setSimulatedLocation] = useState(null);
-  const [isHelpVisible, setIsHelpVisible] = useState(false);
 
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(280);
@@ -78,6 +77,8 @@ const DriverHome = ({ navigation, route }) => {
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
   const promoMode = useSelector(selectPromoMode);
+
+  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const { 
     data: subscriptionData, 
@@ -89,7 +90,7 @@ const DriverHome = ({ navigation, route }) => {
 
   const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
 
-  const isSubscriptionLoading = isSubLoading || isFetching;
+  const isSubscriptionLoading = isSubLoading; // Évite les blocages intempestifs sur refetch
   const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
   const isLocallyActive = user?.subscription?.isActive === true;
 
@@ -98,7 +99,7 @@ const DriverHome = ({ navigation, route }) => {
   
   const isBlockedByVerification = user?.verificationStatus !== 'approved';
   const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
-  const isBlocked = isSubscriptionBlocked || isBlockedByVerification;
+  const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
 
   // Synchronisation en temps réel des infos de l'utilisateur (identités + abonnements)
@@ -125,25 +126,7 @@ const DriverHome = ({ navigation, route }) => {
     }
   }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubscriptionLoading, navigation]);
 
-  useEffect(() => {
-    const checkFirstVisit = async () => {
-      if (!user) return;
-      
-      const userId = user._id || user.id || 'unknown';
-      const storageKey = `@yely_has_seen_help_driver_${userId}`;
-      
-      try {
-        const hasSeen = await AsyncStorage.getItem(storageKey);
-        if (!hasSeen) {
-          setIsHelpVisible(true);
-          await AsyncStorage.setItem(storageKey, 'true');
-        }
-      } catch (error) {
-        if (__DEV__) console.log("Erreur lecture AsyncStorage", error);
-      }
-    };
-    checkFirstVisit();
-  }, [user]);
+
 
   useEffect(() => {
     if (isFocused) {
@@ -156,7 +139,6 @@ const DriverHome = ({ navigation, route }) => {
   const effectiveLocation = simulatedLocation || location;
 
   const isDriverInZone = effectiveLocation ? isLocationInMafereZone(effectiveLocation) : true;
-  const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
 
   const {
     isAvailable,
@@ -217,83 +199,7 @@ const DriverHome = ({ navigation, route }) => {
     if (height > 0) setFooterHeight(height);
   };
 
-  const renderVerificationBanner = () => {
-    const status = user?.verificationStatus || 'none';
-    if (status === 'approved') return null;
 
-    let bannerStyle = styles.bannerPending;
-    let iconName = "time-outline";
-    let text = "Vérification en cours de traitement...";
-    let textColor = "#000";
-
-    if (status === 'none') {
-      bannerStyle = styles.bannerPending;
-      iconName = "warning-outline";
-      text = "Pièces d'identité requises. [Vérifier]";
-      textColor = "#000";
-    } else if (status === 'rejected') {
-      bannerStyle = styles.bannerBlocked;
-      iconName = "alert-circle-outline";
-      text = `Vérification rejetée : ${user?.rejectionReason || "Documents non conformes"}. [Vérifier]`;
-      textColor = "#FFF";
-    }
-
-    return (
-      <TouchableOpacity 
-        style={[styles.bannerContainer, bannerStyle, { marginTop: 5 }]} 
-        onPress={() => navigation.navigate('Profile')}
-        activeOpacity={0.9}
-      >
-        <Ionicons name={iconName} size={20} color={textColor} />
-        <Text style={[styles.bannerText, { color: textColor }]} numberOfLines={1}>
-          {text}
-        </Text>
-        <Ionicons name="chevron-forward" size={16} color={textColor} />
-      </TouchableOpacity>
-    );
-  };
-
-  const renderSubscriptionBanner = () => {
-    if (isActive || promoMode?.isActive) return null; 
-    
-    return (
-      <TouchableOpacity 
-        style={[
-          styles.bannerContainer, 
-          isPending ? styles.bannerPending : styles.bannerBlocked
-        ]} 
-        onPress={() => {
-          const { setSubscriptionModalDismissed } = require('../../store/slices/authSlice');
-          dispatch(setSubscriptionModalDismissed(false));
-          if (isPending) {
-            navigation.navigate('WaitSubscription');
-          } else if (subStatusRedux?.isRejected) {
-            navigation.navigate('PaymentFailure');
-          } else {
-            navigation.navigate('Subscription');
-          }
-        }}
-        activeOpacity={0.9}
-      >
-        <Ionicons 
-          name={isPending ? "time-outline" : "warning-outline"} 
-          size={20} 
-          color={isPending ? "#000" : "#FFF"} 
-        />
-        <Text style={[styles.bannerText, isPending && { color: '#000' }]} numberOfLines={1}>
-          {isPending 
-            ? "Paiement en attente de validation... [Détails]" 
-            : "Abonnement expiré. Vos fonctions de conduite sont désactivées. [S'abonner]"
-          }
-        </Text>
-        <Ionicons 
-          name="chevron-forward" 
-          size={16} 
-          color={isPending ? "#000" : "#FFF"} 
-        />
-      </TouchableOpacity>
-    );
-  };
 
   return (
     <View style={styles.screenWrapper}>
@@ -355,8 +261,18 @@ const DriverHome = ({ navigation, route }) => {
             });
           }}
         />
-        {renderSubscriptionBanner()}
-        {renderVerificationBanner()}
+        <SubscriptionBanner 
+          isActive={isActive}
+          promoMode={promoMode}
+          isPending={isPending}
+          subStatusRedux={subStatusRedux}
+          navigation={navigation}
+          dispatch={dispatch}
+        />
+        <VerificationBanner 
+          user={user}
+          navigation={navigation}
+        />
       </View>
 
       <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
@@ -394,11 +310,7 @@ const DriverHome = ({ navigation, route }) => {
         readOnly={true} 
       />
       
-      <HelpVideoModal 
-        visible={isHelpVisible} 
-        onClose={() => setIsHelpVisible(false)} 
-        role="driver" 
-      />
+
 
     </View>
   );
@@ -428,47 +340,7 @@ const styles = StyleSheet.create({
     shadowRadius: 3,
     zIndex: 10,
   },
-  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
-  
-  blockerOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.85)', zIndex: 100, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  blockerCard: { width: '100%', alignItems: 'center' },
-  blockerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.textPrimary || '#FFFFFF', marginBottom: 15, textAlign: 'center' },
-  blockerDesc: { fontSize: 16, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 24, marginBottom: 25 },
-  blockerText: { color: '#FFFFFF', marginTop: 15, fontSize: 16 },
-  loaderSpacing: { marginTop: 10, marginBottom: 25, width: '100%', alignItems: 'center' },
-  fullWidthButton: { width: '100%' },
-
-  bannerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-    marginHorizontal: 15,
-    marginTop: 10,
-    borderRadius: 12,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.05)',
-  },
-  bannerPending: {
-    backgroundColor: '#FFCC00', // Jaune attention
-    borderColor: 'rgba(0,0,0,0.05)',
-  },
-  bannerBlocked: {
-    backgroundColor: '#E74C3C', // Rouge danger
-  },
-  bannerText: {
-    flex: 1,
-    color: '#FFF',
-    fontSize: 13,
-    fontWeight: 'bold',
-    marginHorizontal: 10,
-  }
+  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' }
 });
 
 export default DriverHome;
