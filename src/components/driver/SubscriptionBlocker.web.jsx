@@ -15,9 +15,10 @@ const SubscriptionBlocker = ({
   isBlocked,
   isPending,
   dispatch,
-  navigation
+  navigation,
+  isFocused = true
 }) => {
-  if (isRideActive) return null;
+  if (!isFocused || isRideActive) return null;
 
   if (promoMode === null || (isSubscriptionLoading && !isSubscriptionError)) {
     return (

@@ -18,7 +18,7 @@ import {
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useVideoPlayer, VideoView } from 'expo-video';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useIsFocused } from '@react-navigation/native';
 import { useGetBannersQuery } from '../../store/api/marketplaceApiSlice';
 import THEME from '../../theme/theme';
 
@@ -704,9 +704,16 @@ const VideoMediaView = ({ videoSource, style }) => {
 // 🚀 COMPOSANT PRINCIPAL DE LA BANNIÈRE CARROUSEL
 // ==========================================
 const MarketplaceBanner = ({ navigation: propNavigation }) => {
-  const { data: response, isLoading } = useGetBannersQuery();
+  const { data: response, isLoading, refetch } = useGetBannersQuery();
   const slides = response?.data || response || [];
   
+  const isFocused = useIsFocused();
+  useEffect(() => {
+    if (isFocused) {
+      refetch();
+    }
+  }, [isFocused, refetch]);
+
   const hookNavigation = useNavigation();
   const navigation = propNavigation || hookNavigation;
 

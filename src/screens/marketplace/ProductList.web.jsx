@@ -200,7 +200,6 @@ const ProductList = ({ route, navigation }) => {
           <Text style={[styles.sortText, sortBy === 'priceDesc' && styles.sortTextActive]}>Prix décroissant</Text>
         </TouchableOpacity>
       </ScrollView>
-      )}
     </View>
   );
 

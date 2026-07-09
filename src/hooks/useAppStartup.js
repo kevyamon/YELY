@@ -128,7 +128,7 @@ const useAppStartup = () => {
           const currentToken = store.getState().auth.token;
           if (currentToken) {
             dispatch(apiSlice.util.invalidateTags([
-              'User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride'
+              'User', 'Subscription', 'SystemConfig', 'MapSettings', 'Stats', 'Ride', 'Banner', 'Product'
             ]));
           }
         });

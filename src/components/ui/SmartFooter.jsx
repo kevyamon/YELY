@@ -147,6 +147,7 @@ const SmartFooter = ({
             visible={isPassengerModalVisible}
             onClose={() => setIsPassengerModalVisible(false)}
             onConfirm={handleFinalConfirm}
+            unitPrice={selectedVehicle?.price || 0}
           />
         </>
       ) : (

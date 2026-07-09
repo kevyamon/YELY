@@ -89,9 +89,9 @@ const MarketplaceHub = ({ navigation }) => {
       .filter(section => selectedCategoryFilter ? (section.key === selectedCategoryFilter && section.products.length > 0) : section.products.length > 0);
   }, [allProducts, selectedCategoryFilter]);
 
-  const headerHeight = scrollY.interpolate({
+  const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [120, 0],
+    outputRange: [0, -120],
     extrapolate: 'clamp'
   });
 
@@ -123,6 +123,17 @@ const MarketplaceHub = ({ navigation }) => {
       scrollY.removeListener(scrollListenerId);
     };
   }, [navigation, scrollY]);
+
+  // Intercepter le bouton Retour d'Android/PWA pour fermer la modale au lieu de quitter la page
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isCategoriesModalVisible) {
+        e.preventDefault();
+        setIsCategoriesModalVisible(false);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, isCategoriesModalVisible]);
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim().length > 0) {
@@ -156,7 +167,7 @@ const MarketplaceHub = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <MarketplaceHeader 
         scrollY={scrollY}
-        headerHeight={headerHeight}
+        headerTranslateY={headerTranslateY}
         headerOpacity={headerOpacity}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

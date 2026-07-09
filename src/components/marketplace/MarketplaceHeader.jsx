@@ -14,7 +14,7 @@ import MarketplaceSearchBar from './MarketplaceSearchBar';
 
 const MarketplaceHeader = ({
   scrollY,
-  headerHeight,
+  headerTranslateY,
   headerOpacity,
   searchQuery,
   setSearchQuery,
@@ -26,16 +26,20 @@ const MarketplaceHeader = ({
   isDarkMode,
   paddingValue = 0,
 }) => {
+  const FIXED_HEADER_HEIGHT = Platform.OS === 'ios' ? 140 : 120;
+
   return (
     <>
       {/* HEADER FIXE FLUIDE AVEC BARRE DE RECHERCHE ET BOUTONS DE NAVIGATION */}
       <Animated.View style={[
         styles.collapsibleHeader, 
         { 
-          height: headerHeight, 
+          height: FIXED_HEADER_HEIGHT, 
           paddingTop: insets.top + THEME.SPACING.xs,
           backgroundColor: '#0B0C0E',
           borderBottomWidth: 0,
+          opacity: headerOpacity,
+          transform: [{ translateY: headerTranslateY }]
         }
       ]}>
         <View style={[styles.headerTopRow, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
@@ -43,17 +47,12 @@ const MarketplaceHeader = ({
             style={styles.hamburgerButton} 
             onPress={() => navigation.navigate('Home')}
           >
-            <Ionicons name="menu-outline" size={26} color="#FFFFFF" />
+            <Ionicons name="home-outline" size={26} color="#FFFFFF" />
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Yély Marketplace</Text>
 
-          <TouchableOpacity 
-            style={styles.hamburgerButton} 
-            onPress={() => navigation.navigate('ClientOrders')}
-          >
-            <Ionicons name="time-outline" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
+          <View style={{ width: 26 }} />
         </View>
 
         {/* Barre de recherche intégrée dans l'en-tête sombre */}

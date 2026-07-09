@@ -9,30 +9,27 @@ const usePwaAutoUpdate = () => {
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
-    let refreshing = false;
-
     if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.addEventListener('controllerchange', () => {
-        if (!refreshing) {
-          refreshing = true;
-          window.location.reload(true);
-        }
-      });
-
       const updateServiceWorker = async () => {
         try {
           const registrations = await navigator.serviceWorker.getRegistrations();
           for (let registration of registrations) {
-            await registration.update();
+            registration.update();
           }
         } catch (error) {
           console.warn("[PWA] Echec de la verification de mise a jour:", error);
         }
       };
 
+      // Execution retardee de 3 secondes pour ne pas ralentir le démarrage initial
+      const timer = setTimeout(() => {
+        updateServiceWorker();
+      }, 3000);
+
       window.addEventListener('focus', updateServiceWorker);
       
       return () => {
+        clearTimeout(timer);
         window.removeEventListener('focus', updateServiceWorker);
       };
     }

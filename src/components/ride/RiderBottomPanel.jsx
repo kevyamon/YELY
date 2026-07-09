@@ -76,6 +76,7 @@ const RiderBottomPanel = ({
         visible={isPassengerModalVisible}
         onClose={() => setIsPassengerModalVisible(false)}
         onConfirm={handleFinalConfirm}
+        unitPrice={estimationData?.amount || estimationData?.price || 0}
       />
 
     </View>

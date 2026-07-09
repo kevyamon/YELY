@@ -10,7 +10,8 @@ import {
   Animated, 
   DeviceEventEmitter, 
   Platform, 
-  useColorScheme 
+  useColorScheme,
+  TouchableOpacity
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
@@ -87,9 +88,9 @@ const MarketplaceHub = ({ navigation }) => {
       .filter(section => selectedCategoryFilter ? (section.key === selectedCategoryFilter && section.products.length > 0) : section.products.length > 0);
   }, [allProducts, selectedCategoryFilter]);
 
-  const headerHeight = scrollY.interpolate({
+  const headerTranslateY = scrollY.interpolate({
     inputRange: [0, 100],
-    outputRange: [Platform.OS === 'ios' ? 140 : 120, 0],
+    outputRange: [0, Platform.OS === 'ios' ? -140 : -120],
     extrapolate: 'clamp'
   });
 
@@ -129,6 +130,17 @@ const MarketplaceHub = ({ navigation }) => {
     };
   }, [navigation, scrollY]);
 
+  // Intercepter le bouton Retour d'Android/PWA pour fermer la modale au lieu de quitter la page
+  useEffect(() => {
+    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
+      if (isCategoriesModalVisible) {
+        e.preventDefault();
+        setIsCategoriesModalVisible(false);
+      }
+    });
+    return unsubscribe;
+  }, [navigation, isCategoriesModalVisible]);
+
   const cardWidth = (width - THEME.SPACING.lg * 2 - 12) / 2;
 
   const handleSearchSubmit = () => {
@@ -163,7 +175,7 @@ const MarketplaceHub = ({ navigation }) => {
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <MarketplaceHeader 
         scrollY={scrollY}
-        headerHeight={headerHeight}
+        headerTranslateY={headerTranslateY}
         headerOpacity={headerOpacity}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

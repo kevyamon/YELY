@@ -7,7 +7,7 @@ import React, { useEffect, useState } from 'react';
 import { Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import THEME from '../../theme/theme';
 
-const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
+const PassengerCountModal = ({ visible, onClose, onConfirm, unitPrice = 0 }) => {
   const [count, setCount] = useState(1);
 
   // Reinitialiser le compteur a 1 a chaque ouverture
@@ -25,6 +25,8 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
 
   if (!visible && Platform.OS === 'web') return null;
 
+  const totalPrice = unitPrice * count;
+
   return (
     <Modal 
       visible={visible} 
@@ -39,7 +41,7 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
           <View style={styles.dragIndicator} />
           
           <Text style={styles.modalTitle}>Combien de places ?</Text>
- 
+  
           <View style={styles.counterContainer}>
             <TouchableOpacity 
               style={[styles.counterButton, count <= 1 && styles.counterButtonDisabled]} 
@@ -69,7 +71,7 @@ const PassengerCountModal = ({ visible, onClose, onConfirm }) => {
             onPress={() => onConfirm(count)}
           >
             <Text style={styles.groupButtonText}>
-              Confirmer pour {count} place{count > 1 ? 's' : ''}
+              Confirmer pour {count} place{count > 1 ? 's' : ''} {totalPrice > 0 ? `(${totalPrice} FCFA)` : ''}
             </Text>
           </TouchableOpacity>
 

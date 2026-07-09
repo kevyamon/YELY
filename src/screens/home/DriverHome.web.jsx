@@ -259,6 +259,7 @@ const DriverHome = ({ navigation, route }) => {
         isPending={isPending}
         dispatch={dispatch}
         navigation={navigation}
+        isFocused={isFocused}
       />
 
       {!isBlocked && (
