@@ -13,14 +13,9 @@ import THEME from '../../theme/theme';
 import MarketplaceSearchBar from './MarketplaceSearchBar';
 
 const MarketplaceHeader = ({
-  scrollY,
-  headerTranslateY,
-  headerOpacity,
   searchQuery,
   setSearchQuery,
   handleSearchSubmit,
-  isMiniSearchActive,
-  setIsMiniSearchActive,
   navigation,
   insets,
   isDarkMode,
@@ -29,106 +24,55 @@ const MarketplaceHeader = ({
   const FIXED_HEADER_HEIGHT = Platform.OS === 'ios' ? 140 : 120;
 
   return (
-    <>
-      {/* HEADER FIXE FLUIDE AVEC BARRE DE RECHERCHE ET BOUTONS DE NAVIGATION */}
-      <Animated.View style={[
-        styles.collapsibleHeader, 
-        { 
-          height: FIXED_HEADER_HEIGHT, 
-          paddingTop: insets.top + THEME.SPACING.xs,
-          backgroundColor: '#0B0C0E',
-          borderBottomWidth: 0,
-          opacity: headerOpacity,
-          transform: [{ translateY: headerTranslateY }]
-        }
-      ]}>
-        <View style={[styles.headerTopRow, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
-          <TouchableOpacity 
-            style={styles.hamburgerButton} 
-            onPress={() => navigation.navigate('Home')}
-          >
-            <Ionicons name="home-outline" size={26} color="#FFFFFF" />
-          </TouchableOpacity>
+    <View style={[
+      styles.collapsibleHeader, 
+      { 
+        height: FIXED_HEADER_HEIGHT, 
+        paddingTop: insets.top + THEME.SPACING.xs,
+        backgroundColor: '#0B0C0E',
+        borderBottomWidth: 0,
+      }
+    ]}>
+      <View style={[styles.headerTopRow, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
+        <TouchableOpacity 
+          style={styles.hamburgerButton} 
+          onPress={() => {
+            const parent = navigation.getParent();
+            if (parent) {
+              parent.navigate('Home');
+            } else {
+              navigation.navigate('Home');
+            }
+          }}
+        >
+          <Ionicons name="home-outline" size={26} color="#FFFFFF" />
+        </TouchableOpacity>
 
-          <Text style={styles.headerTitle}>Yély Marketplace</Text>
+        <Text style={styles.headerTitle}>Yély Marketplace</Text>
 
-          <View style={{ width: 26 }} />
-        </View>
+        <View style={{ width: 26 }} />
+      </View>
 
-        {/* Barre de recherche intégrée dans l'en-tête sombre */}
-        <View style={styles.searchBarWrapper}>
-          <MarketplaceSearchBar 
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            onSubmitEditing={handleSearchSubmit}
-            placeholder="Rechercher un produit..."
-            style={{
-              backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
-              borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
-              borderRadius: 14,
-              marginTop: 10,
-              marginBottom: 8,
-              maxWidth: 600,
-              alignSelf: 'center',
-              width: '100%',
-            }}
-          />
-        </View>
-      </Animated.View>
-
-      {/* MINI HEADER COLLAPSED STICKY */}
-      <Animated.View style={[
-        styles.miniStickyHeader,
-        {
-          paddingTop: insets.top + 8,
-          opacity: scrollY.interpolate({
-            inputRange: [70, 110],
-            outputRange: [0, 1],
-            extrapolate: 'clamp'
-          }),
-          transform: [{
-            translateY: scrollY.interpolate({
-              inputRange: [70, 110],
-              outputRange: [-20, 0],
-              extrapolate: 'clamp'
-            })
-          }],
-          pointerEvents: isMiniSearchActive ? 'auto' : 'box-none',
-          backgroundColor: '#0B0C0E',
-          borderBottomColor: 'rgba(255, 255, 255, 0.08)'
-        }
-      ]}>
-        <View style={[styles.miniStickyInner, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
-          <Text style={styles.miniTitle}>Yély</Text>
-          <View style={styles.miniStickyButtons}>
-            <TouchableOpacity 
-              style={styles.miniIconWrapper}
-              onPress={() => setIsMiniSearchActive(prev => !prev)}
-            >
-              <Ionicons name="search" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-            <TouchableOpacity 
-              style={styles.miniIconWrapper}
-              onPress={() => navigation.navigate('Home')}
-            >
-              <Ionicons name="home-outline" size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        </View>
-        
-        {isMiniSearchActive && (
-          <View style={[styles.miniSearchContainer, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
-            <MarketplaceSearchBar 
-              value={searchQuery}
-              onChangeText={setSearchQuery}
-              onSubmitEditing={handleSearchSubmit}
-              placeholder="Rechercher..."
-              style={styles.miniSearchBarInput}
-            />
-          </View>
-        )}
-      </Animated.View>
-    </>
+      {/* Barre de recherche intégrée dans l'en-tête sombre */}
+      <View style={styles.searchBarWrapper}>
+        <MarketplaceSearchBar 
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+          onSubmitEditing={handleSearchSubmit}
+          placeholder="Rechercher un produit..."
+          style={{
+            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+            borderRadius: 14,
+            marginTop: 10,
+            marginBottom: 8,
+            maxWidth: 600,
+            alignSelf: 'center',
+            width: '100%',
+          }}
+        />
+      </View>
+    </View>
   );
 };
 

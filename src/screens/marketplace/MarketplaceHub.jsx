@@ -59,8 +59,6 @@ const MarketplaceHub = ({ navigation }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState(null);
   const [isCategoriesModalVisible, setIsCategoriesModalVisible] = useState(false);
-  const [isMiniSearchActive, setIsMiniSearchActive] = useState(false);
-
   const scrollY = useRef(new Animated.Value(0)).current;
   const listRef = useRef(null);
 
@@ -88,18 +86,6 @@ const MarketplaceHub = ({ navigation }) => {
       .filter(section => selectedCategoryFilter ? (section.key === selectedCategoryFilter && section.products.length > 0) : section.products.length > 0);
   }, [allProducts, selectedCategoryFilter]);
 
-  const headerTranslateY = scrollY.interpolate({
-    inputRange: [0, 100],
-    outputRange: [0, Platform.OS === 'ios' ? -140 : -120],
-    extrapolate: 'clamp'
-  });
-
-  const headerOpacity = scrollY.interpolate({
-    inputRange: [0, 70],
-    outputRange: [1, 0],
-    extrapolate: 'clamp'
-  });
-
   const bannerScale = scrollY.interpolate({
     inputRange: [-100, 0],
     outputRange: [1.2, 1],
@@ -116,19 +102,14 @@ const MarketplaceHub = ({ navigation }) => {
     });
     const focusSub = navigation.addListener('focus', () => {
       setSearchQuery('');
-      setIsMiniSearchActive(false);
-    });
-    const scrollListenerId = scrollY.addListener(({ value }) => {
-      if (value < 40) setIsMiniSearchActive(false);
     });
 
     return () => {
       scrollTopSub.remove();
       toggleModalSub.remove();
       focusSub();
-      scrollY.removeListener(scrollListenerId);
     };
-  }, [navigation, scrollY]);
+  }, [navigation]);
 
   // Intercepter le bouton Retour d'Android/PWA pour fermer la modale au lieu de quitter la page
   useEffect(() => {
@@ -145,7 +126,6 @@ const MarketplaceHub = ({ navigation }) => {
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim().length > 0) {
-      setIsMiniSearchActive(false);
       navigation.navigate('ProductList', { search: searchQuery.trim(), category: undefined });
     }
   };
@@ -174,14 +154,9 @@ const MarketplaceHub = ({ navigation }) => {
   return (
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <MarketplaceHeader 
-        scrollY={scrollY}
-        headerTranslateY={headerTranslateY}
-        headerOpacity={headerOpacity}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         handleSearchSubmit={handleSearchSubmit}
-        isMiniSearchActive={isMiniSearchActive}
-        setIsMiniSearchActive={setIsMiniSearchActive}
         navigation={navigation}
         insets={insets}
         isDarkMode={isDarkMode}

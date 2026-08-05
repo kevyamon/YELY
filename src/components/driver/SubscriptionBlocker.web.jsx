@@ -21,12 +21,7 @@ const SubscriptionBlocker = ({
   if (!isFocused || isRideActive) return null;
 
   if (promoMode === null || (isSubscriptionLoading && !isSubscriptionError)) {
-    return (
-      <View style={styles.blockerOverlay}>
-        <ActivityIndicator size="large" color={THEME.COLORS.champagneGold} />
-        <Text style={styles.blockerText}>Vérification des accès...</Text>
-      </View>
-    );
+    return null;
   }
 
   if (isActive || promoMode?.isActive) return null;
