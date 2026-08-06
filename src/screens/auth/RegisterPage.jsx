@@ -13,15 +13,18 @@ import GlassInput from '../../components/ui/GlassInput';
 import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
 
-import { useRegisterMutation } from '../../store/api/usersApiSlice';
+import { useRegisterMutation, useGoogleAuthMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators';
 
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
+
 const RegisterPage = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
+  const [googleAuth, { isLoading: isGoogleLoading }] = useGoogleAuthMutation();
   
   const [role, setRole] = useState(route.params?.role?.toLowerCase() || 'rider');
   const [countryCode, setCountryCode] = useState('CI');
@@ -77,6 +80,52 @@ const RegisterPage = ({ navigation, route }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        if (!window.google || !window.google.accounts) {
+          dispatch(showErrorToast({ 
+            title: "Google Auth", 
+            message: "Initialisation Google Auth Web en cours. Veuillez réessayer." 
+          }));
+          return;
+        }
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_WEB_CLIENT_ID,
+          callback: async (response) => {
+            if (response.credential) {
+              const base64Url = response.credential.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              }).join(''));
+              const payload = JSON.parse(jsonPayload);
+              
+              const res = await googleAuth({
+                email: payload.email,
+                name: payload.name,
+                profilePicture: payload.picture,
+                role: role || 'rider'
+              }).unwrap();
+
+              const { user, accessToken, refreshToken } = res.data;
+              dispatch(setCredentials({ user, accessToken, refreshToken }));
+              dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+            }
+          }
+        });
+        window.google.accounts.id.prompt();
+      } catch (err) {
+        dispatch(showErrorToast({ title: "Connexion Google", message: err?.data?.message || "Impossible de se connecter avec Google." }));
+      }
+    } else {
+      dispatch(showErrorToast({ 
+        title: "Connexion Google", 
+        message: "Redirection vers la fenêtre Google sécurisée..." 
+      }));
+    }
+  };
+
   return (
     <AuthFormWrapper
       title="Créer un compte"
@@ -98,7 +147,7 @@ const RegisterPage = ({ navigation, route }) => {
           >
             <Ionicons 
               name={r === 'rider' ? 'person' : r === 'driver' ? 'car' : 'storefront'} 
-              size={18} 
+              size={16} 
               color={role === r ? THEME.COLORS.textInverse : THEME.COLORS.primary} 
             />
             <Text 
@@ -115,42 +164,36 @@ const RegisterPage = ({ navigation, route }) => {
       <View style={styles.formContainer}>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Nom complet</Text>
-          <View style={styles.goldInputContainer}>
-            <GlassInput 
-              icon="person-outline" 
-              placeholder="Jean Dupont" 
-              value={formData.name} 
-              onChangeText={(t) => setFormData({ ...formData, name: t })} 
-            />
-          </View>
+          <GlassInput 
+            icon="person-outline" 
+            placeholder="Votre nom complet" 
+            value={formData.name} 
+            onChangeText={(t) => setFormData({ ...formData, name: t })} 
+          />
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Téléphone</Text>
-          <View style={styles.goldInputContainer}>
-            <PhoneInputGroup 
-              phone={formData.phone} 
-              setPhone={(t) => setFormData({ ...formData, phone: t })} 
-              countryCode={countryCode} 
-              setCountryCode={setCountryCode} 
-              callingCode={callingCode} 
-              setCallingCode={setCallingCode} 
-            />
-          </View>
+          <PhoneInputGroup 
+            phone={formData.phone} 
+            setPhone={(t) => setFormData({ ...formData, phone: t })} 
+            countryCode={countryCode} 
+            setCountryCode={setCountryCode} 
+            callingCode={callingCode} 
+            setCallingCode={setCallingCode} 
+          />
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Adresse email</Text>
-          <View style={styles.goldInputContainer}>
-            <GlassInput 
-              icon="mail-outline" 
-              placeholder="jean@exemple.com" 
-              keyboardType="email-address" 
-              autoCapitalize="none" 
-              value={formData.email} 
-              onChangeText={(t) => setFormData({ ...formData, email: t })} 
-            />
-          </View>
+          <GlassInput 
+            icon="mail-outline" 
+            placeholder="Votre adresse email" 
+            keyboardType="email-address" 
+            autoCapitalize="none" 
+            value={formData.email} 
+            onChangeText={(t) => setFormData({ ...formData, email: t })} 
+          />
         </View>
 
         <View style={styles.inputGroup}>
@@ -161,6 +204,22 @@ const RegisterPage = ({ navigation, route }) => {
             onStrengthChange={setPasswordScore} 
           />
         </View>
+
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ou</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.googleAuthButton} 
+          onPress={handleGoogleSignIn}
+          disabled={isGoogleLoading}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+          <Text style={styles.googleAuthText}>S'inscrire avec Google</Text>
+        </TouchableOpacity>
       </View>
 
       <AuthActionLinks 
@@ -199,20 +258,20 @@ const styles = StyleSheet.create({
   roleContainer: { 
     flexDirection: 'row', 
     gap: THEME.SPACING.sm, 
-    marginBottom: THEME.SPACING.xxl,
-    marginTop: THEME.SPACING.lg,
+    marginBottom: THEME.SPACING.lg,
+    marginTop: THEME.SPACING.sm,
   },
   roleBtn: { 
     flex: 1, 
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'center', 
-    paddingVertical: THEME.SPACING.md, 
+    paddingVertical: 10, 
     paddingHorizontal: THEME.SPACING.xs,
     borderRadius: THEME.BORDERS.radius.pill, 
-    borderWidth: THEME.BORDERS.width.thick, 
-    borderColor: THEME.COLORS.primary, 
-    backgroundColor: THEME.COLORS.transparent,
+    borderWidth: 1, 
+    borderColor: 'rgba(255, 255, 255, 0.12)', 
+    backgroundColor: 'rgba(255, 255, 255, 0.03)',
   },
   roleBtnActive: { 
     backgroundColor: THEME.COLORS.primary, 
@@ -221,15 +280,15 @@ const styles = StyleSheet.create({
   },
   roleText: { 
     marginLeft: 4, 
-    fontWeight: THEME.FONTS.weights.bold, 
-    fontSize: THEME.FONTS.sizes.bodySmall,
+    fontWeight: '700', 
+    fontSize: 13,
     color: THEME.COLORS.primary,
   },
   roleTextActive: { 
     color: THEME.COLORS.textInverse,
   },
   formContainer: {
-    gap: THEME.SPACING.lg,
+    gap: THEME.SPACING.md,
   },
   inputGroup: { 
     marginBottom: THEME.SPACING.xs 
@@ -238,15 +297,42 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary, 
     fontSize: THEME.FONTS.sizes.caption, 
     fontWeight: THEME.FONTS.weights.semiBold, 
-    marginBottom: THEME.SPACING.sm, 
+    marginBottom: THEME.SPACING.xs, 
     marginLeft: THEME.SPACING.xs, 
     textTransform: 'uppercase', 
     letterSpacing: 1 
   },
-  goldInputContainer: {
-    backgroundColor: THEME.COLORS.primary,
-    borderRadius: THEME.BORDERS.radius.lg,
-    padding: THEME.BORDERS.width.thick,
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: THEME.SPACING.xs,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dividerText: {
+    color: THEME.COLORS.textTertiary,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  googleAuthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: THEME.BORDERS.radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  googleAuthText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   modalText: { 
     color: THEME.COLORS.textPrimary, 

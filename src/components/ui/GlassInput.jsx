@@ -127,39 +127,44 @@ const GlassInput = ({
 
 const styles = StyleSheet.create({
   wrapper: {
-    marginBottom: SPACING.lg,
+    marginBottom: SPACING.md,
   },
   label: {
     color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: FONTS.weights.medium,
-    marginBottom: SPACING.sm,
+    fontSize: FONTS.sizes.caption,
+    fontWeight: FONTS.weights.semiBold,
+    marginBottom: SPACING.xs,
     marginLeft: SPACING.xs,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
   container: {
     flexDirection: 'row',
     alignItems: 'center',
-    height: DIMENSIONS.input.height,
-    backgroundColor: COLORS.glassLight,
-    borderRadius: BORDERS.radius.lg,
+    height: 52,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: BORDERS.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
     overflow: 'hidden',
   },
   iconContainer: {
-    paddingLeft: SPACING.lg,
-    paddingRight: SPACING.sm,
+    paddingLeft: SPACING.md,
+    paddingRight: SPACING.xs,
   },
   input: {
     flex: 1,
     height: '100%',
     color: COLORS.textPrimary,
-    fontSize: FONTS.sizes.body,
-    paddingHorizontal: SPACING.lg,
+    fontSize: 15,
+    paddingHorizontal: SPACING.md,
+    fontWeight: '500',
   },
   inputWithIcon: {
     paddingLeft: SPACING.xs,
   },
   multilineInput: {
-    height: 120,
+    height: 110,
     textAlignVertical: 'top',
     paddingTop: SPACING.md,
   },
@@ -167,13 +172,13 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
   eyeButton: {
-    paddingHorizontal: SPACING.lg,
+    paddingHorizontal: SPACING.md,
     height: '100%',
     justifyContent: 'center',
   },
   errorBorder: {
     borderColor: COLORS.danger,
-    borderWidth: BORDERS.width.medium,
+    borderWidth: 1.5,
   },
   errorText: {
     color: COLORS.danger,

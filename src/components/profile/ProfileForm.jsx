@@ -85,7 +85,7 @@ const ProfileForm = ({
         <GlassInput 
           value={form.phone}
           onChangeText={(txt) => setForm({...form, phone: txt})}
-          placeholder="Ex: 01 02 03 04 05"
+          placeholder="Numéro de téléphone"
           keyboardType="phone-pad"
           maxLength={14} // Autorise les espaces
         />
@@ -101,14 +101,14 @@ const ProfileForm = ({
             <GlassInput 
               value={form.vehicleModel}
               onChangeText={(txt) => setForm({...form, vehicleModel: txt})}
-              placeholder="Ex: TVS King Rouge"
+              placeholder="Marque et modèle"
             />
 
             <Text style={styles.label}>Numéro de Plaque d'Immatriculation</Text>
             <GlassInput 
               value={form.vehiclePlate}
               onChangeText={(txt) => setForm({...form, vehiclePlate: txt})}
-              placeholder="Ex: AA-123-BB ou N° Châssis"
+              placeholder="Immatriculation ou N° Châssis"
             />
 
             <Text style={styles.label}>Type de Tricycle</Text>

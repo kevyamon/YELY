@@ -1,5 +1,8 @@
 // src/components/marketplace/CategoriesModal.jsx
-import React from 'react';
+// MODALE CATEGORIES MARKETPLACE - Zero Latence & Ultra-Fluide
+// CSCSM Level: Bank Grade / React.memo Optimized
+
+import React, { memo, useMemo } from 'react';
 import { 
   View, 
   Text, 
@@ -11,47 +14,34 @@ import {
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import THEME from '../../theme/theme';
 
-const CATEGORY_LABELS = {
-  'Food': 'Nourriture',
-  'Supermarket': 'Supermarché',
-  'Cosmetics': 'Cosmétiques',
-  'Electronics': 'Électronique',
-  'Home': 'Maison & Déco',
-  'Fashion': 'Mode & Chaussures',
-  'Sports': 'Sport & Loisirs',
-  'Tools': 'Bricolage & Outils',
-  'Toys': 'Jeux & Jouets',
-  'Automotive': 'Auto & Accessoires',
-  'Office': 'Bureau & Papeterie',
-  'Other': 'Autres'
-};
+const CATEGORY_ITEMS = [
+  { key: 'Food', label: 'Nourriture', icon: 'food-apple', color: '#E67E22', bg: 'rgba(230, 126, 34, 0.12)', border: 'rgba(230, 126, 34, 0.4)' },
+  { key: 'Supermarket', label: 'Supermarché', icon: 'cart', color: '#27AE60', bg: 'rgba(39, 174, 96, 0.12)', border: 'rgba(39, 174, 96, 0.4)' },
+  { key: 'Cosmetics', label: 'Cosmétiques', icon: 'lipstick', color: '#9B59B6', bg: 'rgba(155, 89, 182, 0.12)', border: 'rgba(155, 89, 182, 0.4)' },
+  { key: 'Electronics', label: 'Électronique', icon: 'laptop', color: '#2980B9', bg: 'rgba(41, 128, 185, 0.12)', border: 'rgba(41, 128, 185, 0.4)' },
+  { key: 'Home', label: 'Maison & Déco', icon: 'home-variant', color: '#F1C40F', bg: 'rgba(241, 196, 15, 0.12)', border: 'rgba(241, 196, 15, 0.4)' },
+  { key: 'Fashion', label: 'Mode & Chaussures', icon: 'tshirt-crew', color: '#EC4899', bg: 'rgba(236, 72, 153, 0.12)', border: 'rgba(236, 72, 153, 0.4)' },
+  { key: 'Sports', label: 'Sport & Loisirs', icon: 'soccer', color: '#3B82F6', bg: 'rgba(59, 130, 246, 0.12)', border: 'rgba(59, 130, 246, 0.4)' },
+  { key: 'Tools', label: 'Bricolage & Outils', icon: 'hammer-wrench', color: '#F59E0B', bg: 'rgba(245, 158, 11, 0.12)', border: 'rgba(245, 158, 11, 0.4)' },
+  { key: 'Toys', label: 'Jeux & Jouets', icon: 'toy-brick', color: '#10B981', bg: 'rgba(16, 185, 129, 0.12)', border: 'rgba(16, 185, 129, 0.4)' },
+  { key: 'Automotive', label: 'Auto & Accessoires', icon: 'car-sports', color: '#EF4444', bg: 'rgba(239, 68, 68, 0.12)', border: 'rgba(239, 68, 68, 0.4)' },
+  { key: 'Office', label: 'Bureau & Papeterie', icon: 'lead-pencil', color: '#6366F1', bg: 'rgba(99, 102, 241, 0.12)', border: 'rgba(99, 102, 241, 0.4)' },
+  { key: 'Other', label: 'Autres', icon: 'dots-horizontal', color: '#95A5A6', bg: 'rgba(149, 165, 166, 0.12)', border: 'rgba(149, 165, 166, 0.4)' }
+];
 
-const CATEGORY_ICONS = {
-  'Electronics': { icon: 'laptop', color: '#2980B9' },
-  'Cosmetics': { icon: 'lipstick', color: '#9B59B6' },
-  'Home': { icon: 'home-variant', color: '#F1C40F' },
-  'Food': { icon: 'food-apple', color: '#E67E22' },
-  'Supermarket': { icon: 'cart', color: '#27AE60' },
-  'Fashion': { icon: 'tshirt-crew', color: '#EC4899' },
-  'Sports': { icon: 'soccer', color: '#3B82F6' },
-  'Tools': { icon: 'hammer-wrench', color: '#F59E0B' },
-  'Toys': { icon: 'toy-brick', color: '#10B981' },
-  'Automotive': { icon: 'car-sports', color: '#EF4444' },
-  'Office': { icon: 'lead-pencil', color: '#6366F1' },
-  'Other': { icon: 'dots-horizontal', color: '#95A5A6' }
-};
-
-const CategoriesModal = ({
+const CategoriesModal = memo(({
   isVisible,
   onClose,
   selectedCategoryFilter,
   handleSelectCategory,
 }) => {
+  if (!isVisible) return null;
+
   return (
     <Modal
       visible={isVisible}
       transparent
-      animationType="fade"
+      animationType="none"
       onRequestClose={onClose}
     >
       <TouchableOpacity 
@@ -59,10 +49,10 @@ const CategoriesModal = ({
         activeOpacity={1}
         onPress={onClose}
       >
-        <View style={styles.modalCardContainer}>
+        <View style={styles.modalCardContainer} onStartShouldSetResponder={() => true}>
           <View style={styles.modalHeaderRow}>
             <Text style={styles.modalTitle}>Catégories</Text>
-            <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+            <TouchableOpacity onPress={onClose} style={styles.closeButton} activeOpacity={0.7}>
               <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
             </TouchableOpacity>
           </View>
@@ -71,55 +61,43 @@ const CategoriesModal = ({
             <TouchableOpacity
               style={[
                 styles.modalCatItem, 
-                !selectedCategoryFilter && styles.modalCatItemActive,
-                {
-                  backgroundColor: !selectedCategoryFilter ? 'rgba(214, 175, 55, 0.22)' : 'rgba(255, 255, 255, 0.03)',
-                  borderColor: !selectedCategoryFilter ? THEME.COLORS.primary : 'rgba(255, 255, 255, 0.06)'
-                }
+                !selectedCategoryFilter && styles.modalCatItemActive
               ]}
               onPress={() => handleSelectCategory(null)}
+              activeOpacity={0.7}
             >
               <View style={[styles.modalCatIconBg, { backgroundColor: 'rgba(214, 175, 55, 0.15)' }]}>
-                <MaterialCommunityIcons name="all-inclusive" size={24} color={THEME.COLORS.primary} />
+                <MaterialCommunityIcons name="all-inclusive" size={22} color={THEME.COLORS.primary} />
               </View>
               <Text 
-                style={[styles.modalCatLabel, { color: !selectedCategoryFilter ? THEME.COLORS.primary : THEME.COLORS.textPrimary }]}
+                style={[styles.modalCatLabel, !selectedCategoryFilter && { color: THEME.COLORS.primary }]}
                 numberOfLines={1}
-                adjustsFontSizeToFit
-                minimumFontScale={0.6}
               >
                 Tout voir
               </Text>
             </TouchableOpacity>
 
-            {Object.keys(CATEGORY_LABELS).map(key => {
-              const label = CATEGORY_LABELS[key];
-              const config = CATEGORY_ICONS[key] || { icon: 'package-variant', color: '#95A5A6' };
-              const isSelected = selectedCategoryFilter === key;
+            {CATEGORY_ITEMS.map((item) => {
+              const isSelected = selectedCategoryFilter === item.key;
 
               return (
                 <TouchableOpacity
-                  key={key}
+                  key={item.key}
                   style={[
                     styles.modalCatItem, 
-                    isSelected && styles.modalCatItemActive,
-                    {
-                      backgroundColor: isSelected ? config.color + '22' : 'rgba(255, 255, 255, 0.03)',
-                      borderColor: isSelected ? config.color : 'rgba(255, 255, 255, 0.06)'
-                    }
+                    isSelected && { backgroundColor: item.bg, borderColor: item.border }
                   ]}
-                  onPress={() => handleSelectCategory(key)}
+                  onPress={() => handleSelectCategory(item.key)}
+                  activeOpacity={0.7}
                 >
-                  <View style={[styles.modalCatIconBg, { backgroundColor: config.color + '1C' }]}>
-                    <MaterialCommunityIcons name={config.icon} size={24} color={config.color} />
+                  <View style={[styles.modalCatIconBg, { backgroundColor: item.bg }]}>
+                    <MaterialCommunityIcons name={item.icon} size={22} color={item.color} />
                   </View>
                   <Text 
-                    style={[styles.modalCatLabel, { color: isSelected ? config.color : THEME.COLORS.textPrimary }]}
+                    style={[styles.modalCatLabel, isSelected && { color: item.color }]}
                     numberOfLines={1}
-                    adjustsFontSizeToFit
-                    minimumFontScale={0.6}
                   >
-                    {label}
+                    {item.label}
                   </Text>
                 </TouchableOpacity>
               );
@@ -129,12 +107,12 @@ const CategoriesModal = ({
       </TouchableOpacity>
     </Modal>
   );
-};
+});
 
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.72)',
     justifyContent: 'flex-end',
     ...Platform.select({
       web: {
@@ -163,7 +141,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.SPACING.xl,
+    marginBottom: THEME.SPACING.lg,
   },
   modalTitle: {
     fontSize: 20,
@@ -174,37 +152,37 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     justifyContent: 'space-between',
-    gap: 12,
+    gap: 10,
   },
   modalCatItem: {
     width: '30%',
-    paddingVertical: 12,
+    paddingVertical: 10,
     paddingHorizontal: 4,
     borderRadius: THEME.BORDERS.radius.lg,
-    backgroundColor: 'rgba(255,255,255,0.04)',
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.05)',
+    borderColor: 'rgba(255, 255, 255, 0.06)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
     ...Platform.select({
       web: { cursor: 'pointer' }
     })
   },
   modalCatItemActive: {
     borderColor: THEME.COLORS.primary,
-    backgroundColor: 'rgba(214, 175, 55, 0.08)',
+    backgroundColor: 'rgba(214, 175, 55, 0.12)',
   },
   modalCatIconBg: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   modalCatLabel: {
-    fontSize: 9.5,
+    fontSize: 10,
     fontWeight: '700',
     color: THEME.COLORS.textPrimary,
     textAlign: 'center',

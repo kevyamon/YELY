@@ -1,5 +1,5 @@
 // src/screens/marketplace/MarketplaceHub.web.jsx
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { 
   View, 
   Text, 
@@ -124,11 +124,15 @@ const MarketplaceHub = ({ navigation }) => {
     }
   };
 
-  const handleSelectCategory = (catType) => {
+  const handleSelectCategory = useCallback((catType) => {
     setSelectedCategoryFilter(catType);
     setIsCategoriesModalVisible(false);
-    scrollRef.current?.scrollTo({ y: 0, animated: true });
-  };
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setIsCategoriesModalVisible(false);
+  }, []);
 
   const renderSkeleton = () => (
     <View style={styles.skeletonContainer}>
@@ -244,7 +248,7 @@ const MarketplaceHub = ({ navigation }) => {
 
       <CategoriesModal 
         isVisible={isCategoriesModalVisible}
-        onClose={() => setIsCategoriesModalVisible(false)}
+        onClose={handleCloseModal}
         selectedCategoryFilter={selectedCategoryFilter}
         handleSelectCategory={handleSelectCategory}
       />

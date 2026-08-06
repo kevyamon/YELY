@@ -88,16 +88,22 @@ const DriverHome = ({ navigation, route }) => {
     skip: !isFocused 
   });
 
-  const isSubscriptionLoading = isSubLoading;
-  const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
-  const isLocallyActive = user?.subscription?.isActive === true;
+  const subscriptionState = useMemo(() => {
+    const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
+    const isLocallyActive = user?.subscription?.isActive === true;
 
-  const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
-  const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
-  
-  const isBlockedByVerification = user?.verificationStatus !== 'approved';
-  const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
-  const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
+    const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
+    const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
+    
+    const isBlockedByVerification = user?.verificationStatus !== 'approved';
+    const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
+    const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
+
+    return { isActive, isPending, isSubscriptionBlocked, isBlocked, isBlockedByVerification };
+  }, [subscriptionData, user?.subscription?.isActive, user?.verificationStatus, subStatusRedux, promoMode, isRideActive]);
+
+  const { isActive, isPending, isSubscriptionBlocked, isBlocked, isBlockedByVerification } = subscriptionState;
+  const isSubscriptionLoading = isSubLoading;
 
 
 

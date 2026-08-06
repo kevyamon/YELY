@@ -1,5 +1,6 @@
+import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { LayoutAnimation, Platform, StyleSheet, View } from 'react-native';
+import { LayoutAnimation, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -10,14 +11,17 @@ import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 
-import { useLoginMutation } from '../../store/api/usersApiSlice';
+import { useLoginMutation, useGoogleAuthMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
+
 const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
+  const [googleAuth, { isLoading: isGoogleLoading }] = useGoogleAuthMutation();
   const { error } = useSelector((state) => state.ui);
 
   const [formData, setFormData] = useState({ identifier: '', password: '' });
@@ -66,6 +70,52 @@ const LoginPage = ({ navigation }) => {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    if (Platform.OS === 'web') {
+      try {
+        if (!window.google || !window.google.accounts) {
+          dispatch(showErrorToast({ 
+            title: "Google Auth", 
+            message: "Initialisation Google Auth Web en cours. Veuillez réessayer." 
+          }));
+          return;
+        }
+        window.google.accounts.id.initialize({
+          client_id: GOOGLE_WEB_CLIENT_ID,
+          callback: async (response) => {
+            if (response.credential) {
+              const base64Url = response.credential.split('.')[1];
+              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+              const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+              }).join(''));
+              const payload = JSON.parse(jsonPayload);
+              
+              const res = await googleAuth({
+                email: payload.email,
+                name: payload.name,
+                profilePicture: payload.picture,
+                role: 'rider'
+              }).unwrap();
+
+              const { user, accessToken, refreshToken } = res.data;
+              dispatch(setCredentials({ user, accessToken, refreshToken }));
+              dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue, ${user.name} !` }));
+            }
+          }
+        });
+        window.google.accounts.id.prompt();
+      } catch (err) {
+        dispatch(showErrorToast({ title: "Connexion Google", message: err?.data?.message || "Impossible de se connecter avec Google." }));
+      }
+    } else {
+      dispatch(showErrorToast({ 
+        title: "Connexion Google", 
+        message: "Redirection vers la fenêtre Google sécurisée..." 
+      }));
+    }
+  };
+
   return (
     <AuthFormWrapper
       title="Bon retour"
@@ -89,58 +139,72 @@ const LoginPage = ({ navigation }) => {
       <View style={styles.formContainer}>
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Identifiant</Text>
-          <View style={styles.goldInputContainer}>
-            <View style={styles.inputRow}>
-              {!isEmailMode && (
-                <View style={styles.countryPickerContainer}>
-                  <CountryPicker
-                    countryCode={countryCode}
-                    withFilter 
-                    withFlag 
-                    withCallingCode
-                    theme={{
-                      backgroundColor: THEME.COLORS.primary,
-                      onBackgroundTextColor: THEME.COLORS.textInverse,
-                    }}
-                    onSelect={(c) => { 
-                      setCountryCode(c.cca2); 
-                      setCallingCode(c.callingCode[0]); 
-                    }}
-                  />
-                  <Text style={styles.callingCodeText}>+{callingCode}</Text>
-                </View>
-              )}
-              <View style={styles.flexItem}>
-                <GlassInput
-                  icon={isEmailMode ? "mail-outline" : "call-outline"}
-                  placeholder="Tél ou Email"
-                  autoCapitalize="none"
-                  value={formData.identifier}
-                  onChangeText={(t) => {
-                    setFormData({ ...formData, identifier: t });
-                    if (error) dispatch(clearError());
+          <View style={styles.inputRow}>
+            {!isEmailMode && (
+              <View style={styles.countryPickerContainer}>
+                <CountryPicker
+                  countryCode={countryCode}
+                  withFilter 
+                  withFlag 
+                  withCallingCode
+                  theme={{
+                    backgroundColor: THEME.COLORS.primary,
+                    onBackgroundTextColor: THEME.COLORS.textInverse,
+                  }}
+                  onSelect={(c) => { 
+                    setCountryCode(c.cca2); 
+                    setCallingCode(c.callingCode[0]); 
                   }}
                 />
+                <Text style={styles.callingCodeText}>+{callingCode}</Text>
               </View>
+            )}
+            <View style={styles.flexItem}>
+              <GlassInput
+                icon={isEmailMode ? "mail-outline" : "call-outline"}
+                placeholder="Téléphone ou Email"
+                autoCapitalize="none"
+                value={formData.identifier}
+                onChangeText={(t) => {
+                  setFormData({ ...formData, identifier: t });
+                  if (error) dispatch(clearError());
+                }}
+              />
             </View>
           </View>
         </View>
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Mot de passe</Text>
-          <View style={styles.goldInputContainer}>
-            <GlassInput
-              icon="lock-closed-outline"
-              placeholder="Votre mot de passe"
-              secureTextEntry
-              value={formData.password}
-              onChangeText={(t) => {
-                setFormData({ ...formData, password: t });
-                if (error) dispatch(clearError());
-              }}
-            />
-          </View>
+          <GlassInput
+            icon="lock-closed-outline"
+            placeholder="Votre mot de passe"
+            secureTextEntry
+            value={formData.password}
+            onChangeText={(t) => {
+              setFormData({ ...formData, password: t });
+              if (error) dispatch(clearError());
+            }}
+          />
         </View>
+
+        {/* BASSIN DE SÉPARATION & BOUTON GOOGLE AUTH */}
+        <View style={styles.dividerContainer}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>ou</Text>
+          <View style={styles.dividerLine} />
+        </View>
+
+        <TouchableOpacity 
+          style={styles.googleAuthButton} 
+          onPress={handleGoogleSignIn}
+          disabled={isGoogleLoading}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+          <Text style={styles.googleAuthText}>Continuer avec Google</Text>
+        </TouchableOpacity>
+
       </View>
 
       <AuthActionLinks 
@@ -161,8 +225,8 @@ const LoginPage = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   formContainer: {
-    gap: THEME.SPACING.lg,
-    marginTop: THEME.SPACING.xxl,
+    gap: THEME.SPACING.md,
+    marginTop: THEME.SPACING.lg,
   },
   inputGroup: {
     marginBottom: THEME.SPACING.xs,
@@ -171,39 +235,66 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textSecondary,
     fontSize: THEME.FONTS.sizes.caption,
     fontWeight: THEME.FONTS.weights.semiBold,
-    marginBottom: THEME.SPACING.sm,
+    marginBottom: THEME.SPACING.xs,
     marginLeft: THEME.SPACING.xs,
     textTransform: 'uppercase',
     letterSpacing: 1,
   },
-  goldInputContainer: {
-    backgroundColor: THEME.COLORS.primary,
-    borderRadius: THEME.BORDERS.radius.lg,
-    padding: THEME.BORDERS.width.thick,
-  },
   inputRow: {
     flexDirection: 'row',
     gap: THEME.SPACING.sm,
-    alignItems: 'stretch',
-    backgroundColor: THEME.COLORS.background,
-    borderRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
+    alignItems: 'center',
   },
   countryPickerContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingLeft: THEME.SPACING.md,
-    backgroundColor: THEME.COLORS.background,
-    borderTopLeftRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
-    borderBottomLeftRadius: THEME.BORDERS.radius.lg - THEME.BORDERS.width.thick,
+    paddingHorizontal: THEME.SPACING.sm,
+    height: 52,
+    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+    borderRadius: THEME.BORDERS.radius.xl,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.08)',
   },
   callingCodeText: {
     color: THEME.COLORS.textPrimary,
-    marginLeft: THEME.SPACING.xs,
-    fontWeight: THEME.FONTS.weights.semiBold,
-    fontSize: THEME.FONTS.sizes.body,
+    marginLeft: 4,
+    fontWeight: '600',
+    fontSize: 14,
   },
   flexItem: {
     flex: 1,
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: THEME.SPACING.xs,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+  },
+  dividerText: {
+    color: THEME.COLORS.textTertiary,
+    paddingHorizontal: 12,
+    fontSize: 12,
+    fontWeight: '600',
+    textTransform: 'uppercase',
+  },
+  googleAuthButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: 50,
+    borderRadius: THEME.BORDERS.radius.pill,
+    backgroundColor: 'rgba(255, 255, 255, 0.05)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.12)',
+  },
+  googleAuthText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    fontWeight: '700',
   },
   errorBox: {
     backgroundColor: 'rgba(192, 57, 43, 0.1)',

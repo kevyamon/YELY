@@ -130,11 +130,15 @@ const MarketplaceHub = ({ navigation }) => {
     }
   };
 
-  const handleSelectCategory = (catType) => {
+  const handleSelectCategory = useCallback((catType) => {
     setSelectedCategoryFilter(catType);
     setIsCategoriesModalVisible(false);
-    listRef.current?.scrollToOffset({ offset: 0, animated: true });
-  };
+    listRef.current?.scrollToOffset({ offset: 0, animated: false });
+  }, []);
+
+  const handleCloseModal = useCallback(() => {
+    setIsCategoriesModalVisible(false);
+  }, []);
 
   const renderSkeleton = () => (
     <View style={styles.skeletonContainer}>
@@ -250,7 +254,7 @@ const MarketplaceHub = ({ navigation }) => {
 
       <CategoriesModal 
         isVisible={isCategoriesModalVisible}
-        onClose={() => setIsCategoriesModalVisible(false)}
+        onClose={handleCloseModal}
         selectedCategoryFilter={selectedCategoryFilter}
         handleSelectCategory={handleSelectCategory}
       />

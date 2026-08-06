@@ -1,3 +1,7 @@
+// src/components/auth/PasswordStrengthInput.jsx
+// CHAMP MOT DE PASSE MINIMALISTE - Zero Icone Etoile / Epure VIP
+// CSCSM Level: Bank Grade
+
 import { Ionicons } from '@expo/vector-icons';
 import * as Crypto from 'expo-crypto';
 import React, { useEffect, useState } from 'react';
@@ -68,7 +72,7 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
     <View style={styles.reqRow}>
       <Ionicons 
         name={met ? "checkmark-circle" : "ellipse-outline"} 
-        size={14} 
+        size={12} 
         color={met ? THEME.COLORS.success : THEME.COLORS.textTertiary} 
       />
       <Text style={[styles.reqText, { color: met ? THEME.COLORS.success : THEME.COLORS.textTertiary }]}>
@@ -79,21 +83,20 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
 
   return (
     <View style={styles.container}>
-      <View style={styles.goldInputContainer}>
-        <GlassInput
-          icon="lock-closed-outline"
-          placeholder="Mot de passe"
-          secureTextEntry={true}
-          value={password}
-          onChangeText={setPassword}
-        />
-      </View>
+      <GlassInput
+        icon="lock-closed-outline"
+        placeholder="Mot de passe"
+        secureTextEntry={true}
+        value={password}
+        onChangeText={setPassword}
+      />
       
       <TouchableOpacity 
         style={styles.generateBtn} 
         onPress={generateSecurePassword}
+        activeOpacity={0.7}
       >
-        <Ionicons name="sparkles-outline" size={14} color={THEME.COLORS.primary} />
+        <Ionicons name="key-outline" size={13} color={THEME.COLORS.primary} />
         <Text style={styles.generateText}>Générer un mot de passe fort</Text>
       </TouchableOpacity>
 
@@ -105,7 +108,7 @@ const PasswordStrengthInput = ({ password, setPassword, onStrengthChange }) => {
             style={styles.progressBar} 
           />
           <View style={styles.requirementsBox}>
-            <PasswordRequirement met={stats.length} text="8 caracteres min." />
+            <PasswordRequirement met={stats.length} text="8 caractères min." />
             <PasswordRequirement met={stats.number} text="1 chiffre" />
             <PasswordRequirement met={stats.special} text="1 symbole" />
           </View>
@@ -119,46 +122,43 @@ const styles = StyleSheet.create({
   container: { 
     marginBottom: THEME.SPACING.xs 
   },
-  goldInputContainer: {
-    backgroundColor: THEME.COLORS.primary,
-    borderRadius: THEME.BORDERS.radius.lg,
-    padding: THEME.BORDERS.width.thick,
-  },
   generateBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: THEME.SPACING.sm,
-    marginLeft: THEME.SPACING.xs,
+    marginTop: 4,
+    marginLeft: 4,
+    alignSelf: 'flex-start',
   },
   generateText: {
     color: THEME.COLORS.primary,
-    fontSize: THEME.FONTS.sizes.caption,
-    marginLeft: 4,
-    fontWeight: THEME.FONTS.weights.medium,
+    fontSize: 12,
+    marginLeft: 5,
+    fontWeight: '600',
   },
   gaugeContainer: { 
-    marginTop: THEME.SPACING.md, 
-    paddingHorizontal: THEME.SPACING.xs 
+    marginTop: THEME.SPACING.sm, 
+    paddingHorizontal: 4 
   },
   progressBar: { 
-    borderRadius: THEME.BORDERS.radius.sm, 
-    height: 4, 
-    backgroundColor: THEME.COLORS.glassLight 
+    borderRadius: 2, 
+    height: 3, 
+    backgroundColor: 'rgba(255, 255, 255, 0.08)' 
   },
   requirementsBox: { 
     flexDirection: 'row', 
     flexWrap: 'wrap', 
-    marginTop: THEME.SPACING.sm, 
+    marginTop: 6, 
   },
   reqRow: { 
     flexDirection: 'row', 
     alignItems: 'center', 
-    marginRight: THEME.SPACING.md,
+    marginRight: 12,
     marginBottom: 4,
   },
   reqText: { 
-    fontSize: THEME.FONTS.sizes.caption, 
-    marginLeft: 4 
+    fontSize: 11, 
+    marginLeft: 4,
+    fontWeight: '500' 
   },
 });
 

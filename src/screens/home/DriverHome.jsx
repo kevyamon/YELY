@@ -90,16 +90,21 @@ const DriverHome = ({ navigation, route }) => {
 
   const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
 
-  const isSubscriptionLoading = isSubLoading; // Évite les blocages intempestifs sur refetch
-  const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
-  const isLocallyActive = user?.subscription?.isActive === true;
+  const subscriptionState = useMemo(() => {
+    const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
+    const isLocallyActive = user?.subscription?.isActive === true;
 
-  const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
-  const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
-  
-  const isBlockedByVerification = user?.verificationStatus !== 'approved';
-  const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
-  const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
+    const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatusRedux?.isActive === true;
+    const isPending = apiSubStatus.isPending === true || subStatusRedux?.isPending === true;
+    
+    const isBlockedByVerification = user?.verificationStatus !== 'approved';
+    const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
+    const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
+
+    return { isActive, isPending, isSubscriptionBlocked, isBlocked };
+  }, [subscriptionData, user?.subscription?.isActive, user?.verificationStatus, subStatusRedux, promoMode, isRideActive]);
+
+  const { isActive, isPending, isSubscriptionBlocked, isBlocked } = subscriptionState;
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
 
   // Synchronisation en temps réel des infos de l'utilisateur (identités + abonnements)
@@ -111,7 +116,7 @@ const DriverHome = ({ navigation, route }) => {
 
   useEffect(() => {
     // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
-    if (promoMode === null || isSubscriptionLoading) return;
+    if (promoMode === null || isSubLoading) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isSubscriptionBlocked) {
@@ -124,7 +129,7 @@ const DriverHome = ({ navigation, route }) => {
         }
       }
     }
-  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubscriptionLoading, navigation]);
+  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
 
 
 

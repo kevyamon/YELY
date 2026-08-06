@@ -65,15 +65,15 @@ const VoipCallOverlay = () => {
   const isDarkMode = colorScheme === 'dark';
 
   const themeColors = {
-    gradient: isDarkMode ? ['#0E1116', '#1A1F2C'] : ['#F4F6FA', '#E4E9F2'],
-    text: isDarkMode ? '#FFFFFF' : '#1C1C1E',
-    subtext: isDarkMode ? 'rgba(255, 255, 255, 0.6)' : 'rgba(28, 28, 30, 0.6)',
-    cardBg: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.03)',
-    cardBorder: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
-    controlIcon: isDarkMode ? '#FFFFFF' : '#1C1C1E',
-    avatarBg: isDarkMode ? '#1C1C1E' : '#FFFFFF',
-    panelBg: isDarkMode ? 'rgba(20, 25, 35, 0.82)' : 'rgba(255, 255, 255, 0.85)',
-    panelBorder: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.08)',
+    gradient: isDarkMode ? ['#0A0C10', '#141824'] : ['#F8FAFC', '#E2E8F0'],
+    text: isDarkMode ? '#FFFFFF' : '#0F172A',
+    subtext: isDarkMode ? 'rgba(255, 255, 255, 0.72)' : 'rgba(15, 23, 42, 0.72)',
+    cardBg: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(15, 23, 42, 0.05)',
+    cardBorder: isDarkMode ? 'rgba(255, 255, 255, 0.14)' : 'rgba(15, 23, 42, 0.12)',
+    controlIcon: isDarkMode ? '#FFFFFF' : '#0F172A',
+    avatarBg: isDarkMode ? '#1E293B' : '#FFFFFF',
+    panelBg: isDarkMode ? 'rgba(15, 23, 42, 0.88)' : 'rgba(255, 255, 255, 0.94)',
+    panelBorder: isDarkMode ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)',
   };
 
   const { callState, targetUserId, targetName, targetAvatar, targetPhone, isIncoming, callDuration } = callInfo;
@@ -277,6 +277,14 @@ const VoipCallOverlay = () => {
             targetUserId,
             candidate: event.candidate
           });
+        }
+      };
+
+      pc.oniceconnectionstatechange = () => {
+        if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
+          if (pc.restartIce) {
+            try { pc.restartIce(); } catch (e) {}
+          }
         }
       };
 

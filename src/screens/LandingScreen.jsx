@@ -1,16 +1,18 @@
 // src/screens/LandingScreen.jsx
-// LANDING PAGE - THE GOLDEN TICKET (Ultra-Minimalist & VIP Shimmer)
-// CSCSM Level: Masterpiece UI / Reanimated Engine
+// LANDING PAGE - THE GOLDEN TICKET (Ultra-Minimalist & VIP Motion Design)
+// CSCSM Level: Masterpiece UI / Motion Engine / Safe Area Protection
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useCallback, useEffect } from 'react';
+import { Video, ResizeMode } from 'expo-av';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   BackHandler,
   Dimensions,
   Image,
+  Platform,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -26,17 +28,21 @@ import Animated, {
   withSpring,
   withTiming
 } from 'react-native-reanimated';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch } from 'react-redux';
 
 import { showSuccessToast } from '../store/slices/uiSlice';
 import THEME from '../theme/theme';
 
 const { width, height } = Dimensions.get('window');
+const MOTION_DESIGN_URL = 'https://res.cloudinary.com/dkov5qrsp/video/upload/v1785905486/vbsxzwoa5m4mpvcx7jqp.mp4';
 
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
+  const insets = useSafeAreaInsets();
+  const [videoError, setVideoError] = useState(false);
 
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const appVersion = Constants.expoConfig?.version || '1.1.0';
   const currentYear = new Date().getFullYear();
 
   const isDark = THEME.COLORS.background === THEME.COLORS.pureBlack;
@@ -51,9 +57,7 @@ export default function LandingScreen({ navigation }) {
   const btnY = useSharedValue(50);
   const btnOpacity = useSharedValue(0);
   const linksOpacity = useSharedValue(0);
-
   const levitationY = useSharedValue(0);
-
   const shimmerX = useSharedValue(-width);
 
   useEffect(() => {
@@ -69,7 +73,7 @@ export default function LandingScreen({ navigation }) {
     linksOpacity.value = withDelay(800, withTiming(1, { duration: 1000 }));
 
     levitationY.value = withRepeat(
-      withTiming(-12, { duration: 2000, easing: Easing.inOut(Easing.sin) }),
+      withTiming(-10, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
       -1, 
       true 
     );
@@ -102,7 +106,7 @@ export default function LandingScreen({ navigation }) {
           return true;
         }
         lastBackPress = time;
-        dispatch(showSuccessToast({ title: "Quitter Yely ?", message: "Appuyez de nouveau pour quitter" }));
+        dispatch(showSuccessToast({ title: "Quitter Yély ?", message: "Appuyez de nouveau pour quitter" }));
         return true; 
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
@@ -110,16 +114,53 @@ export default function LandingScreen({ navigation }) {
     }, [dispatch])
   );
 
+  const renderMotionDesign = () => {
+    if (Platform.OS === 'web') {
+      return (
+        <video
+          src={MOTION_DESIGN_URL}
+          autoPlay
+          loop
+          muted
+          playsInline
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '50%',
+          }}
+          onError={() => setVideoError(true)}
+        />
+      );
+    }
+
+    if (videoError) {
+      return <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="cover" />;
+    }
+
+    return (
+      <Video
+        source={{ uri: MOTION_DESIGN_URL }}
+        style={styles.logoVideo}
+        resizeMode={ResizeMode.COVER}
+        shouldPlay
+        isLooping
+        isMuted
+        onError={() => setVideoError(true)}
+      />
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: backgroundGradient[1] }]}>
       <LinearGradient colors={backgroundGradient} style={styles.backgroundImage}>
-        <View style={styles.contentContainer}>
+        <View style={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
           
-          <View style={styles.topSpace} />
+          <View style={[styles.topSpace, { paddingTop: Math.max(insets.top, 10) }]} />
 
           <View style={styles.centerSection}>
             <Animated.View style={[styles.logoContainer, logoStyle]}>
-               <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="cover" />
+              {renderMotionDesign()}
             </Animated.View>
 
             <Animated.Text style={[styles.mainTitle, titleStyle]}>
@@ -147,7 +188,7 @@ export default function LandingScreen({ navigation }) {
                   />
                 </Animated.View>
 
-                <Text style={styles.blackCtaText}>CREER MON COMPTE</Text>
+                <Text style={styles.blackCtaText}>CRÉER MON COMPTE</Text>
                 <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.primaryLight} style={{ marginLeft: 8 }} />
               </TouchableOpacity>
             </Animated.View>
@@ -155,7 +196,7 @@ export default function LandingScreen({ navigation }) {
             <Animated.View style={[styles.linksContainer, linksStyle]}>
               <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
                 <Text style={styles.loginText}>
-                  Deja membre ? <Text style={styles.loginTextBold}>Se connecter</Text>
+                  Déjà membre ? <Text style={styles.loginTextBold}>Se connecter</Text>
                 </Text>
               </TouchableOpacity>
 
@@ -165,7 +206,7 @@ export default function LandingScreen({ navigation }) {
                 </TouchableOpacity>
                 <Text style={styles.bullet}> • </Text>
                 <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={styles.termsLink}>
-                  <Text style={styles.termsText}>Confidentialite</Text>
+                  <Text style={styles.termsText}>Confidentialité</Text>
                 </TouchableOpacity>
               </View>
 
@@ -186,50 +227,50 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: THEME.SPACING.xl,
-    paddingBottom: THEME.SPACING.xl,
   },
-  topSpace: { height: height * 0.10 }, 
+  topSpace: { height: height * 0.08 }, 
   centerSection: { 
     alignItems: 'center',
     flex: 1,
     justifyContent: 'center'
   },
   logoContainer: {
-    width: 120, 
-    height: 120,
-    borderRadius: 60,
+    width: 130, 
+    height: 130,
+    borderRadius: 65,
     overflow: 'hidden', 
-    backgroundColor: THEME.COLORS.pureWhite, 
+    backgroundColor: '#000000', 
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: THEME.SPACING.xxl,
-    borderWidth: 2,
+    marginBottom: THEME.SPACING.xl,
+    borderWidth: 2.5,
     borderColor: '#000000',
     elevation: 15,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 15,
   },
+  logoVideo: { width: '100%', height: '100%', borderRadius: 65 },
   logoImage: { width: '100%', height: '100%' },
   mainTitle: {
-    fontSize: 44,
+    fontSize: 42,
     fontWeight: '900',
     color: '#000000', 
-    letterSpacing: 2,
+    letterSpacing: 1.5,
     textAlign: 'center',
-    lineHeight: 50,
+    lineHeight: 48,
   },
   separator: {
     width: 40,
     height: 3,
     backgroundColor: '#000000',
     alignSelf: 'center',
-    marginVertical: 15,
+    marginVertical: 12,
     borderRadius: 2,
   },
   subTitle: {
-    fontSize: 22,
+    fontSize: 20,
     color: '#111111',
     fontWeight: '700',
     textAlign: 'center',
@@ -238,7 +279,7 @@ const styles = StyleSheet.create({
   bottomSection: { width: '100%', alignItems: 'center' },
   buttonWrapper: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: 16,
   },
   blackCtaButton: {
     backgroundColor: '#000000', 
@@ -272,15 +313,15 @@ const styles = StyleSheet.create({
   },
   linksContainer: { alignItems: 'center' },
   loginLink: {
-    paddingVertical: 10,
+    paddingVertical: 8,
     paddingHorizontal: 20,
-    marginBottom: 5,
+    marginBottom: 4,
   },
   loginText: { color: '#222222', fontSize: 15, fontWeight: '500' },
   loginTextBold: { color: '#000000', fontWeight: '900', textDecorationLine: 'underline' },
-  legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 5 },
+  legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
   termsLink: { padding: 5 },
   termsText: { color: '#444444', fontSize: 12, fontWeight: '700' },
   bullet: { color: '#555555', fontSize: 12, marginHorizontal: 5 },
-  copyright: { color: '#555555', fontSize: 10, marginTop: 15, fontWeight: '600' }
+  copyright: { color: '#444444', fontSize: 10, marginTop: 10, fontWeight: '600' }
 });
