@@ -1,3 +1,4 @@
+import Constants from 'expo-constants';
 import { Ionicons } from '@expo/vector-icons';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
@@ -165,7 +166,9 @@ const RegisterPage = ({ navigation, route }) => {
       }
     } else {
       try {
-        const redirectUrl = 'https://auth.expo.io/@anonymous/YELY';
+        const redirectUrl = Constants.appOwnership === 'expo'
+          ? 'https://auth.expo.io/@kevyllc/YELY'
+          : 'yely://google-auth';
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=token&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
 
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);

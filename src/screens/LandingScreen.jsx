@@ -167,7 +167,7 @@ export default function LandingScreen({ navigation }) {
   const copyrightColor = isDarkMode ? 'rgba(255, 255, 255, 0.55)' : 'rgba(18, 20, 24, 0.50)';
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0A0C10' : '#E5C158' }]}>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0A0C10' : '#D4AF37' }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
       {/* ARRIÈRE-PLAN VIDÉO FULLSCREEN (Nouvelle Vidéo Cloudinary) */}
