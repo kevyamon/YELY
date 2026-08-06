@@ -20,13 +20,21 @@ const ExploreMarketplaceButton = ({
 
     requestAnimationFrame(() => {
       try {
-        navigation.navigate('Accueil');
+        navigation.navigate('MarketplaceHub', { screen: 'Accueil' });
       } catch (err) {
-        navigation.navigate('MarketplaceHub');
+        try {
+          navigation.navigate('MarketplaceHub');
+        } catch (err2) {
+          try {
+            navigation.navigate('Accueil');
+          } catch (err3) {
+            navigation.navigate('Home');
+          }
+        }
       }
       setTimeout(() => {
         isNavigatingRef.current = false;
-      }, 1000);
+      }, 500);
     });
   };
 
