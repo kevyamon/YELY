@@ -1,5 +1,5 @@
 // src/screens/legal/PrivacyPolicyScreen.jsx
-// ECRAN LEGAL - Politique de Confidentialite (Conformite Apple/Google)
+// ÉCRAN LÉGAL - Politique de Confidentialité (Conformité Apple/Google)
 // STANDARD: Industriel / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
@@ -19,28 +19,28 @@ const PrivacyPolicyScreen = ({ navigation }) => {
       </View>
       
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
-        <Text style={styles.title}>Politique de Confidentialite</Text>
+        <Text style={styles.title}>Politique de Confidentialité</Text>
         
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>1. Collecte des donnees de localisation</Text>
+          <Text style={styles.sectionTitle}>1. Collecte des données de géolocalisation</Text>
           <Text style={styles.text}>
-            Yely collecte les donnees de localisation (y compris en arriere-plan) pour permettre le fonctionnement central du service :
-            {"\n"}- Pour les Passagers : Identifier votre position de depart et vous connecter aux chauffeurs a proximite.
-            {"\n"}- Pour les Chauffeurs : Vous attribuer des courses de maniere pertinente et permettre aux clients de suivre votre approche en temps reel, meme lorsque l'application est reduite ou en arriere-plan.
+            Yély collecte vos données de localisation (y compris en arrière-plan) pour assurer le fonctionnement essentiel du service :
+            {"\n"}- Pour les Passagers : Identifier votre point de départ et vous mettre en relation avec les chauffeurs à proximité.
+            {"\n"}- Pour les Chauffeurs : Vous attribuer des demandes de trajet de manière optimale et permettre aux passagers de suivre votre arrivée en temps réel, y compris lorsque l'application est réduite ou en arrière-plan.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>2. Utilisation de vos informations</Text>
+          <Text style={styles.sectionTitle}>2. Utilisation de vos informations personnelles</Text>
           <Text style={styles.text}>
-            Vos donnees de profil (nom, numero de telephone) sont utilisees exclusivement pour securiser votre compte et permettre la mise en relation lors d'une course. Le numero de telephone est partage avec la contrepartie (chauffeur/passager) uniquement une fois la course validee.
+            Vos données de profil (nom, numéro de téléphone) sont utilisées exclusivement pour sécuriser votre compte et faciliter la mise en relation. Votre numéro de téléphone est transmis à la contrepartie (chauffeur ou passager) uniquement après la validation explicite d'une course.
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>3. Conservation et Securite</Text>
+          <Text style={styles.sectionTitle}>3. Conservation et Sécurité des Données</Text>
           <Text style={styles.text}>
-            Nous mettons en oeuvre des mesures de securite de niveau industriel pour proteger vos donnees. Les historiques de geolocalisation sont purges periodiquement. Vous pouvez demander la suppression totale de votre compte a tout moment depuis l'application.
+            Nous mettons en œuvre des mesures de sécurité de niveau bancaire pour protéger vos informations. Les historiques de géolocalisation sont purgés périodiquement. Vous pouvez demander la suppression intégrale de votre compte et de vos données personnelles à tout moment directement depuis l'application.
           </Text>
         </View>
       </ScrollView>

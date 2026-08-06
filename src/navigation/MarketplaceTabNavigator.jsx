@@ -1,21 +1,22 @@
 // src/navigation/MarketplaceTabNavigator.jsx
-import React from 'react';
-import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { View, Text, TouchableOpacity, StyleSheet, DeviceEventEmitter, Platform } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import * as Haptics from 'expo-haptics';
-import { useSelector } from 'react-redux';
-import { selectCartCount } from '../store/slices/cartSlice';
+// MARKETPLACE TAB NAVIGATOR - 3 Onglets Ultra-Fluides (Accueil, Panier, Commandes)
+// CSCSM Level: Bank Grade / Masterpiece UI
 
-import MarketplaceHub from '../screens/marketplace/MarketplaceHub';
+import { Ionicons } from '@expo/vector-icons';
+import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
+import * as Haptics from 'expo-haptics';
+import React from 'react';
+import { DeviceEventEmitter, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { Text } from 'react-native-paper';
+import { useSelector } from 'react-redux';
+
 import Cart from '../screens/marketplace/Cart';
 import ClientOrders from '../screens/marketplace/ClientOrders';
+import MarketplaceHub from '../screens/marketplace/MarketplaceHub';
+import { selectCartCount } from '../store/slices/cartSlice';
 import THEME from '../theme/theme';
 
 const Tab = createBottomTabNavigator();
-
-// Dummy component pour l'onglet Catégories (l'événement de clic est intercepté)
-const DummyCategories = () => null;
 
 const CustomTabBar = ({ state, descriptors, navigation }) => {
   const cartCount = useSelector(selectCartCount);
@@ -34,17 +35,8 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         const isFocused = state.index === index;
 
         const onPress = () => {
-          // Vibrations légères si supporté
           if (Platform.OS !== 'web') {
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-          }
-
-          if (route.name === 'Categories') {
-            const activeRouteName = state.routes[state.index].name;
-            if (activeRouteName === 'Accueil') {
-              DeviceEventEmitter.emit('toggle_categories_modal');
-            }
-            return;
           }
 
           const event = navigation.emit({
@@ -54,7 +46,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
           });
 
           if (isFocused) {
-            // Effet ScrollToTop si l'onglet actif est cliqué à nouveau
             if (route.name === 'Accueil') {
               DeviceEventEmitter.emit('scroll_to_top_hub');
             } else if (route.name === 'Panier') {
@@ -70,8 +61,6 @@ const CustomTabBar = ({ state, descriptors, navigation }) => {
         let iconName = 'home';
         if (route.name === 'Accueil') {
           iconName = isFocused ? 'home' : 'home-outline';
-        } else if (route.name === 'Categories') {
-          iconName = 'grid-outline';
         } else if (route.name === 'Panier') {
           iconName = isFocused ? 'cart' : 'cart-outline';
         } else if (route.name === 'Commandes') {
@@ -127,11 +116,6 @@ const MarketplaceTabNavigator = () => {
         name="Accueil" 
         component={MarketplaceHub} 
         options={{ tabBarLabel: 'Accueil' }}
-      />
-      <Tab.Screen 
-        name="Categories" 
-        component={DummyCategories} 
-        options={{ tabBarLabel: 'Catégories' }}
       />
       <Tab.Screen 
         name="Panier" 

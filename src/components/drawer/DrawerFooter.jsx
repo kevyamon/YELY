@@ -1,37 +1,44 @@
 // src/components/drawer/DrawerFooter.jsx
-// FOOTER MENU - Version dynamique, UX Affirmée & Zéro Bordure
+// FOOTER MENU - Minimalist VIP Logout & Clean Version Badge
+// CSCSM Level: Masterpiece UI
 
 import { Ionicons } from '@expo/vector-icons';
 import Constants from 'expo-constants';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React from 'react';
+import { ActivityIndicator, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
 
 const DrawerFooter = ({ onLogout, isLoggingOut }) => {
-  const appVersion = Constants.expoConfig?.version || '1.0.0';
+  const appVersion = Constants.expoConfig?.version || '1.1.0';
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
 
   return (
     <View style={styles.container}>
       
-      {/* BOUTON DÉCONNEXION */}
+      {/* BOUTON DÉCONNEXION MINIMALISTE VIP */}
       <TouchableOpacity
-        style={styles.logoutButton}
+        style={[
+          styles.logoutButton,
+          isDarkMode ? styles.logoutButtonDark : styles.logoutButtonLight
+        ]}
         onPress={onLogout}
         disabled={isLoggingOut}
-        activeOpacity={0.7}
+        activeOpacity={0.8}
       >
         {isLoggingOut ? (
-          <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+          <ActivityIndicator size="small" color="#E74C3C" />
         ) : (
-          <Ionicons name="log-out" size={22} color={THEME.COLORS.champagneGold} />
+          <Ionicons name="log-out-outline" size={20} color="#E74C3C" />
         )}
         <Text style={styles.logoutText}>
-          {isLoggingOut ? 'Déconnexion...' : 'Se déconnecter'}
+          {isLoggingOut ? 'Déconnexion en cours...' : 'Se déconnecter'}
         </Text>
       </TouchableOpacity>
 
-      {/* VERSION APP DYNAMIQUE */}
+      {/* VERSION APP ELEGANTE */}
       <View style={styles.versionContainer}>
         <Text style={styles.versionText}>YÉLY v{appVersion}</Text>
       </View>
@@ -43,47 +50,43 @@ const DrawerFooter = ({ onLogout, isLoggingOut }) => {
 const styles = StyleSheet.create({
   container: {
     paddingHorizontal: THEME.SPACING.lg,
-    paddingTop: THEME.SPACING.md,
-    paddingBottom: THEME.SPACING.xl, 
-    borderTopWidth: 0, // Suppression forcée de la ligne supérieure
+    paddingTop: THEME.SPACING.sm,
+    paddingBottom: THEME.SPACING.lg, 
     backgroundColor: 'transparent',
-    elevation: 0,
-    shadowOpacity: 0,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 14,
+    height: 50,
     borderRadius: 14, 
-    backgroundColor: THEME.COLORS.danger || '#E74C3C', 
-    borderWidth: 0, // Sécurité anti-bordure
-    marginBottom: 20,
-    shadowColor: THEME.COLORS.danger || '#E74C3C',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 5,
-    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(231, 76, 60, 0.3)',
+    marginBottom: 16,
+  },
+  logoutButtonLight: {
+    backgroundColor: 'rgba(231, 76, 60, 0.06)',
+  },
+  logoutButtonDark: {
+    backgroundColor: 'rgba(231, 76, 60, 0.12)',
   },
   logoutText: {
     marginLeft: 10,
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: THEME.COLORS.champagneGold, 
-    letterSpacing: 0.5,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#E74C3C', 
+    letterSpacing: 0.3,
   },
   versionContainer: {
     alignItems: 'center',
-    backgroundColor: 'rgba(212, 175, 55, 0.05)', 
-    paddingVertical: 6,
-    borderRadius: 20,
-    marginHorizontal: 40,
+    justifyContent: 'center',
   },
   versionText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '700',
-    color: THEME.COLORS.champagneGold, 
-    letterSpacing: 2,
+    color: THEME.COLORS.textTertiary, 
+    letterSpacing: 1.5,
+    opacity: 0.7,
   },
 });
 

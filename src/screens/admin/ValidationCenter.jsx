@@ -52,7 +52,7 @@ const ValidationCenter = ({ navigation }) => {
     try { 
       await approveTx(id).unwrap(); 
       setSelectedTransaction(null);
-      dispatch(showSuccessToast({ title: "Succes", message: "Abonnement active avec succes." }));
+      dispatch(showSuccessToast({ title: "Succès", message: "Abonnement activé avec succès." }));
     } catch (e) { 
       const errorMessage = e?.data?.message || "Erreur serveur lors de l'activation.";
       dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));
@@ -63,7 +63,7 @@ const ValidationCenter = ({ navigation }) => {
     try { 
       await rejectTx({ transactionId: id, reason }).unwrap(); 
       setSelectedTransaction(null);
-      dispatch(showSuccessToast({ title: "Rejete", message: "Preuve rejetee et notifiee au chauffeur." }));
+      dispatch(showSuccessToast({ title: "Rejeté", message: "Preuve rejetée et notifiée au chauffeur." }));
     } catch (e) { 
       const errorMessage = e?.data?.message || "Erreur serveur lors du rejet.";
       dispatch(showErrorToast({ title: "Erreur", message: errorMessage }));

@@ -1,10 +1,10 @@
 // src/components/drawer/DrawerHeader.jsx
-// HEADER DU MENU (Profil, Photo & Infos)
-// CSCSM Level: Bank Grade / Seamless Flow UX
+// HEADER DU MENU (Profil, Photo & Infos - VIP Minimalist)
+// CSCSM Level: Masterpiece UI
 
 import { Ionicons } from '@expo/vector-icons';
-import { useState } from 'react';
-import { ActivityIndicator, Image, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import React, { useState } from 'react';
+import { ActivityIndicator, Image, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import THEME from '../../theme/theme';
@@ -12,6 +12,8 @@ import { getInitials, getRoleLabel } from './menuConfig';
 
 const DrawerHeader = ({ user, role, onClose }) => {
   const [isImageLoading, setIsImageLoading] = useState(false);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   
   const displayName = user?.firstName 
     ? `${user.firstName} ${user.lastName || ''}`.trim()
@@ -44,11 +46,11 @@ const DrawerHeader = ({ user, role, onClose }) => {
         </View>
 
         <TouchableOpacity 
-          style={styles.closeButton} 
+          style={[styles.closeButton, isDarkMode ? styles.closeButtonDark : styles.closeButtonLight]} 
           onPress={onClose}
           activeOpacity={0.7}
         >
-          <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+          <Ionicons name="close" size={22} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
       </View>
 
@@ -67,7 +69,7 @@ const DrawerHeader = ({ user, role, onClose }) => {
               />
               {isImageLoading && (
                 <View style={styles.imageLoadingOverlay}>
-                  <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} />
                 </View>
               )}
             </>
@@ -89,7 +91,7 @@ const DrawerHeader = ({ user, role, onClose }) => {
             {user?.phone || user?.email || 'Non renseigné'}
           </Text>
 
-          {/* Badge Role */}
+          {/* Badge Role Minimaliste */}
           <View style={styles.roleBadge}>
             <Text style={styles.roleBadgeText}>{roleLabel}</Text>
           </View>
@@ -104,23 +106,21 @@ const styles = StyleSheet.create({
   container: {
     paddingHorizontal: THEME.SPACING.lg,
     paddingTop: THEME.SPACING.lg,
-    paddingBottom: THEME.SPACING.md, // Réduit pour coller naturellement au menu
-    // SUPPRESSION DE LA BORDURE BLANCHE (borderBottomWidth)
+    paddingBottom: THEME.SPACING.md,
   },
   
-  // --- TOP ROW ---
   topRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: THEME.SPACING.xl,
+    marginBottom: THEME.SPACING.lg,
   },
   brandContainer: {
     flexDirection: 'row',
     alignItems: 'baseline',
   },
   brandText: {
-    color: THEME.COLORS.champagneGold,
+    color: THEME.COLORS.primary,
     fontSize: 22,
     fontWeight: '900',
     letterSpacing: 2,
@@ -130,19 +130,22 @@ const styles = StyleSheet.create({
     height: 6,
     borderRadius: 3,
     backgroundColor: THEME.COLORS.textPrimary,
-    marginLeft: 2,
+    marginLeft: 3,
   },
   closeButton: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)', // Plus subtil
     justifyContent: 'center',
     alignItems: 'center',
-    // Suppression de la bordure dure du bouton close
+  },
+  closeButtonLight: {
+    backgroundColor: 'rgba(0, 0, 0, 0.05)',
+  },
+  closeButtonDark: {
+    backgroundColor: 'rgba(255, 255, 255, 0.08)',
   },
 
-  // --- PROFIL ROW ---
   profileRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -150,61 +153,58 @@ const styles = StyleSheet.create({
   avatarContainer: {
     position: 'relative',
     marginRight: THEME.SPACING.md,
-    width: 64,
-    height: 64,
+    width: 58,
+    height: 58,
   },
   avatarImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
+    width: 58,
+    height: 58,
+    borderRadius: 29,
     borderWidth: 2,
-    borderColor: THEME.COLORS.champagneGold,
+    borderColor: THEME.COLORS.primary,
   },
   imageLoadingOverlay: {
     ...StyleSheet.absoluteFillObject,
-    borderRadius: 32,
-    backgroundColor: THEME.COLORS.glassDark,
+    borderRadius: 29,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: THEME.COLORS.champagneGold,
   },
   avatarPlaceholder: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    width: 58,
+    height: 58,
+    borderRadius: 29,
+    backgroundColor: 'rgba(214, 175, 55, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 2,
-    borderColor: THEME.COLORS.champagneGold,
+    borderColor: THEME.COLORS.primary,
   },
   avatarText: {
-    color: THEME.COLORS.champagneGold,
-    fontSize: 24,
+    color: THEME.COLORS.primary,
+    fontSize: 22,
     fontWeight: 'bold',
   },
   onlineIndicator: {
     position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    backgroundColor: THEME.COLORS.success,
+    bottom: 1,
+    right: 1,
+    width: 13,
+    height: 13,
+    borderRadius: 6.5,
+    backgroundColor: '#2ECC71',
     borderWidth: 2,
     borderColor: THEME.COLORS.background,
   },
 
-  // --- USER INFO ---
   userInfo: {
     flex: 1,
     justifyContent: 'center',
   },
   userName: {
     color: THEME.COLORS.textPrimary,
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 17,
+    fontWeight: '800',
     marginBottom: 2,
   },
   userContact: {
@@ -214,19 +214,19 @@ const styles = StyleSheet.create({
   },
   roleBadge: {
     alignSelf: 'flex-start',
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 12,
+    backgroundColor: 'rgba(214, 175, 55, 0.12)',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 10,
     borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+    borderColor: 'rgba(214, 175, 55, 0.25)',
   },
   roleBadgeText: {
-    color: THEME.COLORS.champagneGold,
+    color: THEME.COLORS.primary,
     fontSize: 10,
-    fontWeight: 'bold',
+    fontWeight: '800',
     textTransform: 'uppercase',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
   },
 });
 

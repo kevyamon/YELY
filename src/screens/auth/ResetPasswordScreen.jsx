@@ -23,11 +23,11 @@ const ResetPasswordScreen = ({ route, navigation }) => {
 
   const handleReset = async () => {
     if (otp.length !== 6) {
-      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code de securite doit contenir exactement 6 chiffres." }));
+      dispatch(showErrorToast({ title: "Code incomplet", message: "Le code de sécurité doit contenir exactement 6 chiffres." }));
       return;
     }
     if (passwordScore < 1) {
-      dispatch(showErrorToast({ title: "Mot de passe faible", message: "Le nouveau mot de passe doit respecter tous les criteres de securite (12 caracteres minimum, majuscule, chiffre, symbole)." }));
+      dispatch(showErrorToast({ title: "Mot de passe faible", message: "Le nouveau mot de passe doit respecter tous les critères de sécurité (12 caractères minimum, majuscule, chiffre, symbole)." }));
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -38,14 +38,14 @@ const ResetPasswordScreen = ({ route, navigation }) => {
     try {
       await resetPassword({ email, otp, newPassword }).unwrap();
       dispatch(showSuccessToast({ 
-        title: "Succes", 
-        message: "Votre mot de passe a ete mis a jour. Vous pouvez vous connecter." 
+        title: "Succès", 
+        message: "Votre mot de passe a été mis à jour. Vous pouvez vous connecter." 
       }));
       navigation.navigate('Login');
     } catch (err) {
       dispatch(showErrorToast({ 
-        title: "Echec", 
-        message: err?.data?.message || "Ce code de securite est incorrect ou a expire." 
+        title: "Échec", 
+        message: err?.data?.message || "Ce code de sécurité est incorrect ou a expiré." 
       }));
     }
   };
@@ -55,7 +55,7 @@ const ResetPasswordScreen = ({ route, navigation }) => {
       <ScrollView contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
         <View style={styles.headerSpacer} />
         <Text style={styles.title}>Nouveau mot de passe</Text>
-        <Text style={styles.subtitle}>Saisissez le code recu par mail.</Text>
+        <Text style={styles.subtitle}>Saisissez le code reçu par mail.</Text>
 
         <View style={styles.form}>
           

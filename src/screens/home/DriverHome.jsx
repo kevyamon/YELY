@@ -4,7 +4,7 @@
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useIsFocused } from '@react-navigation/native';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useDispatch, useSelector } from 'react-redux';
@@ -101,10 +101,11 @@ const DriverHome = ({ navigation, route }) => {
     const isSubscriptionBlocked = !isActive && !promoMode?.isActive;
     const isBlocked = !isRideActive && (isSubscriptionBlocked || isBlockedByVerification);
 
-    return { isActive, isPending, isSubscriptionBlocked, isBlocked };
+    return { isActive, isPending, isSubscriptionBlocked, isBlocked, isBlockedByVerification };
   }, [subscriptionData, user?.subscription?.isActive, user?.verificationStatus, subStatusRedux, promoMode, isRideActive]);
 
-  const { isActive, isPending, isSubscriptionBlocked, isBlocked } = subscriptionState;
+  const { isActive, isPending, isSubscriptionBlocked, isBlocked, isBlockedByVerification } = subscriptionState;
+  const isSubscriptionLoading = isSubLoading;
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
 
   // Synchronisation en temps réel des infos de l'utilisateur (identités + abonnements)

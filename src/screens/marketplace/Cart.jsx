@@ -131,11 +131,20 @@ const Cart = ({ navigation }) => {
     <ScreenWrapper 
       backgroundColor={dynamicBg}
       style={{ flex: 1 }}
-      translucent={false}
-      statusBarColor={dynamicBg}
+      translucent={true}
+      statusBarColor="transparent"
     >
       <View style={[styles.header, { paddingTop: insets.top + 12, backgroundColor: dynamicBg }]}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={[styles.backBtn, dynamicBackBtnStyle]}>
+        <TouchableOpacity 
+          onPress={() => {
+            try {
+              navigation.navigate('Accueil');
+            } catch (err) {
+              navigation.goBack();
+            }
+          }} 
+          style={[styles.backBtn, dynamicBackBtnStyle]}
+        >
           <Ionicons name="chevron-back" size={24} color={dynamicTextColor} />
         </TouchableOpacity>
         <Text style={[styles.title, { color: dynamicTextColor }]}>Mon Panier</Text>

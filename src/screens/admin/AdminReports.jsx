@@ -59,7 +59,7 @@ const AdminReports = ({ navigation }) => {
       await resolveReport({ id, note }).unwrap();
       setIsModalVisible(false);
       setSelectedReport(null);
-      dispatch(showSuccessToast({ title: 'Succes', message: 'Signalement resolu avec succes.' }));
+      dispatch(showSuccessToast({ title: 'Succès', message: 'Signalement résolu avec succès.' }));
     } catch (error) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de clore ce signalement.' }));
     }
@@ -70,7 +70,7 @@ const AdminReports = ({ navigation }) => {
     try {
       await deleteAdminReport(reportToDelete).unwrap();
       setReportToDelete(null);
-      dispatch(showSuccessToast({ title: 'Supprime', message: 'Signalement efface definitivement.' }));
+      dispatch(showSuccessToast({ title: 'Supprimé', message: 'Signalement effacé définitivement.' }));
     } catch (error) {
       setReportToDelete(null);
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer ce signalement.' }));

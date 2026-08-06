@@ -270,7 +270,7 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   bigCancelButtonText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 16,
   },
@@ -323,7 +323,7 @@ const styles = StyleSheet.create({
     borderRadius: 25,
   },
   solidCancelButtonText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
   },
 });

@@ -1,6 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
+import * as Linking from 'expo-linking';
+import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, LayoutAnimation, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -151,10 +155,44 @@ const LoginPage = ({ navigation }) => {
         dispatch(showErrorToast({ title: "Connexion Google", message: err?.data?.message || "Impossible de se connecter avec Google." }));
       }
     } else {
-      dispatch(showErrorToast({ 
-        title: "Connexion Google Mobile", 
-        message: "Veuillez utiliser la version Web/PWA pour la connexion Google 1-clic." 
-      }));
+      try {
+        const redirectUrl = 'https://auth.expo.io/@anonymous/YELY';
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=token&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
+
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+
+        if (result.type === 'success' && result.url) {
+          const tokenMatch = result.url.match(/access_token=([^&]+)/) || result.url.match(/id_token=([^&]+)/);
+          if (tokenMatch && tokenMatch[1]) {
+            const accessToken = tokenMatch[1];
+            const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+              headers: { Authorization: `Bearer ${accessToken}` }
+            });
+            const userInfo = await userInfoRes.json();
+
+            if (userInfo.email) {
+              const res = await googleAuth({
+                email: userInfo.email,
+                name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
+                profilePicture: userInfo.picture,
+                role: 'rider'
+              }).unwrap();
+
+              const { user, accessToken: jwtAccess, refreshToken: jwtRefresh } = res.data;
+              dispatch(setCredentials({ user, accessToken: jwtAccess, refreshToken: jwtRefresh }));
+              dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+              return;
+            }
+          }
+        }
+        
+        if (result.type !== 'dismiss') {
+          dispatch(showErrorToast({ title: "Connexion Google", message: "Authentification annulée." }));
+        }
+      } catch (mobileErr) {
+        console.error('[GOOGLE AUTH MOBILE]', mobileErr);
+        dispatch(showErrorToast({ title: "Connexion Google", message: mobileErr?.data?.message || "Échec de l'authentification Google." }));
+      }
     }
   };
 

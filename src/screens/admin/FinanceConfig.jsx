@@ -72,13 +72,13 @@ const FinanceConfig = ({ navigation }) => {
     try { 
       await togglePromo({ isActive: value }).unwrap(); 
       dispatch(showSuccessToast({
-        title: 'Succes',
-        message: `Mode Promotionnel (Tarifs) ${value ? 'ACTIVE' : 'DESACTIVE'}`,
+        title: 'Succès',
+        message: `Mode Promotionnel (Tarifs) ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
       }));
     } catch (e) { 
       setIsPromoActive(!value); 
       dispatch(showErrorToast({
-        title: 'Echec',
+        title: 'Échec',
         message: "Impossible de changer le mode promotionnel.",
       }));
     }
@@ -91,8 +91,8 @@ const FinanceConfig = ({ navigation }) => {
     } catch (e) {
       setIsLoadReduced(!value);
       dispatch(showErrorToast({
-        title: 'Echec',
-        message: "Impossible de modifier la repartition des validations.",
+        title: 'Échec',
+        message: "Impossible de modifier la répartition des validations.",
       }));
     }
   };
@@ -106,14 +106,14 @@ const FinanceConfig = ({ navigation }) => {
       }).unwrap();
       
       dispatch(showSuccessToast({
-        title: 'Gratuite Chauffeurs',
-        message: `Acces gratuit ${value ? 'ACTIVE' : 'DESACTIVE'} pour tous.`,
+        title: 'Gratuité Chauffeurs',
+        message: `Accès gratuit ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'} pour tous.`,
       }));
     } catch (e) {
       setIsGlobalFreeAccess(!value);
       dispatch(showErrorToast({
-        title: 'Echec',
-        message: "Impossible de modifier le statut de gratuite.",
+        title: 'Échec',
+        message: "Impossible de modifier le statut de gratuité.",
       }));
     }
   };
@@ -122,9 +122,9 @@ const FinanceConfig = ({ navigation }) => {
     if (!isGlobalFreeAccess) return;
     try {
       await toggleGlobalFreeAccess({ isActive: true, promoMessage }).unwrap();
-      dispatch(showSuccessToast({ title: 'Message a jour', message: 'Le texte a ete diffuse aux chauffeurs.' }));
+      dispatch(showSuccessToast({ title: 'Message à jour', message: 'Le texte a été diffusé aux chauffeurs.' }));
     } catch (e) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de mettre a jour le message.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de mettre à jour le message.' }));
     }
   };
 

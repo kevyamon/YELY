@@ -89,11 +89,11 @@ const baseQueryWithReauth = async (args, api, extraOptions) => {
         console.info(`[API] Toast etouffe: Erreur transitoire (${errorStatus}) masquee pendant le refresh token.`);
       } else if (!isSilent && !api.getState().ui.isServerWaking) {
         let toastMessage = "Une erreur inattendue est survenue.";
-        if (errorStatus === 'FETCH_ERROR') toastMessage = "Impossible de joindre le serveur. Verifiez votre connexion.";
-        else if (actualStatus >= 500) toastMessage = "Nos serveurs rencontrent un probleme technique. Nous y travaillons.";
-        else if (errorStatus === 'TIMEOUT_ERROR') toastMessage = "La requete a pris trop de temps. Veuillez reessayer.";
+        if (errorStatus === 'FETCH_ERROR') toastMessage = "Impossible de joindre le serveur. Vérifiez votre connexion.";
+        else if (actualStatus >= 500) toastMessage = "Nos serveurs rencontrent un problème technique. Nous y travaillons.";
+        else if (errorStatus === 'TIMEOUT_ERROR') toastMessage = "La requête a pris trop de temps. Veuillez réessayer.";
 
-        api.dispatch(showErrorToast({ title: "Probleme reseau", message: toastMessage }));
+        api.dispatch(showErrorToast({ title: "Problème réseau", message: toastMessage }));
 
         if (!__DEV__) {
           Sentry.captureException(new Error(`API Error [${actualStatus}] on ${requestUrl}`), {

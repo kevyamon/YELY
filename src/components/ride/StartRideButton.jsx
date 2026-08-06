@@ -72,7 +72,7 @@ const StartRideButton = () => {
       }
 
       dispatch(showErrorToast({
-        title: 'Echec du demarrage',
+        title: 'Échec du démarrage',
         message: errorMessage
       }));
     }

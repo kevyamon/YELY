@@ -1,5 +1,5 @@
 // src/screens/LandingScreen.jsx
-// LANDING PAGE - FULLSCREEN MOTION DESIGN (VIP Theme Synchronized)
+// LANDING PAGE - FULLSCREEN MOTION DESIGN (Nouvelle Vidéo & Titres Blancs Permanents)
 // CSCSM Level: Masterpiece UI / Fullscreen Video Engine
 
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   BackHandler,
   Dimensions,
@@ -37,7 +37,7 @@ import { showSuccessToast } from '../store/slices/uiSlice';
 import THEME from '../theme/theme';
 
 const { width } = Dimensions.get('window');
-const MOTION_DESIGN_URL = 'https://res.cloudinary.com/dkov5qrsp/video/upload/v1785905486/vbsxzwoa5m4mpvcx7jqp.mp4';
+const MOTION_DESIGN_URL = 'https://res.cloudinary.com/dkov5qrsp/video/upload/v1785983642/qls2tsxu0uhfrasnsnza.mp4';
 
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -45,7 +45,19 @@ export default function LandingScreen({ navigation }) {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   
+  const videoRef = useRef(null);
   const [videoError, setVideoError] = useState(false);
+
+  const handlePlaybackStatusUpdate = (status) => {
+    if (status.isLoaded) {
+      if (!status.isPlaying && status.shouldPlay && !status.isBuffering) {
+        videoRef.current?.playAsync().catch(() => {});
+      }
+    } else if (status.error) {
+      console.warn('[LandingScreen] Erreur flux vidéo:', status.error);
+      setVideoError(true);
+    }
+  };
 
   const appVersion = Constants.expoConfig?.version || '1.1.0';
   const currentYear = new Date().getFullYear();
@@ -131,41 +143,54 @@ export default function LandingScreen({ navigation }) {
 
     return (
       <Video
+        ref={videoRef}
         source={{ uri: MOTION_DESIGN_URL }}
         style={styles.fullscreenVideo}
         resizeMode={ResizeMode.COVER}
         shouldPlay
         isLooping
         isMuted
+        useNativeControls={false}
+        progressUpdateIntervalMillis={1000}
+        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
         onError={() => setVideoError(true)}
       />
     );
   };
 
+  // Couleurs des liens adaptatifs
+  const textColorSecondary = isDarkMode ? 'rgba(255, 255, 255, 0.90)' : 'rgba(18, 20, 24, 0.85)';
+  const textColorTertiary = isDarkMode ? 'rgba(255, 255, 255, 0.70)' : 'rgba(18, 20, 24, 0.65)';
+  const copyrightColor = isDarkMode ? 'rgba(255, 255, 255, 0.55)' : 'rgba(18, 20, 24, 0.50)';
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0A0C10' : '#E5C158' }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
-      {/* 1. ARRIÈRE-PLAN VIDÉO FULLSCREEN */}
+      {/* ARRIÈRE-PLAN VIDÉO FULLSCREEN (Nouvelle Vidéo Cloudinary) */}
       <View style={StyleSheet.absoluteFillObject}>
         {renderMotionDesign()}
       </View>
 
-      {/* 2. VOILE DÉGRADÉ ÉPURÉ & TRANSLUCIDE (Subtil pour laisser briller le logo Yély de la vidéo) */}
+      {/* VOILE DÉGRADÉ PROGRESSIF : Transparent en haut -> ambré/or en bas */}
       <LinearGradient 
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        locations={[0, 0.45, 1]}
         colors={
           isDarkMode 
-            ? ['rgba(0, 0, 0, 0.12)', 'rgba(0, 0, 0, 0.45)', 'rgba(10, 12, 16, 0.82)']
-            : ['rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.65)']
+            ? ['transparent', 'rgba(10, 12, 16, 0.35)', 'rgba(10, 12, 16, 0.92)']
+            : ['transparent', 'rgba(214, 175, 55, 0.30)', 'rgba(245, 215, 80, 0.92)']
         } 
         style={StyleSheet.absoluteFillObject} 
       />
 
-      {/* 3. CONTENU EN SURIMPRESSION */}
+      {/* CONTENU EN SURIMPRESSION */}
       <View style={[styles.contentContainer, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 16) }]}>
         
         <View style={styles.topSpace} />
 
+        {/* TITRE PRINCIPAL & SOUS-TITRE FIXÉS EN BLANC PERMANENT À HAUT RELIEF */}
         <View style={styles.centerSection}>
           <Animated.Text style={[styles.mainTitle, titleStyle]}>
             Avec Yély, ça va vite !
@@ -180,7 +205,10 @@ export default function LandingScreen({ navigation }) {
         <View style={styles.bottomSection}>
           <Animated.View style={[styles.buttonWrapper, btnStyle]}>
             <TouchableOpacity 
-              style={styles.goldCtaButton}
+              style={[
+                styles.goldCtaButton, 
+                { backgroundColor: isDarkMode ? THEME.COLORS.primary : '#121418' }
+              ]}
               activeOpacity={0.9}
               onPress={() => navigation.navigate('Register')}
             >
@@ -192,29 +220,36 @@ export default function LandingScreen({ navigation }) {
                 />
               </Animated.View>
 
-              <Text style={styles.goldCtaText}>CRÉER MON COMPTE</Text>
-              <Ionicons name="arrow-forward" size={20} color="#121418" style={{ marginLeft: 8 }} />
+              <Text style={[styles.goldCtaText, { color: isDarkMode ? '#121418' : THEME.COLORS.primary }]}>
+                CRÉER MON COMPTE
+              </Text>
+              <Ionicons 
+                name="arrow-forward" 
+                size={20} 
+                color={isDarkMode ? '#121418' : THEME.COLORS.primary} 
+                style={{ marginLeft: 8 }} 
+              />
             </TouchableOpacity>
           </Animated.View>
 
           <Animated.View style={[styles.linksContainer, linksStyle]}>
             <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
-              <Text style={styles.loginText}>
-                Déjà membre ? <Text style={styles.loginTextBold}>Se connecter</Text>
+              <Text style={[styles.loginText, { color: textColorSecondary }]}>
+                Déjà membre ? <Text style={[styles.loginTextBold, { color: isDarkMode ? THEME.COLORS.primary : '#121418' }]}>Se connecter</Text>
               </Text>
             </TouchableOpacity>
 
             <View style={styles.legalLinksRow}>
               <TouchableOpacity onPress={() => navigation.navigate('TermsOfService')} style={styles.termsLink}>
-                <Text style={styles.termsText}>Conditions d'utilisation</Text>
+                <Text style={[styles.termsText, { color: textColorTertiary }]}>Conditions d'utilisation</Text>
               </TouchableOpacity>
-              <Text style={styles.bullet}> • </Text>
+              <Text style={[styles.bullet, { color: textColorTertiary }]}> • </Text>
               <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={styles.termsLink}>
-                <Text style={styles.termsText}>Confidentialité</Text>
+                <Text style={[styles.termsText, { color: textColorTertiary }]}>Confidentialité</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.copyright}>© {currentYear} Yely • v{appVersion}</Text>
+            <Text style={[styles.copyright, { color: copyrightColor }]}>© {currentYear} Yely • v{appVersion}</Text>
           </Animated.View>
         </View>
 
@@ -224,7 +259,7 @@ export default function LandingScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0A0C10' },
+  container: { flex: 1 },
   fullscreenVideo: { width: '100%', height: '100%' },
   fallbackImage: { width: '100%', height: '100%' },
   contentContainer: {
@@ -241,26 +276,26 @@ const styles = StyleSheet.create({
   mainTitle: {
     fontSize: 42,
     fontWeight: '900',
-    color: '#FFFFFF', 
+    color: '#FFFFFF', // Blanc Éclatant Permanent
     letterSpacing: 1.2,
     textAlign: 'center',
     lineHeight: 48,
     textShadowColor: 'rgba(0, 0, 0, 0.95)',
-    textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 12,
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 10,
   },
   separator: {
     width: 48,
     height: 3.5,
-    backgroundColor: THEME.COLORS.champagneGold,
+    backgroundColor: THEME.COLORS.primary,
     alignSelf: 'center',
     marginVertical: 14,
     borderRadius: 2,
   },
   subTitle: {
     fontSize: 18,
-    color: '#FFFFFF',
     fontWeight: '700',
+    color: 'rgba(255, 255, 255, 0.95)', // Blanc Éclatant Permanent
     textAlign: 'center',
     letterSpacing: 1,
     textShadowColor: 'rgba(0, 0, 0, 0.95)',
@@ -273,21 +308,19 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   goldCtaButton: {
-    backgroundColor: THEME.COLORS.primary, 
     height: 60,
     borderRadius: THEME.BORDERS.radius.pill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: THEME.COLORS.primary,
+    shadowColor: '#000000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.5,
-    shadowRadius: 15,
-    elevation: 10,
+    shadowOpacity: 0.35,
+    shadowRadius: 12,
+    elevation: 8,
     overflow: 'hidden', 
   },
   goldCtaText: {
-    color: '#121418', 
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -309,36 +342,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   loginText: { 
-    color: '#FFFFFF', 
     fontSize: 15, 
     fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.9)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 6,
   },
   loginTextBold: { 
-    color: THEME.COLORS.champagneGold, 
     fontWeight: '900', 
     textDecorationLine: 'underline' 
   },
   legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
   termsLink: { padding: 5 },
   termsText: { 
-    color: 'rgba(255, 255, 255, 0.9)', 
     fontSize: 12, 
     fontWeight: '700',
-    textShadowColor: 'rgba(0, 0, 0, 0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   },
-  bullet: { color: THEME.COLORS.champagneGold, fontSize: 12, marginHorizontal: 5 },
+  bullet: { fontSize: 12, marginHorizontal: 5 },
   copyright: { 
-    color: 'rgba(255, 255, 255, 0.8)', 
     fontSize: 10, 
     marginTop: 8, 
     fontWeight: '600',
-    textShadowColor: 'rgba(0, 0, 0, 0.9)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 4,
   }
 });

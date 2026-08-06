@@ -87,7 +87,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   promoText: {
-    color: '#FFF',
+    color: '#FFFFFF',
     fontWeight: 'bold',
     fontSize: 12,
   },

@@ -217,7 +217,7 @@ const CheckoutScreen = ({ navigation }) => {
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
       <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <MarketplaceDetailsHeader title="Validation de commande" showCart={false} isOverlay={false} />
+        <MarketplaceDetailsHeader title="Validation" showCart={false} isOverlay={false} />
 
         <ScrollView 
           ref={scrollRef}
@@ -421,13 +421,21 @@ const CheckoutScreen = ({ navigation }) => {
               </Text>
             </View>
 
-            <View style={styles.proTotalBlock}>
+            <View style={[
+              styles.proTotalBlock,
+              {
+                backgroundColor: isDark ? 'rgba(212, 175, 55, 0.12)' : 'rgba(212, 175, 55, 0.14)',
+                borderColor: isDark ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.5)',
+              }
+            ]}>
               <View style={styles.proTotalLeft}>
                 <View style={styles.proTotalHeaderRow}>
-                  <Ionicons name="wallet-outline" size={16} color={THEME.COLORS.primary} />
-                  <Text style={styles.proTotalLabel}>TOTAL À RÉGLER</Text>
+                  <View style={styles.proTotalIconBg}>
+                    <Ionicons name="wallet-outline" size={16} color={THEME.COLORS.primary} />
+                  </View>
+                  <Text style={[styles.proTotalLabel, { color: isDark ? '#FFFFFF' : '#121418' }]}>TOTAL À RÉGLER</Text>
                 </View>
-                <Text style={styles.proTotalSub}>Net à payer (TTC)</Text>
+                <Text style={[styles.proTotalSub, { color: isDark ? 'rgba(255,255,255,0.65)' : 'rgba(18,20,24,0.6)' }]}>Net à payer (TTC)</Text>
               </View>
               <View style={styles.proTotalRight}>
                 <Text style={styles.proTotalAmount} numberOfLines={1}>
@@ -682,38 +690,42 @@ const styles = StyleSheet.create({
   proSummaryLabel: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
   proSummaryValue: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
   proTotalBlock: { 
-    marginTop: 20, 
-    padding: 18, 
+    marginTop: 18, 
+    paddingVertical: 16, 
+    paddingHorizontal: 16, 
     borderRadius: 20, 
     flexDirection: 'row', 
     justifyContent: 'space-between', 
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.4)',
-    backgroundColor: 'rgba(212, 175, 55, 0.08)',
-    ...THEME.SHADOWS.gold
   },
   proTotalLeft: {
     flex: 1,
     justifyContent: 'center',
-    gap: 4
   },
   proTotalHeaderRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6
+    gap: 8
+  },
+  proTotalIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: 'rgba(212, 175, 55, 0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   proTotalLabel: { 
-    color: THEME.COLORS.textPrimary, 
     fontWeight: '900', 
     fontSize: 13, 
     letterSpacing: 0.5 
   },
   proTotalSub: { 
-    color: THEME.COLORS.textSecondary, 
-    fontSize: 10, 
+    fontSize: 10.5, 
     fontWeight: '600', 
-    paddingLeft: 22
+    paddingLeft: 36,
+    marginTop: 2
   },
   proTotalRight: {
     alignItems: 'flex-end',

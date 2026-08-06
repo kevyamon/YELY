@@ -4,6 +4,7 @@
 
 import { useEffect, useRef } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
+import { Audio } from 'expo-av';
 import { playSound } from '../utils/soundHelper';
 import socketService from '../services/socketService';
 import { selectCurrentUser, selectIsAuthenticated, updateUserInfo } from '../store/slices/authSlice';

@@ -68,7 +68,7 @@ const ReportScreen = ({ navigation }) => {
     if (isLoading) return;
 
     if (!message.trim()) {
-      return dispatch(showErrorToast({ title: 'Message vide', message: 'Decrivez le probleme.' }));
+      return dispatch(showErrorToast({ title: 'Message vide', message: 'Décrivez le problème.' }));
     }
     
     const formData = new FormData();
@@ -81,10 +81,10 @@ const ReportScreen = ({ navigation }) => {
 
     try {
       await submitReport(formData).unwrap();
-      dispatch(showSuccessToast({ title: 'Envoye', message: 'L\'administration traitera votre demande.' }));
+      dispatch(showSuccessToast({ title: 'Envoyé', message: 'L\'administration traitera votre demande.' }));
       navigation.goBack();
     } catch (e) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Echec de l\'envoi du signalement.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Échec de l\'envoi du signalement.' }));
     }
   };
 
@@ -94,21 +94,21 @@ const ReportScreen = ({ navigation }) => {
         <TouchableOpacity onPress={() => navigation.goBack()} disabled={isLoading}>
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.primary} />
         </TouchableOpacity>
-        <Text style={styles.title}>Signaler un probleme</Text>
+        <Text style={styles.title}>Signaler un problème</Text>
       </View>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text style={styles.label}>Decrivez votre souci</Text>
+        <Text style={styles.label}>Décrivez votre souci</Text>
         <TextInput 
           style={styles.input} 
           multiline numberOfLines={6} 
           value={message} 
           onChangeText={setMessage} 
-          placeholder="Detaillez le probleme rencontre..."
+          placeholder="Détaillez le problème rencontré..."
           placeholderTextColor={THEME.COLORS.textTertiary}
           editable={!isLoading} 
         />
         
-        <Text style={styles.label}>Captures d'ecran ({images.length}/3)</Text>
+        <Text style={styles.label}>Captures d'écran ({images.length}/3)</Text>
         <View style={styles.imageRow}>
           {images.map((img, i) => (
             <View key={i} style={styles.imageContainer}>

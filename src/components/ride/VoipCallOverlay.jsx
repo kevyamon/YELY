@@ -1,4 +1,5 @@
 import { Ionicons } from '@expo/vector-icons';
+import { Audio } from 'expo-av';
 import { playSound } from '../../utils/soundHelper';
 import { LinearGradient } from 'expo-linear-gradient';
 import React, { useEffect, useRef, useState } from 'react';
@@ -15,20 +16,26 @@ import {
   StatusBar
 } from 'react-native';
 
-// Support universel (Native + Web PWA)
+// Support universel (Native + Web PWA + Compatibilité Expo Go)
 let RTCPeerConnection, RTCIceCandidate, RTCSessionDescription, mediaDevices;
 
 if (Platform.OS === 'web') {
-  RTCPeerConnection = window.RTCPeerConnection || window.webkitRTCPeerConnection;
-  RTCIceCandidate = window.RTCIceCandidate;
-  RTCSessionDescription = window.RTCSessionDescription;
-  mediaDevices = navigator.mediaDevices;
+  RTCPeerConnection = typeof window !== 'undefined' ? (window.RTCPeerConnection || window.webkitRTCPeerConnection) : null;
+  RTCIceCandidate = typeof window !== 'undefined' ? window.RTCIceCandidate : null;
+  RTCSessionDescription = typeof window !== 'undefined' ? window.RTCSessionDescription : null;
+  mediaDevices = typeof navigator !== 'undefined' ? navigator.mediaDevices : null;
 } else {
-  const webrtc = require('react-native-webrtc');
-  RTCPeerConnection = webrtc.RTCPeerConnection;
-  RTCIceCandidate = webrtc.RTCIceCandidate;
-  RTCSessionDescription = webrtc.RTCSessionDescription;
-  mediaDevices = webrtc.mediaDevices;
+  try {
+    const webrtc = require('react-native-webrtc');
+    if (webrtc && webrtc.RTCPeerConnection) {
+      RTCPeerConnection = webrtc.RTCPeerConnection;
+      RTCIceCandidate = webrtc.RTCIceCandidate;
+      RTCSessionDescription = webrtc.RTCSessionDescription;
+      mediaDevices = webrtc.mediaDevices;
+    }
+  } catch (e) {
+    console.warn("[VoipCallOverlay] Module natif WebRTC non disponible dans le bac à sable Expo Go. Mode secours audio actif.");
+  }
 }
 import Animated, {
   useAnimatedStyle,

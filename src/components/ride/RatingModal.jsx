@@ -3,8 +3,8 @@
 // CSCSM Level: Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { ActivityIndicator, Keyboard, KeyboardAvoidingView, Modal, Platform, ScrollView, StyleSheet, Text, TextInput, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
 import { useRateRideMutation } from '../../store/api/ridesApiSlice';
@@ -14,11 +14,14 @@ import THEME from '../../theme/theme';
 
 const RatingModal = () => {
   const dispatch = useDispatch();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const rideToRate = useSelector(selectRideToRate);
   const [rateRide, { isLoading }] = useRateRideMutation();
 
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
+  const commentScrollRef = useRef(null);
 
   const isVisible = !!rideToRate;
   const rideId = rideToRate?._id || rideToRate?.rideId;
@@ -62,6 +65,14 @@ const RatingModal = () => {
     }
   };
 
+  // Couleurs dynamiques selon le mode Jour/Nuit
+  const dynamicModalBg = isDarkMode ? '#121418' : '#FFFFFF';
+  const dynamicInputBg = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 20, 24, 0.04)';
+  const dynamicInputBorder = isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(18, 20, 24, 0.12)';
+  const dynamicTextColor = isDarkMode ? '#FFFFFF' : '#121418';
+  const dynamicTextSecColor = isDarkMode ? 'rgba(255, 255, 255, 0.70)' : 'rgba(18, 20, 24, 0.65)';
+  const dynamicPlaceholderColor = isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 20, 24, 0.40)';
+
   return (
     <Modal visible={isVisible} transparent={true} animationType="slide" onRequestClose={handleClose}>
       <KeyboardAvoidingView 
@@ -74,14 +85,14 @@ const RatingModal = () => {
           onPress={Platform.OS !== 'web' ? Keyboard.dismiss : undefined} 
         />
         
-        <View style={[styles.modalCard, { backgroundColor: THEME.COLORS.background }]}>
+        <View style={[styles.modalCard, { backgroundColor: dynamicModalBg }]}>
           
           <View style={styles.header}>
             <View style={styles.successIconContainer}>
               <Ionicons name="checkmark" size={32} color={THEME.COLORS.success} />
             </View>
-            <Text style={[styles.titleText, { color: THEME.COLORS.textPrimary }]}>Course Terminée</Text>
-            <Text style={[styles.subtitleText, { color: THEME.COLORS.textSecondary }]}>
+            <Text style={[styles.titleText, { color: dynamicTextColor }]}>Course Terminée</Text>
+            <Text style={[styles.subtitleText, { color: dynamicTextSecColor }]}>
               Comment s'est passé votre trajet avec {driverName} ?
             </Text>
           </View>
@@ -97,42 +108,52 @@ const RatingModal = () => {
                 <Ionicons 
                   name={star <= rating ? "star" : "star-outline"} 
                   size={40} 
-                  color={star <= rating ? THEME.COLORS.champagneGold : THEME.COLORS.textTertiary} 
+                  color={star <= rating ? THEME.COLORS.primary : dynamicPlaceholderColor} 
                 />
               </TouchableOpacity>
             ))}
           </View>
 
-          <View style={[styles.inputContainer, { backgroundColor: THEME.COLORS.overlay || 'rgba(0, 0, 0, 0.03)', borderColor: THEME.COLORS.border }]}>
-            <TextInput
-              style={[styles.textInput, { color: THEME.COLORS.textPrimary }]}
-              placeholder="Laissez un commentaire (optionnel)"
-              placeholderTextColor={THEME.COLORS.textTertiary}
-              value={comment}
-              onChangeText={setComment}
-              multiline
-              maxLength={200}
-              returnKeyType="done"
-              onSubmitEditing={Keyboard.dismiss}
-            />
+          <View style={[styles.inputContainer, { backgroundColor: dynamicInputBg, borderColor: dynamicInputBorder }]}>
+            <ScrollView
+              ref={commentScrollRef}
+              style={{ maxHeight: 110 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
+              <TextInput
+                style={[styles.textInput, { color: dynamicTextColor, minHeight: 80 }]}
+                placeholder="Laissez un commentaire (optionnel)"
+                placeholderTextColor={dynamicPlaceholderColor}
+                value={comment}
+                onChangeText={setComment}
+                multiline
+                maxLength={200}
+                returnKeyType="done"
+                onSubmitEditing={Keyboard.dismiss}
+                onContentSizeChange={() => {
+                  commentScrollRef.current?.scrollToEnd({ animated: true });
+                }}
+              />
+            </ScrollView>
           </View>
 
           <TouchableOpacity 
-            style={[styles.submitButton, { backgroundColor: THEME.COLORS.textPrimary }, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
+            style={[styles.submitButton, { backgroundColor: THEME.COLORS.primary }, (rating === 0 || isLoading) && styles.submitButtonDisabled]} 
             onPress={handleSubmit}
             disabled={rating === 0 || isLoading}
             activeOpacity={0.8}
           >
             {isLoading ? (
-              <ActivityIndicator color={THEME.COLORS.background} />
+              <ActivityIndicator color="#121418" />
             ) : (
-              <Text style={[styles.submitButtonText, { color: THEME.COLORS.background }]}>VALIDER MON AVIS</Text>
+              <Text style={[styles.submitButtonText, { color: '#121418' }]}>VALIDER MON AVIS</Text>
             )}
           </TouchableOpacity>
 
           {!isLoading && (
             <TouchableOpacity style={styles.skipButton} onPress={handleClose}>
-              <Text style={styles.skipButtonText}>Passer</Text>
+              <Text style={[styles.skipButtonText, { color: dynamicTextSecColor }]}>Passer</Text>
             </TouchableOpacity>
           )}
 

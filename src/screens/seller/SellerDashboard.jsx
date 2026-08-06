@@ -723,7 +723,7 @@ const styles = StyleSheet.create({
     ...THEME.SHADOWS.soft,
   },
   statusBtnText: {
-    color: '#000',
+    color: THEME.COLORS.deepAsphalt || '#121418',
     fontSize: 11,
     fontWeight: 'bold',
     letterSpacing: 0.5,

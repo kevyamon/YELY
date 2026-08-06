@@ -89,8 +89,8 @@ const ProfileScreen = ({ navigation }) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       dispatch(showErrorToast({ 
-        title: 'Permission refusee', 
-        message: 'L\'acces a vos photos est necessaire pour selectionner votre piece d\'identite.' 
+        title: 'Permission refusée', 
+        message: 'L\'accès à vos photos est nécessaire pour sélectionner votre pièce d\'identité.' 
       }));
       return;
     }
@@ -110,8 +110,8 @@ const ProfileScreen = ({ navigation }) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       dispatch(showErrorToast({ 
-        title: 'Permission refusee', 
-        message: 'L\'acces a vos photos est necessaire pour selectionner votre piece d\'identite.' 
+        title: 'Permission refusée', 
+        message: 'L\'accès à vos photos est nécessaire pour sélectionner votre pièce d\'identité.' 
       }));
       return;
     }
@@ -131,7 +131,7 @@ const ProfileScreen = ({ navigation }) => {
     if (!form.idCardFront || !form.idCardBack || !form.vehicleType) {
       dispatch(showErrorToast({
         title: 'Champs requis',
-        message: 'Veuillez selectionner le recto et le verso de votre piece d\'identite.'
+        message: 'Veuillez sélectionner le recto et le verso de votre pièce d\'identité.'
       }));
       return;
     }
@@ -171,12 +171,12 @@ const ProfileScreen = ({ navigation }) => {
       refetch();
       dispatch(showSuccessToast({
         title: 'Demande soumise',
-        message: 'Vos documents ont ete envoyes pour validation avec succes.'
+        message: 'Vos documents ont été envoyés pour validation avec succès.'
       }));
     } catch (error) {
       dispatch(showErrorToast({
-        title: 'Echec de l\'envoi',
-        message: error?.data?.message || 'Une erreur est survenue lors de la soumission de vos pieces d\'identite.'
+        title: 'Échec de l\'envoi',
+        message: error?.data?.message || 'Une erreur est survenue lors de la soumission de vos pièces d\'identité.'
       }));
     }
   };
@@ -185,63 +185,45 @@ const ProfileScreen = ({ navigation }) => {
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) {
       dispatch(showErrorToast({ 
-        title: 'Permission refusee', 
-        message: 'L\'acces a vos photos est necessaire pour modifier votre avatar.' 
+        title: 'Permission refusée', 
+        message: 'L\'accès à vos photos est nécessaire pour modifier votre avatar.' 
       }));
       return;
     }
 
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.5,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
     });
 
-    if (!result.canceled && result.assets.length > 0) {
-      submitPhoto(result.assets[0]);
-    }
-  };
+    if (result.canceled || !result.assets.length) return;
 
-  const submitPhoto = async (imageAsset) => {
-    const formData = new FormData();
-    const filename = imageAsset.uri.split('/').pop() || 'profile.jpg';
+    const selectedUri = result.assets[0].uri;
+    const filename = selectedUri.split('/').pop() || 'avatar.jpg';
     const match = /\.(\w+)$/.exec(filename);
     const type = match ? `image/${match[1]}` : `image/jpeg`;
 
-    if (Platform.OS === 'web') {
-      try {
-        const response = await fetch(imageAsset.uri);
-        const blob = await response.blob();
-        formData.append('profilePicture', blob, filename);
-      } catch (err) {
-        console.error('[PROFILE] Web image conversion error:', err);
-        // Fallback
-        formData.append('profilePicture', {
-          uri: imageAsset.uri,
-          name: filename,
-          type: type,
-        });
-      }
-    } else {
-      formData.append('profilePicture', {
-        uri: imageAsset.uri,
-        name: filename,
-        type: type,
-      });
-    }
+    const formData = new FormData();
+    formData.append('profilePicture', {
+      uri: selectedUri,
+      name: filename,
+      type: type,
+    });
 
     try {
       const res = await uploadPhoto(formData).unwrap();
       dispatch(updateUserInfo({ profilePicture: res.data.profilePicture }));
       refetch();
       dispatch(showSuccessToast({ 
-        title: 'Succes', 
-        message: 'Votre photo de profil a ete mise a jour avec succes.' 
+        title: 'Succès', 
+        message: 'Votre photo de profil a été mise à jour avec succès.' 
       }));
     } catch (error) {
       dispatch(showErrorToast({ 
         title: 'Erreur', 
-        message: 'Nous n\'avons pas pu enregistrer votre photo. Veuillez reessayer.' 
+        message: 'Nous n\'avons pas pu enregistrer votre photo. Veuillez réessayer.' 
       }));
     }
   };
@@ -259,8 +241,8 @@ const ProfileScreen = ({ navigation }) => {
       const res = await updateProfile(payload).unwrap();
       dispatch(updateUserInfo(res.data));
       dispatch(showSuccessToast({ 
-        title: 'Profil a jour', 
-        message: 'Vos informations personnelles ont bien ete enregistrees.' 
+        title: 'Profil à jour', 
+        message: 'Vos informations personnelles ont bien été enregistrées.' 
       }));
     } catch (error) {
       dispatch(showErrorToast({ 
@@ -276,7 +258,7 @@ const ProfileScreen = ({ navigation }) => {
       setIsDeleteModalVisible(false);
       dispatch(showSuccessToast({ 
         title: 'Au revoir', 
-        message: 'Votre compte a ete definitivement supprime. A bientot !' 
+        message: 'Votre compte a été définitivement supprimé. À bientôt !' 
       }));
       dispatch(logout());
     } catch (error) {

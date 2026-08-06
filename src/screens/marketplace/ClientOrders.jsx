@@ -8,7 +8,9 @@ import {
   RefreshControl,
   DeviceEventEmitter,
   TextInput,
-  ActivityIndicator
+  ActivityIndicator,
+  useColorScheme,
+  ScrollView
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
@@ -38,10 +40,13 @@ const STATUS_MAP = {
 
 const ClientOrders = ({ navigation }) => {
   const dispatch = useDispatch();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   const { data: ordersData, isLoading, refetch, isFetching } = useGetMyOrdersQuery();
   const orders = ordersData?.data || [];
 
   const listRef = useRef(null);
+  const ratingScrollRef = useRef(null);
 
   const [createReview, { isLoading: isCreatingReview }] = useCreateReviewMutation();
   const [rateModalVisible, setRateModalVisible] = useState(false);
@@ -320,7 +325,7 @@ const ClientOrders = ({ navigation }) => {
                 <MaterialCommunityIcons
                   name={star <= ratingVal ? "star" : "star-outline"}
                   size={36}
-                  color="#D4AF37"
+                  color={THEME.COLORS.primary}
                   style={{ marginHorizontal: 4 }}
                 />
               </TouchableOpacity>
@@ -328,16 +333,34 @@ const ClientOrders = ({ navigation }) => {
           </View>
 
           <Text style={styles.label}>Votre avis (limité à 5000 caractères) :</Text>
-          <TextInput
-            style={styles.commentInput}
-            multiline
-            numberOfLines={6}
-            maxLength={5000}
-            placeholder="Que pensez-vous de ce produit ?"
-            placeholderTextColor={THEME.COLORS.textTertiary}
-            value={ratingComment}
-            onChangeText={setRatingComment}
-          />
+          <ScrollView
+            ref={ratingScrollRef}
+            style={{ maxHeight: 150, borderRadius: 14, marginBottom: 4 }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={true}
+          >
+            <TextInput
+              style={[
+                styles.commentInput,
+                {
+                  color: isDarkMode ? '#FFFFFF' : '#121418',
+                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 20, 24, 0.04)',
+                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(18, 20, 24, 0.12)',
+                  minHeight: 120
+                }
+              ]}
+              multiline
+              numberOfLines={6}
+              maxLength={5000}
+              placeholder="Que pensez-vous de ce produit ?"
+              placeholderTextColor={isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 20, 24, 0.40)'}
+              value={ratingComment}
+              onChangeText={setRatingComment}
+              onContentSizeChange={() => {
+                ratingScrollRef.current?.scrollToEnd({ animated: true });
+              }}
+            />
+          </ScrollView>
           <Text style={styles.charCount}>{ratingComment.length} / 5000</Text>
 
           <View style={styles.modalActions}>
@@ -346,7 +369,7 @@ const ClientOrders = ({ navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.submitBtn} onPress={handleSubmitRating} disabled={isCreatingReview}>
               {isCreatingReview ? (
-                <ActivityIndicator size="small" color="#000" />
+                <ActivityIndicator size="small" color="#121418" />
               ) : (
                 <Text style={styles.submitBtnText}>Valider</Text>
               )}
@@ -526,7 +549,7 @@ const styles = StyleSheet.create({
   // Styles pour les avis sur les commandes
   itemRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginVertical: 3 },
   rateProductBtn: { flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.primary, paddingHorizontal: 8, paddingVertical: 4, borderRadius: 8 },
-  rateProductBtnText: { color: '#000', fontSize: 10, fontWeight: '800' },
+  rateProductBtnText: { color: '#121418', fontSize: 10, fontWeight: '800' },
   
   // Styles Modal de Notation
   modalContent: { padding: 5 },
@@ -535,13 +558,13 @@ const styles = StyleSheet.create({
   productNameLabel: { fontSize: 14.5, fontWeight: '800', color: THEME.COLORS.primary, marginBottom: 15 },
   label: { fontSize: 12.5, fontWeight: '700', color: THEME.COLORS.textSecondary, marginBottom: 8 },
   ratingSelector: { flexDirection: 'row', justifyContent: 'center', marginBottom: 16 },
-  commentInput: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, fontSize: 14, color: '#FFF', height: 120, textAlignVertical: 'top' },
+  commentInput: { borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, fontSize: 14, height: 120, textAlignVertical: 'top' },
   charCount: { alignSelf: 'flex-end', fontSize: 10, color: THEME.COLORS.textTertiary, marginTop: 5, marginBottom: 10 },
   modalActions: { borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.04)', paddingTop: 15, flexDirection: 'row', justifyContent: 'flex-end', gap: 10 },
   cancelBtn: { paddingHorizontal: 20, paddingVertical: 10, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
   cancelBtnText: { color: THEME.COLORS.textSecondary, fontWeight: '700', fontSize: 13 },
   submitBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 24, paddingVertical: 10, borderRadius: 18 },
-  submitBtnText: { color: '#000', fontWeight: '800', fontSize: 13 }
+  submitBtnText: { color: '#121418', fontWeight: '800', fontSize: 13 }
 });
 
 export default ClientOrders;

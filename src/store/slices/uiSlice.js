@@ -78,7 +78,7 @@ const uiSlice = createSlice({
     showSuccessToast: (state, action) => {
       state.toast.visible = true;
       state.toast.type = 'success';
-      state.toast.title = action.payload?.title || 'Succes';
+      state.toast.title = action.payload?.title || 'Succès';
       state.toast.message = action.payload?.message || '';
       state.toast.duration = action.payload?.duration || 3000;
     },

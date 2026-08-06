@@ -20,18 +20,27 @@ const MarketplaceHeader = ({
   insets,
   isDarkMode,
   paddingValue = 0,
+  onRefreshPress,
+  isRefreshing = false,
 }) => {
-  const headerBgColor = isDarkMode ? 'rgba(212, 175, 55, 0.15)' : THEME.COLORS.primary;
+  const safeTop = Math.max(insets?.top || 0, 28);
+  const calculatedHeaderHeight = safeTop + (Platform.OS === 'ios' ? 115 : 105);
+
+  const headerBgColor = isDarkMode ? '#0B0C0E' : THEME.COLORS.primary;
   const headerContentColor = isDarkMode ? THEME.COLORS.primary : '#121418';
+  const borderBottomColor = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(18, 20, 24, 0.08)';
 
   return (
     <View style={[
       styles.collapsibleHeader, 
       { 
-        height: FIXED_HEADER_HEIGHT, 
-        paddingTop: insets.top + THEME.SPACING.xs,
+        height: calculatedHeaderHeight, 
+        paddingTop: safeTop,
         backgroundColor: headerBgColor,
-        borderBottomWidth: 0,
+        borderBottomWidth: 1,
+        borderBottomColor: borderBottomColor,
+        elevation: 10,
+        shadowOpacity: 0.15,
       }
     ]}>
       <View style={[styles.headerTopRow, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
@@ -51,10 +60,20 @@ const MarketplaceHeader = ({
 
         <Text style={[styles.headerTitle, { color: headerContentColor }]}>Yély Marketplace</Text>
 
-        <View style={{ width: 26 }} />
+        <TouchableOpacity 
+          style={styles.hamburgerButton}
+          onPress={onRefreshPress}
+          activeOpacity={0.7}
+        >
+          <Ionicons 
+            name={isRefreshing ? "sync" : "refresh-outline"} 
+            size={24} 
+            color={headerContentColor} 
+          />
+        </TouchableOpacity>
       </View>
 
-      {/* Barre de recherche intégrée dans l'en-tête uniformisé */}
+      {/* Barre de recherche intégrée sans tronquage */}
       <View style={styles.searchBarWrapper}>
         <MarketplaceSearchBar 
           value={searchQuery}
@@ -65,8 +84,8 @@ const MarketplaceHeader = ({
             backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
             borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
             borderRadius: 14,
-            marginTop: 10,
-            marginBottom: 8,
+            marginTop: 6,
+            marginBottom: 4,
             maxWidth: 600,
             alignSelf: 'center',
             width: '100%',
@@ -83,7 +102,7 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     right: 0,
-    zIndex: 100,
+    zIndex: 1000,
     paddingHorizontal: THEME.SPACING.lg,
     justifyContent: 'center',
     overflow: 'hidden',

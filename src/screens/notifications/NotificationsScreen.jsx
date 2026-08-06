@@ -157,7 +157,7 @@ const NotificationsScreen = ({ navigation, route }) => {
     if (!notifToDelete) return;
     try {
       await deleteNotif(notifToDelete).unwrap();
-      dispatch(showSuccessToast({ title: 'Supprimee', message: 'Notification effacee.' }));
+      dispatch(showSuccessToast({ title: 'Supprimée', message: 'Notification effacée.' }));
     } catch (error) {
       dispatch(showErrorToast({ title: 'Erreur', message: 'Impossible de supprimer.' }));
     } finally {

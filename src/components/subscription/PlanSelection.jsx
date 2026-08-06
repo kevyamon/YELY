@@ -198,7 +198,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepBulletText: {
-    color: '#000',
+    color: '#121418',
     fontSize: 11,
     fontWeight: '800',
   },
@@ -262,7 +262,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  payButtonTextWave: { color: '#FFF', fontSize: 14, fontWeight: '800' },
+  payButtonTextWave: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 
   // Boutons désactivés
   payButtonDisabled: {

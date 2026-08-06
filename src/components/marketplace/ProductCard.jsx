@@ -75,7 +75,7 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
       if (quantityInCart >= availableStock) {
         dispatch(showToast({
           type: 'warning',
-          title: 'Stock limite atteint',
+          title: 'Stock limité atteint',
           message: `Désolé, il n'y a que ${availableStock} articles disponibles en stock.`
         }));
         return;
@@ -102,8 +102,8 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
       dispatch(removeFromCart(product._id));
       dispatch(showToast({
         type: 'info',
-        title: 'Retire',
-        message: `${product.name} retire du panier.`
+        title: 'Retiré',
+        message: `${product.name} retiré du panier.`
       }));
     }
   };
@@ -131,7 +131,7 @@ const ProductCard = ({ product, onPress, cardWidth }) => {
         
         {isSoldOut && (
           <View style={styles.soldOutBadge}>
-            <Text style={styles.soldOutText}>EPUISE</Text>
+            <Text style={styles.soldOutText}>ÉPUISÉ</Text>
           </View>
         )}
       </View>

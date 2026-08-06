@@ -1,40 +1,36 @@
 // src/components/ui/AppToast.jsx
-// Systeme de notifications Toast - Absolute Top Layer (Modal Wrapper)
-// CSCSM Level: Bank Grade
+// SYSTÈME TOAST CAPSULE VIP - Minimaliste, Immersif & Dynamic Island Level
+// CSCSM Level: Masterpiece UI / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useRef } from 'react';
-import { Animated, Dimensions, PanResponder, StyleSheet, Text, View } from 'react-native';
+import React, { useCallback, useEffect, useRef } from 'react';
+import { Animated, Dimensions, PanResponder, StyleSheet, Text, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { BORDERS, COLORS, FONTS, SPACING } from '../../theme/theme';
+import THEME from '../../theme/theme';
 
 const SCREEN_WIDTH = Dimensions.get('window').width;
-const SWIPE_THRESHOLD = SCREEN_WIDTH * 0.25;
+const SWIPE_THRESHOLD = 50;
 
 const TOAST_CONFIG = {
   success: {
-    icon: 'checkmark-circle',
-    color: COLORS.success,
-    bgColor: COLORS.glassSurface,
-    borderColor: COLORS.border,
+    icon: 'checkmark-circle-sharp',
+    color: '#2ECC71',
+    badgeBg: 'rgba(46, 204, 113, 0.14)',
   },
   error: {
-    icon: 'close-circle',
-    color: COLORS.danger,
-    bgColor: COLORS.glassSurface,
-    borderColor: COLORS.border,
+    icon: 'close-circle-sharp',
+    color: '#E74C3C',
+    badgeBg: 'rgba(231, 76, 60, 0.14)',
   },
   warning: {
-    icon: 'warning',
-    color: COLORS.warning,
-    bgColor: COLORS.glassSurface,
-    borderColor: COLORS.border,
+    icon: 'alert-circle-sharp',
+    color: '#F59E0B',
+    badgeBg: 'rgba(245, 158, 11, 0.14)',
   },
   info: {
-    icon: 'information-circle',
-    color: COLORS.info,
-    bgColor: COLORS.glassSurface,
-    borderColor: COLORS.border,
+    icon: 'information-circle-sharp',
+    color: THEME.COLORS.primary || '#D4AF37',
+    badgeBg: 'rgba(212, 175, 55, 0.15)',
   },
 };
 
@@ -43,12 +39,14 @@ const AppToast = ({
   type = 'info',
   title,
   message,
-  duration = 3000,
+  duration = 3200,
   onHide,
 }) => {
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   
-  const translateY = useRef(new Animated.Value(-150)).current;
+  const translateY = useRef(new Animated.Value(-120)).current;
   const translateX = useRef(new Animated.Value(0)).current;
   const opacity = useRef(new Animated.Value(0)).current;
   
@@ -71,13 +69,13 @@ const AppToast = ({
     clearTimer();
     Animated.parallel([
       Animated.timing(translateY, {
-        toValue: -150,
-        duration: 300,
+        toValue: -120,
+        duration: 220,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 0,
-        duration: 300,
+        duration: 200,
         useNativeDriver: true,
       }),
     ]).start(({ finished }) => {
@@ -98,39 +96,40 @@ const AppToast = ({
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gestureState) => {
-        return Math.abs(gestureState.dx) > 5;
+        return Math.abs(gestureState.dx) > 4 || Math.abs(gestureState.dy) > 4;
       },
       onPanResponderGrant: () => {
         clearTimer();
       },
       onPanResponderMove: Animated.event(
-        [null, { dx: translateX }],
+        [null, { dx: translateX, dy: translateY }],
         { useNativeDriver: false } 
       ),
       onPanResponderRelease: (_, gestureState) => {
-        if (Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
-          const direction = gestureState.dx > 0 ? 1 : -1;
-          Animated.timing(translateX, {
-            toValue: direction * SCREEN_WIDTH,
-            duration: 200,
-            useNativeDriver: true,
-          }).start(() => {
-            if (onHideRef.current) onHideRef.current();
-          });
+        // Swipe Haut ou Côtés pour fermer
+        if (gestureState.dy < -20 || Math.abs(gestureState.dx) > SWIPE_THRESHOLD) {
+          closeToast();
         } else {
-          Animated.spring(translateX, {
-            toValue: 0,
-            tension: 50,
-            friction: 7,
-            useNativeDriver: true,
-          }).start();
+          Animated.parallel([
+            Animated.spring(translateX, {
+              toValue: 0,
+              tension: 130,
+              friction: 12,
+              useNativeDriver: true,
+            }),
+            Animated.spring(translateY, {
+              toValue: 0,
+              tension: 130,
+              friction: 12,
+              useNativeDriver: true,
+            }),
+          ]).start();
           startHideTimer();
         }
       },
     })
   ).current;
 
-  // Track the last shown content to allow updates but prevent unnecessary restarts
   const lastContentRef = useRef(null);
 
   useEffect(() => {
@@ -146,19 +145,19 @@ const AppToast = ({
     
     clearTimer();
     translateX.setValue(0);
-    translateY.setValue(-150);
+    translateY.setValue(-120);
     opacity.setValue(0);
 
     Animated.parallel([
       Animated.spring(translateY, {
         toValue: 0,
-        tension: 80,
-        friction: 10,
+        tension: 130,
+        friction: 11,
         useNativeDriver: true,
       }),
       Animated.timing(opacity, {
         toValue: 1,
-        duration: 200,
+        duration: 180,
         useNativeDriver: true,
       }),
     ]).start(() => {
@@ -170,17 +169,23 @@ const AppToast = ({
 
   if (!visible) return null;
 
+  // Style capsule dynamique selon le thème
+  const containerBg = isDarkMode ? 'rgba(18, 20, 24, 0.94)' : 'rgba(255, 255, 255, 0.96)';
+  const containerBorder = isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(18, 20, 24, 0.08)';
+  const titleColor = isDarkMode ? '#FFFFFF' : '#121418';
+  const msgColor = isDarkMode ? 'rgba(255, 255, 255, 0.70)' : 'rgba(18, 20, 24, 0.65)';
+
   return (
-    <View style={[StyleSheet.absoluteFill, { zIndex: 999999, elevation: 999999 }]} pointerEvents="box-none">
+    <View style={styles.topLayer} pointerEvents="box-none">
       <Animated.View
         {...panResponder.panHandlers}
         pointerEvents="auto" 
         style={[
-          styles.container,
+          styles.capsule,
           {
-            top: insets.top + SPACING.sm,
-            backgroundColor: config.bgColor,
-            borderColor: config.borderColor,
+            top: Math.max(insets.top + 8, 16),
+            backgroundColor: containerBg,
+            borderColor: containerBorder,
             opacity,
             transform: [
               { translateY },
@@ -189,44 +194,86 @@ const AppToast = ({
           },
         ]}
       >
-        <Ionicons name={config.icon} size={24} color={config.color} />
-        <View style={styles.textContainer}>
-          {title && <Text style={[styles.title, { color: config.color }]}>{title}</Text>}
-          {message && <Text style={styles.message}>{message}</Text>}
-        </View>
+        <TouchableOpacity activeOpacity={0.9} onPress={closeToast} style={styles.innerRow}>
+          <View style={[styles.iconBadge, { backgroundColor: config.badgeBg }]}>
+            <Ionicons name={config.icon} size={18} color={config.color} />
+          </View>
+          
+          <View style={styles.textContainer}>
+            {title ? (
+              <Text style={[styles.title, { color: titleColor }]} numberOfLines={1}>
+                {title}
+              </Text>
+            ) : null}
+            {message ? (
+              <Text style={[styles.message, { color: msgColor }]} numberOfLines={2}>
+                {message}
+              </Text>
+            ) : null}
+          </View>
+
+          <TouchableOpacity style={styles.closeBtn} onPress={closeToast} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+            <Ionicons name="close" size={14} color={msgColor} />
+          </TouchableOpacity>
+        </TouchableOpacity>
       </Animated.View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
+  topLayer: {
+    ...StyleSheet.absoluteFillObject,
+    zIndex: 999999,
+    elevation: 999999,
+    alignItems: 'center',
+  },
+  capsule: {
     position: 'absolute',
-    left: SPACING.lg,
-    right: SPACING.lg,
+    width: '90%',
+    maxWidth: 380,
+    borderRadius: 26,
+    borderWidth: 1,
+    paddingVertical: 9,
+    paddingHorizontal: 12,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.18,
+    shadowRadius: 12,
+    elevation: 12,
+  },
+  innerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    borderRadius: BORDERS.radius.lg,
-    borderWidth: BORDERS.width.thin,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
+  },
+  iconBadge: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 10,
   },
   textContainer: {
     flex: 1,
-    marginLeft: SPACING.md,
+    justifyContent: 'center',
+    marginRight: 6,
   },
   title: {
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: FONTS.weights.bold,
+    fontSize: 13,
+    fontWeight: '800',
+    letterSpacing: 0.1,
   },
   message: {
-    color: COLORS.textSecondary,
-    fontSize: FONTS.sizes.caption,
-    marginTop: SPACING.xxs,
+    fontSize: 11.5,
+    fontWeight: '500',
+    lineHeight: 15,
+    marginTop: 1,
   },
+  closeBtn: {
+    padding: 4,
+    opacity: 0.6,
+  }
 });
 
 export default AppToast;

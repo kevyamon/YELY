@@ -234,7 +234,7 @@ const ProductDetails = ({ route, navigation }) => {
       if (quantityInCart >= availableStock) {
         dispatch(showToast({
           type: 'warning',
-          title: 'Stock limite atteint',
+          title: 'Stock limité atteint',
           message: `Désolé, il n'y a que ${availableStock} articles disponibles en stock.`
         }));
         return;
@@ -1083,7 +1083,7 @@ const styles = StyleSheet.create({
   modalDescText: { fontSize: 15, color: THEME.COLORS.textSecondary, lineHeight: 24 },
   modalFooter: { borderTopWidth: 1, borderTopColor: THEME.COLORS.border || 'rgba(0, 0, 0, 0.08)', paddingTop: 15, alignItems: 'center' },
   modalCloseBtn: { backgroundColor: THEME.COLORS.primary, paddingHorizontal: 30, paddingVertical: 12, borderRadius: 20 },
-  modalCloseText: { color: '#000000', fontWeight: 'bold', fontSize: 14 },
+  modalCloseText: { color: '#121418', fontWeight: 'bold', fontSize: 14 },
   modalScrollTopBtn: { position: 'absolute', bottom: 80, right: 15, width: 36, height: 36, borderRadius: 18, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 5, elevation: 5 },
   reviewsSectionCard: {
     borderRadius: 20,

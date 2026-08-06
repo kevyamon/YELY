@@ -2,7 +2,7 @@
 // BOUTON REUTILISABLE - Redirection optimisee vers le marche (Marketplace)
 // CSCSM Level: Bank Grade
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { useNavigation } from '@react-navigation/native';
 import GoldButton from '../ui/GoldButton';
 
@@ -12,10 +12,21 @@ const ExploreMarketplaceButton = ({
   style 
 }) => {
   const navigation = useNavigation();
+  const isNavigatingRef = useRef(false);
 
   const handlePress = () => {
+    if (isNavigatingRef.current) return;
+    isNavigatingRef.current = true;
+
     requestAnimationFrame(() => {
-      navigation.navigate('MarketplaceHub', { screen: 'Accueil' });
+      try {
+        navigation.navigate('Accueil');
+      } catch (err) {
+        navigation.navigate('MarketplaceHub');
+      }
+      setTimeout(() => {
+        isNavigatingRef.current = false;
+      }, 1000);
     });
   };
 

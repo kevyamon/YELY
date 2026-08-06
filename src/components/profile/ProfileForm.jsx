@@ -309,7 +309,7 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.border,
   },
   bannerText: {
-    color: '#FFF',
+    color: THEME.COLORS.textPrimary,
     fontWeight: 'bold',
     fontSize: 14,
     marginLeft: 10,

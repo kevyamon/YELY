@@ -1,19 +1,21 @@
 // src/components/drawer/DrawerMenu.jsx
-// MENU LATERAL - Concept "Dynamic Pill" (Mobile-First & High-End UX)
-// CSCSM Level: Bank Grade / Premium UI
+// MENU LATERAL - Design Minimaliste & Immersif VIP (Zero Bulle / High-End Flow)
+// CSCSM Level: Masterpiece UI / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { StyleSheet, TouchableOpacity, View, Linking } from 'react-native';
+import { Linking, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
-import THEME from '../../theme/theme';
 import ENV from '../../config/env';
-import SettingsModal from './SettingsModal';
+import THEME from '../../theme/theme';
 import { getMenuItems } from './menuConfig';
+import SettingsModal from './SettingsModal';
 
 const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
   const [isSettingsVisible, setIsSettingsVisible] = useState(false);
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
   
   const menuItems = getMenuItems(role);
 
@@ -21,9 +23,7 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     if (route === 'SettingsModal') {
       setIsSettingsVisible(true);
     } else if (route === 'HelpModal') {
-      Linking.openURL(ENV.YT_LINK).catch(() => {
-        // Fallback en cas d'erreur de lien
-      });
+      Linking.openURL(ENV.YT_LINK).catch(() => {});
     } else {
       requestAnimationFrame(() => {
         onNavigate(route);
@@ -35,49 +35,45 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     <View style={styles.container}>
       {menuItems.map((item, index) => {
         const isActive = activeRoute === item.route;
-        
-        // Contraste parfait : texte sombre sur fond jaune, texte clair/adaptatif sur fond transparent
-        const activeColor = THEME.COLORS.deepAsphalt || '#121418'; 
-        const inactiveColor = THEME.COLORS.textPrimary;
+
+        const activeTextColor = isDarkMode ? THEME.COLORS.primary : '#121418';
+        const inactiveTextColor = THEME.COLORS.textPrimary;
+        const iconColor = isActive 
+          ? (isDarkMode ? THEME.COLORS.primary : THEME.COLORS.primaryDark || '#D4AF37')
+          : (isDarkMode ? 'rgba(255, 255, 255, 0.65)' : 'rgba(18, 20, 24, 0.6)');
 
         return (
           <TouchableOpacity
             key={item.id || index}
             style={[
               styles.menuItem,
-              isActive && styles.menuItemActive
+              isActive && (isDarkMode ? styles.menuItemActiveDark : styles.menuItemActiveLight)
             ]}
             onPress={() => handlePress(item.route)}
             disabled={disabled}
             activeOpacity={0.7}
           >
-            <View style={[
-              styles.iconContainer,
-              isActive && styles.iconContainerActive
-            ]}>
+            {/* Barre d'accentuation minimale sur le côté gauche */}
+            <View style={[styles.activeAccentBar, isActive && styles.activeAccentBarVisible]} />
+
+            <View style={[styles.iconContainer, { backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.06)' : 'rgba(18, 20, 24, 0.05)' }]}>
               <Ionicons
                 name={isActive ? item.icon : `${item.icon}-outline`}
-                size={20} // Icône légèrement réduite pour un look plus raffine
-                color={isActive ? activeColor : THEME.COLORS.champagneGold}
+                size={22}
+                color={iconColor}
               />
             </View>
 
-            <Text style={[
-              styles.menuLabel,
-              { color: isActive ? activeColor : inactiveColor },
-              isActive && styles.menuLabelActive
-            ]}
+            <Text 
+              style={[
+                styles.menuLabel,
+                { color: isActive ? activeTextColor : inactiveTextColor },
+                isActive && styles.menuLabelActive
+              ]}
               numberOfLines={1}
             >
               {item.label}
             </Text>
-
-            <Ionicons 
-              name={(item.route === 'SettingsModal' || item.route === 'HelpModal') ? "open-outline" : "chevron-forward"} 
-              size={16} 
-              color={isActive ? activeColor : THEME.COLORS.champagneGold} 
-              style={{ opacity: isActive ? 0.8 : 0.6 }}
-            />
           </TouchableOpacity>
         );
       })}
@@ -93,53 +89,54 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingVertical: THEME.SPACING.md,
-    paddingHorizontal: THEME.SPACING.md,
+    paddingVertical: THEME.SPACING.sm,
+    paddingHorizontal: THEME.SPACING.sm,
   },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12, 
-    paddingHorizontal: 14,
-    marginBottom: 14,
-    borderRadius: 30, // La fameuse "Pilule" parfaite
-    width: '85%', // LONGUEUR RÉDUITE (Ne touche plus les bords)
-    alignSelf: 'flex-start', // S'aligne à gauche
+    paddingHorizontal: 16,
+    marginBottom: 6,
+    borderRadius: 14,
+    width: '100%',
     backgroundColor: 'transparent',
-    borderWidth: 1.5, // Bordure bien exprimée
-    borderColor: THEME.COLORS.champagneGold, 
+    position: 'relative',
   },
-  menuItemActive: {
-    width: '95%', // LA SURPRISE : Le bouton s'allonge quand on clique dessus !
-    backgroundColor: THEME.COLORS.champagneGold, 
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.champagneGold,
-    shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 6,
-    elevation: 5,
+  menuItemActiveLight: {
+    backgroundColor: 'rgba(214, 175, 55, 0.12)',
+  },
+  menuItemActiveDark: {
+    backgroundColor: 'rgba(214, 175, 55, 0.15)',
+  },
+  activeAccentBar: {
+    position: 'absolute',
+    left: 0,
+    top: '20%',
+    bottom: '20%',
+    width: 3.5,
+    borderRadius: 2,
+    backgroundColor: 'transparent',
+  },
+  activeAccentBarVisible: {
+    backgroundColor: THEME.COLORS.primary,
   },
   iconContainer: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: 'transparent', 
+    width: 38,
+    height: 38,
+    borderRadius: 12,
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 14,
-  },
-  iconContainerActive: {
-    backgroundColor: 'rgba(0, 0, 0, 0.05)', // Très léger cercle sombre autour de l'icône sur fond jaune
+    marginRight: 12,
   },
   menuLabel: {
     flex: 1,
     fontSize: 15,
     fontWeight: '600', 
-    letterSpacing: 0.5,  
+    letterSpacing: 0.3,  
   },
   menuLabelActive: {
-    fontWeight: '900', // Police plus massive pour l'état actif
+    fontWeight: '800', 
   }
 });
 

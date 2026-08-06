@@ -206,7 +206,7 @@ const ProductDetails = ({ route, navigation }) => {
       if (quantityInCart >= availableStock) {
         dispatch(showToast({
           type: 'warning',
-          title: 'Stock limite atteint',
+          title: 'Stock limité atteint',
           message: `Désolé, il n'y a que ${availableStock} articles disponibles en stock.`
         }));
         return;

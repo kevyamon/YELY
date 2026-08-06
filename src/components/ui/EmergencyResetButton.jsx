@@ -30,7 +30,7 @@ const EmergencyResetButton = ({ style }) => {
       }, 300);
 
     } catch (error) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Echec du nettoyage de la base de donnees.' }));
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Échec du nettoyage de la base de données.' }));
       setShowConfirm(false);
     } finally {
       setIsProcessing(false);

@@ -90,6 +90,7 @@ const ProductReviews = ({ route, navigation }) => {
   const [selectedComment, setSelectedComment] = useState(null);
   const [showCommentModalScrollTop, setShowCommentModalScrollTop] = useState(false);
   const commentScrollRef = useRef(null);
+  const editCommentScrollRef = useRef(null);
 
   // Edit review state
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -380,23 +381,34 @@ const ProductReviews = ({ route, navigation }) => {
             </View>
 
             <Text style={styles.label}>Votre commentaire :</Text>
-            <TextInput
-              style={[
-                styles.commentInput,
-                {
-                  backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)',
-                  borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.08)',
-                  color: THEME.COLORS.textPrimary
-                }
-              ]}
-              multiline
-              numberOfLines={6}
-              maxLength={5000}
-              placeholder="Écrivez votre commentaire ici..."
-              placeholderTextColor={THEME.COLORS.textTertiary}
-              value={editComment}
-              onChangeText={setEditComment}
-            />
+            <ScrollView
+              ref={editCommentScrollRef}
+              style={{ maxHeight: 150, borderRadius: 14, marginBottom: 4 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={true}
+            >
+              <TextInput
+                style={[
+                  styles.commentInput,
+                  {
+                    backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(18, 20, 24, 0.04)',
+                    borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'rgba(18, 20, 24, 0.12)',
+                    color: isDarkMode ? '#FFFFFF' : '#121418',
+                    minHeight: 120
+                  }
+                ]}
+                multiline
+                numberOfLines={6}
+                maxLength={5000}
+                placeholder="Écrivez votre commentaire ici..."
+                placeholderTextColor={isDarkMode ? 'rgba(255, 255, 255, 0.45)' : 'rgba(18, 20, 24, 0.40)'}
+                value={editComment}
+                onChangeText={setEditComment}
+                onContentSizeChange={() => {
+                  editCommentScrollRef.current?.scrollToEnd({ animated: true });
+                }}
+              />
+            </ScrollView>
             <Text style={styles.charCount}>{editComment.length} / 5000</Text>
           </ScrollView>
 
@@ -406,7 +418,7 @@ const ProductReviews = ({ route, navigation }) => {
             </TouchableOpacity>
             <TouchableOpacity style={styles.saveBtn} onPress={handleSaveEdit} disabled={isUpdating}>
               {isUpdating ? (
-                <ActivityIndicator size="small" color="#000" />
+                <ActivityIndicator size="small" color="#121418" />
               ) : (
                 <Text style={styles.saveBtnText}>Enregistrer</Text>
               )}

@@ -5,17 +5,17 @@
 const MENU_ITEMS = {
   rider: [
     { route: 'RiderHome', label: 'Accueil', icon: 'home' },
-    { route: 'ClientOrders', label: 'Mes commandes', icon: 'cart' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'receipt' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
     { route: 'SettingsModal', label: 'Paramètres', icon: 'settings' },
   ],
   driver: [
-    { route: 'DriverHome', label: 'Radar VTC', icon: 'car' },
-    { route: 'MarketplaceHub', label: 'Achats & Repas', icon: 'cart' },
+    { route: 'DriverHome', label: 'Radar VTC', icon: 'compass' },
+    { route: 'MarketplaceHub', label: 'Achats & Repas', icon: 'bag-handle' },
     { route: 'Subscription', label: 'Abonnement', icon: 'card' },
-    { route: 'ClientOrders', label: 'Mes commandes', icon: 'basket' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'receipt' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -25,7 +25,7 @@ const MENU_ITEMS = {
     { route: 'SellerHome', label: 'Ma Boutique', icon: 'storefront' },
     { route: 'RiderHome', label: 'Commander une course', icon: 'car-sport' },
     { route: 'Subscription', label: 'Abonnement', icon: 'card' },
-    { route: 'ClientOrders', label: 'Mes commandes', icon: 'basket' },
+    { route: 'ClientOrders', label: 'Mes commandes', icon: 'receipt' },
     { route: 'History', label: 'Historique', icon: 'time' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -33,7 +33,7 @@ const MENU_ITEMS = {
   ],
   admin: [
     { route: 'AdminDashboard', label: 'Dashboard', icon: 'grid' },
-    { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
+    { route: 'Validations', label: 'Validations', icon: 'shield-checkmark' },
     { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
     { route: 'Notifications', label: 'Notifications', icon: 'notifications' },
     { route: 'HelpModal', label: 'Aide & Tutoriels', icon: 'help-circle' },
@@ -41,7 +41,7 @@ const MENU_ITEMS = {
   ],
   superadmin: [
     { route: 'AdminDashboard', label: 'Dashboard', icon: 'grid' },
-    { route: 'Validations', label: 'Validations', icon: 'checkmark-circle' },
+    { route: 'Validations', label: 'Validations', icon: 'shield-checkmark' },
     { route: 'Drivers', label: 'Chauffeurs', icon: 'people' },
     { route: 'Finance', label: 'Finance', icon: 'wallet' },
     { route: 'MapManagement', label: 'Gestion Carte', icon: 'map' }, 

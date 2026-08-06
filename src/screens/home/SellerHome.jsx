@@ -112,9 +112,9 @@ const SellerHome = ({ navigation }) => {
           <Ionicons 
             name={isPending ? "time-outline" : "warning-outline"} 
             size={20} 
-            color={isPending ? "#000" : "#FFF"} 
+            color={isPending ? "#121418" : "#FFFFFF"} 
           />
-          <Text style={[styles.bannerText, isPending && { color: '#000' }]} numberOfLines={2}>
+          <Text style={[styles.bannerText, isPending && { color: '#121418' }]} numberOfLines={2}>
             {isPending 
               ? "Paiement en attente de validation... [Détails]" 
               : "Abonnement expiré. Vos fonctions de vente sont désactivées. [S'abonner]"
@@ -124,7 +124,7 @@ const SellerHome = ({ navigation }) => {
         <Ionicons 
           name="chevron-forward" 
           size={16} 
-          color={isPending ? "#000" : "#FFF"} 
+          color={isPending ? "#121418" : "#FFFFFF"} 
         />
       </TouchableOpacity>
     );

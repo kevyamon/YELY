@@ -11,7 +11,9 @@ import {
   DeviceEventEmitter, 
   Platform, 
   useColorScheme,
-  TouchableOpacity
+  TouchableOpacity,
+  RefreshControl,
+  ActivityIndicator
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useGetProductsQuery } from '../../store/api/marketplaceApiSlice';
@@ -146,6 +148,20 @@ const MarketplaceHub = ({ navigation }) => {
     </View>
   );
 
+  const [isRefreshingManual, setIsRefreshingManual] = useState(false);
+
+  const handleHeaderRefresh = useCallback(() => {
+    if (isRefreshingManual) return;
+    setIsRefreshingManual(true);
+    refetch();
+    setTimeout(() => {
+      setIsRefreshingManual(false);
+    }, 1800);
+  }, [refetch, isRefreshingManual]);
+
+  const safeTop = Math.max(insets?.top || 0, 28);
+  const calculatedHeaderHeight = safeTop + (Platform.OS === 'ios' ? 115 : 105);
+
   return (
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
       <StatusBar 
@@ -159,18 +175,29 @@ const MarketplaceHub = ({ navigation }) => {
         navigation={navigation}
         insets={insets}
         isDarkMode={isDarkMode}
+        onRefreshPress={handleHeaderRefresh}
+        isRefreshing={isRefreshingManual || isFetching}
       />
+
+      {/* BANDE D'ACTUALISATION ÉPURÉE SUR DEMANDE EXPLICITE */}
+      {isRefreshingManual && (
+        <View style={[
+          styles.refreshBannerContainer, 
+          { top: calculatedHeaderHeight }
+        ]}>
+          <ActivityIndicator size="small" color={THEME.COLORS.primary} />
+          <Text style={styles.refreshBannerText}>Actualisation de la Marketplace...</Text>
+        </View>
+      )}
 
       <FlatList
         ref={listRef}
         data={categorySections}
         keyExtractor={item => item.key}
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={[styles.listContent, { paddingTop: Platform.OS === 'ios' ? 140 : 120, paddingBottom: 90 }]}
+        contentContainerStyle={[styles.listContent, { paddingTop: calculatedHeaderHeight, paddingBottom: 90 }]}
         onScroll={Animated.event([{ nativeEvent: { contentOffset: { y: scrollY } } }], { useNativeDriver: false })}
         scrollEventThrottle={16}
-        onRefresh={refetch}
-        refreshing={isFetching}
         ListHeaderComponent={
           <Animated.View style={{ transform: [{ scale: bannerScale }] }}>
             <View style={[styles.yellowSection, { backgroundColor: isDarkMode ? 'rgba(212, 175, 55, 0.15)' : THEME.COLORS.primary }]}>
@@ -340,6 +367,25 @@ const styles = StyleSheet.create({
   skeletonCard: {
     width: (width - THEME.SPACING.lg * 2 - 16) / 2,
   },
+  refreshBannerContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 90,
+    height: 36,
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(214, 175, 55, 0.3)',
+  },
+  refreshBannerText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#121418',
+  }
 });
 
 export default MarketplaceHub;
