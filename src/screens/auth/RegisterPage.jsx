@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 
@@ -25,6 +25,7 @@ const RegisterPage = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const [register, { isLoading }] = useRegisterMutation();
   const [googleAuth, { isLoading: isGoogleLoading }] = useGoogleAuthMutation();
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   
   const [role, setRole] = useState(route.params?.role?.toLowerCase() || 'rider');
   const [countryCode, setCountryCode] = useState('CI');
@@ -253,12 +254,26 @@ const RegisterPage = ({ navigation, route }) => {
 
         <TouchableOpacity 
           style={styles.googleAuthButton} 
-          onPress={handleGoogleSignIn}
-          disabled={isGoogleLoading}
+          onPress={async () => {
+            if (isGoogleSubmitting || isGoogleLoading) return;
+            setIsGoogleSubmitting(true);
+            try {
+              await handleGoogleSignIn();
+            } finally {
+              setTimeout(() => setIsGoogleSubmitting(false), 2000);
+            }
+          }}
+          disabled={isGoogleLoading || isGoogleSubmitting}
           activeOpacity={0.8}
         >
-          <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
-          <Text style={styles.googleAuthText}>S'inscrire avec Google</Text>
+          {isGoogleLoading || isGoogleSubmitting ? (
+            <ActivityIndicator size="small" color="#EA4335" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+              <Text style={styles.googleAuthText}>S'inscrire avec Google</Text>
+            </>
+          )}
         </TouchableOpacity>
       </View>
 

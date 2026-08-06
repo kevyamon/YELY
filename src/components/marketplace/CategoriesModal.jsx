@@ -41,7 +41,7 @@ const CategoriesModal = memo(({
     <Modal
       visible={isVisible}
       transparent
-      animationType="none"
+      animationType="fade"
       onRequestClose={onClose}
     >
       <TouchableOpacity 

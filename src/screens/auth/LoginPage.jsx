@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { LayoutAnimation, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+import { ActivityIndicator, LayoutAnimation, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
 import { useDispatch, useSelector } from 'react-redux';
@@ -22,6 +22,7 @@ const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
   const [googleAuth, { isLoading: isGoogleLoading }] = useGoogleAuthMutation();
+  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
   const { error } = useSelector((state) => state.ui);
 
   const [formData, setFormData] = useState({ identifier: '', password: '' });
@@ -238,12 +239,26 @@ const LoginPage = ({ navigation }) => {
 
         <TouchableOpacity 
           style={styles.googleAuthButton} 
-          onPress={handleGoogleSignIn}
-          disabled={isGoogleLoading}
+          onPress={async () => {
+            if (isGoogleSubmitting || isGoogleLoading) return;
+            setIsGoogleSubmitting(true);
+            try {
+              await handleGoogleSignIn();
+            } finally {
+              setTimeout(() => setIsGoogleSubmitting(false), 2000);
+            }
+          }}
+          disabled={isGoogleLoading || isGoogleSubmitting}
           activeOpacity={0.8}
         >
-          <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
-          <Text style={styles.googleAuthText}>Continuer avec Google</Text>
+          {isGoogleLoading || isGoogleSubmitting ? (
+            <ActivityIndicator size="small" color="#EA4335" />
+          ) : (
+            <>
+              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
+              <Text style={styles.googleAuthText}>Continuer avec Google</Text>
+            </>
+          )}
         </TouchableOpacity>
 
       </View>

@@ -96,16 +96,16 @@ const FacebookFollowModal = () => {
     <GlassModal
       visible={visible}
       onClose={handleClose}
-      title={step === 'invite' ? "Rejoignez la communaute !" : "Merci !"}
+      title={step === 'invite' ? "Rejoignez la communauté !" : "Merci !"}
       icon={step === 'invite' ? "logo-facebook" : "heart"}
     >
       <View style={styles.content}>
         {step === 'invite' ? (
           <>
             <Text style={styles.message}>
-              Restez informe de toutes nos nouveautes, promotions et actualites en vous abonnant a la page officielle Yely.
+              Restez informé de toutes nos nouveautés, promotions et actualités en vous abonnant à la page officielle Yély.
             </Text>
-            <GoldButton title="S'abonner a la page" icon="logo-facebook" onPress={handleSubscribeClick} style={styles.button} />
+            <GoldButton title="S'abonner à la page" icon="logo-facebook" onPress={handleSubscribeClick} style={styles.button} />
             <TouchableOpacity onPress={handleClose} activeOpacity={0.7}>
               <Text style={styles.cancelText}>Plus tard</Text>
             </TouchableOpacity>
@@ -113,7 +113,7 @@ const FacebookFollowModal = () => {
         ) : (
           <>
             <Text style={styles.message}>
-              Nous sommes ravis de vous compter parmi nos abonnes. Votre soutien nous aide a grandir !
+              Nous sommes ravis de vous compter parmi nos abonnés. Votre soutien nous aide à grandir !
             </Text>
             <GoldButton title="Fermer" icon="checkmark-outline" onPress={handleClose} style={styles.button} />
           </>

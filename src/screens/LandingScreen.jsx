@@ -1,5 +1,5 @@
 // src/screens/LandingScreen.jsx
-// LANDING PAGE - FULLSCREEN MOTION DESIGN (Option 1 Immersive VIP)
+// LANDING PAGE - FULLSCREEN MOTION DESIGN (VIP Theme Synchronized)
 // CSCSM Level: Masterpiece UI / Fullscreen Video Engine
 
 import { Ionicons } from '@expo/vector-icons';
@@ -7,7 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   BackHandler,
   Dimensions,
@@ -17,6 +17,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useColorScheme,
   View
 } from 'react-native';
 import Animated, {
@@ -35,12 +36,15 @@ import { useDispatch } from 'react-redux';
 import { showSuccessToast } from '../store/slices/uiSlice';
 import THEME from '../theme/theme';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 const MOTION_DESIGN_URL = 'https://res.cloudinary.com/dkov5qrsp/video/upload/v1785905486/vbsxzwoa5m4mpvcx7jqp.mp4';
 
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const colorScheme = useColorScheme();
+  const isDarkMode = colorScheme === 'dark';
+  
   const [videoError, setVideoError] = useState(false);
 
   const appVersion = Constants.expoConfig?.version || '1.1.0';
@@ -140,28 +144,27 @@ export default function LandingScreen({ navigation }) {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
       {/* 1. ARRIÈRE-PLAN VIDÉO FULLSCREEN */}
       <View style={StyleSheet.absoluteFillObject}>
         {renderMotionDesign()}
       </View>
 
-      {/* 2. VOILE DÉGRADÉ TRANSLUCIDE (GOLD / DARK) POUR LISIBILITÉ PARFAITE */}
+      {/* 2. VOILE DÉGRADÉ ÉPURÉ & TRANSLUCIDE (Subtil pour laisser briller le logo Yély de la vidéo) */}
       <LinearGradient 
-        colors={['rgba(214, 175, 55, 0.45)', 'rgba(18, 20, 24, 0.88)', 'rgba(10, 12, 16, 0.96)']} 
+        colors={
+          isDarkMode 
+            ? ['rgba(0, 0, 0, 0.12)', 'rgba(0, 0, 0, 0.45)', 'rgba(10, 12, 16, 0.82)']
+            : ['rgba(0, 0, 0, 0.08)', 'rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.65)']
+        } 
         style={StyleSheet.absoluteFillObject} 
       />
 
       {/* 3. CONTENU EN SURIMPRESSION */}
-      <View style={[styles.contentContainer, { paddingTop: Math.max(insets.top, 20), paddingBottom: Math.max(insets.bottom, 16) }]}>
+      <View style={[styles.contentContainer, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 16) }]}>
         
-        <View style={styles.topSection}>
-          <View style={styles.brandBadge}>
-            <Ionicons name="sparkles" size={14} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
-            <Text style={styles.brandBadgeText}>YÉLY MOBILITY & MARKETPLACE</Text>
-          </View>
-        </View>
+        <View style={styles.topSpace} />
 
         <View style={styles.centerSection}>
           <Animated.Text style={[styles.mainTitle, titleStyle]}>
@@ -229,26 +232,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingHorizontal: THEME.SPACING.xl,
   },
-  topSection: {
-    alignItems: 'center',
-    marginTop: 10,
-  },
-  brandBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: 'rgba(0, 0, 0, 0.45)',
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(214, 175, 55, 0.3)',
-  },
-  brandBadgeText: {
-    color: '#F5D142',
-    fontSize: 11,
-    fontWeight: '800',
-    letterSpacing: 1.2,
-  },
+  topSpace: { height: 20 },
   centerSection: { 
     alignItems: 'center',
     justifyContent: 'center',
@@ -261,13 +245,13 @@ const styles = StyleSheet.create({
     letterSpacing: 1.2,
     textAlign: 'center',
     lineHeight: 48,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
     textShadowOffset: { width: 0, height: 4 },
-    textShadowRadius: 10,
+    textShadowRadius: 12,
   },
   separator: {
     width: 48,
-    height: 3,
+    height: 3.5,
     backgroundColor: THEME.COLORS.champagneGold,
     alignSelf: 'center',
     marginVertical: 14,
@@ -275,10 +259,13 @@ const styles = StyleSheet.create({
   },
   subTitle: {
     fontSize: 18,
-    color: 'rgba(255, 255, 255, 0.85)',
+    color: '#FFFFFF',
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: 1,
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 8,
   },
   bottomSection: { width: '100%', alignItems: 'center' },
   buttonWrapper: {
@@ -321,11 +308,37 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 4,
   },
-  loginText: { color: 'rgba(255, 255, 255, 0.8)', fontSize: 15, fontWeight: '500' },
-  loginTextBold: { color: THEME.COLORS.champagneGold, fontWeight: '900', textDecorationLine: 'underline' },
+  loginText: { 
+    color: '#FFFFFF', 
+    fontSize: 15, 
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  loginTextBold: { 
+    color: THEME.COLORS.champagneGold, 
+    fontWeight: '900', 
+    textDecorationLine: 'underline' 
+  },
   legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
   termsLink: { padding: 5 },
-  termsText: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontWeight: '700' },
-  bullet: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 12, marginHorizontal: 5 },
-  copyright: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, marginTop: 10, fontWeight: '600' }
+  termsText: { 
+    color: 'rgba(255, 255, 255, 0.9)', 
+    fontSize: 12, 
+    fontWeight: '700',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  bullet: { color: THEME.COLORS.champagneGold, fontSize: 12, marginHorizontal: 5 },
+  copyright: { 
+    color: 'rgba(255, 255, 255, 0.8)', 
+    fontSize: 10, 
+    marginTop: 8, 
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.9)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  }
 });

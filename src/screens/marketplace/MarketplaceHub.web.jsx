@@ -96,27 +96,18 @@ const MarketplaceHub = ({ navigation }) => {
     const toggleModalSub = DeviceEventEmitter.addListener('toggle_categories_modal', () => {
       setIsCategoriesModalVisible(prev => !prev);
     });
-    const focusSub = navigation.addListener('focus', () => {
+    const unsubscribeFocus = navigation.addListener('focus', () => {
       setSearchQuery('');
     });
 
     return () => {
       scrollTopSub.remove();
       toggleModalSub.remove();
-      focusSub();
+      if (typeof unsubscribeFocus === 'function') {
+        unsubscribeFocus();
+      }
     };
   }, [navigation]);
-
-  // Intercepter le bouton Retour d'Android/PWA pour fermer la modale au lieu de quitter la page
-  useEffect(() => {
-    const unsubscribe = navigation.addListener('beforeRemove', (e) => {
-      if (isCategoriesModalVisible) {
-        e.preventDefault();
-        setIsCategoriesModalVisible(false);
-      }
-    });
-    return unsubscribe;
-  }, [navigation, isCategoriesModalVisible]);
 
   const handleSearchSubmit = () => {
     if (searchQuery.trim().length > 0) {
