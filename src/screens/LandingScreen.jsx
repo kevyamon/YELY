@@ -38,7 +38,7 @@ import { showSuccessToast } from '../store/slices/uiSlice';
 import THEME from '../theme/theme';
 
 const { width } = Dimensions.get('window');
-const MOTION_DESIGN_URL = 'https://res.cloudinary.com/dkov5qrsp/video/upload/v1785983642/qls2tsxu0uhfrasnsnza.mp4';
+const LOCAL_MOTION_DESIGN = require('../../assets/videos/landing.mp4');
 
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
@@ -137,7 +137,7 @@ export default function LandingScreen({ navigation }) {
     if (Platform.OS === 'web') {
       return (
         <video
-          src={MOTION_DESIGN_URL}
+          src={LOCAL_MOTION_DESIGN}
           autoPlay
           loop
           muted
@@ -159,7 +159,7 @@ export default function LandingScreen({ navigation }) {
     return (
       <Video
         ref={videoRef}
-        source={{ uri: MOTION_DESIGN_URL }}
+        source={LOCAL_MOTION_DESIGN}
         style={styles.fullscreenVideo}
         resizeMode={ResizeMode.COVER}
         shouldPlay

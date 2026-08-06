@@ -160,14 +160,35 @@ const LoginPage = ({ navigation }) => {
         const redirectUrl = Constants.appOwnership === 'expo'
           ? 'https://auth.expo.io/@kevyllc/YELY'
           : 'yely://google-auth';
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=token&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
+
+        // Flux sécurisé par Code d'Autorisation (Authorization Code Flow) conforme aux règles Google 2026
+        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
 
         const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
 
         if (result.type === 'success' && result.url) {
+          const codeMatch = result.url.match(/code=([^&]+)/);
           const tokenMatch = result.url.match(/access_token=([^&]+)/) || result.url.match(/id_token=([^&]+)/);
-          if (tokenMatch && tokenMatch[1]) {
-            const accessToken = tokenMatch[1];
+          
+          let accessToken = tokenMatch ? tokenMatch[1] : null;
+
+          if (!accessToken && codeMatch && codeMatch[1]) {
+            const authCode = decodeURIComponent(codeMatch[1]);
+            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: new URLSearchParams({
+                code: authCode,
+                client_id: GOOGLE_WEB_CLIENT_ID,
+                redirect_uri: redirectUrl,
+                grant_type: 'authorization_code'
+              }).toString()
+            });
+            const tokenData = await tokenRes.json();
+            accessToken = tokenData.access_token;
+          }
+
+          if (accessToken) {
             const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
               headers: { Authorization: `Bearer ${accessToken}` }
             });
