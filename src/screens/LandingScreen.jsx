@@ -6,9 +6,10 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Video, ResizeMode } from 'expo-av';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
+  AppState,
   BackHandler,
   Dimensions,
   Image,
@@ -45,19 +46,13 @@ export default function LandingScreen({ navigation }) {
   const colorScheme = useColorScheme();
   const isDarkMode = colorScheme === 'dark';
   
-  const videoRef = useRef(null);
   const [videoError, setVideoError] = useState(false);
 
-  const handlePlaybackStatusUpdate = (status) => {
-    if (status.isLoaded) {
-      if (!status.isPlaying && status.shouldPlay && !status.isBuffering) {
-        videoRef.current?.playAsync().catch(() => {});
-      }
-    } else if (status.error) {
-      console.warn('[LandingScreen] Erreur flux vidéo:', status.error);
-      setVideoError(true);
-    }
-  };
+  const player = useVideoPlayer(MOTION_DESIGN_URL, (p) => {
+    p.loop = true;
+    p.muted = true;
+    p.play();
+  });
 
   const appVersion = Constants.expoConfig?.version || '1.1.0';
   const currentYear = new Date().getFullYear();
@@ -100,9 +95,24 @@ export default function LandingScreen({ navigation }) {
   const linksStyle = useAnimatedStyle(() => ({ opacity: linksOpacity.value }));
   const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
 
+  // Relance automatique de la vidéo dès que l'application revient au premier plan (Foreground / Active)
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (nextAppState) => {
+      if (nextAppState === 'active') {
+        player.play();
+      }
+    });
+
+    return () => {
+      subscription.remove();
+    };
+  }, [player]);
+
   let lastBackPress = 0;
   useFocusEffect(
     useCallback(() => {
+      player.play();
+
       const onBackPress = () => {
         const time = new Date().getTime();
         if (time - lastBackPress < 2000) {
@@ -115,7 +125,7 @@ export default function LandingScreen({ navigation }) {
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
       return () => sub.remove();
-    }, [dispatch])
+    }, [player, dispatch])
   );
 
   const renderMotionDesign = () => {
@@ -142,18 +152,11 @@ export default function LandingScreen({ navigation }) {
     }
 
     return (
-      <Video
-        ref={videoRef}
-        source={{ uri: MOTION_DESIGN_URL }}
+      <VideoView
+        player={player}
         style={styles.fullscreenVideo}
-        resizeMode={ResizeMode.COVER}
-        shouldPlay
-        isLooping
-        isMuted
-        useNativeControls={false}
-        progressUpdateIntervalMillis={1000}
-        onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-        onError={() => setVideoError(true)}
+        contentFit="cover"
+        nativeControls={false}
       />
     );
   };
@@ -259,7 +262,10 @@ export default function LandingScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
+  container: { 
+    flex: 1, 
+    backgroundColor: '#000000' 
+  },
   fullscreenVideo: { width: '100%', height: '100%' },
   fallbackImage: { width: '100%', height: '100%' },
   contentContainer: {
