@@ -166,9 +166,7 @@ const RegisterPage = ({ navigation, route }) => {
       }
     } else {
       try {
-        const redirectUrl = Constants.appOwnership === 'expo'
-          ? 'https://auth.expo.io/@kevyllc/YELY'
-          : 'yely://google-auth';
+        const redirectUrl = 'https://auth.expo.io/@kevyllc/YELY';
 
         // Flux sécurisé par Code d'Autorisation (Authorization Code Flow) conforme aux règles Google 2026
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
