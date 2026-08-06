@@ -1,6 +1,6 @@
 // src/screens/LandingScreen.jsx
-// LANDING PAGE - THE GOLDEN TICKET (Ultra-Minimalist & VIP Motion Design)
-// CSCSM Level: Masterpiece UI / Motion Engine / Safe Area Protection
+// LANDING PAGE - FULLSCREEN MOTION DESIGN (Option 1 Immersive VIP)
+// CSCSM Level: Masterpiece UI / Fullscreen Video Engine
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -46,11 +46,6 @@ export default function LandingScreen({ navigation }) {
   const appVersion = Constants.expoConfig?.version || '1.1.0';
   const currentYear = new Date().getFullYear();
 
-  const isDark = THEME.COLORS.background === THEME.COLORS.pureBlack;
-  const backgroundGradient = isDark 
-    ? [THEME.COLORS.primary, THEME.COLORS.primaryDark] 
-    : [THEME.COLORS.primaryLight, THEME.COLORS.primary];
-
   const titleY = useSharedValue(50);
   const titleOpacity = useSharedValue(0);
   const subtitleY = useSharedValue(50);
@@ -58,7 +53,6 @@ export default function LandingScreen({ navigation }) {
   const btnY = useSharedValue(50);
   const btnOpacity = useSharedValue(0);
   const linksOpacity = useSharedValue(0);
-  const levitationY = useSharedValue(0);
   const shimmerX = useSharedValue(-width);
 
   useEffect(() => {
@@ -72,12 +66,6 @@ export default function LandingScreen({ navigation }) {
     btnY.value = withDelay(400, withSpring(0, { damping: 12, stiffness: 100 }));
 
     linksOpacity.value = withDelay(800, withTiming(1, { duration: 1000 }));
-
-    levitationY.value = withRepeat(
-      withTiming(-10, { duration: 2200, easing: Easing.inOut(Easing.sin) }),
-      -1, 
-      true 
-    );
 
     shimmerX.value = withRepeat(
       withSequence(
@@ -94,7 +82,6 @@ export default function LandingScreen({ navigation }) {
   const subtitleStyle = useAnimatedStyle(() => ({ opacity: subtitleOpacity.value, transform: [{ translateY: subtitleY.value }] }));
   const btnStyle = useAnimatedStyle(() => ({ opacity: btnOpacity.value, transform: [{ translateY: btnY.value }] }));
   const linksStyle = useAnimatedStyle(() => ({ opacity: linksOpacity.value }));
-  const logoStyle = useAnimatedStyle(() => ({ transform: [{ translateY: levitationY.value }] }));
   const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
 
   let lastBackPress = 0;
@@ -128,7 +115,6 @@ export default function LandingScreen({ navigation }) {
             width: '100%',
             height: '100%',
             objectFit: 'cover',
-            borderRadius: '50%',
           }}
           onError={() => setVideoError(true)}
         />
@@ -136,13 +122,13 @@ export default function LandingScreen({ navigation }) {
     }
 
     if (videoError) {
-      return <Image source={require('../../assets/logo.png')} style={styles.logoImage} resizeMode="cover" />;
+      return <Image source={require('../../assets/logo.png')} style={styles.fallbackImage} resizeMode="cover" />;
     }
 
     return (
       <Video
         source={{ uri: MOTION_DESIGN_URL }}
-        style={styles.logoVideo}
+        style={styles.fullscreenVideo}
         resizeMode={ResizeMode.COVER}
         shouldPlay
         isLooping
@@ -153,127 +139,143 @@ export default function LandingScreen({ navigation }) {
   };
 
   return (
-    <View style={[styles.container, { backgroundColor: backgroundGradient[1] }]}>
-      <StatusBar barStyle="dark-content" backgroundColor={backgroundGradient[0]} />
-      <LinearGradient colors={backgroundGradient} style={styles.backgroundImage}>
-        <View style={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
-          
-          <View style={[styles.topSpace, { paddingTop: Math.max(insets.top, 10) }]} />
+    <View style={styles.container}>
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      
+      {/* 1. ARRIÈRE-PLAN VIDÉO FULLSCREEN */}
+      <View style={StyleSheet.absoluteFillObject}>
+        {renderMotionDesign()}
+      </View>
 
-          <View style={styles.centerSection}>
-            <Animated.View style={[styles.logoContainer, logoStyle]}>
-              {renderMotionDesign()}
-            </Animated.View>
+      {/* 2. VOILE DÉGRADÉ TRANSLUCIDE (GOLD / DARK) POUR LISIBILITÉ PARFAITE */}
+      <LinearGradient 
+        colors={['rgba(214, 175, 55, 0.45)', 'rgba(18, 20, 24, 0.88)', 'rgba(10, 12, 16, 0.96)']} 
+        style={StyleSheet.absoluteFillObject} 
+      />
 
-            <Animated.Text style={[styles.mainTitle, titleStyle]}>
-              Avec Yély, ça va vite!
-            </Animated.Text>
-            
-            <Animated.View style={subtitleStyle}>
-              <View style={styles.separator} />
-              <Text style={styles.subTitle}>@By Yély Dev Team</Text>
-            </Animated.View>
+      {/* 3. CONTENU EN SURIMPRESSION */}
+      <View style={[styles.contentContainer, { paddingTop: Math.max(insets.top, 20), paddingBottom: Math.max(insets.bottom, 16) }]}>
+        
+        <View style={styles.topSection}>
+          <View style={styles.brandBadge}>
+            <Ionicons name="sparkles" size={14} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
+            <Text style={styles.brandBadgeText}>YÉLY MOBILITY & MARKETPLACE</Text>
           </View>
-
-          <View style={styles.bottomSection}>
-            <Animated.View style={[styles.buttonWrapper, btnStyle]}>
-              <TouchableOpacity 
-                style={styles.blackCtaButton}
-                activeOpacity={0.9}
-                onPress={() => navigation.navigate('Register')}
-              >
-                <Animated.View style={[styles.shimmerContainer, shimmerStyle]}>
-                  <LinearGradient
-                    colors={['transparent', 'rgba(255,255,255,0.25)', 'transparent']}
-                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                    style={styles.shimmerGradient}
-                  />
-                </Animated.View>
-
-                <Text style={styles.blackCtaText}>CRÉER MON COMPTE</Text>
-                <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.primaryLight} style={{ marginLeft: 8 }} />
-              </TouchableOpacity>
-            </Animated.View>
-
-            <Animated.View style={[styles.linksContainer, linksStyle]}>
-              <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
-                <Text style={styles.loginText}>
-                  Déjà membre ? <Text style={styles.loginTextBold}>Se connecter</Text>
-                </Text>
-              </TouchableOpacity>
-
-              <View style={styles.legalLinksRow}>
-                <TouchableOpacity onPress={() => navigation.navigate('TermsOfService')} style={styles.termsLink}>
-                  <Text style={styles.termsText}>Conditions d'utilisation</Text>
-                </TouchableOpacity>
-                <Text style={styles.bullet}> • </Text>
-                <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={styles.termsLink}>
-                  <Text style={styles.termsText}>Confidentialité</Text>
-                </TouchableOpacity>
-              </View>
-
-              <Text style={styles.copyright}>© {currentYear} Yely • v{appVersion}</Text>
-            </Animated.View>
-          </View>
-
         </View>
-      </LinearGradient>
+
+        <View style={styles.centerSection}>
+          <Animated.Text style={[styles.mainTitle, titleStyle]}>
+            Avec Yély, ça va vite !
+          </Animated.Text>
+          
+          <Animated.View style={subtitleStyle}>
+            <View style={styles.separator} />
+            <Text style={styles.subTitle}>@By Yély Dev Team</Text>
+          </Animated.View>
+        </View>
+
+        <View style={styles.bottomSection}>
+          <Animated.View style={[styles.buttonWrapper, btnStyle]}>
+            <TouchableOpacity 
+              style={styles.goldCtaButton}
+              activeOpacity={0.9}
+              onPress={() => navigation.navigate('Register')}
+            >
+              <Animated.View style={[styles.shimmerContainer, shimmerStyle]}>
+                <LinearGradient
+                  colors={['transparent', 'rgba(255,255,255,0.4)', 'transparent']}
+                  start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={styles.shimmerGradient}
+                />
+              </Animated.View>
+
+              <Text style={styles.goldCtaText}>CRÉER MON COMPTE</Text>
+              <Ionicons name="arrow-forward" size={20} color="#121418" style={{ marginLeft: 8 }} />
+            </TouchableOpacity>
+          </Animated.View>
+
+          <Animated.View style={[styles.linksContainer, linksStyle]}>
+            <TouchableOpacity onPress={() => navigation.navigate('Login')} style={styles.loginLink}>
+              <Text style={styles.loginText}>
+                Déjà membre ? <Text style={styles.loginTextBold}>Se connecter</Text>
+              </Text>
+            </TouchableOpacity>
+
+            <View style={styles.legalLinksRow}>
+              <TouchableOpacity onPress={() => navigation.navigate('TermsOfService')} style={styles.termsLink}>
+                <Text style={styles.termsText}>Conditions d'utilisation</Text>
+              </TouchableOpacity>
+              <Text style={styles.bullet}> • </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('PrivacyPolicy')} style={styles.termsLink}>
+                <Text style={styles.termsText}>Confidentialité</Text>
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.copyright}>© {currentYear} Yely • v{appVersion}</Text>
+          </Animated.View>
+        </View>
+
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backgroundImage: { flex: 1, width: '100%' },
+  container: { flex: 1, backgroundColor: '#0A0C10' },
+  fullscreenVideo: { width: '100%', height: '100%' },
+  fallbackImage: { width: '100%', height: '100%' },
   contentContainer: {
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: THEME.SPACING.xl,
   },
-  topSpace: { height: height * 0.08 }, 
+  topSection: {
+    alignItems: 'center',
+    marginTop: 10,
+  },
+  brandBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.45)',
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(214, 175, 55, 0.3)',
+  },
+  brandBadgeText: {
+    color: '#F5D142',
+    fontSize: 11,
+    fontWeight: '800',
+    letterSpacing: 1.2,
+  },
   centerSection: { 
     alignItems: 'center',
-    flex: 1,
-    justifyContent: 'center'
-  },
-  logoContainer: {
-    width: 130, 
-    height: 130,
-    borderRadius: 65,
-    overflow: 'hidden', 
-    backgroundColor: '#000000', 
     justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: THEME.SPACING.xl,
-    borderWidth: 2.5,
-    borderColor: '#000000',
-    elevation: 15,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 15,
+    paddingVertical: 20,
   },
-  logoVideo: { width: '100%', height: '100%', borderRadius: 65 },
-  logoImage: { width: '100%', height: '100%' },
   mainTitle: {
     fontSize: 42,
     fontWeight: '900',
-    color: '#000000', 
-    letterSpacing: 1.5,
+    color: '#FFFFFF', 
+    letterSpacing: 1.2,
     textAlign: 'center',
     lineHeight: 48,
+    textShadowColor: 'rgba(0, 0, 0, 0.75)',
+    textShadowOffset: { width: 0, height: 4 },
+    textShadowRadius: 10,
   },
   separator: {
-    width: 40,
+    width: 48,
     height: 3,
-    backgroundColor: '#000000',
+    backgroundColor: THEME.COLORS.champagneGold,
     alignSelf: 'center',
-    marginVertical: 12,
+    marginVertical: 14,
     borderRadius: 2,
   },
   subTitle: {
-    fontSize: 20,
-    color: '#111111',
+    fontSize: 18,
+    color: 'rgba(255, 255, 255, 0.85)',
     fontWeight: '700',
     textAlign: 'center',
     letterSpacing: 1,
@@ -283,22 +285,22 @@ const styles = StyleSheet.create({
     width: '100%',
     marginBottom: 16,
   },
-  blackCtaButton: {
-    backgroundColor: '#000000', 
+  goldCtaButton: {
+    backgroundColor: THEME.COLORS.primary, 
     height: 60,
     borderRadius: THEME.BORDERS.radius.pill,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    shadowColor: '#000',
+    shadowColor: THEME.COLORS.primary,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.5,
     shadowRadius: 15,
     elevation: 10,
     overflow: 'hidden', 
   },
-  blackCtaText: {
-    color: THEME.COLORS.primaryLight, 
+  goldCtaText: {
+    color: '#121418', 
     fontSize: 16,
     fontWeight: '900',
     letterSpacing: 1.5,
@@ -319,11 +321,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     marginBottom: 4,
   },
-  loginText: { color: '#222222', fontSize: 15, fontWeight: '500' },
-  loginTextBold: { color: '#000000', fontWeight: '900', textDecorationLine: 'underline' },
+  loginText: { color: 'rgba(255, 255, 255, 0.8)', fontSize: 15, fontWeight: '500' },
+  loginTextBold: { color: THEME.COLORS.champagneGold, fontWeight: '900', textDecorationLine: 'underline' },
   legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 4 },
   termsLink: { padding: 5 },
-  termsText: { color: '#444444', fontSize: 12, fontWeight: '700' },
-  bullet: { color: '#555555', fontSize: 12, marginHorizontal: 5 },
-  copyright: { color: '#444444', fontSize: 10, marginTop: 10, fontWeight: '600' }
+  termsText: { color: 'rgba(255, 255, 255, 0.6)', fontSize: 12, fontWeight: '700' },
+  bullet: { color: 'rgba(255, 255, 255, 0.4)', fontSize: 12, marginHorizontal: 5 },
+  copyright: { color: 'rgba(255, 255, 255, 0.5)', fontSize: 10, marginTop: 10, fontWeight: '600' }
 });
