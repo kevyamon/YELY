@@ -70,48 +70,89 @@ const LoginPage = ({ navigation }) => {
     }
   };
 
+  const loadGoogleSdk = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.google && window.google.accounts) {
+        resolve(true);
+        return;
+      }
+      if (typeof document === 'undefined') {
+        resolve(false);
+        return;
+      }
+      const existingScript = document.getElementById('google-gsi-script');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true));
+        return;
+      }
+      const script = document.createElement('script');
+      script.id = 'google-gsi-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  };
+
   const handleGoogleSignIn = async () => {
     if (Platform.OS === 'web') {
       try {
-        if (!window.google || !window.google.accounts) {
+        const isLoaded = await loadGoogleSdk();
+        if (!isLoaded || !window.google || !window.google.accounts) {
           dispatch(showErrorToast({ 
-            title: "Google Auth", 
-            message: "Initialisation Google Auth Web en cours. Veuillez réessayer." 
+            title: "Connexion Google", 
+            message: "Impossible de charger le service Google. Vérifiez votre connexion internet." 
           }));
           return;
         }
+
         window.google.accounts.id.initialize({
           client_id: GOOGLE_WEB_CLIENT_ID,
           callback: async (response) => {
             if (response.credential) {
-              const base64Url = response.credential.split('.')[1];
-              const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-              const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-              }).join(''));
-              const payload = JSON.parse(jsonPayload);
-              
-              const res = await googleAuth({
-                email: payload.email,
-                name: payload.name,
-                profilePicture: payload.picture,
-                role: 'rider'
-              }).unwrap();
+              try {
+                const base64Url = response.credential.split('.')[1];
+                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                }).join(''));
+                const payload = JSON.parse(jsonPayload);
+                
+                const res = await googleAuth({
+                  email: payload.email,
+                  name: payload.name,
+                  profilePicture: payload.picture,
+                  role: 'rider'
+                }).unwrap();
 
-              const { user, accessToken, refreshToken } = res.data;
-              dispatch(setCredentials({ user, accessToken, refreshToken }));
-              dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue, ${user.name} !` }));
+                const { user, accessToken, refreshToken } = res.data;
+                dispatch(setCredentials({ user, accessToken, refreshToken }));
+                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue, ${user.name} !` }));
+              } catch (authErr) {
+                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'authentification Google." }));
+              }
             }
           }
         });
-        window.google.accounts.id.prompt();
+
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed() || notification.isSkippedMomentum()) {
+            // Si la pop-up One-Tap est bloquée, tente un rendu de bouton automatique
+            window.google.accounts.id.renderButton(
+              document.getElementById('google-auth-hidden-container') || document.body,
+              { theme: 'outline', size: 'large' }
+            );
+          }
+        });
       } catch (err) {
         dispatch(showErrorToast({ title: "Connexion Google", message: err?.data?.message || "Impossible de se connecter avec Google." }));
       }
     } else {
       dispatch(showErrorToast({ 
-        title: "Connexion Google", 
-        message: "Redirection vers la fenêtre Google sécurisée..." 
+        title: "Connexion Google Mobile", 
+        message: "Veuillez utiliser la version Web/PWA pour la connexion Google 1-clic." 
       }));
     }
   };
