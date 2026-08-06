@@ -21,7 +21,8 @@ const MarketplaceHeader = ({
   isDarkMode,
   paddingValue = 0,
 }) => {
-  const FIXED_HEADER_HEIGHT = Platform.OS === 'ios' ? 140 : 120;
+  const headerBgColor = isDarkMode ? 'rgba(212, 175, 55, 0.15)' : THEME.COLORS.primary;
+  const headerContentColor = isDarkMode ? THEME.COLORS.primary : '#121418';
 
   return (
     <View style={[
@@ -29,7 +30,7 @@ const MarketplaceHeader = ({
       { 
         height: FIXED_HEADER_HEIGHT, 
         paddingTop: insets.top + THEME.SPACING.xs,
-        backgroundColor: '#0B0C0E',
+        backgroundColor: headerBgColor,
         borderBottomWidth: 0,
       }
     ]}>
@@ -45,15 +46,15 @@ const MarketplaceHeader = ({
             }
           }}
         >
-          <Ionicons name="home-outline" size={26} color="#FFFFFF" />
+          <Ionicons name="home-outline" size={26} color={headerContentColor} />
         </TouchableOpacity>
 
-        <Text style={styles.headerTitle}>Yély Marketplace</Text>
+        <Text style={[styles.headerTitle, { color: headerContentColor }]}>Yély Marketplace</Text>
 
         <View style={{ width: 26 }} />
       </View>
 
-      {/* Barre de recherche intégrée dans l'en-tête sombre */}
+      {/* Barre de recherche intégrée dans l'en-tête uniformisé */}
       <View style={styles.searchBarWrapper}>
         <MarketplaceSearchBar 
           value={searchQuery}
@@ -84,7 +85,6 @@ const styles = StyleSheet.create({
     right: 0,
     zIndex: 100,
     paddingHorizontal: THEME.SPACING.lg,
-    backgroundColor: '#0B0C0E',
     justifyContent: 'center',
     overflow: 'hidden',
   },
@@ -98,7 +98,6 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 20,
     fontWeight: '900',
-    color: '#F5D142',
     letterSpacing: 0.5,
   },
   hamburgerButton: {

@@ -151,6 +151,10 @@ const MarketplaceHub = ({ navigation }) => {
 
   return (
     <View style={[styles.container, { backgroundColor: THEME.COLORS.background }]}>
+      <StatusBar 
+        barStyle={isDarkMode ? "light-content" : "dark-content"} 
+        backgroundColor={isDarkMode ? 'rgba(212, 175, 55, 0.15)' : THEME.COLORS.primary} 
+      />
       <MarketplaceHeader 
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}

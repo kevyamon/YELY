@@ -13,6 +13,7 @@ import {
   Dimensions,
   Image,
   Platform,
+  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -153,8 +154,9 @@ export default function LandingScreen({ navigation }) {
 
   return (
     <View style={[styles.container, { backgroundColor: backgroundGradient[1] }]}>
+      <StatusBar barStyle="dark-content" backgroundColor={backgroundGradient[0]} />
       <LinearGradient colors={backgroundGradient} style={styles.backgroundImage}>
-        <View style={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, 16) }]}>
+        <View style={[styles.contentContainer, { paddingBottom: Math.max(insets.bottom, 12) }]}>
           
           <View style={[styles.topSpace, { paddingTop: Math.max(insets.top, 10) }]} />
 
@@ -222,7 +224,7 @@ export default function LandingScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  backgroundImage: { flex: 1, width: width, height: height },
+  backgroundImage: { flex: 1, width: '100%' },
   contentContainer: {
     flex: 1,
     justifyContent: 'space-between',
