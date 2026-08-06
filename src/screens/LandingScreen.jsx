@@ -6,7 +6,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useVideoPlayer, VideoView } from 'expo-video';
+import NetInfo from '@react-native-community/netinfo';
+import { useVideoPlayer, VideoView, useEventListener } from 'expo-video';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   AppState,
@@ -65,6 +66,14 @@ export default function LandingScreen({ navigation }) {
   const btnOpacity = useSharedValue(0);
   const linksOpacity = useSharedValue(0);
   const shimmerX = useSharedValue(-width);
+  const gradientOpacity = useSharedValue(0);
+
+  // Apparition du voile dégradé Or en fondu très doux DÈS QUE la vidéo commence effectivement à jouer (Zéro flash jaune)
+  useEventListener(player, 'playingChange', ({ isPlaying }) => {
+    if (isPlaying) {
+      gradientOpacity.value = withTiming(1, { duration: 600 });
+    }
+  });
 
   useEffect(() => {
     titleOpacity.value = withTiming(1, { duration: 800 });
@@ -94,6 +103,20 @@ export default function LandingScreen({ navigation }) {
   const btnStyle = useAnimatedStyle(() => ({ opacity: btnOpacity.value, transform: [{ translateY: btnY.value }] }));
   const linksStyle = useAnimatedStyle(() => ({ opacity: linksOpacity.value }));
   const shimmerStyle = useAnimatedStyle(() => ({ transform: [{ translateX: shimmerX.value }] }));
+  const gradientStyle = useAnimatedStyle(() => ({ opacity: gradientOpacity.value }));
+
+  // Auto-Guérison Réseau : Relance automatique de la vidéo dès la reconnexion Internet après une coupure
+  useEffect(() => {
+    const unsubscribeNet = NetInfo.addEventListener((state) => {
+      if (state.isConnected && state.isInternetReachable !== false) {
+        player.play();
+      }
+    });
+
+    return () => {
+      unsubscribeNet();
+    };
+  }, [player]);
 
   // Relance automatique de la vidéo dès que l'application revient au premier plan (Foreground / Active)
   useEffect(() => {
@@ -167,7 +190,7 @@ export default function LandingScreen({ navigation }) {
   const copyrightColor = isDarkMode ? 'rgba(255, 255, 255, 0.55)' : 'rgba(18, 20, 24, 0.50)';
 
   return (
-    <View style={[styles.container, { backgroundColor: isDarkMode ? '#0A0C10' : '#D4AF37' }]}>
+    <View style={[styles.container, { backgroundColor: '#0A0C10' }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
       {/* ARRIÈRE-PLAN VIDÉO FULLSCREEN (Nouvelle Vidéo Cloudinary) */}
@@ -175,18 +198,20 @@ export default function LandingScreen({ navigation }) {
         {renderMotionDesign()}
       </View>
 
-      {/* VOILE DÉGRADÉ PROGRESSIF : Transparent en haut -> ambré/or en bas */}
-      <LinearGradient 
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        locations={[0, 0.45, 1]}
-        colors={
-          isDarkMode 
-            ? ['transparent', 'rgba(10, 12, 16, 0.35)', 'rgba(10, 12, 16, 0.92)']
-            : ['transparent', 'rgba(214, 175, 55, 0.30)', 'rgba(245, 215, 80, 0.92)']
-        } 
-        style={StyleSheet.absoluteFillObject} 
-      />
+      {/* VOILE DÉGRADÉ PROGRESSIF : Transparent en haut -> ambré/or en bas (Fondu doux au lancement de la vidéo) */}
+      <Animated.View style={[StyleSheet.absoluteFillObject, gradientStyle]}>
+        <LinearGradient 
+          start={{ x: 0, y: 0 }}
+          end={{ x: 0, y: 1 }}
+          locations={[0, 0.45, 1]}
+          colors={
+            isDarkMode 
+              ? ['transparent', 'rgba(10, 12, 16, 0.35)', 'rgba(10, 12, 16, 0.92)']
+              : ['transparent', 'rgba(214, 175, 55, 0.30)', 'rgba(245, 215, 80, 0.92)']
+          } 
+          style={StyleSheet.absoluteFillObject} 
+        />
+      </Animated.View>
 
       {/* CONTENU EN SURIMPRESSION */}
       <View style={[styles.contentContainer, { paddingTop: Math.max(insets.top, 24), paddingBottom: Math.max(insets.bottom, 16) }]}>
