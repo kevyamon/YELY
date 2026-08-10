@@ -47,7 +47,7 @@ import './src/tasks/backgroundLocationTask';
 const linking = {
   prefixes: [
     'http://localhost:19006',
-    'https://yely-backend-production-ac7b.up.railway.app',
+    'https://yely-backend-yzw4.onrender.com',
     'https://yely.io',
     'yely://',
   ],

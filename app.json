@@ -82,6 +82,7 @@
       }
     },
     "plugins": [
+      "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",
         {

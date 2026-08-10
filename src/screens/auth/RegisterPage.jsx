@@ -166,13 +166,14 @@ const RegisterPage = ({ navigation, route }) => {
       }
     } else {
       try {
-        // Redirection HTTPS conforme aux politiques Google OAuth 2.0 Web Client ID
-        const redirectUrl = 'https://auth.expo.io/@kevyllc/YELY';
+        // Redirection HTTPS vers le serveur Render actif (conforme aux politiques Google OAuth 2.0 Web Client ID)
+        const redirectUrl = 'https://yely-backend-yzw4.onrender.com';
+        const deepLinkRedirect = 'yely://google-auth';
 
         // Flux sécurisé par Code d'Autorisation (Authorization Code Flow) conforme aux règles Google 2026
         const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
 
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUrl);
+        const result = await WebBrowser.openAuthSessionAsync(authUrl, deepLinkRedirect);
 
         if (result.type === 'success' && result.url) {
           const codeMatch = result.url.match(/code=([^&]+)/);
