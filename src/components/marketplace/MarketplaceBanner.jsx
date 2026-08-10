@@ -967,7 +967,7 @@ const MarketplaceBanner = ({ navigation: propNavigation }) => {
       {renderBackgroundMedia()}
 
       <LinearGradient
-        colors={isBackground ? ['rgba(0, 0, 0, 0.25)', 'rgba(0, 0, 0, 0.7)'] : ['#F5D142', '#EBB02D']}
+        colors={isBackground ? ['rgba(0, 0, 0, 0.45)', 'rgba(0, 0, 0, 0.88)'] : ['#F5D142', '#EBB02D']}
         style={styles.gradientContainer}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
@@ -1066,33 +1066,34 @@ const styles = StyleSheet.create({
   },
   titleText: {
     fontSize: 18,
-    fontWeight: '800',
-    color: '#0A0A0A',
-    marginBottom: 2,
+    fontWeight: '900',
+    color: '#000000',
+    marginBottom: 3,
+    letterSpacing: 0.2,
   },
   titleTextBackground: {
     fontSize: 18,
-    fontWeight: '800',
+    fontWeight: '900',
     color: '#FFFFFF',
-    marginBottom: 2,
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    marginBottom: 3,
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 4,
   },
   bodyText: {
-    fontSize: 12,
-    color: '#2A2A2A',
+    fontSize: 12.5,
+    color: '#121418',
     lineHeight: 16,
-    fontWeight: '500',
+    fontWeight: '700',
   },
   bodyTextBackground: {
-    fontSize: 12,
-    color: 'rgba(255, 255, 255, 0.9)',
+    fontSize: 12.5,
+    color: '#FFFFFF',
     lineHeight: 16,
-    fontWeight: '500',
-    textShadowColor: 'rgba(0, 0, 0, 0.75)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 3,
+    fontWeight: '600',
+    textShadowColor: 'rgba(0, 0, 0, 0.95)',
+    textShadowOffset: { width: 0, height: 1.5 },
+    textShadowRadius: 4,
   },
   ctaButtonBackground: {
     flexDirection: 'row',

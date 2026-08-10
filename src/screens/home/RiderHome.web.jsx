@@ -14,6 +14,8 @@ import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
+import GlassModal from '../../components/ui/GlassModal';
+import GoldButton from '../../components/ui/GoldButton';
 import GpsPermissionModal from '../../components/ui/GpsPermissionModal.web';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 import SmartFooter from '../../components/ui/SmartFooter';
@@ -36,6 +38,7 @@ const RiderHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
+  const [showOutOfZoneTaxiModal, setShowOutOfZoneTaxiModal] = useState(false);
 
   // Etats pour la hauteur dynamique
   const [headerHeight, setHeaderHeight] = useState(140);
@@ -111,6 +114,10 @@ const RiderHome = ({ navigation }) => {
   }
 
   const handlePoiSelection = (poi) => {
+    if (!isEffectiveOriginInZone) {
+      setShowOutOfZoneTaxiModal(true);
+      return;
+    }
     setSelectedPoi(null);
     handlePlaceSelect({
       latitude: poi.latitude,
@@ -167,7 +174,13 @@ const RiderHome = ({ navigation }) => {
           userName={user?.name?.split(' ')[0] || "Passager"}
           onMenuPress={() => navigation.navigate('Menu')}
           onNotificationPress={() => navigation.navigate('Notifications')}
-          onSearchPress={() => openSearchModal('destination')}
+          onSearchPress={() => {
+            if (!isEffectiveOriginInZone) {
+              setShowOutOfZoneTaxiModal(true);
+              return;
+            }
+            openSearchModal('destination');
+          }}
           onOriginPress={() => openSearchModal('origin')}
           onShoppingPress={() => navigation.navigate('MarketplaceHub')}
           hasDestination={!!destination && !isRideActive} 
@@ -210,14 +223,27 @@ const RiderHome = ({ navigation }) => {
         onSelect={handlePoiSelection}
       />
 
+      <GlassModal
+        visible={showOutOfZoneTaxiModal}
+        onClose={() => setShowOutOfZoneTaxiModal(false)}
+        title="Zone non couverte"
+        icon="location-outline"
+      >
+        <Text style={styles.outOfZoneModalText}>
+          Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély, vous ne pouvez donc pas bénéficier de course
+        </Text>
+        <GoldButton 
+          title="J'ai compris" 
+          onPress={() => setShowOutOfZoneTaxiModal(false)} 
+          style={{ marginTop: 16 }}
+        />
+      </GlassModal>
+
       <RiderWaitModal />
       <RatingModal />
 
       <PwaIOSWarningModal isDriver={false} />
       <GpsPermissionModal isPermissionDenied={isPermissionDenied} onRetry={retryGeolocation} />
-      
-
-
     </View>
   );
 };
@@ -247,6 +273,13 @@ const styles = StyleSheet.create({
     zIndex: 10,
   },
   floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
+  outOfZoneModalText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 8,
+  },
 });
 
 export default RiderHome;

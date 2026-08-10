@@ -185,7 +185,7 @@ const CheckoutScreen = ({ navigation }) => {
       ? { latitude: clientCoords[1], longitude: clientCoords[0] }
       : userGeoLocation;
 
-    if (checkCoords && !isLocationInMafereZone(checkCoords)) {
+    if (!checkCoords || !isLocationInMafereZone(checkCoords)) {
       setIsOutOfZoneModalVisible(true);
       return;
     }

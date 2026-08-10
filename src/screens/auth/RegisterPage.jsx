@@ -97,7 +97,41 @@ const RegisterPage = ({ navigation, route }) => {
 
     try {
       if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+        if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
+          const tokenClient = window.google.accounts.oauth2.initTokenClient({
+            client_id: GOOGLE_WEB_CLIENT_ID,
+            scope: 'email profile openid',
+            callback: async (tokenResponse) => {
+              if (tokenResponse.error) {
+                setIsGoogleSubmitting(false);
+                return;
+              }
+              try {
+                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
+                });
+                const userInfo = await userInfoRes.json();
+
+                const res = await googleAuth({
+                  email: userInfo.email,
+                  name: userInfo.name || userInfo.given_name,
+                  profilePicture: userInfo.picture,
+                  role: role || 'rider'
+                }).unwrap();
+
+                const { user, accessToken, refreshToken } = res.data;
+                dispatch(setCredentials({ user, accessToken, refreshToken }));
+                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+              } catch (authErr) {
+                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+              } finally {
+                setIsGoogleSubmitting(false);
+              }
+            },
+          });
+          tokenClient.requestAccessToken({ prompt: 'consent' });
+          return;
+        } else if (typeof window !== 'undefined' && window.google?.accounts?.id) {
           window.google.accounts.id.initialize({
             client_id: GOOGLE_WEB_CLIENT_ID,
             callback: async (response) => {
@@ -123,15 +157,24 @@ const RegisterPage = ({ navigation, route }) => {
                   dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
                 } catch (authErr) {
                   dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+                } finally {
+                  setIsGoogleSubmitting(false);
                 }
               }
             }
           });
           window.google.accounts.id.prompt();
+          return;
+        } else {
+          dispatch(showErrorToast({ title: "Inscription Google", message: "Service Google indisponible sur ce navigateur." }));
+          setIsGoogleSubmitting(false);
         }
       } else {
         const googleResult = await signInWithGoogle();
-        if (googleResult?.cancelled || googleResult?.inProgress) return;
+        if (googleResult?.cancelled || googleResult?.inProgress) {
+          setIsGoogleSubmitting(false);
+          return;
+        }
 
         if (googleResult?.idToken) {
           const res = await googleAuth({
@@ -146,13 +189,13 @@ const RegisterPage = ({ navigation, route }) => {
           dispatch(setCredentials({ user, accessToken, refreshToken }));
           dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
         }
+        setIsGoogleSubmitting(false);
       }
     } catch (err) {
+      setIsGoogleSubmitting(false);
       if (err.message !== 'PLATFORM_WEB_GSI') {
         dispatch(showErrorToast({ title: "Inscription Google", message: err?.message || err?.data?.message || "Échec de l'inscription." }));
       }
-    } finally {
-      setIsGoogleSubmitting(false);
     }
   };
 
