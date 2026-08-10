@@ -1,18 +1,34 @@
 // src/services/auth/googleAuth.js
-// SERVICE D'AUTHENTIFICATION GOOGLE NATIVE (SDK OFFICIEL)
+// SERVICE D'AUTHENTIFICATION GOOGLE NATIVE (SDK OFFICIEL - SAFE EXPO GO)
 // STANDARD: Industriel / Bank Grade
 
-import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
-import { Platform } from 'react-native';
+import { NativeModules, Platform } from 'react-native';
 
 export const GOOGLE_WEB_CLIENT_ID = '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
 
 let isConfigured = false;
 
+// Helper de chargement dynamique ultra-sécurisé (Vérification NativeModules prioritaire)
+const getGoogleSigninModule = () => {
+  if (Platform.OS === 'web') return null;
+  // Ne JAMAIS exécuter require() si le binaire natif RNGoogleSignin est absent (Expo Go)
+  if (!NativeModules || !NativeModules.RNGoogleSignin) {
+    return null;
+  }
+  try {
+    return require('@react-native-google-signin/google-signin');
+  } catch (err) {
+    console.warn('[GoogleAuth] Impossible d\'importer @react-native-google-signin/google-signin:', err);
+    return null;
+  }
+};
+
 export const configureGoogleSignIn = () => {
-  if (Platform.OS !== 'web' && !isConfigured) {
+  if (Platform.OS === 'web' || isConfigured) return;
+  const sdk = getGoogleSigninModule();
+  if (sdk && sdk.GoogleSignin) {
     try {
-      GoogleSignin.configure({
+      sdk.GoogleSignin.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
         offlineAccess: true,
         forceCodeForRefreshToken: true,
@@ -29,11 +45,17 @@ export const signInWithGoogle = async () => {
     throw new Error('PLATFORM_WEB_GSI');
   }
 
+  const sdk = getGoogleSigninModule();
+  if (!sdk || !NativeModules.RNGoogleSignin) {
+    throw new Error("L'authentification Google native requiert un Build de Développement ou APK (npx expo run:android). Elle n'est pas disponible dans l'application générique Expo Go.");
+  }
+
   if (!isConfigured) {
     configureGoogleSignIn();
   }
 
   try {
+    const { GoogleSignin, statusCodes } = sdk;
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     
@@ -51,6 +73,8 @@ export const signInWithGoogle = async () => {
       profilePicture: user?.photo
     };
   } catch (error) {
+    const sdk = getGoogleSigninModule();
+    const statusCodes = sdk?.statusCodes || {};
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       return { cancelled: true };
     }
@@ -66,10 +90,13 @@ export const signInWithGoogle = async () => {
 
 export const signOutGoogle = async () => {
   if (Platform.OS !== 'web' && isConfigured) {
-    try {
-      await GoogleSignin.signOut();
-    } catch (err) {
-      console.warn('[GoogleAuth] Erreur lors de la déconnexion Google:', err);
+    const sdk = getGoogleSigninModule();
+    if (sdk && sdk.GoogleSignin) {
+      try {
+        await sdk.GoogleSignin.signOut();
+      } catch (err) {
+        console.warn('[GoogleAuth] Erreur lors de la déconnexion Google:', err);
+      }
     }
   }
 };

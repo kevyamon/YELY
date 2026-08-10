@@ -130,10 +130,10 @@ export default function LandingScreen({ navigation }) {
 
       // Harmonisation de la barre de navigation Android système avec le bas de l'écran Landing
       if (Platform.OS === 'android') {
-        const landingNavColor = isDarkMode ? '#0A0C10' : '#F5D750';
         const landingNavStyle = isDarkMode ? 'light' : 'dark';
-        NavigationBar.setBackgroundColorAsync(landingNavColor).catch(() => {});
-        NavigationBar.setButtonStyleAsync(landingNavStyle).catch(() => {});
+        try {
+          NavigationBar.setButtonStyleAsync(landingNavStyle).catch(() => {});
+        } catch (e) {}
       }
 
       const onBackPress = () => {
@@ -152,10 +152,10 @@ export default function LandingScreen({ navigation }) {
         sub.remove();
         // Restauration de la barre de navigation globale lors du départ de l'écran
         if (Platform.OS === 'android') {
-          const defaultNavColor = isDarkMode ? '#000000' : '#F8F9FA';
           const defaultNavStyle = isDarkMode ? 'light' : 'dark';
-          NavigationBar.setBackgroundColorAsync(defaultNavColor).catch(() => {});
-          NavigationBar.setButtonStyleAsync(defaultNavStyle).catch(() => {});
+          try {
+            NavigationBar.setButtonStyleAsync(defaultNavStyle).catch(() => {});
+          } catch (e) {}
         }
       };
     }, [dispatch, isDarkMode])
