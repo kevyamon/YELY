@@ -19,19 +19,7 @@ const ExploreMarketplaceButton = ({
     isNavigatingRef.current = true;
 
     requestAnimationFrame(() => {
-      try {
-        navigation.navigate('MarketplaceHub', { screen: 'Accueil' });
-      } catch (err) {
-        try {
-          navigation.navigate('MarketplaceHub');
-        } catch (err2) {
-          try {
-            navigation.navigate('Accueil');
-          } catch (err3) {
-            navigation.navigate('Home');
-          }
-        }
-      }
+      navigation.navigate('MarketplaceHub', { screen: 'Accueil' });
       setTimeout(() => {
         isNavigatingRef.current = false;
       }, 500);

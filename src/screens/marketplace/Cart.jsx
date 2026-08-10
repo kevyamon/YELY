@@ -127,6 +127,14 @@ const Cart = ({ navigation }) => {
     </View>
   );
 
+  const handleBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      navigation.navigate('MarketplaceHub', { screen: 'Accueil' });
+    }
+  };
+
   return (
     <ScreenWrapper 
       backgroundColor={dynamicBg}
@@ -136,13 +144,7 @@ const Cart = ({ navigation }) => {
     >
       <View style={[styles.header, { paddingTop: insets.top + 12, backgroundColor: dynamicBg }]}>
         <TouchableOpacity 
-          onPress={() => {
-            try {
-              navigation.navigate('Accueil');
-            } catch (err) {
-              navigation.goBack();
-            }
-          }} 
+          onPress={handleBack} 
           style={[styles.backBtn, dynamicBackBtnStyle]}
         >
           <Ionicons name="chevron-back" size={24} color={dynamicTextColor} />

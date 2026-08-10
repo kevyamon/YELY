@@ -6,6 +6,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import {
   Dimensions,
   Image,
+  Linking,
   Modal,
   StyleSheet,
   Text,
@@ -225,33 +226,89 @@ const VoipCallOverlay = () => {
     }
   };
 
-  const startWebRTC = async () => {
+  const handleDirectGsmCall = async () => {
+    if (!targetPhone || targetPhone === 'Masqué') {
+      dispatch(showToast({
+        type: 'warning',
+        title: 'Numéro indisponible',
+        message: 'Le numéro de téléphone direct n\'est pas renseigné.'
+      }));
+      return;
+    }
     try {
-      // Vérification des permissions avant d'instancier getUserMedia
-      if (Platform.OS !== 'web') {
-        const { granted } = await Audio.requestPermissionsAsync();
-        if (!granted) {
-          dispatch(showToast({
-            type: 'error',
-            title: 'Accès micro requis',
-            message: 'Yely a besoin du micro pour passer des appels vocaux.'
-          }));
-          handleHangup();
-          return;
-        }
-      } else if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      const formattedPhone = targetPhone.replace(/\s+/g, '');
+      const url = `tel:${formattedPhone}`;
+      const canOpen = await Linking.canOpenURL(url);
+      if (canOpen) {
+        handleHangup();
+        await Linking.openURL(url);
+      } else {
         dispatch(showToast({
           type: 'error',
-          title: 'Sécurité Navigateur',
-          message: 'L\'accès au micro nécessite une connexion HTTPS sécurisée.'
+          title: 'Erreur Téléphonie',
+          message: 'Impossible de composer le numéro depuis cet appareil.'
         }));
-        handleHangup();
+      }
+    } catch (e) {
+      console.warn('[VOIP CALL] Echec appel GSM direct:', e.message);
+    }
+  };
+
+  const startWebRTC = async () => {
+    try {
+      let micGranted = false;
+
+      if (Platform.OS !== 'web') {
+        try {
+          const currentStatus = await Audio.getPermissionsAsync();
+          if (currentStatus.granted || currentStatus.status === 'granted') {
+            micGranted = true;
+          } else {
+            const reqStatus = await Audio.requestPermissionsAsync();
+            micGranted = reqStatus.granted || reqStatus.status === 'granted';
+          }
+        } catch (permErr) {
+          console.warn("[VoipCallOverlay] Erreur vérification permission audio:", permErr.message);
+          micGranted = false;
+        }
+
+        if (!micGranted) {
+          dispatch(showToast({
+            type: 'warning',
+            title: 'Accès micro non accordé',
+            message: 'Utilisez le bouton "Appel GSM" pour joindre directement le correspondant.'
+          }));
+          return;
+        }
+      } else {
+        const hasGetUserMedia = navigator?.mediaDevices?.getUserMedia || 
+                                navigator?.getUserMedia || 
+                                navigator?.webkitGetUserMedia || 
+                                navigator?.mozGetUserMedia;
+
+        if (!hasGetUserMedia) {
+          dispatch(showToast({
+            type: 'warning',
+            title: 'Navigateur Restreint',
+            message: 'Veuillez utiliser un navigateur HTTPS ou le bouton "Appel GSM".'
+          }));
+          return;
+        }
+      }
+
+      if (!mediaDevices || !mediaDevices.getUserMedia) {
+        console.warn("[VoipCallOverlay] mediaDevices.getUserMedia non disponible dans ce contexte. Mode secours GSM prêt.");
         return;
       }
 
       const stream = await mediaDevices.getUserMedia({ audio: true, video: false });
       localStreamRef.current = stream;
       
+      if (!RTCPeerConnection) {
+        console.warn("[VoipCallOverlay] RTCPeerConnection non initialisé.");
+        return;
+      }
+
       const pc = new RTCPeerConnection(configuration);
       pcRef.current = pc;
       
@@ -337,13 +394,7 @@ const VoipCallOverlay = () => {
       }
 
     } catch (err) {
-      console.warn("[VOIP CALL] Echec WebRTC:", err);
-      dispatch(showToast({
-        type: 'error',
-        title: 'Erreur Connexion',
-        message: 'Impossible de se connecter au canal VoIP.'
-      }));
-      handleHangup();
+      console.warn("[VOIP CALL] Echec WebRTC (Mode secours GSM disponible):", err.message);
     }
   };
 
@@ -586,6 +637,16 @@ const VoipCallOverlay = () => {
                       <Ionicons name={isSpeakerOn ? "volume-high" : "volume-low"} size={22} color={isSpeakerOn ? "#121418" : themeColors.controlIcon} />
                     </TouchableOpacity>
                     <Text style={[styles.controlLabel, { color: themeColors.subtext }]}>Haut-parleur</Text>
+                  </View>
+
+                  <View style={styles.controlButtonWrapper}>
+                    <TouchableOpacity 
+                      style={[styles.circleControl, { backgroundColor: THEME.COLORS.champagneGold, borderColor: THEME.COLORS.champagneGold }]} 
+                      onPress={handleDirectGsmCall}
+                    >
+                      <Ionicons name="call" size={22} color="#121418" />
+                    </TouchableOpacity>
+                    <Text style={[styles.controlLabel, { color: themeColors.subtext }]}>Appel GSM</Text>
                   </View>
                 </View>
 

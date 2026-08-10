@@ -166,6 +166,7 @@ const RegisterPage = ({ navigation, route }) => {
       }
     } else {
       try {
+        // Redirection HTTPS conforme aux politiques Google OAuth 2.0 Web Client ID
         const redirectUrl = 'https://auth.expo.io/@kevyllc/YELY';
 
         // Flux sécurisé par Code d'Autorisation (Authorization Code Flow) conforme aux règles Google 2026

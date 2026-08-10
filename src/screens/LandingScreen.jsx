@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Video, ResizeMode } from 'expo-av';
+import * as NavigationBar from 'expo-navigation-bar';
 import React, { useCallback, useEffect, useState, useRef } from 'react';
 import {
   AppState,
@@ -118,6 +119,14 @@ export default function LandingScreen({ navigation }) {
     useCallback(() => {
       videoRef.current?.playAsync().catch(() => {});
 
+      // Harmonisation de la barre de navigation Android système avec le bas de l'écran Landing
+      if (Platform.OS === 'android') {
+        const landingNavColor = isDarkMode ? '#0A0C10' : '#F5D750';
+        const landingNavStyle = isDarkMode ? 'light' : 'dark';
+        NavigationBar.setBackgroundColorAsync(landingNavColor).catch(() => {});
+        NavigationBar.setButtonStyleAsync(landingNavStyle).catch(() => {});
+      }
+
       const onBackPress = () => {
         const time = new Date().getTime();
         if (time - lastBackPress < 2000) {
@@ -129,15 +138,34 @@ export default function LandingScreen({ navigation }) {
         return true; 
       };
       const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
-      return () => sub.remove();
-    }, [dispatch])
+      
+      return () => {
+        sub.remove();
+        // Restauration de la barre de navigation globale lors du départ de l'écran
+        if (Platform.OS === 'android') {
+          const defaultNavColor = isDarkMode ? '#000000' : '#F8F9FA';
+          const defaultNavStyle = isDarkMode ? 'light' : 'dark';
+          NavigationBar.setBackgroundColorAsync(defaultNavColor).catch(() => {});
+          NavigationBar.setButtonStyleAsync(defaultNavStyle).catch(() => {});
+        }
+      };
+    }, [dispatch, isDarkMode])
   );
+
+  const resolveWebVideoSrc = (asset) => {
+    if (!asset) return '';
+    if (typeof asset === 'string') return asset;
+    if (asset.uri) return asset.uri;
+    if (asset.default) return typeof asset.default === 'string' ? asset.default : asset.default.uri || '';
+    return '';
+  };
 
   const renderMotionDesign = () => {
     if (Platform.OS === 'web') {
+      const webSrc = resolveWebVideoSrc(LOCAL_MOTION_DESIGN);
       return (
         <video
-          src={LOCAL_MOTION_DESIGN}
+          src={webSrc}
           autoPlay
           loop
           muted
@@ -147,7 +175,10 @@ export default function LandingScreen({ navigation }) {
             height: '100%',
             objectFit: 'cover',
           }}
-          onError={() => setVideoError(true)}
+          onError={(e) => {
+            console.warn('[LandingScreen] Échec lecture vidéo HTML5 web:', e);
+            setVideoError(true);
+          }}
         />
       );
     }
@@ -167,7 +198,10 @@ export default function LandingScreen({ navigation }) {
         isMuted
         useNativeControls={false}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}
-        onError={() => setVideoError(true)}
+        onError={(e) => {
+          console.warn('[LandingScreen] Échec lecture vidéo local native:', e);
+          setVideoError(true);
+        }}
       />
     );
   };
@@ -177,11 +211,13 @@ export default function LandingScreen({ navigation }) {
   const textColorTertiary = isDarkMode ? 'rgba(255, 255, 255, 0.70)' : 'rgba(18, 20, 24, 0.65)';
   const copyrightColor = isDarkMode ? 'rgba(255, 255, 255, 0.55)' : 'rgba(18, 20, 24, 0.50)';
 
+  const containerBg = isDarkMode ? '#0A0C10' : '#F5D750';
+
   return (
-    <View style={[styles.container, { backgroundColor: '#0A0C10' }]}>
+    <View style={[styles.container, { backgroundColor: containerBg }]}>
       <StatusBar barStyle={isDarkMode ? "light-content" : "dark-content"} backgroundColor="transparent" translucent />
       
-      {/* ARRIÈRE-PLAN VIDÉO FULLSCREEN (Nouvelle Vidéo Cloudinary) */}
+      {/* ARRIÈRE-PLAN VIDÉO FULLSCREEN (100% Asset Local Offline - Zéro Réseau) */}
       <View style={StyleSheet.absoluteFillObject}>
         {renderMotionDesign()}
       </View>

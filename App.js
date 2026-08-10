@@ -10,7 +10,9 @@ NativeSplashScreen.preventAutoHideAsync().catch(() => {});
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect, useState, useMemo } from 'react';
-import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator, Appearance, AppState, Modal } from 'react-native';
+import { Platform, StyleSheet, Text, TouchableOpacity, View, useColorScheme, ActivityIndicator, Appearance, AppState, Modal, LogBox } from 'react-native';
+
+LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
 import * as SystemUI from 'expo-system-ui';
 import * as NavigationBar from 'expo-navigation-bar';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -31,7 +33,6 @@ import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
-import ServerWakingOverlay from './src/components/ui/ServerWakingOverlay';
 
 import useAppStartup from './src/hooks/useAppStartup';
 import usePushNotifications from './src/hooks/usePushNotifications';
@@ -188,7 +189,6 @@ const AppContent = () => {
         />
         <FacebookFollowModal />
         <PwaIOSInstallGuide />
-        <ServerWakingOverlay />
       </Portal>
     </>
   );
