@@ -1,8 +1,11 @@
 // src/services/auth/googleAuth.js
-// SERVICE D'AUTHENTIFICATION GOOGLE NATIVE (SDK OFFICIEL - SAFE EXPO GO)
+// SERVICE D'AUTHENTIFICATION GOOGLE NATIVE & SECOURS UNIVERSEL
 // STANDARD: Industriel / Bank Grade
 
+import * as WebBrowser from 'expo-web-browser';
 import { NativeModules, Platform } from 'react-native';
+
+WebBrowser.maybeCompleteAuthSession();
 
 export const GOOGLE_WEB_CLIENT_ID = '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
 
@@ -46,8 +49,33 @@ export const signInWithGoogle = async () => {
   }
 
   const sdk = getGoogleSigninModule();
+
+  // SECOURS EXPO GO : Utilisation de WebBrowser si RNGoogleSignin natif est absent
   if (!sdk || !NativeModules.RNGoogleSignin) {
-    throw new Error("L'authentification Google native requiert un Build de Développement ou APK (npx expo run:android). Elle n'est pas disponible dans l'application générique Expo Go.");
+    try {
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent('https://auth.expo.io/@kevyllc/YELY')}`;
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'https://auth.expo.io/@kevyllc/YELY');
+      
+      if (result.type === 'success' && result.url) {
+        const urlObj = new URL(result.url);
+        const hashParams = new URLSearchParams(urlObj.hash.substring(1));
+        const accessToken = hashParams.get('access_token');
+        if (accessToken) {
+          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          const userInfo = await userInfoRes.json();
+          return {
+            email: userInfo.email,
+            name: userInfo.name || (userInfo.given_name ? `${userInfo.given_name} ${userInfo.family_name || ''}` : ''),
+            profilePicture: userInfo.picture
+          };
+        }
+      }
+      return { cancelled: true };
+    } catch (browserErr) {
+      throw new Error("L'authentification Google native requiert un Build APK ou Dev (npx expo run:android).");
+    }
   }
 
   if (!isConfigured) {

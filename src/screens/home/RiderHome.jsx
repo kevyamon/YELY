@@ -79,7 +79,9 @@ const RiderHome = ({ navigation }) => {
     rideToRate
   });
 
-  const isEffectiveOriginInZone = effectiveOrigin ? isLocationInMafereZone(effectiveOrigin) : true;
+  const isEffectiveOriginInZone = effectiveOrigin 
+    ? isLocationInMafereZone(effectiveOrigin) 
+    : (location ? isLocationInMafereZone(location) : false);
 
   const {
     mapMarkers,

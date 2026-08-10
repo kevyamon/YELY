@@ -1,7 +1,3 @@
-// src/screens/history/HistoryScreen.jsx
-// HISTORIQUE DES COURSES - Tracabilite et gestion de la visibilite (Ghost Rendering Inclus)
-// CSCSM Level: Bank Grade
-
 import { Ionicons } from '@expo/vector-icons';
 import { useRef, useState } from 'react';
 import { FlatList, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -10,6 +6,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import { ConfirmModal } from '../../components/admin/AdminModals';
 import ScrollToTopButton from '../../components/admin/ScrollToTopButton';
 import GlassCard from '../../components/ui/GlassCard';
+import GlassModal from '../../components/ui/GlassModal';
+import GoldButton from '../../components/ui/GoldButton';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
 import { useGetRideHistoryQuery, useHideFromHistoryMutation } from '../../store/api/ridesApiSlice';
@@ -36,6 +34,7 @@ const HistoryScreen = ({ navigation }) => {
   const { data, isLoading, isFetching, refetch } = useGetRideHistoryQuery({ page, limit: 15 });
   const [hideRide, { isLoading: isHiding }] = useHideFromHistoryMutation();
 
+  const [selectedRide, setSelectedRide] = useState(null);
   const [rideToDelete, setRideToDelete] = useState(null);
   const [showClearAllModal, setShowClearAllModal] = useState(false);
 
@@ -54,6 +53,7 @@ const HistoryScreen = ({ navigation }) => {
   };
 
   const formatDate = (dateString) => {
+    if (!dateString) return '';
     const d = new Date(dateString);
     return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute:'2-digit' });
   };
@@ -85,54 +85,59 @@ const HistoryScreen = ({ navigation }) => {
     const config = STATUS_CONFIG[item.status] || STATUS_CONFIG.cancelled;
     
     return (
-      <GlassCard style={styles.card}>
-        <View style={styles.cardHeader}>
-          <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
-          <View style={styles.statusBadge}>
-            <Ionicons name={config.icon} size={14} color={config.color} style={{ marginRight: 4 }} />
-            <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
+      <TouchableOpacity activeOpacity={0.88} onPress={() => setSelectedRide(item)}>
+        <GlassCard style={styles.card}>
+          <View style={styles.cardHeader}>
+            <Text style={styles.dateText}>{formatDate(item.createdAt)}</Text>
+            <View style={styles.statusBadge}>
+              <Ionicons name={config.icon} size={14} color={config.color} style={{ marginRight: 4 }} />
+              <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.routeContainer}>
-          <View style={styles.routeTimeline}>
-            <View style={[styles.dot, { backgroundColor: THEME.COLORS.primary }]} />
-            <View style={styles.line} />
-            <View style={[styles.dot, { backgroundColor: THEME.COLORS.textPrimary }]} />
+          <View style={styles.routeContainer}>
+            <View style={styles.routeTimeline}>
+              <View style={[styles.dot, { backgroundColor: THEME.COLORS.primary }]} />
+              <View style={styles.line} />
+              <View style={[styles.dot, { backgroundColor: THEME.COLORS.textPrimary }]} />
+            </View>
+            <View style={styles.routeTexts}>
+              <Text style={styles.addressText} numberOfLines={1}>{item.origin?.address || 'Adresse de départ inconnue'}</Text>
+              <Text style={[styles.addressText, styles.addressBottom]} numberOfLines={1}>{item.destination?.address || 'Adresse d\'arrivée inconnue'}</Text>
+            </View>
           </View>
-          <View style={styles.routeTexts}>
-            <Text style={styles.addressText} numberOfLines={1}>{item.origin?.address || 'Adresse de départ inconnue'}</Text>
-            <Text style={[styles.addressText, styles.addressBottom]} numberOfLines={1}>{item.destination?.address || 'Adresse d\'arrivée inconnue'}</Text>
-          </View>
-        </View>
 
-        <View style={styles.cardFooter}>
-          <View style={styles.userInfo}>
-            <Ionicons name="person-circle-outline" size={20} color={THEME.COLORS.textSecondary} />
-            <Text style={styles.userText}>
-              {isDriver 
-                ? (item.rider?.name || 'Passager Inconnu') 
-                : (item.driver?.name || 'Chauffeur Inconnu')}
-            </Text>
-          </View>
-          
-          <View style={styles.rightFooter}>
-            {item.price ? (
-              <Text style={styles.priceText}>{item.price.toLocaleString('fr-FR')} FCFA</Text>
-            ) : (
-              <Text style={styles.priceText}>---</Text>
-            )}
+          <View style={styles.cardFooter}>
+            <View style={styles.userInfo}>
+              <Ionicons name="person-circle-outline" size={20} color={THEME.COLORS.textSecondary} />
+              <Text style={styles.userText}>
+                {isDriver 
+                  ? (item.rider?.name || 'Passager Inconnu') 
+                  : (item.driver?.name || 'Chauffeur Inconnu')}
+              </Text>
+            </View>
             
-            <TouchableOpacity 
-              style={styles.deleteBtn}
-              onPress={() => setRideToDelete(item._id)}
-              disabled={isHiding}
-            >
-              <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
-            </TouchableOpacity>
+            <View style={styles.rightFooter}>
+              {item.price ? (
+                <Text style={styles.priceText}>{item.price.toLocaleString('fr-FR')} FCFA</Text>
+              ) : (
+                <Text style={styles.priceText}>---</Text>
+              )}
+              
+              <TouchableOpacity 
+                style={styles.deleteBtn}
+                onPress={(e) => {
+                  e.stopPropagation();
+                  setRideToDelete(item._id);
+                }}
+                disabled={isHiding}
+              >
+                <Ionicons name="trash-outline" size={20} color={THEME.COLORS.danger} />
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </GlassCard>
+        </GlassCard>
+      </TouchableOpacity>
     );
   };
 
@@ -209,6 +214,74 @@ const HistoryScreen = ({ navigation }) => {
         )}
       </GlobalSkeleton>
 
+      <GlassModal
+        visible={!!selectedRide}
+        onClose={() => setSelectedRide(null)}
+        title="Détails de la course"
+        icon="receipt-outline"
+      >
+        {selectedRide && (() => {
+          const config = STATUS_CONFIG[selectedRide.status] || STATUS_CONFIG.cancelled;
+          return (
+            <View style={styles.detailContainer}>
+              <View style={styles.detailHeaderRow}>
+                <Text style={styles.detailDateText}>{formatDate(selectedRide.createdAt)}</Text>
+                <View style={styles.statusBadge}>
+                  <Ionicons name={config.icon} size={14} color={config.color} style={{ marginRight: 4 }} />
+                  <Text style={[styles.statusText, { color: config.color }]}>{config.label}</Text>
+                </View>
+              </View>
+
+              <View style={styles.detailRouteBox}>
+                <View style={styles.routeTimeline}>
+                  <View style={[styles.dot, { backgroundColor: THEME.COLORS.primary }]} />
+                  <View style={[styles.line, { height: 35 }]} />
+                  <View style={[styles.dot, { backgroundColor: THEME.COLORS.textPrimary }]} />
+                </View>
+                <View style={styles.routeTexts}>
+                  <View>
+                    <Text style={styles.detailLabel}>Départ</Text>
+                    <Text style={styles.addressText}>{selectedRide.origin?.address || 'Adresse de départ inconnue'}</Text>
+                  </View>
+                  <View style={{ marginTop: 10 }}>
+                    <Text style={styles.detailLabel}>Arrivée</Text>
+                    <Text style={styles.addressText}>{selectedRide.destination?.address || 'Adresse d\'arrivée inconnue'}</Text>
+                  </View>
+                </View>
+              </View>
+
+              <View style={styles.detailInfoRow}>
+                <Ionicons name="person-circle-outline" size={24} color={THEME.COLORS.champagneGold} />
+                <View style={{ marginLeft: 10, flex: 1 }}>
+                  <Text style={styles.detailLabel}>{isDriver ? 'Passager' : 'Chauffeur'}</Text>
+                  <Text style={styles.detailValueText}>
+                    {isDriver 
+                      ? (selectedRide.rider?.name || 'Passager Inconnu') 
+                      : (selectedRide.driver?.name || 'Chauffeur Inconnu')}
+                  </Text>
+                </View>
+              </View>
+
+              <View style={styles.detailPriceCard}>
+                <Text style={styles.detailLabel}>Montant de la course</Text>
+                <Text style={styles.detailPriceVal}>
+                  {selectedRide.price ? `${selectedRide.price.toLocaleString('fr-FR')} FCFA` : 'Non spécifié'}
+                </Text>
+                <Text style={styles.detailSubText}>
+                  Mode de règlement : {selectedRide.paymentMethod || 'Espèces'}
+                </Text>
+              </View>
+
+              <GoldButton 
+                title="Fermer" 
+                onPress={() => setSelectedRide(null)} 
+                style={{ marginTop: 16 }}
+              />
+            </View>
+          );
+        })()}
+      </GlassModal>
+
       <ConfirmModal 
         visible={!!rideToDelete}
         title="Masquer la course"
@@ -255,7 +328,17 @@ const styles = StyleSheet.create({
   userText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginLeft: 5 },
   rightFooter: { flexDirection: 'row', alignItems: 'center', gap: 15 },
   priceText: { color: THEME.COLORS.primary, fontSize: 16, fontWeight: 'bold' },
-  deleteBtn: { padding: 5, backgroundColor: THEME.COLORS.danger + '15', borderRadius: 8 }
+  deleteBtn: { padding: 5, backgroundColor: THEME.COLORS.danger + '15', borderRadius: 8 },
+  detailContainer: { gap: 14 },
+  detailHeaderRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  detailDateText: { color: THEME.COLORS.textSecondary, fontSize: 13, fontWeight: '600' },
+  detailRouteBox: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: 12, flexDirection: 'row', borderWidth: 1, borderColor: THEME.COLORS.border },
+  detailLabel: { color: THEME.COLORS.textSecondary, fontSize: 11, fontWeight: '600', textTransform: 'uppercase', marginBottom: 2 },
+  detailValueText: { color: THEME.COLORS.textPrimary, fontSize: 15, fontWeight: '700' },
+  detailInfoRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255,255,255,0.03)', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border },
+  detailPriceCard: { backgroundColor: 'rgba(212, 175, 55, 0.08)', padding: 14, borderRadius: 12, alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.champagneGold + '40' },
+  detailPriceVal: { color: THEME.COLORS.champagneGold, fontSize: 22, fontWeight: '800', marginVertical: 4 },
+  detailSubText: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '500' }
 });
 
 export default HistoryScreen;

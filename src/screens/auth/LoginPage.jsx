@@ -78,12 +78,38 @@ const LoginPage = ({ navigation }) => {
     }
   };
 
+const ensureGoogleScriptLoaded = () => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.google?.accounts) {
+      return resolve(true);
+    }
+    if (typeof document === 'undefined') return resolve(false);
+
+    const existingScript = document.getElementById('google-gsi-script');
+    if (existingScript) {
+      existingScript.addEventListener('load', () => resolve(true));
+      existingScript.addEventListener('error', () => resolve(false));
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'google-gsi-script';
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.head.appendChild(script);
+  });
+};
+
   const handleGoogleSignIn = async () => {
     if (isGoogleSubmitting || isGoogleLoading) return;
     setIsGoogleSubmitting(true);
 
     try {
       if (Platform.OS === 'web') {
+        await ensureGoogleScriptLoaded();
         if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
           const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_WEB_CLIENT_ID,
@@ -149,7 +175,7 @@ const LoginPage = ({ navigation }) => {
           return;
         }
 
-        if (googleResult?.idToken) {
+        if (googleResult?.idToken || googleResult?.email) {
           const res = await googleAuth({
             idToken: googleResult.idToken,
             email: googleResult.email,

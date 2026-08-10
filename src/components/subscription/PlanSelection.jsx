@@ -38,15 +38,23 @@ const PlanSelection = ({ config, status, onSelectPlan, onBack, userRole }) => {
   const isSeller = userRole === 'seller';
 
   const handlePayWave = async () => {
-    const waveLink = config?.monthly?.link;
-    if (waveLink) {
+    const rawWaveLink = config?.monthly?.link;
+    const waveLink = (rawWaveLink && typeof rawWaveLink === 'string' && rawWaveLink.trim().length > 0)
+      ? rawWaveLink.trim()
+      : 'https://pay.wave.com/';
+
+    try {
+      // Ouverture directe du lien marchand Wave (Déclenche le Deep Linking vers l'application Wave)
+      await Linking.openURL(waveLink);
+    } catch (err) {
+      console.warn('[Wave Payment] Erreur ouverture directe lien marchand, tentative fallback web:', err);
       try {
-        const supported = await Linking.canOpenURL(waveLink);
-        await Linking.openURL(supported ? waveLink : 'https://pay.wave.com/');
-      } catch (err) {
-        console.warn('Erreur ouverture lien Wave:', err);
+        await Linking.openURL('https://pay.wave.com/');
+      } catch (fallbackErr) {
+        console.error('[Wave Payment] Échec ouverture fallback Wave:', fallbackErr);
       }
     }
+
     onSelectPlan({
       id: PLAN_TYPES.MONTHLY,
       link: waveLink,

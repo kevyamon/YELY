@@ -86,7 +86,9 @@ const RiderHome = ({ navigation }) => {
   });
 
   // CORRECTION MAJEURE : La couverture de zone depend desormais de l'origine finale (GPS ou Manuelle)
-  const isEffectiveOriginInZone = effectiveOrigin ? isLocationInMafereZone(effectiveOrigin) : true;
+  const isEffectiveOriginInZone = effectiveOrigin 
+    ? isLocationInMafereZone(effectiveOrigin) 
+    : (location ? isLocationInMafereZone(location) : false);
 
   const {
     mapMarkers,
