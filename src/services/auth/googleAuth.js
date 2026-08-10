@@ -2,7 +2,7 @@
 // SERVICE D'AUTHENTIFICATION GOOGLE NATIVE & SECOURS UNIVERSEL
 // STANDARD: Industriel / Bank Grade
 
-import { makeRedirectUri } from 'expo-auth-session';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import { NativeModules, Platform } from 'react-native';
 
@@ -51,10 +51,10 @@ export const signInWithGoogle = async () => {
 
   const sdk = getGoogleSigninModule();
 
-  // SECOURS EXPO GO : Redirection WebBrowser avec makeRedirectUri
+  // SECOURS EXPO GO : Redirection WebBrowser avec Linking.createURL (Dépendance native valide)
   if (!sdk || !NativeModules.RNGoogleSignin) {
     try {
-      const redirectUri = makeRedirectUri({ scheme: 'yely' });
+      const redirectUri = Linking.createURL('oauth-callback');
       const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
       
       const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
