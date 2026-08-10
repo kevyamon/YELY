@@ -1,16 +1,16 @@
-import Constants from 'expo-constants';
-import { Ionicons } from '@expo/vector-icons';
-import * as Linking from 'expo-linking';
-import * as WebBrowser from 'expo-web-browser';
-import { useState } from 'react';
-import { ActivityIndicator, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
+// src/screens/auth/RegisterPage.jsx
+// ÉCRAN D'INSCRIPTION - Native Google Auth & Securite Renforcee
+// STANDARD: Industriel / Bank Grade
 
-WebBrowser.maybeCompleteAuthSession();
+import { Ionicons } from '@expo/vector-icons';
+import React, { useEffect, useState } from 'react';
+import { Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import { Text } from 'react-native-paper';
 import { useDispatch } from 'react-redux';
 
 import AuthActionLinks from '../../components/auth/AuthActionLinks';
 import AuthFormWrapper from '../../components/auth/AuthFormWrapper';
+import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import PasswordStrengthInput from '../../components/auth/PasswordStrengthInput';
 import PhoneInputGroup from '../../components/auth/PhoneInputGroup';
 import TermsModal from '../../components/auth/TermsModal';
@@ -18,6 +18,7 @@ import GlassInput from '../../components/ui/GlassInput';
 import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
 
+import { configureGoogleSignIn, signInWithGoogle } from '../../services/auth/googleAuth';
 import { useRegisterMutation, useGoogleAuthMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
@@ -40,6 +41,10 @@ const RegisterPage = ({ navigation, route }) => {
   const [showTermsModal, setShowTermsModal] = useState(false);
 
   const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '' });
+
+  useEffect(() => {
+    configureGoogleSignIn();
+  }, []);
 
   const handleRoleSelection = (selectedRole) => {
     if (selectedRole === 'driver' && Platform.OS !== 'android') {
@@ -64,7 +69,7 @@ const RegisterPage = ({ navigation, route }) => {
       return;
     }
     if (passwordScore < 1 && password.length < 8) { 
-       dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caractères, un chiffre et un symbole." }));
+       dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caractères." }));
        return;
     }
     setShowTermsModal(true);
@@ -86,146 +91,68 @@ const RegisterPage = ({ navigation, route }) => {
     }
   };
 
-  const loadGoogleSdk = () => {
-    return new Promise((resolve) => {
-      if (typeof window !== 'undefined' && window.google && window.google.accounts) {
-        resolve(true);
-        return;
-      }
-      if (typeof document === 'undefined') {
-        resolve(false);
-        return;
-      }
-      const existingScript = document.getElementById('google-gsi-script');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve(true));
-        return;
-      }
-      const script = document.createElement('script');
-      script.id = 'google-gsi-script';
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-    });
-  };
-
   const handleGoogleSignIn = async () => {
-    if (Platform.OS === 'web') {
-      try {
-        const isLoaded = await loadGoogleSdk();
-        if (!isLoaded || !window.google || !window.google.accounts) {
-          dispatch(showErrorToast({ 
-            title: "Connexion Google", 
-            message: "Impossible de charger le service Google. Vérifiez votre connexion internet." 
-          }));
-          return;
-        }
+    if (isGoogleSubmitting || isGoogleLoading) return;
+    setIsGoogleSubmitting(true);
 
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_WEB_CLIENT_ID,
-          callback: async (response) => {
-            if (response.credential) {
-              try {
-                const base64Url = response.credential.split('.')[1];
-                const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-                const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
-                  return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-                }).join(''));
-                const payload = JSON.parse(jsonPayload);
-                
-                const res = await googleAuth({
-                  email: payload.email,
-                  name: payload.name,
-                  profilePicture: payload.picture,
-                  role: role || 'rider'
-                }).unwrap();
+    try {
+      if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && window.google?.accounts?.id) {
+          window.google.accounts.id.initialize({
+            client_id: GOOGLE_WEB_CLIENT_ID,
+            callback: async (response) => {
+              if (response.credential) {
+                try {
+                  const base64Url = response.credential.split('.')[1];
+                  const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+                  const jsonPayload = decodeURIComponent(atob(base64).split('').map((c) => {
+                    return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+                  }).join(''));
+                  const payload = JSON.parse(jsonPayload);
+                  
+                  const res = await googleAuth({
+                    idToken: response.credential,
+                    email: payload.email,
+                    name: payload.name,
+                    profilePicture: payload.picture,
+                    role: role || 'rider'
+                  }).unwrap();
 
-                const { user, accessToken, refreshToken } = res.data;
-                dispatch(setCredentials({ user, accessToken, refreshToken }));
-                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
-              } catch (authErr) {
-                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+                  const { user, accessToken, refreshToken } = res.data;
+                  dispatch(setCredentials({ user, accessToken, refreshToken }));
+                  dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+                } catch (authErr) {
+                  dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+                }
               }
             }
-          }
-        });
-
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed() || notification.isSkippedMomentum()) {
-            window.google.accounts.id.renderButton(
-              document.getElementById('google-auth-hidden-container') || document.body,
-              { theme: 'outline', size: 'large' }
-            );
-          }
-        });
-      } catch (err) {
-        dispatch(showErrorToast({ title: "Connexion Google", message: err?.data?.message || "Impossible de se connecter avec Google." }));
-      }
-    } else {
-      try {
-        // Redirection HTTPS vers le serveur Render actif (conforme aux politiques Google OAuth 2.0 Web Client ID)
-        const redirectUrl = 'https://yely-backend-yzw4.onrender.com';
-        const deepLinkRedirect = 'yely://google-auth';
-
-        // Flux sécurisé par Code d'Autorisation (Authorization Code Flow) conforme aux règles Google 2026
-        const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?response_type=code&client_id=${GOOGLE_WEB_CLIENT_ID}&redirect_uri=${encodeURIComponent(redirectUrl)}&scope=openid%20email%20profile&prompt=select_account`;
-
-        const result = await WebBrowser.openAuthSessionAsync(authUrl, deepLinkRedirect);
-
-        if (result.type === 'success' && result.url) {
-          const codeMatch = result.url.match(/code=([^&]+)/);
-          const tokenMatch = result.url.match(/access_token=([^&]+)/) || result.url.match(/id_token=([^&]+)/);
-          
-          let accessToken = tokenMatch ? tokenMatch[1] : null;
-
-          if (!accessToken && codeMatch && codeMatch[1]) {
-            const authCode = decodeURIComponent(codeMatch[1]);
-            const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-              body: new URLSearchParams({
-                code: authCode,
-                client_id: GOOGLE_WEB_CLIENT_ID,
-                redirect_uri: redirectUrl,
-                grant_type: 'authorization_code'
-              }).toString()
-            });
-            const tokenData = await tokenRes.json();
-            accessToken = tokenData.access_token;
-          }
-
-          if (accessToken) {
-            const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-              headers: { Authorization: `Bearer ${accessToken}` }
-            });
-            const userInfo = await userInfoRes.json();
-
-            if (userInfo.email) {
-              const res = await googleAuth({
-                email: userInfo.email,
-                name: userInfo.name || userInfo.given_name || userInfo.email.split('@')[0],
-                profilePicture: userInfo.picture,
-                role: role || 'rider'
-              }).unwrap();
-
-              const { user, accessToken: jwtAccess, refreshToken: jwtRefresh } = res.data;
-              dispatch(setCredentials({ user, accessToken: jwtAccess, refreshToken: jwtRefresh }));
-              dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
-              return;
-            }
-          }
+          });
+          window.google.accounts.id.prompt();
         }
-        
-        if (result.type !== 'dismiss') {
-          dispatch(showErrorToast({ title: "Inscription Google", message: "Authentification annulée." }));
+      } else {
+        const googleResult = await signInWithGoogle();
+        if (googleResult?.cancelled || googleResult?.inProgress) return;
+
+        if (googleResult?.idToken) {
+          const res = await googleAuth({
+            idToken: googleResult.idToken,
+            email: googleResult.email,
+            name: googleResult.name,
+            profilePicture: googleResult.profilePicture,
+            role: role || 'rider'
+          }).unwrap();
+
+          const { user, accessToken, refreshToken } = res.data;
+          dispatch(setCredentials({ user, accessToken, refreshToken }));
+          dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
         }
-      } catch (mobileErr) {
-        console.error('[GOOGLE AUTH MOBILE REGISTER]', mobileErr);
-        dispatch(showErrorToast({ title: "Inscription Google", message: mobileErr?.data?.message || "Échec de l'inscription Google." }));
       }
+    } catch (err) {
+      if (err.message !== 'PLATFORM_WEB_GSI') {
+        dispatch(showErrorToast({ title: "Inscription Google", message: err?.message || err?.data?.message || "Échec de l'inscription." }));
+      }
+    } finally {
+      setIsGoogleSubmitting(false);
     }
   };
 
@@ -253,11 +180,7 @@ const RegisterPage = ({ navigation, route }) => {
               size={16} 
               color={role === r ? THEME.COLORS.textInverse : THEME.COLORS.primary} 
             />
-            <Text 
-              style={[styles.roleText, role === r && styles.roleTextActive]}
-              numberOfLines={1}
-              adjustsFontSizeToFit
-            >
+            <Text style={[styles.roleText, role === r && styles.roleTextActive]} numberOfLines={1}>
               {r === 'rider' ? 'Passager' : r === 'driver' ? 'Chauffeur' : 'Vendeur'}
             </Text>
           </TouchableOpacity>
@@ -314,29 +237,12 @@ const RegisterPage = ({ navigation, route }) => {
           <View style={styles.dividerLine} />
         </View>
 
-        <TouchableOpacity 
-          style={styles.googleAuthButton} 
-          onPress={async () => {
-            if (isGoogleSubmitting || isGoogleLoading) return;
-            setIsGoogleSubmitting(true);
-            try {
-              await handleGoogleSignIn();
-            } finally {
-              setTimeout(() => setIsGoogleSubmitting(false), 2000);
-            }
-          }}
+        <GoogleAuthButton
+          title="S'inscrire avec Google"
+          onPress={handleGoogleSignIn}
+          loading={isGoogleLoading || isGoogleSubmitting}
           disabled={isGoogleLoading || isGoogleSubmitting}
-          activeOpacity={0.8}
-        >
-          {isGoogleLoading || isGoogleSubmitting ? (
-            <ActivityIndicator size="small" color="#EA4335" />
-          ) : (
-            <>
-              <Ionicons name="logo-google" size={18} color="#EA4335" style={{ marginRight: 10 }} />
-              <Text style={styles.googleAuthText}>S'inscrire avec Google</Text>
-            </>
-          )}
-        </TouchableOpacity>
+        />
       </View>
 
       <AuthActionLinks 
@@ -395,21 +301,10 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.primaryDark,
     ...THEME.SHADOWS.gold,
   },
-  roleText: { 
-    marginLeft: 4, 
-    fontWeight: '700', 
-    fontSize: 13,
-    color: THEME.COLORS.primary,
-  },
-  roleTextActive: { 
-    color: THEME.COLORS.textInverse,
-  },
-  formContainer: {
-    gap: THEME.SPACING.md,
-  },
-  inputGroup: { 
-    marginBottom: THEME.SPACING.xs 
-  },
+  roleText: { marginLeft: 4, fontWeight: '700', fontSize: 13, color: THEME.COLORS.primary },
+  roleTextActive: { color: THEME.COLORS.textInverse },
+  formContainer: { gap: THEME.SPACING.md },
+  inputGroup: { marginBottom: THEME.SPACING.xs },
   inputLabel: { 
     color: THEME.COLORS.textSecondary, 
     fontSize: THEME.FONTS.sizes.caption, 
@@ -419,52 +314,12 @@ const styles = StyleSheet.create({
     textTransform: 'uppercase', 
     letterSpacing: 1 
   },
-  dividerContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: THEME.SPACING.xs,
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
-  },
-  dividerText: {
-    color: THEME.COLORS.textTertiary,
-    paddingHorizontal: 12,
-    fontSize: 12,
-    fontWeight: '600',
-    textTransform: 'uppercase',
-  },
-  googleAuthButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: 50,
-    borderRadius: THEME.BORDERS.radius.pill,
-    backgroundColor: 'rgba(255, 255, 255, 0.05)',
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.12)',
-  },
-  googleAuthText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  modalText: { 
-    color: THEME.COLORS.textPrimary, 
-    fontSize: THEME.FONTS.sizes.body, 
-    textAlign: 'center', 
-    lineHeight: 22, 
-    marginBottom: THEME.SPACING.md 
-  },
-  boldPrimary: { 
-    fontWeight: 'bold', 
-    color: THEME.COLORS.primary 
-  },
-  modalBtn: { 
-    marginTop: THEME.SPACING.lg 
-  }
+  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: THEME.SPACING.xs },
+  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' },
+  dividerText: { color: THEME.COLORS.textTertiary, paddingHorizontal: 12, fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
+  modalText: { color: THEME.COLORS.textPrimary, fontSize: THEME.FONTS.sizes.body, textAlign: 'center', lineHeight: 22, marginBottom: THEME.SPACING.md },
+  boldPrimary: { fontWeight: 'bold', color: THEME.COLORS.primary },
+  modalBtn: { marginTop: THEME.SPACING.lg }
 });
 
 export default RegisterPage;
