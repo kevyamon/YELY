@@ -2,6 +2,7 @@
 // SERVICE D'AUTHENTIFICATION GOOGLE NATIVE & SECOURS UNIVERSEL
 // STANDARD: Industriel / Bank Grade
 
+import { makeRedirectUri } from 'expo-auth-session';
 import * as WebBrowser from 'expo-web-browser';
 import { NativeModules, Platform } from 'react-native';
 
@@ -50,16 +51,25 @@ export const signInWithGoogle = async () => {
 
   const sdk = getGoogleSigninModule();
 
-  // SECOURS EXPO GO : Utilisation de WebBrowser si RNGoogleSignin natif est absent
+  // SECOURS EXPO GO : Redirection WebBrowser avec makeRedirectUri
   if (!sdk || !NativeModules.RNGoogleSignin) {
     try {
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent('https://auth.expo.io/@kevyllc/YELY')}`;
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, 'https://auth.expo.io/@kevyllc/YELY');
+      const redirectUri = makeRedirectUri({ scheme: 'yely' });
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
+      
+      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
       
       if (result.type === 'success' && result.url) {
-        const urlObj = new URL(result.url);
-        const hashParams = new URLSearchParams(urlObj.hash.substring(1));
-        const accessToken = hashParams.get('access_token');
+        const urlStr = result.url;
+        const hashIndex = urlStr.indexOf('#');
+        const queryIndex = urlStr.indexOf('?');
+        const rawParams = hashIndex !== -1 
+          ? urlStr.substring(hashIndex + 1) 
+          : (queryIndex !== -1 ? urlStr.substring(queryIndex + 1) : '');
+          
+        const params = new URLSearchParams(rawParams);
+        const accessToken = params.get('access_token');
+
         if (accessToken) {
           const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
             headers: { Authorization: `Bearer ${accessToken}` }

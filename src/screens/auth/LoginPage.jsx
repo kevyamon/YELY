@@ -129,7 +129,8 @@ const ensureGoogleScriptLoaded = () => {
                   email: userInfo.email,
                   name: userInfo.name || userInfo.given_name,
                   profilePicture: userInfo.picture,
-                  role: 'rider'
+                  role: 'rider',
+                  isLoginOnly: true
                 }).unwrap();
 
                 const { user, accessToken, refreshToken } = res.data;
@@ -150,7 +151,7 @@ const ensureGoogleScriptLoaded = () => {
             callback: async (response) => {
               if (response.credential) {
                 try {
-                  const res = await googleAuth({ idToken: response.credential, role: 'rider' }).unwrap();
+                  const res = await googleAuth({ idToken: response.credential, role: 'rider', isLoginOnly: true }).unwrap();
                   const { user, accessToken, refreshToken } = res.data;
                   dispatch(setCredentials({ user, accessToken, refreshToken }));
                   dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
@@ -181,7 +182,8 @@ const ensureGoogleScriptLoaded = () => {
             email: googleResult.email,
             name: googleResult.name,
             profilePicture: googleResult.profilePicture,
-            role: 'rider'
+            role: 'rider',
+            isLoginOnly: true
           }).unwrap();
 
           const { user, accessToken, refreshToken } = res.data;
