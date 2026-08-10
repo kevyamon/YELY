@@ -21,10 +21,10 @@ const usePwaAutoUpdate = () => {
         }
       };
 
-      // Execution retardee de 3 secondes pour ne pas ralentir le démarrage initial
+      // Exécution retardée de 8 secondes pour garantir un démarrage PWA instantané
       const timer = setTimeout(() => {
         updateServiceWorker();
-      }, 3000);
+      }, 8000);
 
       window.addEventListener('focus', updateServiceWorker);
       

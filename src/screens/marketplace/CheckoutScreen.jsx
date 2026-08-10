@@ -26,9 +26,12 @@ import * as Location from 'expo-location';
 import { LinearGradient } from 'expo-linear-gradient';
 import GlassModal from '../../components/ui/GlassModal';
 import MapService from '../../services/mapService';
+import { isLocationInMafereZone } from '../../utils/mafereZone';
+import useGeolocation from '../../hooks/useGeolocation';
 
 const CheckoutScreen = ({ navigation }) => {
   useMarketplaceSocketEvents();
+  const { location: userGeoLocation } = useGeolocation();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const gradientColors = isDark ? ['#000000', '#0B0B0C', '#000000'] : ['#F8F9FA', '#F3F4F6', '#E5E7EB'];
@@ -56,6 +59,7 @@ const CheckoutScreen = ({ navigation }) => {
   const [note, setNote] = useState('');
   const [deliveryMode, setDeliveryMode] = useState('current'); // 'current' or 'other'
   const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
+  const [isOutOfZoneModalVisible, setIsOutOfZoneModalVisible] = useState(false);
   const [tempAddress, setTempAddress] = useState('');
 
   // FORCE AUTO-FILL (Si les données arrivent après le chargement de l'écran)
@@ -173,6 +177,16 @@ const CheckoutScreen = ({ navigation }) => {
   const handlePlaceOrder = async () => {
     if (!address || !phone || !name) {
       dispatch(showToast({ type: 'error', title: 'Infos manquantes', message: 'Veuillez remplir tous les champs obligatoires.' }));
+      return;
+    }
+
+    // Vérification de zone de couverture Yély
+    const checkCoords = (clientCoords && clientCoords[0] !== 0 && clientCoords[1] !== 0) 
+      ? { latitude: clientCoords[1], longitude: clientCoords[0] }
+      : userGeoLocation;
+
+    if (checkCoords && !isLocationInMafereZone(checkCoords)) {
+      setIsOutOfZoneModalVisible(true);
       return;
     }
 
@@ -506,6 +520,27 @@ const CheckoutScreen = ({ navigation }) => {
                 <Text style={styles.modalBtnConfirmText}>Valider</Text>
               </TouchableOpacity>
             </View>
+          </View>
+        </GlassModal>
+
+        <GlassModal
+          visible={isOutOfZoneModalVisible}
+          onClose={() => setIsOutOfZoneModalVisible(false)}
+          position="center"
+        >
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="location-outline" size={32} color={THEME.COLORS.danger} />
+              <Text style={styles.modalTitle}>Zone non couverte</Text>
+              <Text style={[styles.modalSubtitle, { marginTop: 10 }]}>
+                Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély, vous ne pouvez donc pas effectuer de commandes
+              </Text>
+            </View>
+            <GoldButton 
+              title="J'ai compris" 
+              onPress={() => setIsOutOfZoneModalVisible(false)} 
+              style={{ marginTop: 15 }}
+            />
           </View>
         </GlassModal>
 

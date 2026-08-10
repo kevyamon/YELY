@@ -15,6 +15,8 @@
     },
     "updates": {
       "url": "https://u.expo.dev/be0e185d-b91e-41bf-9e18-91923cf7deb5",
+      "fallbackToCacheTimeout": 0,
+      "checkAutomatically": "ON_ERROR_RECOVERY",
       "requestHeaders": {
         "expo-channel-name": "production"
       }

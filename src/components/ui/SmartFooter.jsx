@@ -97,7 +97,7 @@ const SmartFooter = ({
                 selectedVehicle={selectedVehicle}
                 onSelect={onSelectVehicle}
                 isLoading={isEstimating}
-                error={!isUserInZone ? { message: "Vous êtes en dehors de la zone de couverture Yély (Maféré)." } : estimateError}
+                error={!isUserInZone ? { message: "Vous êtes en dehors de la zone de couverture Yély." } : estimateError}
               />
               
               {/* Explication du forfait */}
@@ -134,7 +134,7 @@ const SmartFooter = ({
                 <>
                   <Ionicons name="warning-outline" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
                   <Text style={[styles.emptyText, { color: THEME.COLORS.danger, fontWeight: 'bold' }]}>
-                    Vous êtes en dehors de la zone Yely (Maféré).
+                    Vous êtes en dehors de la zone de couverture Yély.
                   </Text>
                 </>
               ) : (

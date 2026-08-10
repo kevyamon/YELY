@@ -14,6 +14,8 @@ import RatingModal from '../../components/ride/RatingModal';
 import RiderRideOverlay from '../../components/ride/RiderRideOverlay';
 import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
+import GlassModal from '../../components/ui/GlassModal';
+import GoldButton from '../../components/ui/GoldButton';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -34,6 +36,7 @@ const RiderHome = ({ navigation }) => {
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
+  const [showOutOfZoneTaxiModal, setShowOutOfZoneTaxiModal] = useState(false);
 
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(240);
@@ -100,6 +103,10 @@ const RiderHome = ({ navigation }) => {
   }
 
   const handlePoiSelection = (poi) => {
+    if (!isEffectiveOriginInZone) {
+      setShowOutOfZoneTaxiModal(true);
+      return;
+    }
     setSelectedPoi(null);
     handlePlaceSelect({
       latitude: poi.latitude,
@@ -165,6 +172,10 @@ const RiderHome = ({ navigation }) => {
             });
           }}
           onSearchPress={() => {
+            if (!isEffectiveOriginInZone) {
+              setShowOutOfZoneTaxiModal(true);
+              return;
+            }
             requestAnimationFrame(() => {
               openSearchModal();
             });
@@ -211,11 +222,24 @@ const RiderHome = ({ navigation }) => {
         onSelect={handlePoiSelection}
       />
 
+      <GlassModal
+        visible={showOutOfZoneTaxiModal}
+        onClose={() => setShowOutOfZoneTaxiModal(false)}
+        title="Zone non couverte"
+        icon="location-outline"
+      >
+        <Text style={styles.outOfZoneModalText}>
+          Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély, vous ne pouvez donc pas bénéficier de course
+        </Text>
+        <GoldButton 
+          title="J'ai compris" 
+          onPress={() => setShowOutOfZoneTaxiModal(false)} 
+          style={{ marginTop: 16 }}
+        />
+      </GlassModal>
+
       <RiderWaitModal />
       <RatingModal />
-      
-
-
     </View>
   );
 };
@@ -249,6 +273,13 @@ const styles = StyleSheet.create({
     marginLeft: 8, 
     fontSize: 12, 
     fontWeight: '600' 
+  },
+  outOfZoneModalText: {
+    color: THEME.COLORS.textPrimary,
+    fontSize: 14,
+    lineHeight: 22,
+    textAlign: 'center',
+    marginBottom: 8,
   },
 });
 

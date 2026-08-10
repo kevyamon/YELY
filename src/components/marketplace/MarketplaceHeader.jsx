@@ -26,9 +26,9 @@ const MarketplaceHeader = ({
   const safeTop = Math.max(insets?.top || 0, 28);
   const calculatedHeaderHeight = safeTop + (Platform.OS === 'ios' ? 115 : 105);
 
-  const headerBgColor = isDarkMode ? '#0B0C0E' : THEME.COLORS.primary;
-  const headerContentColor = isDarkMode ? THEME.COLORS.primary : '#121418';
-  const borderBottomColor = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(18, 20, 24, 0.08)';
+  const headerBgColor = isDarkMode ? '#0F1115' : THEME.COLORS.primary;
+  const headerContentColor = isDarkMode ? '#F5D750' : '#121418';
+  const borderBottomColor = isDarkMode ? 'rgba(212, 175, 55, 0.35)' : 'rgba(18, 20, 24, 0.08)';
 
   return (
     <View style={[
@@ -37,15 +37,17 @@ const MarketplaceHeader = ({
         height: calculatedHeaderHeight, 
         paddingTop: safeTop,
         backgroundColor: headerBgColor,
-        borderBottomWidth: 1,
+        borderBottomWidth: 1.5,
         borderBottomColor: borderBottomColor,
-        elevation: 10,
-        shadowOpacity: 0.15,
+        shadowColor: isDarkMode ? '#D4AF37' : '#000000',
+        elevation: 12,
+        shadowOpacity: isDarkMode ? 0.35 : 0.15,
+        shadowRadius: 10,
       }
     ]}>
       <View style={[styles.headerTopRow, paddingValue ? { paddingHorizontal: paddingValue } : {}]}>
         <TouchableOpacity 
-          style={styles.hamburgerButton} 
+          style={[styles.hamburgerButton, isDarkMode && styles.darkIconCircle]} 
           onPress={() => {
             const parent = navigation.getParent();
             if (parent) {
@@ -55,19 +57,25 @@ const MarketplaceHeader = ({
             }
           }}
         >
-          <Ionicons name="home-outline" size={26} color={headerContentColor} />
+          <Ionicons name="home-outline" size={24} color={headerContentColor} />
         </TouchableOpacity>
 
-        <Text style={[styles.headerTitle, { color: headerContentColor }]}>Yély Marketplace</Text>
+        <Text style={[
+          styles.headerTitle, 
+          { color: headerContentColor },
+          isDarkMode && styles.darkHeaderTitleGlow
+        ]}>
+          Yély Marketplace
+        </Text>
 
         <TouchableOpacity 
-          style={styles.hamburgerButton}
+          style={[styles.hamburgerButton, isDarkMode && styles.darkIconCircle]}
           onPress={onRefreshPress}
           activeOpacity={0.7}
         >
           <Ionicons 
             name={isRefreshing ? "sync" : "refresh-outline"} 
-            size={24} 
+            size={22} 
             color={headerContentColor} 
           />
         </TouchableOpacity>
@@ -81,8 +89,8 @@ const MarketplaceHeader = ({
           onSubmitEditing={handleSearchSubmit}
           placeholder="Rechercher un produit..."
           style={{
-            backgroundColor: isDarkMode ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
-            borderColor: isDarkMode ? 'rgba(255, 255, 255, 0.12)' : 'transparent',
+            backgroundColor: isDarkMode ? 'rgba(20, 24, 33, 0.95)' : '#FFFFFF',
+            borderColor: isDarkMode ? 'rgba(212, 175, 55, 0.4)' : 'transparent',
             borderRadius: 14,
             marginTop: 6,
             marginBottom: 4,
@@ -182,6 +190,21 @@ const styles = StyleSheet.create({
   searchBarWrapper: {
     width: '100%',
     alignItems: 'center',
+  },
+  darkIconCircle: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: 'rgba(212, 175, 55, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  darkHeaderTitleGlow: {
+    textShadowColor: 'rgba(212, 175, 55, 0.4)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 6,
   }
 });
 

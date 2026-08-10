@@ -48,11 +48,20 @@ export default function LandingScreen({ navigation }) {
   const isDarkMode = colorScheme === 'dark';
   
   const videoRef = useRef(null);
+  const loopCountRef = useRef(0);
   const [videoError, setVideoError] = useState(false);
 
   const handlePlaybackStatusUpdate = (status) => {
     if (status.isLoaded) {
-      if (!status.isPlaying && status.shouldPlay && !status.isBuffering) {
+      if (status.didJustFinish) {
+        loopCountRef.current += 1;
+        if (loopCountRef.current >= 3) {
+          videoRef.current?.pauseAsync().catch(() => {});
+          videoRef.current?.setPositionAsync(0).catch(() => {});
+        } else {
+          videoRef.current?.replayAsync().catch(() => {});
+        }
+      } else if (!status.isPlaying && status.shouldPlay && !status.isBuffering && loopCountRef.current < 3) {
         videoRef.current?.playAsync().catch(() => {});
       }
     } else if (status.error) {
@@ -163,13 +172,32 @@ export default function LandingScreen({ navigation }) {
   const renderMotionDesign = () => {
     if (Platform.OS === 'web') {
       const webSrc = resolveWebVideoSrc(LOCAL_MOTION_DESIGN);
+      const isOffline = typeof navigator !== 'undefined' && !navigator.onLine;
+
+      if (videoError || isOffline) {
+        return <Image source={require('../../assets/logo.png')} style={styles.fallbackImage} resizeMode="cover" />;
+      }
+
       return (
         <video
           src={webSrc}
           autoPlay
-          loop
           muted
           playsInline
+          preload="auto"
+          onEnded={(e) => {
+            loopCountRef.current += 1;
+            if (loopCountRef.current < 3) {
+              e.target.currentTime = 0;
+              e.target.play().catch(() => {});
+            } else {
+              e.target.currentTime = 0;
+              e.target.pause();
+            }
+          }}
+          onStalled={() => {
+            setVideoError(true);
+          }}
           style={{
             width: '100%',
             height: '100%',
@@ -194,7 +222,6 @@ export default function LandingScreen({ navigation }) {
         style={styles.fullscreenVideo}
         resizeMode={ResizeMode.COVER}
         shouldPlay
-        isLooping
         isMuted
         useNativeControls={false}
         onPlaybackStatusUpdate={handlePlaybackStatusUpdate}

@@ -200,7 +200,14 @@ const MarketplaceHub = ({ navigation }) => {
         scrollEventThrottle={16}
         ListHeaderComponent={
           <Animated.View style={{ transform: [{ scale: bannerScale }] }}>
-            <View style={[styles.yellowSection, { backgroundColor: isDarkMode ? 'rgba(212, 175, 55, 0.15)' : THEME.COLORS.primary }]}>
+            <View style={[
+              styles.yellowSection, 
+              { 
+                backgroundColor: isDarkMode ? '#12151C' : THEME.COLORS.primary,
+                borderBottomWidth: isDarkMode ? 1.5 : 0,
+                borderBottomColor: isDarkMode ? 'rgba(212, 175, 55, 0.3)' : 'transparent',
+              }
+            ]}>
               <View style={styles.bannerWrapper}>
                 <MarketplaceBanner navigation={navigation} />
               </View>
