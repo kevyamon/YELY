@@ -145,11 +145,15 @@ const ensureGoogleScriptLoaded = () => {
                   role: role || 'rider'
                 }).unwrap();
 
-                const { user, accessToken, refreshToken } = res.data;
+                const authData = res?.data || res;
+                const user = authData?.user;
+                const accessToken = authData?.accessToken;
+                const refreshToken = authData?.refreshToken;
+                if (!user) throw new Error("Données d'inscription invalides.");
                 dispatch(setCredentials({ user, accessToken, refreshToken }));
                 dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
               } catch (authErr) {
-                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || authErr?.message || "Échec de l'inscription Google." }));
               } finally {
                 setIsGoogleSubmitting(false);
               }
@@ -178,11 +182,15 @@ const ensureGoogleScriptLoaded = () => {
                     role: role || 'rider'
                   }).unwrap();
 
-                  const { user, accessToken, refreshToken } = res.data;
+                  const authData = res?.data || res;
+                  const user = authData?.user;
+                  const accessToken = authData?.accessToken;
+                  const refreshToken = authData?.refreshToken;
+                  if (!user) throw new Error("Données d'inscription invalides.");
                   dispatch(setCredentials({ user, accessToken, refreshToken }));
                   dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
                 } catch (authErr) {
-                  dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || "Échec de l'inscription Google." }));
+                  dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || authErr?.message || "Échec de l'inscription Google." }));
                 } finally {
                   setIsGoogleSubmitting(false);
                 }
@@ -211,7 +219,11 @@ const ensureGoogleScriptLoaded = () => {
             role: role || 'rider'
           }).unwrap();
 
-          const { user, accessToken, refreshToken } = res.data;
+          const authData = res?.data || res;
+          const user = authData?.user;
+          const accessToken = authData?.accessToken;
+          const refreshToken = authData?.refreshToken;
+          if (!user) throw new Error("Données d'inscription invalides.");
           dispatch(setCredentials({ user, accessToken, refreshToken }));
           dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
         }

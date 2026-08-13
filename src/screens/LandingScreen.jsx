@@ -79,6 +79,8 @@ export default function LandingScreen({ navigation }) {
     useCallback(() => {
       if (Platform.OS === 'android') {
         try {
+          NavigationBar.setPositionAsync('absolute').catch(() => {});
+          NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
           NavigationBar.setButtonStyleAsync('dark').catch(() => {});
         } catch (e) {}
       }

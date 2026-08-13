@@ -133,11 +133,15 @@ const ensureGoogleScriptLoaded = () => {
                   isLoginOnly: true
                 }).unwrap();
 
-                const { user, accessToken, refreshToken } = res.data;
+                const authData = res?.data || res;
+                const user = authData?.user;
+                const accessToken = authData?.accessToken;
+                const refreshToken = authData?.refreshToken;
+                if (!user) throw new Error("Données de connexion invalides.");
                 dispatch(setCredentials({ user, accessToken, refreshToken }));
                 dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
               } catch (authErr) {
-                dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || "Échec de connexion." }));
+                dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || authErr?.message || "Échec de connexion." }));
               } finally {
                 setIsGoogleSubmitting(false);
               }
@@ -152,11 +156,15 @@ const ensureGoogleScriptLoaded = () => {
               if (response.credential) {
                 try {
                   const res = await googleAuth({ idToken: response.credential, role: 'rider', isLoginOnly: true }).unwrap();
-                  const { user, accessToken, refreshToken } = res.data;
+                  const authData = res?.data || res;
+                  const user = authData?.user;
+                  const accessToken = authData?.accessToken;
+                  const refreshToken = authData?.refreshToken;
+                  if (!user) throw new Error("Données de connexion invalides.");
                   dispatch(setCredentials({ user, accessToken, refreshToken }));
                   dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
                 } catch (authErr) {
-                  dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || "Échec de connexion." }));
+                  dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || authErr?.message || "Échec de connexion." }));
                 } finally {
                   setIsGoogleSubmitting(false);
                 }
@@ -186,7 +194,11 @@ const ensureGoogleScriptLoaded = () => {
             isLoginOnly: true
           }).unwrap();
 
-          const { user, accessToken, refreshToken } = res.data;
+          const authData = res?.data || res;
+          const user = authData?.user;
+          const accessToken = authData?.accessToken;
+          const refreshToken = authData?.refreshToken;
+          if (!user) throw new Error("Données de connexion invalides.");
           dispatch(setCredentials({ user, accessToken, refreshToken }));
           dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
         }
