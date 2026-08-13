@@ -34,8 +34,7 @@ export const configureGoogleSignIn = () => {
     try {
       sdk.GoogleSignin.configure({
         webClientId: GOOGLE_WEB_CLIENT_ID,
-        offlineAccess: true,
-        forceCodeForRefreshToken: true,
+        scopes: ['email', 'profile'],
       });
       isConfigured = true;
     } catch (err) {
@@ -93,22 +92,26 @@ export const signInWithGoogle = async () => {
   }
 
   try {
-    const { GoogleSignin, statusCodes } = sdk;
+    const { GoogleSignin } = sdk;
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     
-    const idToken = response?.data?.idToken || response?.idToken;
+    const idToken = response?.data?.idToken || response?.idToken || response?.data?.id_token || response?.id_token;
     const user = response?.data?.user || response?.user;
 
-    if (!idToken) {
-      throw new Error("Aucun jeton ID renvoyé par le SDK Google Sign-In");
+    const email = user?.email || response?.data?.email;
+    const name = user?.name || (user?.givenName ? `${user.givenName} ${user?.familyName || ''}` : '') || response?.data?.name;
+    const profilePicture = user?.photo || response?.data?.photo;
+
+    if (!idToken && !email) {
+      throw new Error("Aucune donnée utilisateur renvoyée par la connexion Google.");
     }
 
     return {
       idToken,
-      email: user?.email,
-      name: user?.name || (user?.givenName ? `${user.givenName} ${user?.familyName || ''}` : ''),
-      profilePicture: user?.photo
+      email,
+      name,
+      profilePicture
     };
   } catch (error) {
     const sdk = getGoogleSigninModule();
