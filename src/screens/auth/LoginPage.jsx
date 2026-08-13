@@ -107,6 +107,10 @@ const ensureGoogleScriptLoaded = () => {
     if (isGoogleSubmitting || isGoogleLoading) return;
     setIsGoogleSubmitting(true);
 
+    const safetyTimer = setTimeout(() => {
+      setIsGoogleSubmitting(false);
+    }, 15000);
+
     try {
       if (Platform.OS === 'web') {
         await ensureGoogleScriptLoaded();
@@ -114,7 +118,13 @@ const ensureGoogleScriptLoaded = () => {
           const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_WEB_CLIENT_ID,
             scope: 'email profile openid',
+            error_callback: (err) => {
+              clearTimeout(safetyTimer);
+              setIsGoogleSubmitting(false);
+              dispatch(showErrorToast({ title: "Connexion Google", message: "Connexion annulée ou fermée." }));
+            },
             callback: async (tokenResponse) => {
+              clearTimeout(safetyTimer);
               if (tokenResponse.error) {
                 setIsGoogleSubmitting(false);
                 return;
@@ -153,6 +163,7 @@ const ensureGoogleScriptLoaded = () => {
           window.google.accounts.id.initialize({
             client_id: GOOGLE_WEB_CLIENT_ID,
             callback: async (response) => {
+              clearTimeout(safetyTimer);
               if (response.credential) {
                 try {
                   const res = await googleAuth({ idToken: response.credential, role: 'rider', isLoginOnly: true }).unwrap();
@@ -168,16 +179,20 @@ const ensureGoogleScriptLoaded = () => {
                 } finally {
                   setIsGoogleSubmitting(false);
                 }
+              } else {
+                setIsGoogleSubmitting(false);
               }
             }
           });
           window.google.accounts.id.prompt();
           return;
         } else {
+          clearTimeout(safetyTimer);
           dispatch(showErrorToast({ title: "Connexion Google", message: "Service Google indisponible sur ce navigateur." }));
           setIsGoogleSubmitting(false);
         }
       } else {
+        clearTimeout(safetyTimer);
         const googleResult = await signInWithGoogle();
         if (googleResult?.cancelled || googleResult?.inProgress) {
           setIsGoogleSubmitting(false);

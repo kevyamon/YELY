@@ -7,6 +7,7 @@ import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
+import * as SystemUI from 'expo-system-ui';
 import React, { useCallback, useEffect } from 'react';
 import {
   BackHandler,
@@ -79,6 +80,7 @@ export default function LandingScreen({ navigation }) {
     useCallback(() => {
       if (Platform.OS === 'android') {
         try {
+          SystemUI.setBackgroundColorAsync('#E5AC00').catch(() => {});
           NavigationBar.setPositionAsync('absolute').catch(() => {});
           NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
           NavigationBar.setButtonStyleAsync('dark').catch(() => {});

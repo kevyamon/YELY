@@ -1,14 +1,14 @@
 // src/components/ui/ServerWakingOverlay.jsx
-// OVERLAY DE RÉVEIL BACKEND - Design Premium Glassmorphism (Cold Start UX)
-// CSCSM Level: Bank Grade
+// BANNIÈRE DE RÉVEIL BACKEND - Non bloquante et Discrète (Cold Start UX)
+// STANDARD: Industriel / Bank Grade
 
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSelector } from 'react-redux';
+
 import { selectIsServerWaking } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
-import GlassCard from './GlassCard';
-import { Ionicons } from '@expo/vector-icons';
 
 const ServerWakingOverlay = () => {
   const isServerWaking = useSelector(selectIsServerWaking);
@@ -16,79 +16,54 @@ const ServerWakingOverlay = () => {
   if (!isServerWaking) return null;
 
   return (
-    <View style={styles.overlay}>
-      <GlassCard style={styles.glassContainer}>
-        <View style={styles.iconWrapper}>
-          <Ionicons name="key-outline" size={32} color={THEME.COLORS.champagneGold || '#D4AF37'} />
-          <View style={styles.loaderRing}>
-            <ActivityIndicator size="large" color={THEME.COLORS.champagneGold || '#D4AF37'} />
-          </View>
-        </View>
-        
-        <Text style={styles.title}>Démarrage en cours</Text>
-        <Text style={styles.subtitle}>
-          Yely réveille ses moteurs... Cela peut prendre jusqu'à 1 minute lors du premier lancement.
+    <View style={styles.bannerWrapper} pointerEvents="none">
+      <View style={styles.bannerCard}>
+        <ActivityIndicator size="small" color="#FAC800" style={styles.spinner} />
+        <Ionicons name="cloud-download-outline" size={16} color="#FAC800" style={styles.icon} />
+        <Text style={styles.bannerText}>
+          Initialisation Yély... (Connexion serveur)
         </Text>
-      </GlassCard>
+      </View>
     </View>
   );
 };
 
 const styles = StyleSheet.create({
-  overlay: {
+  bannerWrapper: {
     position: 'absolute',
-    top: 0,
+    top: 45,
     left: 0,
     right: 0,
-    bottom: 0,
-    backgroundColor: 'rgba(10, 10, 15, 0.85)',
     zIndex: 99999,
-    justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 16,
   },
-  glassContainer: {
-    width: '85%',
-    paddingVertical: 40,
-    paddingHorizontal: 25,
+  bannerCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.2)',
+    backgroundColor: 'rgba(18, 18, 22, 0.92)',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 25,
+    borderWidth: 1,
+    borderColor: 'rgba(250, 200, 0, 0.3)',
+    elevation: 8,
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  iconWrapper: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 25,
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: 'rgba(212, 175, 55, 0.1)',
+  spinner: {
+    marginRight: 8,
   },
-  loaderRing: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
-    transform: [{ scale: 1.45 }],
+  icon: {
+    marginRight: 8,
   },
-  title: {
+  bannerText: {
     color: '#FFFFFF',
-    fontSize: 20,
-    fontWeight: '900',
-    marginBottom: 12,
-    letterSpacing: 0.5,
-    textAlign: 'center',
+    fontSize: 13,
+    fontWeight: '700',
   },
-  subtitle: {
-    color: 'rgba(255, 255, 255, 0.7)',
-    fontSize: 13.5,
-    fontWeight: '500',
-    textAlign: 'center',
-    lineHeight: 20,
-  }
 });
 
 export default ServerWakingOverlay;

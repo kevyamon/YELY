@@ -100,7 +100,17 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
 
     // LOGIQUE CLASSIQUE PWA / REDIRECTION STORE
     if (Platform.OS === 'web') {
-      window.location.reload(true);
+      if (typeof window !== 'undefined') {
+        if ('serviceWorker' in navigator) {
+          try {
+            const reg = await navigator.serviceWorker.getRegistration();
+            if (reg && reg.waiting) {
+              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            }
+          } catch (e) {}
+        }
+        window.location.reload();
+      }
     } else {
       if (updateUrl) {
         let finalUrl = updateUrl.trim();
