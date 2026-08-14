@@ -14,7 +14,7 @@
       },
       "oauth_client": [
         {
-          "client_id": "874118617681-androidapprel.apps.googleusercontent.com",
+          "client_id": "874118617681-1ddjbsvkvq06nvj28tmo2pa2tf2csv87.apps.googleusercontent.com",
           "client_type": 1,
           "android_info": {
             "package_name": "com.yely.app",
@@ -22,15 +22,7 @@
           }
         },
         {
-          "client_id": "874118617681-androidappdbg.apps.googleusercontent.com",
-          "client_type": 1,
-          "android_info": {
-            "package_name": "com.yely.app",
-            "certificate_hash": "a8e649c8b81e264f2aef645c11b2f5277afb0df"
-          }
-        },
-        {
-          "client_id": "874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com",
+          "client_id": "874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com",
           "client_type": 3
         }
       ],

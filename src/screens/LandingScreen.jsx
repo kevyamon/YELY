@@ -37,6 +37,8 @@ export default function LandingScreen({ navigation }) {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
 
+  const responsiveFontSize = width < 360 ? 22 : (width < 400 ? 25 : 28);
+
   const appVersion = Constants.expoConfig?.version || '1.6';
   const currentYear = new Date().getFullYear();
 
@@ -142,7 +144,7 @@ export default function LandingScreen({ navigation }) {
               numberOfLines={1}
               adjustsFontSizeToFit={true}
               minimumFontScale={0.65}
-              style={[styles.mainTitle, titleStyle]}
+              style={[styles.mainTitle, { fontSize: responsiveFontSize }, titleStyle]}
             >
               Avec Yély, ça va vite !
             </Animated.Text>

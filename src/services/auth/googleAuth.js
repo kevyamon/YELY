@@ -8,7 +8,7 @@ import { NativeModules, Platform } from 'react-native';
 
 WebBrowser.maybeCompleteAuthSession();
 
-export const GOOGLE_WEB_CLIENT_ID = '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
+export const GOOGLE_WEB_CLIENT_ID = '874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com';
 
 let isConfigured = false;
 
@@ -43,6 +43,42 @@ export const configureGoogleSignIn = () => {
   }
 };
 
+const signInWithGoogleBrowserFallback = async () => {
+  try {
+    const redirectUri = Linking.createURL('oauth-callback');
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    
+    const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
+    
+    if (result.type === 'success' && result.url) {
+      const urlStr = result.url;
+      const hashIndex = urlStr.indexOf('#');
+      const queryIndex = urlStr.indexOf('?');
+      const rawParams = hashIndex !== -1 
+        ? urlStr.substring(hashIndex + 1) 
+        : (queryIndex !== -1 ? urlStr.substring(queryIndex + 1) : '');
+        
+      const params = new URLSearchParams(rawParams);
+      const accessToken = params.get('access_token');
+
+      if (accessToken) {
+        const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${accessToken}` }
+        });
+        const userInfo = await userInfoRes.json();
+        return {
+          email: userInfo.email,
+          name: userInfo.name || (userInfo.given_name ? `${userInfo.given_name} ${userInfo.family_name || ''}` : ''),
+          profilePicture: userInfo.picture
+        };
+      }
+    }
+    return { cancelled: true };
+  } catch (browserErr) {
+    throw new Error("L'authentification Google a échoué. Veuillez réessayer.");
+  }
+};
+
 export const signInWithGoogle = async () => {
   if (Platform.OS === 'web') {
     throw new Error('PLATFORM_WEB_GSI');
@@ -52,39 +88,7 @@ export const signInWithGoogle = async () => {
 
   // SECOURS EXPO GO : Redirection WebBrowser avec Linking.createURL (Dépendance native valide)
   if (!sdk || !NativeModules.RNGoogleSignin) {
-    try {
-      const redirectUri = Linking.createURL('oauth-callback');
-      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
-      
-      const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
-      
-      if (result.type === 'success' && result.url) {
-        const urlStr = result.url;
-        const hashIndex = urlStr.indexOf('#');
-        const queryIndex = urlStr.indexOf('?');
-        const rawParams = hashIndex !== -1 
-          ? urlStr.substring(hashIndex + 1) 
-          : (queryIndex !== -1 ? urlStr.substring(queryIndex + 1) : '');
-          
-        const params = new URLSearchParams(rawParams);
-        const accessToken = params.get('access_token');
-
-        if (accessToken) {
-          const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-            headers: { Authorization: `Bearer ${accessToken}` }
-          });
-          const userInfo = await userInfoRes.json();
-          return {
-            email: userInfo.email,
-            name: userInfo.name || (userInfo.given_name ? `${userInfo.given_name} ${userInfo.family_name || ''}` : ''),
-            profilePicture: userInfo.picture
-          };
-        }
-      }
-      return { cancelled: true };
-    } catch (browserErr) {
-      throw new Error("L'authentification Google native requiert un Build APK ou Dev (npx expo run:android).");
-    }
+    return signInWithGoogleBrowserFallback();
   }
 
   if (!isConfigured) {
@@ -116,6 +120,19 @@ export const signInWithGoogle = async () => {
   } catch (error) {
     const sdk = getGoogleSigninModule();
     const statusCodes = sdk?.statusCodes || {};
+
+    const isDeveloperError = 
+      error.code === '10' || 
+      error.code === 10 || 
+      (error.message && error.message.includes('DEVELOPER_ERROR')) ||
+      (error.code && error.code.toString() === '10');
+
+    // Fallback automatique si erreur de configuration développeur détectée
+    if (isDeveloperError) {
+      console.warn('[GoogleAuth] DEVELOPER_ERROR détecté. Bascule vers le fallback WebBrowser...');
+      return signInWithGoogleBrowserFallback();
+    }
+
     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
       return { cancelled: true };
     }

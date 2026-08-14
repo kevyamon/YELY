@@ -25,7 +25,7 @@ import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import { ERROR_MESSAGES, VALIDATORS } from '../../utils/validators';
 
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-i438m7c4ti48b584o6u00omffvckhphd.apps.googleusercontent.com';
+const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com';
 
 const RegisterPage = ({ navigation, route }) => {
   const dispatch = useDispatch();
