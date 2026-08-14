@@ -148,22 +148,18 @@ const ensureGoogleScriptLoaded = () => {
                 });
                 const userInfo = await userInfoRes.json();
 
-                const res = await googleAuth({
-                  email: userInfo.email,
-                  name: userInfo.name || userInfo.given_name,
-                  profilePicture: userInfo.picture,
-                  role: role || 'rider'
-                }).unwrap();
-
-                const authData = res?.data || res;
-                const user = authData?.user;
-                const accessToken = authData?.accessToken;
-                const refreshToken = authData?.refreshToken;
-                if (!user) throw new Error("Données d'inscription invalides.");
-                dispatch(setCredentials({ user, accessToken, refreshToken }));
-                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+                // Pré-remplir simplement le formulaire d'inscription
+                setFormData(prev => ({
+                  ...prev,
+                  name: userInfo.name || userInfo.given_name || prev.name,
+                  email: userInfo.email || prev.email
+                }));
+                dispatch(showSuccessToast({ 
+                  title: "Profil Google importé", 
+                  message: "Saisissez votre numéro de téléphone et votre mot de passe pour terminer." 
+                }));
               } catch (authErr) {
-                dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || authErr?.message || "Échec de l'inscription Google." }));
+                dispatch(showErrorToast({ title: "Erreur Authentification", message: "Impossible de récupérer les informations Google." }));
               } finally {
                 setIsGoogleSubmitting(false);
               }
@@ -185,23 +181,18 @@ const ensureGoogleScriptLoaded = () => {
                   }).join(''));
                   const payload = JSON.parse(jsonPayload);
                   
-                  const res = await googleAuth({
-                    idToken: response.credential,
-                    email: payload.email,
-                    name: payload.name,
-                    profilePicture: payload.picture,
-                    role: role || 'rider'
-                  }).unwrap();
-
-                  const authData = res?.data || res;
-                  const user = authData?.user;
-                  const accessToken = authData?.accessToken;
-                  const refreshToken = authData?.refreshToken;
-                  if (!user) throw new Error("Données d'inscription invalides.");
-                  dispatch(setCredentials({ user, accessToken, refreshToken }));
-                  dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+                  // Pré-remplir simplement le formulaire d'inscription
+                  setFormData(prev => ({
+                    ...prev,
+                    name: payload.name || prev.name,
+                    email: payload.email || prev.email
+                  }));
+                  dispatch(showSuccessToast({ 
+                    title: "Profil Google importé", 
+                    message: "Saisissez votre numéro de téléphone et votre mot de passe pour terminer." 
+                  }));
                 } catch (authErr) {
-                  dispatch(showErrorToast({ title: "Erreur Authentification", message: authErr?.data?.message || authErr?.message || "Échec de l'inscription Google." }));
+                  dispatch(showErrorToast({ title: "Erreur Authentification", message: "Impossible de récupérer les informations Google." }));
                 } finally {
                   setIsGoogleSubmitting(false);
                 }
@@ -226,21 +217,16 @@ const ensureGoogleScriptLoaded = () => {
         }
 
         if (googleResult?.idToken || googleResult?.email) {
-          const res = await googleAuth({
-            idToken: googleResult.idToken,
-            email: googleResult.email,
-            name: googleResult.name,
-            profilePicture: googleResult.profilePicture,
-            role: role || 'rider'
-          }).unwrap();
-
-          const authData = res?.data || res;
-          const user = authData?.user;
-          const accessToken = authData?.accessToken;
-          const refreshToken = authData?.refreshToken;
-          if (!user) throw new Error("Données d'inscription invalides.");
-          dispatch(setCredentials({ user, accessToken, refreshToken }));
-          dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+          // Pré-remplir simplement le formulaire d'inscription
+          setFormData(prev => ({
+            ...prev,
+            name: googleResult.name || prev.name,
+            email: googleResult.email || prev.email
+          }));
+          dispatch(showSuccessToast({ 
+            title: "Profil Google importé", 
+            message: "Saisissez votre numéro de téléphone et votre mot de passe pour terminer." 
+          }));
         }
         setIsGoogleSubmitting(false);
       }

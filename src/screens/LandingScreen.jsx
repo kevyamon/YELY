@@ -10,6 +10,7 @@ import * as SystemUI from 'expo-system-ui';
 import React, { useCallback, useEffect } from 'react';
 import {
   BackHandler,
+  Dimensions,
   Platform,
   StatusBar,
   StyleSheet,
@@ -35,7 +36,11 @@ import THEME, { BORDERS, COLORS, FONTS, PALETTE, SHADOWS, SPACING } from '../the
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
-  const { width, height } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+
+  const screenDimensions = Dimensions.get('window');
+  const width = windowWidth || screenDimensions.width;
+  const height = windowHeight || screenDimensions.height;
 
   const responsiveFontSize = width < 360 ? 22 : (width < 400 ? 25 : 28);
 
