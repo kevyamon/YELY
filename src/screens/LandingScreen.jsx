@@ -1,11 +1,10 @@
 // src/screens/LandingScreen.jsx
-// ÉCRAN DE BIENVENUE - LANDING SCREEN YÉLY (Design Épuré, Fond Dégradé d'Or & Thème Fixe)
-// STANDARD: Industriel / Bank Grade
+// ÉCRAN DE BIENVENUE - LANDING SCREEN YÉLY (Courbe Organique Dorée & Fond Blanc Pur)
+// STANDARD: Industriel / Bank Grade / Theme Tokens
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import Constants from 'expo-constants';
-import { LinearGradient } from 'expo-linear-gradient';
 import * as NavigationBar from 'expo-navigation-bar';
 import * as SystemUI from 'expo-system-ui';
 import React, { useCallback, useEffect } from 'react';
@@ -16,6 +15,7 @@ import {
   StyleSheet,
   Text,
   TouchableOpacity,
+  useWindowDimensions,
   View
 } from 'react-native';
 import Animated, {
@@ -26,23 +26,25 @@ import Animated, {
   withTiming
 } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Path, Stop } from 'react-native-svg';
 import { useDispatch } from 'react-redux';
 
 import { showSuccessToast } from '../store/slices/uiSlice';
-import THEME from '../theme/theme';
+import THEME, { BORDERS, COLORS, FONTS, PALETTE, SHADOWS, SPACING } from '../theme/theme';
 
 export default function LandingScreen({ navigation }) {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
+  const { width, height } = useWindowDimensions();
 
   const appVersion = Constants.expoConfig?.version || '1.6';
   const currentYear = new Date().getFullYear();
 
-  const titleY = useSharedValue(40);
+  const titleY = useSharedValue(35);
   const titleOpacity = useSharedValue(0);
-  const subtitleY = useSharedValue(40);
+  const subtitleY = useSharedValue(35);
   const subtitleOpacity = useSharedValue(0);
-  const btnY = useSharedValue(40);
+  const btnY = useSharedValue(35);
   const btnOpacity = useSharedValue(0);
   const linksOpacity = useSharedValue(0);
 
@@ -80,9 +82,9 @@ export default function LandingScreen({ navigation }) {
     useCallback(() => {
       if (Platform.OS === 'android') {
         try {
-          SystemUI.setBackgroundColorAsync('#E5AC00').catch(() => {});
+          SystemUI.setBackgroundColorAsync(PALETTE.pureWhite).catch(() => {});
           NavigationBar.setPositionAsync('absolute').catch(() => {});
-          NavigationBar.setBackgroundColorAsync('transparent').catch(() => {});
+          NavigationBar.setBackgroundColorAsync(PALETTE.pureWhite).catch(() => {});
           NavigationBar.setButtonStyleAsync('dark').catch(() => {});
         } catch (e) {}
       }
@@ -105,31 +107,46 @@ export default function LandingScreen({ navigation }) {
     }, [dispatch])
   );
 
+  // Tracé précis de la courbe organique dorée supérieure
+  const curvePath = `M 0 0 L ${width} 0 L ${width} ${height * 0.46} C ${width * 0.70} ${height * 0.58}, ${width * 0.25} ${height * 0.58}, 0 ${height * 0.48} Z`;
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
-      {/* ARRIÈRE-PLAN DÉGRADÉ VECTORIEL VIBRANT YÉLY (Blanc Crème -> Jaune Or) */}
-      <LinearGradient
-        start={{ x: 0.5, y: 0 }}
-        end={{ x: 0.5, y: 1 }}
-        locations={[0, 0.28, 0.65, 1]}
-        colors={['#FFFDF4', '#FFE866', '#FAC800', '#E5AC00']}
-        style={StyleSheet.absoluteFillObject}
-      />
+      {/* FOND VECTORIEL AVEC BULLE ORGANIQUE SUPÉRIEURE & BLANC EN BAS */}
+      <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
+        <Defs>
+          <SvgLinearGradient id="goldCurveGrad" x1="0" y1="0" x2="0" y2="1">
+            <Stop offset="0%" stopColor={PALETTE.warmGold} stopOpacity="1" />
+            <Stop offset="100%" stopColor={PALETTE.warmYellow} stopOpacity="1" />
+          </SvgLinearGradient>
+        </Defs>
+        <Path d={curvePath} fill="url(#goldCurveGrad)" />
+      </Svg>
 
-      {/* CONTENU UNIFORME & LISIBLE */}
+      {/* CONTENU PRINCIPAL PARFAITEMENT STRUCTURÉ */}
       <View
         style={[
           styles.contentContainer,
-          { paddingTop: Math.max(insets.top + 20, 48), paddingBottom: Math.max(insets.bottom + 16, 32) }
+          {
+            paddingTop: Math.max(insets.top + SPACING.lg, 44),
+            paddingBottom: Math.max(insets.bottom + SPACING.md, 24)
+          }
         ]}
       >
-        {/* TITRE PRINCIPAL & MARQUE (Couleurs Fixes Permanentes) */}
-        <View style={styles.centerSection}>
-          <Animated.Text style={[styles.mainTitle, titleStyle]}>
-            {"Avec Yély,\nça va vite !"}
-          </Animated.Text>
+        {/* SECTION SUPÉRIEURE : TITRE UNIQUE & SOUSTITRE */}
+        <View style={styles.topSection}>
+          <View style={styles.titleWrapper}>
+            <Animated.Text
+              numberOfLines={1}
+              adjustsFontSizeToFit={true}
+              minimumFontScale={0.65}
+              style={[styles.mainTitle, titleStyle]}
+            >
+              Avec Yély, ça va vite !
+            </Animated.Text>
+          </View>
 
           <Animated.View style={[styles.subtitleWrapper, subtitleStyle]}>
             <View style={styles.separator} />
@@ -137,7 +154,7 @@ export default function LandingScreen({ navigation }) {
           </Animated.View>
         </View>
 
-        {/* SECTION BOUTON ET LIENS */}
+        {/* SECTION INFÉRIEURE : BOUTON PRINCIPAL & LIENS */}
         <View style={styles.bottomSection}>
           <Animated.View style={[styles.buttonWrapper, btnStyle]}>
             <TouchableOpacity
@@ -145,9 +162,9 @@ export default function LandingScreen({ navigation }) {
               activeOpacity={0.88}
               onPress={() => navigation.navigate('Register')}
             >
-              <Ionicons name="person-add" size={20} color={THEME.COLORS.primary} style={styles.buttonIconLeft} />
+              <Ionicons name="person-add" size={20} color={PALETTE.warmYellow} style={styles.buttonIconLeft} />
               <Text style={styles.primaryButtonText}>CRÉER MON COMPTE</Text>
-              <Ionicons name="arrow-forward" size={20} color={THEME.COLORS.primary} style={styles.buttonIconRight} />
+              <Ionicons name="arrow-forward" size={20} color={PALETTE.warmYellow} style={styles.buttonIconRight} />
             </TouchableOpacity>
           </Animated.View>
 
@@ -179,41 +196,47 @@ export default function LandingScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#FAC800',
+    backgroundColor: PALETTE.pureWhite,
   },
   contentContainer: {
     flex: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.xl,
   },
-  centerSection: {
+  topSection: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingTop: SPACING.xl,
+  },
+  titleWrapper: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.xs,
   },
   mainTitle: {
-    fontSize: 42,
-    fontWeight: '900',
-    color: '#121212',
-    letterSpacing: -0.5,
+    fontSize: FONTS.sizes.h1 + 6,
+    fontWeight: FONTS.weights.bold,
+    color: PALETTE.charcoal,
+    letterSpacing: -0.3,
     textAlign: 'center',
-    lineHeight: 52,
   },
   subtitleWrapper: {
     alignItems: 'center',
-    marginTop: 20,
+    marginTop: SPACING.lg,
   },
   separator: {
     width: 44,
     height: 4,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 2,
-    marginBottom: 16,
+    backgroundColor: PALETTE.pureWhite,
+    borderRadius: BORDERS.radius.xs,
+    marginBottom: SPACING.md,
   },
   subTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: FONTS.sizes.body,
+    fontWeight: FONTS.weights.bold,
+    color: PALETTE.richBlack,
     letterSpacing: 0.5,
   },
   bottomSection: {
@@ -222,75 +245,72 @@ const styles = StyleSheet.create({
   },
   buttonWrapper: {
     width: '100%',
-    marginBottom: 20,
+    marginBottom: SPACING.lg,
   },
   primaryButton: {
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#141414',
+    height: 58,
+    borderRadius: BORDERS.radius.pill,
+    backgroundColor: PALETTE.charcoal,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 24,
+    paddingHorizontal: SPACING.xl,
     elevation: 6,
-    shadowColor: '#000000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.25,
-    shadowRadius: 10,
+    ...SHADOWS.medium,
   },
   buttonIconLeft: {
-    marginRight: 10,
+    marginRight: SPACING.sm,
   },
   buttonIconRight: {
-    marginLeft: 10,
+    marginLeft: SPACING.sm,
   },
   primaryButtonText: {
-    fontSize: 16,
-    fontWeight: '900',
-    color: '#FAC800',
+    fontSize: FONTS.sizes.body,
+    fontWeight: FONTS.weights.bold,
+    color: PALETTE.warmYellow,
     letterSpacing: 1.2,
   },
   linksContainer: {
     alignItems: 'center',
   },
   loginLink: {
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    marginBottom: 8,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.lg,
+    marginBottom: SPACING.xs,
   },
   loginText: {
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#1A1A1A',
+    fontSize: FONTS.sizes.bodySmall + 1,
+    fontWeight: FONTS.weights.semiBold,
+    color: PALETTE.charcoal,
   },
   loginTextBold: {
-    fontWeight: '900',
-    color: '#121212',
+    fontWeight: FONTS.weights.bold,
+    color: PALETTE.pureBlack,
     textDecorationLine: 'underline',
   },
   legalLinksRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 4,
+    marginVertical: SPACING.xs,
   },
   termsLink: {
-    padding: 4,
+    padding: SPACING.xs,
   },
   termsText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#222222',
+    fontSize: FONTS.sizes.caption + 1,
+    fontWeight: FONTS.weights.bold,
+    color: PALETTE.charcoal,
   },
   bullet: {
-    fontSize: 13,
-    marginHorizontal: 8,
-    color: '#222222',
-    fontWeight: '900',
+    fontSize: FONTS.sizes.caption + 1,
+    marginHorizontal: SPACING.sm,
+    color: PALETTE.charcoal,
+    fontWeight: FONTS.weights.bold,
   },
   copyright: {
-    fontSize: 12,
-    marginTop: 10,
-    fontWeight: '700',
-    color: '#2A2A2A',
+    fontSize: FONTS.sizes.caption,
+    marginTop: SPACING.sm,
+    fontWeight: FONTS.weights.semiBold,
+    color: PALETTE.charcoal,
   },
 });

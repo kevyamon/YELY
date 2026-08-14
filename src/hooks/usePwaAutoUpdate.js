@@ -1,5 +1,5 @@
 // src/hooks/usePwaAutoUpdate.js
-// MOTEUR DE MISE À JOUR PWA SILENCIEUX - Téléchargement Arrière-Plan & Modale à la fin
+// MOTEUR SERVICE WORKER & MISE À JOUR PWA SILENCIEUX - Offline Shell & Bank Grade
 // STANDARD: Industriel / Bank Grade
 
 import { useEffect } from 'react';
@@ -17,7 +17,7 @@ const usePwaAutoUpdate = () => {
       const handleRegistration = (registration) => {
         if (!registration) return;
 
-        // Si un worker est déjà en attente (téléchargement déjà fini au lancement)
+        // Si un worker est déjà en attente (téléchargement déjà terminé)
         if (registration.waiting) {
           dispatch(
             setAppUpdate({
@@ -31,13 +31,12 @@ const usePwaAutoUpdate = () => {
           return;
         }
 
-        // Écouter l'arrivée d'une nouvelle mise à jour
+        // Écouter l'arrivée d'une nouvelle version de Service Worker
         registration.onupdatefound = () => {
           const installingWorker = registration.installing;
           if (!installingWorker) return;
 
           installingWorker.onstatechange = () => {
-            // Déclenchement de la modale UNIQUEMENT lorsque le téléchargement est 100% terminé
             if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
               dispatch(
                 setAppUpdate({
@@ -53,28 +52,44 @@ const usePwaAutoUpdate = () => {
         };
       };
 
-      const checkForUpdates = async () => {
+      const initServiceWorker = async () => {
         try {
-          const registration = await navigator.serviceWorker.getRegistration();
-          if (registration) {
-            handleRegistration(registration);
-            await registration.update();
-          }
+          // Enregistrement automatique du Service Worker unifié
+          const registration = await navigator.serviceWorker.register('/service-worker.js', {
+            scope: '/'
+          });
+          handleRegistration(registration);
+
+          // Vérification silencieuse périodique
+          await registration.update().catch(() => {});
         } catch (error) {
-          console.warn('[PWA] Échec de la vérification silencieuse de mise à jour:', error);
+          console.warn('[PWA] Échec enregistrement / vérification Service Worker:', error);
         }
       };
 
-      // Démarrage prioritaire de l'UI : Vérification retardée de 10s en arrière-plan
-      const timer = setTimeout(() => {
-        checkForUpdates();
-      }, 10000);
+      // Démarrage de l'enregistrement dès le chargement de la page
+      if (document.readyState === 'complete') {
+        initServiceWorker();
+      } else {
+        window.addEventListener('load', initServiceWorker);
+      }
 
-      window.addEventListener('focus', checkForUpdates);
+      // Re-vérification au focus de la fenêtre
+      const onFocus = async () => {
+        try {
+          const reg = await navigator.serviceWorker.getRegistration();
+          if (reg) {
+            handleRegistration(reg);
+            await reg.update().catch(() => {});
+          }
+        } catch (e) {}
+      };
+
+      window.addEventListener('focus', onFocus);
 
       return () => {
-        clearTimeout(timer);
-        window.removeEventListener('focus', checkForUpdates);
+        window.removeEventListener('load', initServiceWorker);
+        window.removeEventListener('focus', onFocus);
       };
     }
   }, [dispatch]);

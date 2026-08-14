@@ -11,6 +11,8 @@ const PALETTE = {
   gold: '#D4AF37',
   goldLight: '#F3E5AB',
   goldDark: '#AA8C2C',
+  warmGold: '#FFBA52',
+  warmYellow: '#FAC800',
   
   pureWhite: '#FFFFFF',
   offWhite: '#F8F9FA',
@@ -352,6 +354,7 @@ const THEME = {
   LAYOUT,
   COMPONENT_STYLES,
   ICONS,
+  PALETTE,
 };
 
 export {
@@ -364,6 +367,7 @@ export {
   GLASS,
   ICONS,
   LAYOUT,
+  PALETTE,
   SHADOWS,
   SPACING,
   YelyTheme
