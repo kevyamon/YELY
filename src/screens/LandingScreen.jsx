@@ -110,6 +110,12 @@ export default function LandingScreen({ navigation }) {
 
       return () => {
         sub.remove();
+        if (Platform.OS === 'android') {
+          try {
+            NavigationBar.setBackgroundColorAsync('#000000').catch(() => {});
+            NavigationBar.setButtonStyleAsync('light').catch(() => {});
+          } catch (e) {}
+        }
       };
     }, [dispatch])
   );
