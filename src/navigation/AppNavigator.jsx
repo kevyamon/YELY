@@ -58,6 +58,7 @@ import AdminBanners from '../screens/admin/AdminBanners';
 import AdminJournal from '../screens/admin/AdminJournal';
 import AdminMarketplace from '../screens/admin/AdminMarketplace';
 import AdminReports from '../screens/admin/AdminReports';
+import AdminOperationalReports from '../screens/admin/AdminOperationalReports';
 import AdminRides from '../screens/admin/AdminRides';
 import FinanceConfig from '../screens/admin/FinanceConfig';
 import MapManagement from '../screens/admin/MapManagement';
@@ -228,6 +229,7 @@ const AppNavigator = () => {
             <Stack.Screen name="SystemConfig" component={SystemConfig} /> 
             <Stack.Screen name="AdminJournal" component={AdminJournal} />
             <Stack.Screen name="AdminReports" component={AdminReports} />
+            <Stack.Screen name="AdminOperationalReports" component={AdminOperationalReports} />
             <Stack.Screen name="MapManagement" component={MapManagement} />
           </Stack.Group>
         ) : (

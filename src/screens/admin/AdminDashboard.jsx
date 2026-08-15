@@ -159,6 +159,7 @@ const AdminDashboard = () => {
     { id: 'journal', title: 'Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
     { id: 'banners', title: 'Bannières Live', icon: 'images-outline', route: 'AdminBanners', allowed: isSuperAdmin },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
+    { id: 'operationalReports', title: 'Rapports Fiscaux', icon: 'document-text-outline', route: 'AdminOperationalReports', allowed: isSuperAdmin },
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },
     { id: 'systemConfig', title: 'Configuration', icon: 'settings-outline', route: 'SystemConfig', allowed: isSuperAdmin }
   ];
