@@ -127,7 +127,6 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
 
         <Animated.View style={[styles.textContainer, textStyle]}>
           <Text style={styles.appName}>YELY</Text>
-          <Text style={styles.tagline}>Votre course, votre confort</Text>
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(300)} style={styles.loaderWrapper}>

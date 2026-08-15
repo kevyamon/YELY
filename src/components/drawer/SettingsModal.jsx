@@ -1,12 +1,52 @@
 // src/components/drawer/SettingsModal.jsx
 import { Ionicons } from '@expo/vector-icons';
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
 
 import THEME from '../../theme/theme';
+import { showSuccessToast } from '../../store/slices/uiSlice';
 import EmergencyResetButton from '../ui/EmergencyResetButton';
 
 const SettingsModal = ({ visible, onClose, onNavigate }) => {
+  const dispatch = useDispatch();
+  const user = useSelector((state) => state.auth.user);
+
+  const [clickCount, setClickCount] = useState(0);
+  const [isDevMode, setIsDevMode] = useState(false);
+  const timeoutRef = useRef(null);
+
+  useEffect(() => {
+    return () => {
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    };
+  }, []);
+
+  const handleTitlePress = () => {
+    if (isDevMode) return;
+    setClickCount((prev) => {
+      const next = prev + 1;
+      if (next >= 7) {
+        setIsDevMode(true);
+        dispatch(
+          showSuccessToast({
+            title: "Mode Développeur",
+            message: "Mode développeur activé pour 1 minute.",
+          })
+        );
+        
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        timeoutRef.current = setTimeout(() => {
+          setIsDevMode(false);
+          setClickCount(0);
+        }, 60000); // Désactivation automatique après 1 minute
+        
+        return 0;
+      }
+      return next;
+    });
+  };
+
   const handleProfileNavigate = () => {
     onClose();
     onNavigate('Profile');
@@ -16,6 +56,8 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
     onClose();
     onNavigate('Report'); // Assure-toi que la route s'appelle bien 'Report' ou 'Signalement' dans ton AppNavigator
   };
+
+  const showDevFeatures = isDevMode || user?.role === 'admin' || user?.role === 'superadmin';
 
   return (
     <Modal
@@ -30,13 +72,13 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
           <View style={styles.header}>
             <View style={styles.headerTitleContainer}>
               <Ionicons name="settings" size={24} color={THEME.COLORS.champagneGold} />
-              <Text style={styles.title}>Paramètres</Text>
+              <Text style={styles.title} onPress={handleTitlePress}>Paramètres</Text>
             </View>
             <TouchableOpacity onPress={onClose} style={styles.closeButton}>
               <Ionicons name="close" size={24} color={THEME.COLORS.textSecondary} />
             </TouchableOpacity>
           </View>
-
+ 
           <View style={styles.body}>
             
             <Text style={styles.sectionTitle}>Compte</Text>
@@ -51,7 +93,7 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
               <Text style={styles.actionText}>Mon Profil</Text>
               <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.border} />
             </TouchableOpacity>
-
+ 
             {/* MODIFICATION SENIOR : Nouvelle section Support & Aide ajoutée ici */}
             <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Support & Aide</Text>
             <TouchableOpacity 
@@ -65,15 +107,19 @@ const SettingsModal = ({ visible, onClose, onNavigate }) => {
               <Text style={styles.actionText}>Signaler un problème</Text>
               <Ionicons name="chevron-forward" size={20} color={THEME.COLORS.border} />
             </TouchableOpacity>
-
-            <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Système</Text>
-            <View style={styles.emergencyContainer}>
-              <EmergencyResetButton />
-              <Text style={styles.helperText}>
-                Action irréversible. À utiliser uniquement pour purger une course bloquée en mémoire ou forcer la suppression des données locales de trajet.
-              </Text>
-            </View>
-
+ 
+            {showDevFeatures && (
+              <>
+                <Text style={[styles.sectionTitle, { marginTop: 24 }]}>Système (Développeur)</Text>
+                <View style={styles.emergencyContainer}>
+                  <EmergencyResetButton />
+                  <Text style={styles.helperText}>
+                    Action irréversible. À utiliser uniquement pour purger une course bloquée en mémoire ou forcer la suppression des données locales de trajet.
+                  </Text>
+                </View>
+              </>
+            )}
+ 
           </View>
 
         </View>
