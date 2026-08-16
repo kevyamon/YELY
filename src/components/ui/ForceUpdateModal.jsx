@@ -9,7 +9,7 @@ import * as Updates from 'expo-updates';
 import React, { useEffect, useState } from 'react';
 import { Linking, Modal, Platform, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch } from 'react-redux';
-import { showSuccessToast } from '../../store/slices/uiSlice';
+import { setAppUpdate, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const REMINDER_KEY = 'yely_update_reminder_timestamp';
@@ -85,6 +85,7 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
           setTimeout(() => {
             setIsUpdating(false);
             setShowModal(false);
+            dispatch(setAppUpdate({ isAvailable: false }));
           }, 2000);
         }
       } catch (error) {
@@ -93,6 +94,7 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
         setTimeout(() => {
           setIsUpdating(false);
           setShowModal(false);
+          dispatch(setAppUpdate({ isAvailable: false }));
         }, 4000);
       }
       return;
@@ -103,20 +105,20 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
       if (typeof window !== 'undefined') {
         setIsUpdating(true);
         setStatusText("Application de la nouvelle version...");
+        dispatch(setAppUpdate({ isAvailable: false }));
+        setShowModal(false);
+        
         if ('serviceWorker' in navigator) {
           try {
-            const reg = await navigator.serviceWorker.getRegistration();
-            if (reg && reg.waiting) {
-              reg.waiting.postMessage({ type: 'SKIP_WAITING' });
+            const registrations = await navigator.serviceWorker.getRegistrations();
+            for (const r of registrations) {
+              if (r.waiting) r.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
           } catch (e) {}
-          navigator.serviceWorker.addEventListener('controllerchange', () => {
-            window.location.reload();
-          }, { once: true });
         }
         setTimeout(() => {
           window.location.reload();
-        }, 600);
+        }, 300);
       }
     } else {
       if (updateUrl) {
@@ -145,8 +147,10 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
       } else {
         localStorage.setItem(REMINDER_KEY, Date.now().toString());
       }
+      dispatch(setAppUpdate({ isAvailable: false }));
       setShowModal(false);
     } catch (e) {
+      dispatch(setAppUpdate({ isAvailable: false }));
       setShowModal(false);
     }
   };

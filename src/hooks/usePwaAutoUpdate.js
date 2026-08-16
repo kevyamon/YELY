@@ -1,15 +1,11 @@
 // src/hooks/usePwaAutoUpdate.js
-// MOTEUR SERVICE WORKER & MISE À JOUR PWA SILENCIEUX - Offline Shell & Bank Grade
+// MOTEUR SERVICE WORKER & MISE À JOUR PWA SILENCIEUSE - Offline Shell & Bank Grade
 // STANDARD: Industriel / Bank Grade
 
 import { useEffect } from 'react';
 import { Platform } from 'react-native';
-import { useDispatch } from 'react-redux';
-import { setAppUpdate } from '../store/slices/uiSlice';
 
 const usePwaAutoUpdate = () => {
-  const dispatch = useDispatch();
-
   useEffect(() => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
@@ -17,17 +13,11 @@ const usePwaAutoUpdate = () => {
       const handleRegistration = (registration) => {
         if (!registration) return;
 
-        // Si un worker est déjà en attente (téléchargement déjà terminé)
+        // Auto-activation immédiate et silencieuse si un worker est en attente
         if (registration.waiting) {
-          dispatch(
-            setAppUpdate({
-              isAvailable: true,
-              latestVersion: 'Web PWA',
-              mandatoryUpdate: false,
-              isOta: false,
-              isPwaReady: true
-            })
-          );
+          try {
+            registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+          } catch (e) {}
           return;
         }
 
@@ -37,16 +27,10 @@ const usePwaAutoUpdate = () => {
           if (!installingWorker) return;
 
           installingWorker.onstatechange = () => {
-            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
-              dispatch(
-                setAppUpdate({
-                  isAvailable: true,
-                  latestVersion: 'Web PWA',
-                  mandatoryUpdate: false,
-                  isOta: false,
-                  isPwaReady: true
-                })
-              );
+            if (installingWorker.state === 'installed') {
+              try {
+                installingWorker.postMessage({ type: 'SKIP_WAITING' });
+              } catch (e) {}
             }
           };
         };
@@ -54,7 +38,6 @@ const usePwaAutoUpdate = () => {
 
       const initServiceWorker = async () => {
         try {
-          // Enregistrement automatique du Service Worker unifié
           const registration = await navigator.serviceWorker.register('/service-worker.js', {
             scope: '/'
           });
@@ -63,11 +46,10 @@ const usePwaAutoUpdate = () => {
           // Vérification silencieuse périodique
           await registration.update().catch(() => {});
         } catch (error) {
-          console.warn('[PWA] Échec enregistrement / vérification Service Worker:', error);
+          console.warn('[PWA] Enregistrement Service Worker silencieux:', error);
         }
       };
 
-      // Démarrage de l'enregistrement dès le chargement de la page
       if (document.readyState === 'complete') {
         initServiceWorker();
       } else {
@@ -92,7 +74,7 @@ const usePwaAutoUpdate = () => {
         window.removeEventListener('focus', onFocus);
       };
     }
-  }, [dispatch]);
+  }, []);
 };
 
 export default usePwaAutoUpdate;
