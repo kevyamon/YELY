@@ -17,6 +17,8 @@ import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
 import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
+import SmartHeader from '../../components/ui/SmartHeader';
+import SmartFooter from '../../components/ui/SmartFooter';
 import * as Location from 'expo-location';
 import LocationDisclosureModal from '../../components/ride/LocationDisclosureModal';
 import { VerificationBanner, SubscriptionBanner } from '../../components/driver/DriverBanners';
@@ -75,6 +77,7 @@ const DriverHome = ({ navigation, route }) => {
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
+  const promoMode = useSelector(selectPromoMode);
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
   const [isDisclosureVisible, setIsDisclosureVisible] = useState(false);
 

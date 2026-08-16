@@ -5,7 +5,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import { Modal, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import THEME, { BORDERS, COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
+import THEME from '../../theme/theme';
 import GoldButton from '../ui/GoldButton';
 
 const LocationDisclosureModal = ({ visible, onAccept, onDecline }) => {
@@ -88,18 +88,18 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
-    padding: SPACING.lg,
+    padding: THEME.SPACING.lg,
   },
   card: {
     width: '100%',
     maxWidth: 400,
-    backgroundColor: COLORS.background,
+    backgroundColor: THEME.COLORS.background,
     borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: COLORS.primary,
-    padding: SPACING.xl,
+    borderColor: THEME.COLORS.primary,
+    padding: THEME.SPACING.xl,
     alignItems: 'center',
-    ...SHADOWS.gold,
+    ...THEME.SHADOWS.gold,
   },
   iconCircle: {
     width: 68,
@@ -108,44 +108,44 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(212, 175, 55, 0.12)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   title: {
     fontSize: 18,
     fontWeight: '800',
-    color: COLORS.textPrimary,
+    color: THEME.COLORS.textPrimary,
     textAlign: 'center',
     marginBottom: 4,
   },
   subtitle: {
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: THEME.COLORS.textSecondary,
     textAlign: 'center',
-    marginBottom: SPACING.md,
+    marginBottom: THEME.SPACING.md,
   },
   disclosureBox: {
     backgroundColor: 'rgba(212, 175, 55, 0.08)',
     borderRadius: 14,
-    padding: SPACING.md,
+    padding: THEME.SPACING.md,
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.25)',
-    marginBottom: SPACING.md,
+    marginBottom: THEME.SPACING.md,
   },
   disclosureText: {
     fontSize: 13,
-    color: COLORS.textPrimary,
+    color: THEME.COLORS.textPrimary,
     lineHeight: 19,
     textAlign: 'center',
   },
   boldText: {
     fontWeight: '800',
-    color: COLORS.primary,
+    color: THEME.COLORS.primary,
   },
   pointsList: {
     width: '100%',
-    marginBottom: SPACING.lg,
+    marginBottom: THEME.SPACING.lg,
     gap: 10,
   },
   pointRow: {
@@ -159,12 +159,12 @@ const styles = StyleSheet.create({
   pointText: {
     flex: 1,
     fontSize: 12,
-    color: COLORS.textSecondary,
+    color: THEME.COLORS.textSecondary,
     lineHeight: 17,
   },
   pointBold: {
     fontWeight: '700',
-    color: COLORS.textPrimary,
+    color: THEME.COLORS.textPrimary,
   },
   actions: {
     width: '100%',
@@ -172,7 +172,7 @@ const styles = StyleSheet.create({
   },
   acceptButton: {
     width: '100%',
-    marginBottom: SPACING.xs,
+    marginBottom: THEME.SPACING.xs,
   },
   declineButton: {
     paddingVertical: 10,
@@ -181,7 +181,7 @@ const styles = StyleSheet.create({
   declineText: {
     fontSize: 13,
     fontWeight: '600',
-    color: COLORS.textSecondary,
+    color: THEME.COLORS.textSecondary,
   },
 });
 

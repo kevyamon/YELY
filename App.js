@@ -31,6 +31,7 @@ import AppToast from './src/components/ui/AppToast';
 import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
 import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
+import GlobalErrorFallback from './src/components/ui/GlobalErrorFallback';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
 import SessionRecoveryOverlay from './src/components/ui/SessionRecoveryOverlay';
 
@@ -99,18 +100,6 @@ const linking = {
     },
   },
 };
-
-const GlobalErrorFallback = ({ error, resetError }) => (
-  <SafeAreaView style={styles.fallbackContainer}>
-    <Text style={styles.fallbackTitle}>Oups ! Erreur inattendue</Text>
-    <Text style={styles.fallbackText}>
-      L'application a rencontré un problème. Nos équipes techniques ont été automatiquement alertées.
-    </Text>
-    <TouchableOpacity onPress={resetError} style={styles.fallbackButton}>
-      <Text style={styles.fallbackButtonText}>Redémarrer Yély</Text>
-    </TouchableOpacity>
-  </SafeAreaView>
-);
 
 const AppContent = () => {
   const dispatch = useDispatch();
