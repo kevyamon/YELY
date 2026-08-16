@@ -4,7 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { Linking, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
+import { Linking, Platform, StyleSheet, TouchableOpacity, useColorScheme, View } from 'react-native';
 import { Text } from 'react-native-paper';
 
 import ENV from '../../config/env';
@@ -23,7 +23,12 @@ const DrawerMenu = ({ role, activeRoute, onNavigate, disabled }) => {
     if (route === 'SettingsModal') {
       setIsSettingsVisible(true);
     } else if (route === 'HelpModal') {
-      Linking.openURL(ENV.YT_LINK).catch(() => {});
+      const ytUrl = ENV.YT_LINK || 'https://youtube.com/@yelyvtc?si=Hw39D3GP4m4z7IM_';
+      if (Platform.OS === 'web' && typeof window !== 'undefined') {
+        window.open(ytUrl, '_blank', 'noopener,noreferrer');
+      } else {
+        Linking.openURL(ytUrl).catch(() => {});
+      }
     } else {
       requestAnimationFrame(() => {
         onNavigate(route);

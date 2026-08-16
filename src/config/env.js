@@ -16,7 +16,7 @@ const ENV = {
   FIREBASE_MESSAGING_SENDER_ID: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
   FIREBASE_APP_ID: process.env.EXPO_PUBLIC_FIREBASE_APP_ID,
   FIREBASE_VAPID_KEY: process.env.EXPO_PUBLIC_FIREBASE_VAPID_KEY,
-  YT_LINK: process.env.EXPO_PUBLIC_YT_LINK || process.env.YT_LINK || 'https://www.youtube.com',
+  YT_LINK: process.env.EXPO_PUBLIC_YT_LINK || process.env.YT_LINK || 'https://youtube.com/@yelyvtc?si=Hw39D3GP4m4z7IM_',
 };
 
 if (!ENV.API_URL) {

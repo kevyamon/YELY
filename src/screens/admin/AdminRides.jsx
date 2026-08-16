@@ -8,9 +8,10 @@ import { useGetAllRidesQuery, useToggleRideArchiveMutation } from '../../store/a
 import { useDispatch } from 'react-redux';
 import { showToast, showErrorToast } from '../../store/slices/uiSlice';
 import ConfirmModal from '../../components/ui/ConfirmModal';
+import RideDetailsModal from '../../components/admin/RideDetailsModal';
 import THEME from '../../theme/theme';
 
-const RideCard = ({ ride, onToggleArchive }) => {
+const RideCard = ({ ride, onToggleArchive, onSelectRide }) => {
   const date = new Date(ride.createdAt).toLocaleString('fr-FR', {
     day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
   });
@@ -24,10 +25,14 @@ const RideCard = ({ ride, onToggleArchive }) => {
   };
 
   const isArchived = ride.isArchivedByAdmin;
-  const price = ride.price || ride.proposedPrice || 0; 
+  const price = ride.deliveryPrice || ride.price || ride.proposedPrice || 0; 
 
   return (
-    <View style={[styles.card, isArchived && styles.cardArchived]}>
+    <TouchableOpacity 
+      style={[styles.card, isArchived && styles.cardArchived]}
+      onPress={() => onSelectRide && onSelectRide(ride)}
+      activeOpacity={0.85}
+    >
       <View style={styles.cardHeader}>
         <View style={styles.headerLeft}>
           <Ionicons name="time-outline" size={14} color={THEME.COLORS.textSecondary} />
@@ -83,7 +88,7 @@ const RideCard = ({ ride, onToggleArchive }) => {
       <View style={styles.cardFooter}>
         <Text style={styles.priceText}>{price} FCFA</Text>
       </View>
-    </View>
+    </TouchableOpacity>
   );
 };
 
@@ -95,7 +100,14 @@ const AdminRides = () => {
   const [isArchivedView, setIsArchivedView] = useState(false); 
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [confirmData, setConfirmData] = useState({ visible: false, rideId: null, action: '' });
+  const [selectedRide, setSelectedRide] = useState(null);
+  const [isDetailsVisible, setIsDetailsVisible] = useState(false);
   const dispatch = useDispatch();
+
+  const handleSelectRide = (ride) => {
+    setSelectedRide(ride);
+    setIsDetailsVisible(true);
+  };
 
   const { data, isLoading, refetch, isFetching } = useGetAllRidesQuery({ page, limit: 50, isArchived: isArchivedView });
   const [toggleArchive] = useToggleRideArchiveMutation();
@@ -160,7 +172,13 @@ const AdminRides = () => {
         ref={flatListRef}
         data={rides}
         keyExtractor={(item) => item._id.toString()}
-        renderItem={({ item }) => <RideCard ride={item} onToggleArchive={handleToggleArchive} />}
+        renderItem={({ item }) => (
+          <RideCard 
+            ride={item} 
+            onToggleArchive={handleToggleArchive} 
+            onSelectRide={handleSelectRide}
+          />
+        )}
         contentContainerStyle={styles.listContent}
         onScroll={handleScroll}
         scrollEventThrottle={16}
@@ -171,7 +189,7 @@ const AdminRides = () => {
           !isLoading && (
             <View style={styles.emptyContainer}>
               <Ionicons name={isArchivedView ? "archive-outline" : "car-sport-outline"} size={60} color={THEME.COLORS.textSecondary} />
-              <Text style={styles.emptyText}>Aucune course {isArchivedView ? 'archivee' : 'recente'}.</Text>
+              <Text style={styles.emptyText}>Aucune course {isArchivedView ? 'archivée' : 'récente'}.</Text>
             </View>
           )
         }
@@ -186,6 +204,12 @@ const AdminRides = () => {
         title="Confirmation"
         message={`Voulez-vous vraiment ${confirmData.action} cette course ?`}
         confirmText="Oui, confirmer"
+      />
+
+      <RideDetailsModal
+        visible={isDetailsVisible}
+        ride={selectedRide}
+        onClose={() => setIsDetailsVisible(false)}
       />
     </View>
   );
