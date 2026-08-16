@@ -21,7 +21,7 @@ const LocationDisclosureModal = ({ visible, onAccept, onDecline }) => {
           
           {/* ICON BADGE */}
           <View style={styles.iconCircle}>
-            <Ionicons name="location" size={36} color={COLORS.primary} />
+            <Ionicons name="location" size={36} color={THEME.COLORS.primary} />
           </View>
 
           {/* TITLE */}
@@ -38,21 +38,21 @@ const LocationDisclosureModal = ({ visible, onAccept, onDecline }) => {
           {/* BENEFITS LIST */}
           <View style={styles.pointsList}>
             <View style={styles.pointRow}>
-              <Ionicons name="car-sport" size={20} color={COLORS.primary} style={styles.pointIcon} />
+              <Ionicons name="car-sport" size={20} color={THEME.COLORS.primary} style={styles.pointIcon} />
               <Text style={styles.pointText}>
                 <Text style={styles.pointBold}>Attribution des courses :</Text> Recevez des demandes de trajet en continu lorsque vous êtes en service.
               </Text>
             </View>
 
             <View style={styles.pointRow}>
-              <Ionicons name="navigate-circle" size={20} color={COLORS.primary} style={styles.pointIcon} />
+              <Ionicons name="navigate-circle" size={20} color={THEME.COLORS.primary} style={styles.pointIcon} />
               <Text style={styles.pointText}>
                 <Text style={styles.pointBold}>Guidage en temps réel :</Text> Permettez aux clients de suivre l'arrivée de votre véhicule.
               </Text>
             </View>
 
             <View style={styles.pointRow}>
-              <Ionicons name="shield-checkmark" size={20} color={COLORS.success} style={styles.pointIcon} />
+              <Ionicons name="shield-checkmark" size={20} color={THEME.COLORS.success} style={styles.pointIcon} />
               <Text style={styles.pointText}>
                 <Text style={styles.pointBold}>Vie privée protégée :</Text> Aucune donnée n'est partagée avec des tiers ni utilisée pour de la publicité.
               </Text>
