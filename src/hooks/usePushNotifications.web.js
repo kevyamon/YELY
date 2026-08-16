@@ -1,17 +1,28 @@
 // src/hooks/usePushNotifications.web.js
-// GESTION FCM - Enregistrement, Synchronisation et Aiguillage Deep Link
+// GESTION FCM WEB / PWA - Enregistrement Service Worker, Synchronisation et Aiguillage
 // CSCSM Level: Bank Grade
 
 import Constants from 'expo-constants';
-import * as Device from 'expo-device';
-import * as Notifications from 'expo-notifications';
+import { getApps, initializeApp } from 'firebase/app';
+import { getMessaging, getToken, onMessage } from 'firebase/messaging';
 import { useEffect, useState } from 'react';
 import { Linking, Platform } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import { navigate } from '../navigation/navigationRef';
 import { useUpdateFcmTokenMutation } from '../store/api/usersApiSlice';
 import { selectCurrentUser, selectIsAuthenticated, updateSubscriptionStatus } from '../store/slices/authSlice';
-import { setAppUpdate } from '../store/slices/uiSlice';
+import { setAppUpdate, showToast } from '../store/slices/uiSlice';
+
+const firebaseConfig = {
+  apiKey: "AIzaSyCwMPVImCUPa3cfESlT5S2sb_-qS_aG9ao",
+  authDomain: "yely-27b1f.firebaseapp.com",
+  projectId: "yely-27b1f",
+  storageBucket: "yely-27b1f.firebasestorage.app",
+  messagingSenderId: "874118617681",
+  appId: "1:874118617681:web:09af9772397c3de0377670"
+};
+
+const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
 
 const isVersionOutdated = (current, latest) => {
   if (!current || !latest) return false;
@@ -27,14 +38,6 @@ const isVersionOutdated = (current, latest) => {
   return false; 
 };
 
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: false,
-  }),
-});
-
 const usePushNotifications = () => {
   const dispatch = useDispatch();
   const isAuthenticated = useSelector(selectIsAuthenticated);
@@ -44,82 +47,54 @@ const usePushNotifications = () => {
   const [pendingRouting, setPendingRouting] = useState(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || typeof window === 'undefined') return;
 
-    const registerForPushNotificationsAsync = async () => {
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'Général',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#D4AF37',
-          sound: 'push.wav',
-        });
-        await Notifications.setNotificationChannelAsync('yely_rides', {
-          name: 'Yely Courses',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#D4AF37',
-          sound: 'push.wav',
-        });
-      }
-
-      if (Device.isDevice) {
-        const { status: existingStatus } = await Notifications.getPermissionsAsync();
-        let finalStatus = existingStatus;
-        
-        if (existingStatus !== 'granted') {
-          const { status } = await Notifications.requestPermissionsAsync();
-          finalStatus = status;
-        }
-        
-        if (finalStatus !== 'granted') {
-          console.warn('[PUSH] Permission refusee par l\'utilisateur.');
+    const registerWebPush = async () => {
+      try {
+        if (!('Notification' in window) || !('serviceWorker' in navigator)) {
+          console.warn('[WEB PUSH] Les notifications Push ne sont pas supportées par ce navigateur.');
           return;
         }
 
-        try {
-          const tokenData = await Notifications.getDevicePushTokenAsync();
-          if (tokenData && tokenData.data) {
-            await updateFcmToken({ fcmToken: tokenData.data }).unwrap();
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          console.warn('[WEB PUSH] Permission de notification refusée par l\'utilisateur.');
+          return;
+        }
+
+        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const messaging = getMessaging(app);
+
+        const currentToken = await getToken(messaging, {
+          serviceWorkerRegistration: registration,
+        });
+
+        if (currentToken) {
+          console.log('[WEB PUSH] Token FCM Web généré avec succès');
+          await updateFcmToken({ fcmToken: currentToken }).unwrap();
+        }
+
+        // Réception en premier plan (Foreground)
+        onMessage(messaging, (payload) => {
+          if (payload.notification) {
+            dispatch(showToast({
+              type: 'info',
+              title: payload.notification.title || 'Notification Yély',
+              message: payload.notification.body || ''
+            }));
           }
-        } catch (error) {
-          console.warn('[PUSH] Erreur Token:', error);
-        }
-      }
-    };
+          if (payload.data && payload.data.type) {
+            setPendingRouting(payload.data);
+          }
+        });
 
-    registerForPushNotificationsAsync();
-  }, [isAuthenticated, updateFcmToken]);
-
-  useEffect(() => {
-    const checkColdBootNotification = async () => {
-      try {
-        const response = await Notifications.getLastNotificationResponseAsync();
-        if (response?.notification?.request?.content?.data?.type) {
-          setPendingRouting(response.notification.request.content.data);
-        }
       } catch (error) {
-        console.warn('[PUSH] Erreur lecture getLastNotificationResponseAsync', error);
+        console.warn('[WEB PUSH] Erreur enregistrement FCM Web :', error);
       }
     };
 
-    checkColdBootNotification();
-
-    const notificationListener = Notifications.addNotificationReceivedListener(() => {});
-
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification.request.content.data;
-      if (data && data.type) {
-        setPendingRouting(data);
-      }
-    });
-
-    return () => {
-      notificationListener.remove();
-      responseListener.remove();
-    };
-  }, []);
+    registerWebPush();
+  }, [isAuthenticated, updateFcmToken, dispatch]);
 
   useEffect(() => {
     if (isAuthenticated && user?.role && pendingRouting) {
@@ -144,14 +119,14 @@ const usePushNotifications = () => {
                 finalUrl = `https://${finalUrl}`;
               }
               
-              if (Platform.OS === 'web') {
+              if (Platform.OS === 'web' && typeof window !== 'undefined') {
                 window.location.href = finalUrl;
               } else {
                 Linking.canOpenURL(finalUrl).then(supported => {
                   if (supported) {
                     Linking.openURL(finalUrl);
                   }
-                }).catch(err => console.warn('[PUSH] Erreur redirection mise a jour:', err));
+                }).catch(() => {});
               }
             }
             break;
