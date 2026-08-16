@@ -23,11 +23,18 @@ export const MAFERE_KML_ZONE = [
   { latitude: 5.389355738252305, longitude: -3.051197610717613 }
 ];
 
+export const DEMO_PHONES = ['0100000001', '0100000002', '0100000003', '+2250100000001', '+2250100000002', '+2250100000003'];
+
 /**
  * 🧠 Algorithme de Ray-Casting :
  * LOGIQUE MÉTIER : Vérifie si un point GPS est dans le polygone.
+ * Comptes Démo Google Play : Toujours déclarés DANS LA ZONE pour examen fluide.
  */
-export const isLocationInMafereZone = (location) => {
+export const isLocationInMafereZone = (location, userPhone = null) => {
+  if (userPhone && DEMO_PHONES.includes(userPhone)) {
+    return true;
+  }
+
   if (!location || !location.latitude || !location.longitude) return false;
   
   const x = location.longitude;
