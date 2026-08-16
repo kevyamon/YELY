@@ -46,7 +46,7 @@ export const configureGoogleSignIn = () => {
 const signInWithGoogleBrowserFallback = async () => {
   try {
     const redirectUri = Linking.createURL('oauth-callback');
-    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&redirect_uri=${encodeURIComponent(redirectUri)}`;
+    const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?client_id=${GOOGLE_WEB_CLIENT_ID}&response_type=token&scope=email%20profile%20openid&prompt=select_account&redirect_uri=${encodeURIComponent(redirectUri)}`;
     
     const result = await WebBrowser.openAuthSessionAsync(authUrl, redirectUri);
     
@@ -97,6 +97,8 @@ export const signInWithGoogle = async () => {
 
   try {
     const { GoogleSignin } = sdk;
+    // Déconnexion préventive pour forcer l'affichage de la modale de choix de compte
+    await GoogleSignin.signOut().catch(() => {});
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     

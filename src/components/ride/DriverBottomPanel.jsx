@@ -24,7 +24,7 @@ const DriverBottomPanel = () => {
               <Text style={styles.statusTitle}>EN SERVICE</Text>
             </View>
             <Text style={styles.statusSubtitle}>
-              Recherche active de passagers a proximite...
+              Recherche active de passagers à proximité...
             </Text>
           </View>
           

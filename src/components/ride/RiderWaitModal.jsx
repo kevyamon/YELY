@@ -1,8 +1,7 @@
 // src/components/ride/RiderWaitModal.jsx
 import { Ionicons } from '@expo/vector-icons';
 import React, { useState } from 'react';
-import { ActivityIndicator, StyleSheet, TouchableOpacity, View } from 'react-native';
-import { Text } from 'react-native-paper';
+import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import useSearchExpansion from '../../hooks/useSearchExpansion';
 import { useCancelRideMutation, useFinalizeRideMutation } from '../../store/api/ridesApiSlice';
@@ -71,7 +70,7 @@ const RiderWaitModal = () => {
     try {
       await cancelRideApi({ 
         rideId: currentRide.rideId, 
-        reason: "Annulé par le passager" 
+        reason: "Annulée par le passager" 
       }).unwrap();
     } catch (error) {
       console.log("Erreur annulation :", error);
@@ -214,10 +213,11 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 20,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: THEME.COLORS.textPrimary,
     marginBottom: THEME.SPACING.sm,
     textAlign: 'center',
+    letterSpacing: 0.2,
   },
   subtitle: {
     fontSize: 14,
@@ -225,6 +225,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: THEME.SPACING.xl,
     paddingHorizontal: THEME.SPACING.md,
+    lineHeight: 22,
+    fontWeight: '500',
   },
   priceText: {
     fontSize: 32,

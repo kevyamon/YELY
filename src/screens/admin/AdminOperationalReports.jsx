@@ -16,15 +16,19 @@ import {
   TouchableOpacity,
   View
 } from 'react-native';
-import { useSelector } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import ENV from '../../config/env';
 import GoldButton from '../../components/ui/GoldButton';
+import SecureStorageAdapter from '../../store/secureStoreAdapter';
+import { selectToken } from '../../store/slices/authSlice';
+import { showErrorToast } from '../../store/slices/uiSlice';
 import THEME, { BORDERS, COLORS, FONTS, SHADOWS, SPACING } from '../../theme/theme';
 
 export default function AdminOperationalReports() {
   const navigation = useNavigation();
-  const accessToken = useSelector((state) => state.auth.accessToken);
+  const dispatch = useDispatch();
+  const reduxToken = useSelector(selectToken);
 
   const currentYear = new Date().getFullYear();
   const [selectedPeriod, setSelectedPeriod] = useState('month');
@@ -43,8 +47,18 @@ export default function AdminOperationalReports() {
   const handleGenerateReport = async () => {
     setIsLoading(true);
     try {
+      let finalToken = reduxToken;
+      if (!finalToken) {
+        finalToken = await SecureStorageAdapter.getItem('token') || await SecureStorageAdapter.getItem('accessToken');
+      }
+
+      if (!finalToken) {
+        dispatch(showErrorToast({ title: "Session expirée", message: "Veuillez vous reconnecter pour générer un rapport." }));
+        return;
+      }
+
       const dateParam = `${selectedYear}-06-01`; // Date de référence pour l'année
-      const reportUrl = `${ENV.API_URL}/admin/reports/operational?period=${selectedPeriod}&date=${dateParam}&token=${encodeURIComponent(accessToken)}`;
+      const reportUrl = `${ENV.API_URL}/admin/reports/operational?period=${selectedPeriod}&date=${dateParam}&token=${encodeURIComponent(finalToken)}`;
 
       if (Platform.OS === 'web') {
         window.open(reportUrl, '_blank');
@@ -53,6 +67,7 @@ export default function AdminOperationalReports() {
       }
     } catch (err) {
       console.error("[Report Error]:", err);
+      dispatch(showErrorToast({ title: "Erreur", message: "Impossible d'ouvrir le rapport." }));
     } finally {
       setIsLoading(false);
     }

@@ -68,7 +68,7 @@ const RiderBottomPanel = ({
          </View>
       ) : (
          <View style={styles.emptyBox}>
-           <Text style={styles.emptyText}>Selectionnez une destination</Text>
+           <Text style={styles.emptyText}>Sélectionnez une destination</Text>
          </View>
       )}
 

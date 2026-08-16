@@ -25,8 +25,8 @@ const EmergencyResetButton = ({ style }) => {
       setTimeout(() => {
         // Remplacement de setCurrentRide(null) par la bonne fonction de purge
         dispatch(clearCurrentRide());
-        // Utilisation du bon Toast pour un succes
-        dispatch(showSuccessToast({ title: 'Succes', message: 'Votre session a ete reinitialisee.' }));
+        // Utilisation du bon Toast pour un succès
+        dispatch(showSuccessToast({ title: 'Succès', message: 'Votre session a été réinitialisée.' }));
       }, 300);
 
     } catch (error) {
@@ -62,7 +62,7 @@ const EmergencyResetButton = ({ style }) => {
             
             <Text style={styles.modalTitle}>Nettoyage d'urgence</Text>
             <Text style={styles.modalText}>
-              Cette action va forcer l'annulation de toutes vos courses en attente et liberer les chauffeurs. A utiliser uniquement si l'application est bloquee.
+              Cette action va forcer l'annulation de toutes vos courses en attente et libérer les chauffeurs. À utiliser uniquement si l'application est bloquée.
             </Text>
 
             <View style={styles.buttonRow}>

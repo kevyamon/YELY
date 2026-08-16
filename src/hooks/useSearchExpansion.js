@@ -30,17 +30,17 @@ const useSearchExpansion = (initialRadius = 1000, isActive = false) => {
   }, [isActive]);
 
   let title = "Recherche de chauffeurs...";
-  let subtitle = "Nous interrogeons les vehicules a proximite.";
+  let subtitle = "Nous interrogeons les véhicules à proximité.";
 
   if (radius >= 2500) {
     title = "Recherche maximale...";
-    subtitle = "Derniere tentative dans la zone globale...";
+    subtitle = "Dernière tentative dans la zone globale...";
   } else if (radius >= 1900) {
-    title = "Recherche tres eloignee...";
+    title = "Recherche très éloignée...";
     subtitle = "Encore un instant, nous cherchons au plus loin...";
   } else if (radius >= 1600) {
-    title = "Recherche elargie...";
-    subtitle = "Recherche de chauffeurs plus eloignes...";
+    title = "Recherche élargie...";
+    subtitle = "Recherche de chauffeurs plus éloignés...";
   } else if (radius >= 1300) {
     title = "Agrandissement du radar...";
     subtitle = "Extension de la zone de recherche...";
