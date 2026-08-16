@@ -22,9 +22,9 @@ const usePwaAutoUpdate = () => {
           dispatch(
             setAppUpdate({
               isAvailable: true,
-              latestVersion: 'PWA Web',
+              latestVersion: 'Web PWA',
               mandatoryUpdate: false,
-              isOta: true,
+              isOta: false,
               isPwaReady: true
             })
           );
@@ -41,9 +41,9 @@ const usePwaAutoUpdate = () => {
               dispatch(
                 setAppUpdate({
                   isAvailable: true,
-                  latestVersion: 'PWA Web',
+                  latestVersion: 'Web PWA',
                   mandatoryUpdate: false,
-                  isOta: true,
+                  isOta: false,
                   isPwaReady: true
                 })
               );

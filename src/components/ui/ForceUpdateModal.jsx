@@ -101,6 +101,8 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
     // LOGIQUE CLASSIQUE PWA / REDIRECTION STORE
     if (Platform.OS === 'web') {
       if (typeof window !== 'undefined') {
+        setIsUpdating(true);
+        setStatusText("Application de la nouvelle version...");
         if ('serviceWorker' in navigator) {
           try {
             const reg = await navigator.serviceWorker.getRegistration();
@@ -108,8 +110,13 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
               reg.waiting.postMessage({ type: 'SKIP_WAITING' });
             }
           } catch (e) {}
+          navigator.serviceWorker.addEventListener('controllerchange', () => {
+            window.location.reload();
+          }, { once: true });
         }
-        window.location.reload();
+        setTimeout(() => {
+          window.location.reload();
+        }, 600);
       }
     } else {
       if (updateUrl) {
@@ -125,7 +132,7 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
             await Linking.openURL(finalUrl); 
           }
         } catch (error) {
-          console.warn("Erreur lors de l'ouverture du lien de mise a jour:", error);
+          console.warn("Erreur lors de l'ouverture du lien de mise à jour:", error);
         }
       }
     }
@@ -155,42 +162,39 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
           {isUpdating ? (
             <View style={styles.loaderContainer}>
               <View style={styles.iconContainer}>
-                <Ionicons name="cloud-download" size={50} color={THEME.COLORS.background} />
+                <Ionicons name="cloud-download" size={48} color="#000000" />
               </View>
               <Text style={styles.title}>Mise à jour en cours</Text>
               <Text style={styles.statusText}>{statusText}</Text>
-              <View style={styles.loadingSpinnerWrapper}>
-                <Text style={styles.pulseDot}>⚡</Text>
-              </View>
             </View>
           ) : (
             <>
               <View style={styles.iconContainer}>
-                <Ionicons name="cloud-download-outline" size={50} color={THEME.COLORS.background} />
+                <Ionicons name="cloud-download-outline" size={48} color="#000000" />
               </View>
               
-              <Text style={styles.title}>Mise a jour requise</Text>
+              <Text style={styles.title}>Mise à jour requise</Text>
               <Text style={styles.version}>Version {latestVersion} disponible</Text>
               
               <Text style={styles.message}>
-                Une nouvelle version de Yely est disponible. {isOta ? "Une installation rapide sans quitter l'app est prete." : (Platform.OS === 'web' ? 'Rechargez la page' : 'Telechargez-la')} pour profiter des dernieres fonctionnalites.
+                Une nouvelle version de Yély est disponible. {isOta ? "Une installation rapide sans quitter l'app est prête." : (Platform.OS === 'web' ? "Une nouvelle version optimisée est prête." : "Téléchargez-la")} pour profiter des dernières fonctionnalités.
               </Text>
 
-              <TouchableOpacity style={styles.updateButton} onPress={handleUpdate}>
+              <TouchableOpacity style={styles.updateButton} onPress={handleUpdate} activeOpacity={0.8}>
                 <Text style={styles.updateButtonText}>
-                  {isOta ? 'Installer la mise à jour (OTA)' : (Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre a jour maintenant')}
+                  {isOta ? 'Installer la mise à jour (OTA)' : (Platform.OS === 'web' ? 'Recharger l\'application' : 'Mettre à jour maintenant')}
                 </Text>
               </TouchableOpacity>
 
               {!mandatoryUpdate && !isOta && (
-                <TouchableOpacity style={styles.laterButton} onPress={handleRemindLater}>
-                  <Text style={styles.laterButtonText}>Me rappeler dans 2h</Text>
+                <TouchableOpacity style={styles.laterButton} onPress={handleRemindLater} activeOpacity={0.7}>
+                  <Text style={styles.laterButtonText}>Me rappeler plus tard</Text>
                 </TouchableOpacity>
               )}
             </>
           )}
           
-          <Text style={styles.teamText}>DevTeam</Text>
+          <Text style={styles.teamText}>Équipe Technique Yély</Text>
         </View>
       </View>
     </Modal>
@@ -198,21 +202,19 @@ const ForceUpdateModal = ({ visible, latestVersion, mandatoryUpdate, updateUrl, 
 };
 
 const styles = StyleSheet.create({
-  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.6)' },
-  card: { width: '85%', backgroundColor: THEME.COLORS.background, borderRadius: 24, padding: 30, alignItems: 'center', elevation: 10, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.3, shadowRadius: 20 },
-  iconContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: THEME.COLORS.primary, justifyContent: 'center', alignItems: 'center', marginBottom: 20, marginTop: -60, borderWidth: 4, borderColor: THEME.COLORS.background },
-  title: { fontSize: 22, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginBottom: 5, textAlign: 'center' },
-  version: { fontSize: 14, color: THEME.COLORS.primary, fontWeight: 'bold', marginBottom: 15 },
-  message: { fontSize: 15, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 22, marginBottom: 30 },
-  updateButton: { width: '100%', backgroundColor: THEME.COLORS.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginBottom: 15 },
-  updateButtonText: { color: THEME.COLORS.background, fontSize: 16, fontWeight: 'bold' },
-  laterButton: { paddingVertical: 10 },
-  laterButtonText: { color: THEME.COLORS.textTertiary, fontSize: 14, fontWeight: '500' },
-  teamText: { marginTop: 20, fontSize: 10, color: THEME.COLORS.textTertiary, textTransform: 'uppercase', letterSpacing: 1 },
-  statusText: { fontSize: 14, color: THEME.COLORS.primary, fontWeight: 'bold', marginTop: 10, textAlign: 'center', lineHeight: 22 },
+  overlay: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.75)' },
+  card: { width: '85%', maxWidth: 380, backgroundColor: THEME.COLORS.background, borderRadius: 24, padding: 26, alignItems: 'center', borderWidth: 1.5, borderColor: 'rgba(212, 175, 55, 0.3)', elevation: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.4, shadowRadius: 20 },
+  iconContainer: { width: 76, height: 76, borderRadius: 38, backgroundColor: THEME.COLORS.champagneGold, justifyContent: 'center', alignItems: 'center', marginBottom: 16, marginTop: -50, borderWidth: 4, borderColor: THEME.COLORS.background },
+  title: { fontSize: 21, fontWeight: '800', color: THEME.COLORS.textPrimary, marginBottom: 4, textAlign: 'center' },
+  version: { fontSize: 13, color: THEME.COLORS.champagneGold, fontWeight: '700', marginBottom: 14 },
+  message: { fontSize: 14, color: THEME.COLORS.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  updateButton: { width: '100%', backgroundColor: THEME.COLORS.champagneGold, paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 12 },
+  updateButtonText: { color: '#000000', fontSize: 15, fontWeight: '800' },
+  laterButton: { paddingVertical: 8 },
+  laterButtonText: { color: THEME.COLORS.textTertiary, fontSize: 13, fontWeight: '600' },
+  teamText: { marginTop: 18, fontSize: 11, color: THEME.COLORS.textTertiary, textTransform: 'uppercase', letterSpacing: 1 },
+  statusText: { fontSize: 13, color: THEME.COLORS.champagneGold, fontWeight: '700', marginTop: 10, textAlign: 'center', lineHeight: 20 },
   loaderContainer: { alignItems: 'center', width: '100%' },
-  loadingSpinnerWrapper: { marginTop: 25, marginBottom: 15, alignItems: 'center', justifyContent: 'center' },
-  pulseDot: { fontSize: 32, transform: [{ scale: 1.2 }] }
 });
 
 export default ForceUpdateModal;

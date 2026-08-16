@@ -27,6 +27,13 @@ self.addEventListener('install', (event) => {
   );
 });
 
+// ─── GESTION DES MESSAGES DU CLIENT (SKIP_WAITING) ───────────────────────────
+self.addEventListener('message', (event) => {
+  if (event.data && (event.data.type === 'SKIP_WAITING' || event.data === 'skipWaiting')) {
+    self.skipWaiting();
+  }
+});
+
 // ─── 2. ACTIVATION & NETTOYAGE DES ANCIENS CACHES ────────────────────────────
 self.addEventListener('activate', (event) => {
   event.waitUntil(
