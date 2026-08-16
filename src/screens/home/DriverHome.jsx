@@ -17,9 +17,8 @@ import DriverRequestModal from '../../components/ride/DriverRequestModal';
 import DriverRideOverlay from '../../components/ride/DriverRideOverlay';
 import GlassCard from '../../components/ui/GlassCard';
 import GlobalSkeleton from '../../components/ui/GlobalSkeleton';
-import GoldButton from '../../components/ui/GoldButton';
-import SmartFooter from '../../components/ui/SmartFooter';
-import SmartHeader from '../../components/ui/SmartHeader';
+import * as Location from 'expo-location';
+import LocationDisclosureModal from '../../components/ride/LocationDisclosureModal';
 import { VerificationBanner, SubscriptionBanner } from '../../components/driver/DriverBanners';
 
 import useDriverLifecycle from '../../hooks/useDriverLifecycle';
@@ -76,9 +75,37 @@ const DriverHome = ({ navigation, route }) => {
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const subStatusRedux = useSelector(selectSubscriptionStatus); 
-  const promoMode = useSelector(selectPromoMode);
-
   const isRideActive = currentRide && ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
+  const [isDisclosureVisible, setIsDisclosureVisible] = useState(false);
+
+  useEffect(() => {
+    const checkBackgroundPermission = async () => {
+      try {
+        const hasSeenDisclosure = await AsyncStorage.getItem('@yely_location_disclosure_seen');
+        if (!hasSeenDisclosure) {
+          const { status } = await Location.getBackgroundPermissionsAsync();
+          if (status !== 'granted') {
+            setIsDisclosureVisible(true);
+          }
+        }
+      } catch (e) {}
+    };
+    if (isFocused && user?.role === 'driver') {
+      checkBackgroundPermission();
+    }
+  }, [isFocused, user?.role]);
+
+  const handleAcceptDisclosure = async () => {
+    setIsDisclosureVisible(false);
+    try {
+      await AsyncStorage.setItem('@yely_location_disclosure_seen', 'true');
+      await Location.requestBackgroundPermissionsAsync();
+    } catch (e) {}
+  };
+
+  const handleDeclineDisclosure = () => {
+    setIsDisclosureVisible(false);
+  };
 
   const { 
     data: subscriptionData, 
@@ -314,6 +341,12 @@ const DriverHome = ({ navigation, route }) => {
         poi={selectedPoi}
         onClose={() => setSelectedPoi(null)}
         readOnly={true} 
+      />
+
+      <LocationDisclosureModal
+        visible={isDisclosureVisible}
+        onAccept={handleAcceptDisclosure}
+        onDecline={handleDeclineDisclosure}
       />
       
 

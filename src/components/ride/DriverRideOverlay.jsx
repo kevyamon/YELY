@@ -36,6 +36,7 @@ import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 import { calculateDistanceInMeters } from '../../utils/distanceUtils';
 import RideRouteDisplay from './RideRouteDisplay';
+import DeliveryCheckpointsCarousel from './DeliveryCheckpointsCarousel';
 
 const { width } = Dimensions.get('window');
 
@@ -223,23 +224,51 @@ const DriverRideOverlay = () => {
     ? `Validation automatique à proximité (${Math.round(distanceToTarget)}m)`
     : bannerConfig.subLabel || null;
 
-  const handleCallRider = () => {
-    const riderId = currentRide.rider?._id || currentRide.rider || currentRide.riderId;
-    if (!riderId) {
-      dispatch(showErrorToast({ title: 'Erreur', message: 'Client introuvable pour l\'appel.' }));
+  // Détection du vendeur actif pendant la phase de ramassage des colis
+  const activeCollectionPoint = useMemo(() => {
+    if (!isDelivery || isOngoing) return null;
+    return currentRide.collectionPoints?.find((p) => !p.isCollected) || null;
+  }, [isDelivery, isOngoing, currentRide.collectionPoints]);
+
+  // Contact actif : Vendeur concerné pendant la collecte, sinon Client destinataire
+  const contactTarget = useMemo(() => {
+    if (activeCollectionPoint && activeCollectionPoint.seller) {
+      const sellerObj = activeCollectionPoint.seller;
+      return {
+        id: sellerObj._id || sellerObj.id || sellerObj,
+        name: sellerObj.name || 'Vendeur Yely',
+        avatar: sellerObj.profilePicture || '',
+        phone: sellerObj.phone || 'Masqué',
+        subtitle: 'Vendeur (Point de collecte)',
+        isSeller: true,
+      };
+    }
+    return {
+      id: currentRide.rider?._id || currentRide.rider || currentRide.riderId,
+      name: currentRide.riderName || 'Client Yely',
+      avatar: currentRide.riderProfilePicture || '',
+      phone: currentRide.riderPhone || 'Masqué',
+      subtitle: isDelivery ? 'Client destinataire' : 'Client vérifié',
+      isSeller: false,
+    };
+  }, [activeCollectionPoint, currentRide, isDelivery]);
+
+  const handleCallTarget = () => {
+    if (!contactTarget.id) {
+      dispatch(showErrorToast({ title: 'Erreur', message: 'Contact introuvable pour l\'appel.' }));
       return;
     }
     
     const payload = {
-      targetUserId: riderId.toString(),
-      targetName: currentRide.riderName || 'Client Yely',
-      targetAvatar: currentRide.riderProfilePicture || '',
-      targetPhone: currentRide.riderPhone || 'Masqué',
+      targetUserId: contactTarget.id.toString(),
+      targetName: contactTarget.name,
+      targetAvatar: contactTarget.avatar,
+      targetPhone: contactTarget.phone,
     };
     
     socketService.emit('voice_call_request', {
       targetUserId: payload.targetUserId,
-      callerName: currentUser?.name || 'Chauffeur',
+      callerName: currentUser?.name || (isDelivery ? 'Livreur Yely' : 'Chauffeur Yely'),
       callerAvatar: currentUser?.profilePicture || '',
       callerPhone: currentUser?.phone || 'Masqué',
       rideId: currentRide._id || currentRide.id || currentRide.rideId
@@ -391,69 +420,46 @@ const DriverRideOverlay = () => {
 
         <View style={styles.riderInfoCard}>
           <View style={styles.avatarPlaceholder}>
-            {currentRide.riderProfilePicture ? (
+            {contactTarget.avatar ? (
               <Image 
-                source={{ uri: currentRide.riderProfilePicture }} 
+                source={{ uri: contactTarget.avatar }} 
                 style={styles.avatarImage} 
               />
             ) : (
-              <Ionicons name="person" size={32} color={THEME.COLORS.champagneGold} />
+              <Ionicons 
+                name={contactTarget.isSeller ? "storefront" : "person"} 
+                size={30} 
+                color={THEME.COLORS.champagneGold} 
+              />
             )}
           </View>
 
           <View style={styles.riderDetails}>
-            <Text style={styles.riderName}>{currentRide.riderName || 'Client Yely'}</Text>
+            <Text style={styles.riderName}>{contactTarget.name}</Text>
             <View style={styles.ratingBadge}>
-              <Ionicons name="star" size={12} color={THEME.COLORS.champagneGold} />
-              <Text style={styles.ratingText}>Client vérifié</Text>
+              <Ionicons 
+                name={contactTarget.isSeller ? "cube" : "star"} 
+                size={12} 
+                color={THEME.COLORS.champagneGold} 
+              />
+              <Text style={styles.ratingText}>{contactTarget.subtitle}</Text>
             </View>
           </View>
 
           <View style={styles.topActionsGroup}>
-            <TouchableOpacity style={styles.callButton} onPress={handleCallRider}>
+            <TouchableOpacity style={styles.callButton} onPress={handleCallTarget}>
               <Ionicons name="call" size={22} color="#FFF" />
             </TouchableOpacity>
           </View>
         </View>
 
         {isDelivery && !isOngoing && (
-          <View style={styles.checkpointsContainer}>
-            <Text style={styles.checkpointsHeader}>Points de collecte vendeur :</Text>
-            {currentRide.collectionPoints?.map((item, idx) => {
-              const isPointCollected = item.isCollected;
-              const sId = item.seller?._id || item.seller;
-              
-              return (
-                <View key={idx} style={[styles.checkpointCard, isPointCollected && styles.checkpointCardCollected]}>
-                  <View style={styles.checkpointLeft}>
-                    <Ionicons 
-                      name={isPointCollected ? "checkmark-circle" : "cube-outline"} 
-                      size={20} 
-                      color={isPointCollected ? THEME.COLORS.success : THEME.COLORS.champagneGold} 
-                    />
-                    <View style={styles.checkpointTexts}>
-                      <Text style={[styles.checkpointAddress, isPointCollected && styles.checkpointAddressCollected]} numberOfLines={2}>
-                        {item.address || 'Adresse vendeur'}
-                      </Text>
-                      <Text style={[styles.checkpointStatus, isPointCollected && { color: THEME.COLORS.success }]}>
-                        {isPointCollected ? 'Collecté' : 'À récupérer'}
-                      </Text>
-                    </View>
-                  </View>
-                  
-                  {!isPointCollected && (
-                    <TouchableOpacity 
-                      style={styles.collectButtonAction} 
-                      onPress={() => handleCollectPoint(sId)}
-                      disabled={isCollectingPoint}
-                    >
-                      <Text style={styles.collectButtonText}>Valider</Text>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              );
-            })}
-          </View>
+          <DeliveryCheckpointsCarousel
+            collectionPoints={currentRide.collectionPoints}
+            onCollectPoint={handleCollectPoint}
+            isCollectingPoint={isCollectingPoint}
+            onOpenGPS={handleOpenGPS}
+          />
         )}
 
         <RideRouteDisplay
@@ -490,11 +496,18 @@ const DriverRideOverlay = () => {
           ) : null}
         </View>
 
-        {/* Affichage du prix de la course */}
+        {/* Affichage du prix de la course / gain de livraison */}
         <View style={styles.priceDisplayWrapper}>
-          <Text style={styles.priceLabel}>Montant de la course</Text>
+          <View style={styles.priceLeftCol}>
+            <Text style={styles.priceLabel}>
+              {isDelivery ? "Gain Total Livraison" : "Montant de la course"}
+            </Text>
+            {isDelivery && (
+              <Text style={styles.priceSubLabel}>Tous points de collecte inclus</Text>
+            )}
+          </View>
           <Text style={styles.priceValue}>
-            {currentRide.proposedPrice || currentRide.price} FCFA
+            {currentRide.deliveryPrice || currentRide.proposedPrice || currentRide.price} FCFA
           </Text>
         </View>
 
@@ -709,14 +722,23 @@ const styles = StyleSheet.create({
     borderTopColor: THEME.COLORS.border,
     marginTop: THEME.SPACING.sm,
   },
+  priceLeftCol: {
+    flex: 1,
+  },
   priceLabel: {
     fontSize: 13,
     color: THEME.COLORS.textPrimary,
     fontWeight: '800',
     textTransform: 'uppercase',
   },
+  priceSubLabel: {
+    fontSize: 11,
+    color: THEME.COLORS.textSecondary,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   priceValue: {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: '950',
     color: THEME.COLORS.champagneGold,
   },
