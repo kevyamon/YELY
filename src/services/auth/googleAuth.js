@@ -12,17 +12,14 @@ export const GOOGLE_WEB_CLIENT_ID = '874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6
 
 let isConfigured = false;
 
-// Helper de chargement dynamique ultra-sécurisé (Vérification NativeModules prioritaire)
+// Helper de chargement dynamique ultra-sécurisé (Compatible React Native TurboModules & New Arch)
 const getGoogleSigninModule = () => {
   if (Platform.OS === 'web') return null;
-  // Ne JAMAIS exécuter require() si le binaire natif RNGoogleSignin est absent (Expo Go)
-  if (!NativeModules || !NativeModules.RNGoogleSignin) {
-    return null;
-  }
   try {
-    return require('@react-native-google-signin/google-signin');
+    const GoogleSigninModule = require('@react-native-google-signin/google-signin');
+    return GoogleSigninModule;
   } catch (err) {
-    console.warn('[GoogleAuth] Impossible d\'importer @react-native-google-signin/google-signin:', err);
+    console.warn('[GoogleAuth] Chargement natif impossible (Expo Go):', err?.message || err);
     return null;
   }
 };
@@ -86,8 +83,8 @@ export const signInWithGoogle = async () => {
 
   const sdk = getGoogleSigninModule();
 
-  // SECOURS EXPO GO : Redirection WebBrowser avec Linking.createURL (Dépendance native valide)
-  if (!sdk || !NativeModules.RNGoogleSignin) {
+  // SECOURS UNIQUEMENT SUR EXPO GO (Quand le module natif n'est pas compilé)
+  if (!sdk || !sdk.GoogleSignin) {
     return signInWithGoogleBrowserFallback();
   }
 
@@ -97,8 +94,6 @@ export const signInWithGoogle = async () => {
 
   try {
     const { GoogleSignin } = sdk;
-    // Déconnexion préventive pour forcer l'affichage de la modale de choix de compte
-    await GoogleSignin.signOut().catch(() => {});
     await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
     const response = await GoogleSignin.signIn();
     
@@ -123,19 +118,7 @@ export const signInWithGoogle = async () => {
     const sdk = getGoogleSigninModule();
     const statusCodes = sdk?.statusCodes || {};
 
-    const isDeveloperError = 
-      error.code === '10' || 
-      error.code === 10 || 
-      (error.message && error.message.includes('DEVELOPER_ERROR')) ||
-      (error.code && error.code.toString() === '10');
-
-    // Fallback automatique si erreur de configuration développeur détectée
-    if (isDeveloperError) {
-      console.warn('[GoogleAuth] DEVELOPER_ERROR détecté. Bascule vers le fallback WebBrowser...');
-      return signInWithGoogleBrowserFallback();
-    }
-
-    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+    if (error.code === statusCodes.SIGN_IN_CANCELLED || error.code === '12501') {
       return { cancelled: true };
     }
     if (error.code === statusCodes.IN_PROGRESS) {
@@ -144,7 +127,10 @@ export const signInWithGoogle = async () => {
     if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
       throw new Error("Google Play Services indisponibles ou obsolètes sur cet appareil.");
     }
-    throw error;
+
+    // Si une erreur survient en natif, lever une erreur claire sans forcer de pop-up navigateur invalide
+    console.error('[GoogleAuth Native Error]', error);
+    throw new Error("Impossible de finaliser la connexion Google. Veuillez réessayer.");
   }
 };
 
