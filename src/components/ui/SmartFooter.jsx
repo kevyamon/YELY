@@ -34,12 +34,12 @@ const SmartFooter = ({
 
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
 
-  // Initialisation par défaut sur le forfait "echo" (Standard retiré)
+  // Initialisation sécurisée sur le forfait "echo" sans écraser le tarif calculé
   useEffect(() => {
-    if (isRider && onSelectVehicle) {
+    if (isRider && onSelectVehicle && !selectedVehicle) {
       onSelectVehicle({ type: 'echo', id: '1', name: 'Partagé' });
     }
-  }, [isRider, onSelectVehicle]);
+  }, [isRider, onSelectVehicle, selectedVehicle]);
 
   const paddingBottom = Math.max(insets.bottom + 20, THEME.SPACING.xl);
   const isButtonDisabled = isEstimating || !isUserInZone;

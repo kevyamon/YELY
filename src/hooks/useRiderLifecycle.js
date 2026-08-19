@@ -152,10 +152,18 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
   };
 
+  // SYNCHRONISATION STRICTE : Garantir que le tarif dans selectedVehicle corresponde exactement aux véhicules calculés
   useEffect(() => {
-    if (destination && displayVehicles?.length > 0 && !selectedVehicle) {
-      const echoOption = displayVehicles.find(v => v.type === 'echo');
-      setSelectedVehicle(echoOption || displayVehicles[0]);
+    if (destination && displayVehicles?.length > 0) {
+      if (!selectedVehicle) {
+        const echoOption = displayVehicles.find(v => v.type === 'echo');
+        setSelectedVehicle(echoOption || displayVehicles[0]);
+      } else {
+        const matchingVehicle = displayVehicles.find(v => v.type === selectedVehicle.type);
+        if (matchingVehicle && (matchingVehicle.price !== selectedVehicle.price || matchingVehicle.name !== selectedVehicle.name)) {
+          setSelectedVehicle(matchingVehicle);
+        }
+      }
     }
   }, [destination, displayVehicles, selectedVehicle]);
 

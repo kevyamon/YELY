@@ -116,6 +116,25 @@ const useGeolocation = (options = {}) => {
     
     if (!granted) return;
 
+    // AMÉLIORATION INSTANTANÉE (0ms lag) : Charger immédiatement la dernière position connue
+    try {
+      const fastLoc = await Location.getLastKnownPositionAsync({});
+      if (fastLoc?.coords && mounted && !lastValidLocationRef.current) {
+        const fastCoords = {
+          latitude: fastLoc.coords.latitude,
+          longitude: fastLoc.coords.longitude,
+          heading: fastLoc.coords.heading || 0,
+          speed: 0,
+          accuracy: fastLoc.coords.accuracy || 50,
+          timestamp: Date.now(),
+        };
+        lastValidLocationRef.current = fastCoords;
+        setLocation(fastCoords);
+        dispatch(updateCoords(fastCoords));
+        setIsLoading(false);
+      }
+    } catch (fastErr) {}
+
     const initialCoords = await getCurrentPosition();
 
     if (!initialCoords) {
