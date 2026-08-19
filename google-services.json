@@ -22,6 +22,22 @@
           }
         },
         {
+          "client_id": "874118617681-2462ochhka07sdg57l3aais5i2kcvvbh.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yely.app",
+            "certificate_hash": "928b1b8c26205794e3d8dcfd17c5fc3ba95e1f0e"
+          }
+        },
+        {
+          "client_id": "874118617681-ouemqo8ajfg4rf8i8nhj5o9mmb4i4h4j.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.yely.app",
+            "certificate_hash": "e6df1029f6642206d526f545a933d3e01c952f96"
+          }
+        },
+        {
           "client_id": "874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com",
           "client_type": 3
         }
