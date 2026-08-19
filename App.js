@@ -183,51 +183,11 @@ const AppContent = () => {
   );
 };
 
-const OtaDownloadScreen = () => (
-  <View style={styles.otaContainer}>
-    <Text style={styles.otaTitle}>Mise à jour en cours</Text>
-    <ActivityIndicator size="large" color="#D4AF37" style={styles.otaSpinner} />
-    <Text style={styles.otaSubtitle}>Yely se refait une beauté. Veuillez patienter quelques instants...</Text>
-  </View>
-);
-
-const triggerBackgroundOtaCheck = async () => {
-  if (Platform.OS === 'web') return;
-  try {
-    const update = await Updates.checkForUpdateAsync();
-    if (update.isAvailable) {
-      // Téléchargement silencieux en tâche de fond pour le prochain démarrage
-      await Updates.fetchUpdateAsync();
-      console.info("[OTA Background] Nouvelle mise à jour téléchargée avec succès pour le prochain démarrage.");
-    }
-  } catch (error) {
-    console.warn("[OTA Background Check] Échec silencieux:", error.message);
-  }
-};
-
 const App = () => {
-  const [isDownloadingOta, setIsDownloadingOta] = useState(false);
-  const [showOtaModal, setShowOtaModal] = useState(false);
   const colorScheme = useColorScheme();
 
-  // Mettre à jour synchrone le thème et toutes les feuilles de style au rendu
   applyThemeUpdate(colorScheme);
 
-  const checkOtaSilent = async () => {
-    if (Platform.OS === 'web') return;
-    try {
-      const update = await Updates.checkForUpdateAsync();
-      if (update.isAvailable) {
-        // Téléchargement en tâche de fond
-        await Updates.fetchUpdateAsync();
-        setShowOtaModal(true);
-      }
-    } catch (err) {
-      console.log("[OTA Background Check] Skip:", err.message);
-    }
-  };
-
-  // Mettre à jour dynamiquement les couleurs du système (StatusBar, NavigationBar, SystemUI)
   useEffect(() => {
     if (Platform.OS !== 'web') {
       SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
@@ -247,64 +207,15 @@ const App = () => {
 
   useEffect(() => {
     const initApp = async () => {
-      // 🚀 MISE A JOUR OTA SYSTEM - ULTRA-FLUIDE
-      if (Platform.OS !== 'web') {
-        try {
-          // Si le démarrage est un simple reload de changement de thème, on démarre instantanément sans requêtes réseau
-          const isThemeReload = await AsyncStorage.getItem('theme_reload');
-          if (isThemeReload === 'true') {
-            await AsyncStorage.removeItem('theme_reload');
-            await NativeSplashScreen.hideAsync();
-            return;
-          }
-
-          // Cooldown de 6 heures sur la vérification OTA bloquante au boot
-          const lastOtaCheckStr = await AsyncStorage.getItem('last_ota_check');
-          const lastOtaCheck = lastOtaCheckStr ? Number(lastOtaCheckStr) : 0;
-          const timeSinceLastCheck = Date.now() - lastOtaCheck;
-
-          if (timeSinceLastCheck < 6 * 60 * 60 * 1000) {
-            // Moins de 6 heures se sont écoulées, on démarre instantanément
-            await NativeSplashScreen.hideAsync();
-            
-            // Lancement de la vérification et du téléchargement OTA en tâche de fond
-            checkOtaSilent();
-            return;
-          }
-
-          // Si la vérification réseau prend plus de 2.2s, on démarre direct pour éviter l'attente
-          const checkPromise = Updates.checkForUpdateAsync();
-          const timeoutPromise = new Promise((_, reject) => 
-            setTimeout(() => reject(new Error('TIMEOUT')), 2200)
-          );
-          
-          const update = await Promise.race([checkPromise, timeoutPromise]);
-          
-          // Sauvegarde de la date de la dernière vérification réussie
-          await AsyncStorage.setItem('last_ota_check', String(Date.now()));
-
-          if (update.isAvailable) {
-            // Une mise à jour est disponible ! On affiche l'écran de chargement haut de gamme
-            setIsDownloadingOta(true);
-            await NativeSplashScreen.hideAsync();
-            
-            // Téléchargement du nouveau bundle
-            await Updates.fetchUpdateAsync();
-            
-            // On s'assure que le fond natif est noir pour éviter le flash blanc au reload
-            await SystemUI.setBackgroundColorAsync('#000000').catch(() => {});
-            await Updates.reloadAsync();
-            return;
-          }
-        } catch (error) {
-          console.warn("[OTA Startup Check] Pas d'OTA ou verification ignoree:", error.message);
-          // Tentative silencieuse en arrière-plan en cas de timeout/échec réseau au démarrage
-          checkOtaSilent();
+      try {
+        const isThemeReload = await AsyncStorage.getItem('theme_reload');
+        if (isThemeReload === 'true') {
+          await AsyncStorage.removeItem('theme_reload');
         }
+      } catch (e) {
+      } finally {
+        await NativeSplashScreen.hideAsync().catch(() => {});
       }
-
-      // Démarrage instantané en masquant le splash natif
-      await NativeSplashScreen.hideAsync();
     };
     initApp();
   }, []);
@@ -321,26 +232,19 @@ const App = () => {
               name: currentRoute.name,
               params: currentRoute.params,
             }));
+            await AsyncStorage.setItem('theme_reload', 'true');
+            if (typeof window !== 'undefined') {
+              window.location.reload();
+            } else {
+              Updates.reloadAsync().catch(() => {});
+            }
           }
         }
-      } catch (e) {
-        console.warn("[Theme Save Route] Failed:", e.message);
-      }
-
-      try {
-        if (Platform.OS === 'web') {
-          window.location.reload();
-        } else {
-          await AsyncStorage.setItem('theme_reload', 'true');
-          await SystemUI.setBackgroundColorAsync(newTheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-          await Updates.reloadAsync();
-        }
-      } catch (e) {
-        console.warn("[Theme Reload Action] Failed:", e.message);
+      } catch (error) {
+        console.warn("[Theme Change Sync] Failed:", error.message);
       }
     };
     
-    // Vérification de changement de thème & OTA au retour au premier plan (Foreground)
     const handleAppStateChange = async (nextAppState) => {
       if (nextAppState === 'active') {
         const currentTheme = Appearance.getColorScheme();
@@ -348,24 +252,11 @@ const App = () => {
           lastTheme = currentTheme;
           await handleThemeChange(currentTheme);
         }
-
-        // Vérification OTA au retour au premier plan avec cooldown de 15 minutes
-        try {
-          const lastOtaFgCheckStr = await AsyncStorage.getItem('last_ota_fg_check');
-          const lastOtaFgCheck = lastOtaFgCheckStr ? Number(lastOtaFgCheckStr) : 0;
-          if (Date.now() - lastOtaFgCheck > 15 * 60 * 1000) {
-            await AsyncStorage.setItem('last_ota_fg_check', String(Date.now()));
-            checkOtaSilent();
-          }
-        } catch (err) {
-          console.log("[OTA Fg Check Error]", err.message);
-        }
       }
     };
 
     const appStateSub = AppState.addEventListener('change', handleAppStateChange);
 
-    // Écouteur de changement de thème en temps réel (quand l'application est active)
     const appearanceSub = Appearance.addChangeListener(async (preferences) => {
       if (preferences.colorScheme !== lastTheme) {
         lastTheme = preferences.colorScheme;
@@ -379,10 +270,6 @@ const App = () => {
     };
   }, [colorScheme]);
 
-  if (isDownloadingOta) {
-    return <OtaDownloadScreen />;
-  }
-
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <ReduxProvider store={store}>
@@ -390,7 +277,6 @@ const App = () => {
           <SafeAreaProvider>
             <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
               <AppContent />
-              <OtaReadyModal visible={showOtaModal} onReload={() => Updates.reloadAsync()} />
             </Sentry.ErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>
