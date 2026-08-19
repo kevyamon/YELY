@@ -14,7 +14,8 @@ export const configureGoogleSignIn = () => {
   try {
     GoogleSignin.configure({
       webClientId: GOOGLE_WEB_CLIENT_ID,
-      scopes: ['email', 'profile'],
+      offlineAccess: false,
+      forceCodeForRefreshToken: false,
     });
     isConfigured = true;
   } catch (err) {
