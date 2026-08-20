@@ -312,19 +312,6 @@ const ensureGoogleScriptLoaded = () => {
             onStrengthChange={setPasswordScore} 
           />
         </View>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <GoogleAuthButton
-          title="S'inscrire avec Google"
-          onPress={handleGoogleSignIn}
-          loading={isGoogleLoading || isGoogleSubmitting}
-          disabled={isGoogleLoading || isGoogleSubmitting}
-        />
       </View>
 
       <AuthActionLinks 

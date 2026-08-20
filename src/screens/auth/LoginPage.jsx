@@ -333,18 +333,6 @@ const ensureGoogleScriptLoaded = () => {
             onRightIconPress={() => setShowPassword(!showPassword)}
           />
         </View>
-
-        <View style={styles.dividerContainer}>
-          <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>ou</Text>
-          <View style={styles.dividerLine} />
-        </View>
-
-        <GoogleAuthButton
-          onPress={handleGoogleSignIn}
-          loading={isGoogleLoading || isGoogleSubmitting}
-          disabled={isGoogleLoading || isGoogleSubmitting}
-        />
       </View>
 
       <AuthActionLinks
