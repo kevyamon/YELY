@@ -51,19 +51,32 @@ const fetchActivePOIs = async () => {
   return globalPoisCache || [];
 };
 
+const isPublicLandmark = (poi) => {
+  if (!poi || poi.isActive === false) return false;
+  const name = String(poi.name || '').trim().toLowerCase();
+  if (!name || name.length < 3) return false;
+  
+  // Bannir les comptes de test, démos et identifiants techniques
+  const bannedKeywords = ['démo', 'demo', 'compte', 'test', 'fake', 'admin', 'profil', 'sample'];
+  if (bannedKeywords.some(kw => name.includes(kw))) {
+    return false;
+  }
+  return true;
+};
+
 const enrichWithPOI = async (address, lat, lng) => {
   try {
-    const pois = await fetchActivePOIs();
+    const rawPois = await fetchActivePOIs();
+    const pois = (rawPois || []).filter(isPublicLandmark);
     if (!pois || pois.length === 0) return address;
 
     let nearestPOI = null;
     let minDistance = Infinity;
 
     for (const poi of pois) {
-      if (poi.isActive === false) continue;
       const d = MapService.calculateDistance(
         { latitude: lat, longitude: lng },
-        { latitude: poi.latitude, longitude: poi.longitude }
+        { latitude: parseFloat(poi.latitude), longitude: parseFloat(poi.longitude) }
       );
       if (d < minDistance) {
         minDistance = d;
@@ -71,17 +84,20 @@ const enrichWithPOI = async (address, lat, lng) => {
       }
     }
 
-    if (nearestPOI && minDistance <= 1500) {
-      const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
-      let baseAddr = address;
-      
+    if (nearestPOI && minDistance <= 1200) {
+      let baseAddr = address || 'Maféré';
       if (baseAddr.toLowerCase().includes('maféré') || baseAddr.toLowerCase().includes('aboisso')) {
         baseAddr = 'Maféré';
       } else {
         baseAddr = baseAddr.split(',')[0].trim();
       }
+
+      if (minDistance <= 25) {
+        return `${baseAddr} (Près de : ${nearestPOI.name})`;
+      }
       
-      return `${baseAddr} (A ${distStr} de : ${nearestPOI.name})`;
+      const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
+      return `${baseAddr} (À ~${distStr} de : ${nearestPOI.name})`;
     }
   } catch(e) {
     console.warn('[MapService] Erreur lors de l\'enrichissement:', e.message);
@@ -266,13 +282,13 @@ class MapService {
     ];
 
     // Combiner les POIs dynamiques en cache et la liste de secours
-    const pois = [...(globalPoisCache || []), ...FALLBACK_LANDMARKS];
+    const rawPois = [...(globalPoisCache || []), ...FALLBACK_LANDMARKS];
+    const pois = rawPois.filter(isPublicLandmark);
     
     let nearestPOI = null;
     let minDistance = Infinity;
 
     for (const poi of pois) {
-      if (poi.isActive === false) continue;
       const d = MapService.calculateDistance(
         { latitude: lat, longitude: lng },
         { latitude: parseFloat(poi.latitude), longitude: parseFloat(poi.longitude) }
@@ -283,9 +299,12 @@ class MapService {
       }
     }
 
-    if (nearestPOI) {
+    if (nearestPOI && minDistance <= 1200) {
+      if (minDistance <= 25) {
+        return `Maféré (Près de : ${nearestPOI.name})`;
+      }
       const distStr = minDistance < 1000 ? `${Math.round(minDistance)}m` : `${(minDistance / 1000).toFixed(1)}km`;
-      return `Maféré (à ${distStr} de : ${nearestPOI.name})`;
+      return `Maféré (À ~${distStr} de : ${nearestPOI.name})`;
     }
 
     return "Maféré";

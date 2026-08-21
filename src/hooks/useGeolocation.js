@@ -64,7 +64,7 @@ const useGeolocation = (options = {}) => {
   const getCurrentPositionWithTimeout = async (options) => {
     return Promise.race([
       Location.getCurrentPositionAsync(options),
-      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout GPS')), 10000))
+      new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout GPS')), 4000))
     ]);
   };
 
@@ -75,7 +75,7 @@ const useGeolocation = (options = {}) => {
       let loc;
       try {
         loc = await getCurrentPositionWithTimeout({
-          accuracy: Location.Accuracy.Highest,
+          accuracy: Location.Accuracy.High,
         });
       } catch (timeoutOrError) {
         loc = await Location.getLastKnownPositionAsync({});
@@ -87,7 +87,7 @@ const useGeolocation = (options = {}) => {
         longitude: loc.coords.longitude,
         heading: loc.coords.heading || 0,
         speed: 0, 
-        accuracy: loc.coords.accuracy,
+        accuracy: loc.coords.accuracy || 10,
         timestamp: Date.now(),
       };
       
@@ -116,22 +116,27 @@ const useGeolocation = (options = {}) => {
     
     if (!granted) return;
 
-    // AMÉLIORATION INSTANTANÉE (0ms lag) : Charger immédiatement la dernière position connue
+    // AMÉLIORATION INSTANTANÉE (<1s) : Récupération rapide de la position récente valide
     try {
       const fastLoc = await Location.getLastKnownPositionAsync({});
       if (fastLoc?.coords && mounted && !lastValidLocationRef.current) {
-        const fastCoords = {
-          latitude: fastLoc.coords.latitude,
-          longitude: fastLoc.coords.longitude,
-          heading: fastLoc.coords.heading || 0,
-          speed: 0,
-          accuracy: fastLoc.coords.accuracy || 50,
-          timestamp: Date.now(),
-        };
-        lastValidLocationRef.current = fastCoords;
-        setLocation(fastCoords);
-        dispatch(updateCoords(fastCoords));
-        setIsLoading(false);
+        const isFresh = fastLoc.timestamp ? (Date.now() - fastLoc.timestamp < 12 * 60 * 60 * 1000) : true;
+        const isAccurate = (fastLoc.coords.accuracy || 50) <= 200;
+        
+        if (isFresh && isAccurate) {
+          const fastCoords = {
+            latitude: fastLoc.coords.latitude,
+            longitude: fastLoc.coords.longitude,
+            heading: fastLoc.coords.heading || 0,
+            speed: 0,
+            accuracy: fastLoc.coords.accuracy || 50,
+            timestamp: Date.now(),
+          };
+          lastValidLocationRef.current = fastCoords;
+          setLocation(fastCoords);
+          dispatch(updateCoords(fastCoords));
+          setIsLoading(false);
+        }
       }
     } catch (fastErr) {}
 
