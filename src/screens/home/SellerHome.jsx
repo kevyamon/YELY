@@ -266,6 +266,8 @@ const SellerHome = ({ navigation }) => {
 
   const productCount = productsData?.data?.length || productsData?.length || 0;
   const totalSales = statsData?.data?.totalEarnings || statsData?.totalEarnings || 0;
+  const pendingCash = statsData?.data?.totalPending || statsData?.totalPending || 0;
+  const pendingCount = statsData?.data?.count || statsData?.count || 0;
 
   const scrollHandler = useAnimatedScrollHandler({
     onScroll: (event) => {
@@ -349,12 +351,13 @@ const SellerHome = ({ navigation }) => {
 
             <View style={styles.welcomeSection}>
               <Text style={styles.welcomeTitle}>Ma Boutique</Text>
-              <Text style={styles.welcomeSubtitle}>Gérez vos ventes et vos déplacements.</Text>
+              <Text style={styles.welcomeSubtitle}>Gérez vos ventes, vos stocks et vos encaissements.</Text>
             </View>
 
+            {/* STATS DU COMMERCE */}
             <View style={styles.statsRow}>
               <GlassCard style={styles.statCard}>
-                <Ionicons name="cube-outline" size={24} color={THEME.COLORS.primary} />
+                <Ionicons name="cube-outline" size={22} color={THEME.COLORS.primary} />
                 {isLoadingProducts ? (
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
                 ) : (
@@ -362,16 +365,69 @@ const SellerHome = ({ navigation }) => {
                 )}
                 <Text style={styles.statLabel}>Produits</Text>
               </GlassCard>
+
               <GlassCard style={styles.statCard}>
-                <Ionicons name="cash-outline" size={24} color={THEME.COLORS.success || '#27ae60'} />
+                <Ionicons name="cash-outline" size={22} color={THEME.COLORS.success || '#27ae60'} />
                 {isLoadingStats ? (
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
                 ) : (
-                  <Text style={styles.statValue}>{totalSales.toLocaleString()} FCFA</Text>
+                  <Text style={styles.statValue}>{totalSales.toLocaleString()} F</Text>
                 )}
                 <Text style={styles.statLabel}>Ventes</Text>
               </GlassCard>
+
+              <TouchableOpacity 
+                style={[styles.statCardTouch, styles.statCard]} 
+                onPress={() => navigation.navigate('LedgerHistory')}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="wallet-outline" size={22} color={pendingCash > 0 ? '#FFBA52' : THEME.COLORS.textSecondary} />
+                {isLoadingStats ? (
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                ) : (
+                  <Text style={[styles.statValue, pendingCash > 0 && { color: '#FFBA52' }]}>
+                    {pendingCash.toLocaleString()} F
+                  </Text>
+                )}
+                <Text style={[styles.statLabel, pendingCash > 0 && { color: '#FFBA52' }]}>À Encaisser</Text>
+              </TouchableOpacity>
             </View>
+
+            {/* CARTE D'ACTION FINANCIÈRE : JOURNAL DE CAISSE (LEDGER) */}
+            <TouchableOpacity
+              style={styles.ledgerActionCard}
+              onPress={() => navigation.navigate('LedgerHistory')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient
+                colors={pendingCash > 0 ? ['rgba(212, 175, 55, 0.16)', 'rgba(212, 175, 55, 0.03)'] : ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.01)']}
+                style={styles.ledgerGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}
+              >
+                <View style={[styles.ledgerIconBg, pendingCash > 0 && { backgroundColor: THEME.COLORS.primary }]}>
+                  <MaterialCommunityIcons 
+                    name="cash-register" 
+                    size={24} 
+                    color={pendingCash > 0 ? '#000000' : THEME.COLORS.primary} 
+                  />
+                </View>
+                <View style={styles.ledgerTextContainer}>
+                  <View style={styles.ledgerHeaderRow}>
+                    <Text style={styles.ledgerCardTitle}>Journal de Caisse</Text>
+                    <Text style={[styles.ledgerCardAmount, pendingCash > 0 && { color: '#FFBA52' }]}>
+                      {pendingCash.toLocaleString()} FCFA
+                    </Text>
+                  </View>
+                  <Text style={styles.ledgerCardSubtitle} numberOfLines={1}>
+                    {pendingCash > 0
+                      ? (pendingCount > 1 ? `${pendingCount} livreurs ont encaissé votre argent` : `${pendingCount || 1} livreur a encaissé votre argent`)
+                      : "Aucun encaissement en attente"}
+                  </Text>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={22} color={THEME.COLORS.primary} />
+              </LinearGradient>
+            </TouchableOpacity>
 
             {/* Localisation de ma boutique */}
             {user && (
@@ -429,7 +485,8 @@ const SellerHome = ({ navigation }) => {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity style={styles.mainActionCard} onPress={handleGoToManageProducts}>
+            {/* GÉRER MES PRODUITS */}
+            <TouchableOpacity style={styles.mainActionCard} onPress={handleGoToManageProducts} activeOpacity={0.85}>
               <View style={styles.actionIconContainer}>
                 <Ionicons name="add-circle" size={32} color={THEME.COLORS.textInverse} />
               </View>
@@ -440,22 +497,33 @@ const SellerHome = ({ navigation }) => {
               <Ionicons name="chevron-forward" size={24} color={THEME.COLORS.primary} />
             </TouchableOpacity>
 
+            {/* ACTIONS RAPIDES (100% MARCHAND) */}
             <View style={styles.quickActionsContainer}>
               <Text style={styles.sectionTitle}>Actions rapides</Text>
               <View style={styles.actionsGrid}>
-                <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders}>
-                  <Ionicons name="receipt" size={24} color={THEME.COLORS.primary} />
+                <TouchableOpacity style={styles.smallActionCard} onPress={handleGoToOrders} activeOpacity={0.8}>
+                  <Ionicons name="receipt-outline" size={24} color={THEME.COLORS.primary} />
                   <Text numberOfLines={1} style={styles.smallActionLabel}>Commandes</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('History')}>
-                  <Ionicons name="stats-chart" size={24} color={THEME.COLORS.primary} />
-                  <Text numberOfLines={1} style={styles.smallActionLabel}>Historique</Text>
+                <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('LedgerHistory')} activeOpacity={0.8}>
+                  <Ionicons name="wallet-outline" size={24} color={THEME.COLORS.primary} />
+                  <Text numberOfLines={1} style={styles.smallActionLabel}>Caisse</Text>
                 </TouchableOpacity>
 
-                <TouchableOpacity style={styles.smallActionCard} onPress={() => navigation.navigate('RiderHome')}>
-                  <Ionicons name="car-sport" size={24} color={THEME.COLORS.primary} />
-                  <Text numberOfLines={1} style={styles.smallActionLabel}>Taxi</Text>
+                <TouchableOpacity 
+                  style={styles.smallActionCard} 
+                  onPress={() => {
+                    if (user?._id) {
+                      navigation.navigate('SellerProfile', { sellerId: user._id });
+                    } else {
+                      handleGoToMarketplace();
+                    }
+                  }} 
+                  activeOpacity={0.8}
+                >
+                  <Ionicons name="storefront-outline" size={24} color={THEME.COLORS.primary} />
+                  <Text numberOfLines={1} style={styles.smallActionLabel}>Ma Vitrine</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -536,10 +604,66 @@ const styles = StyleSheet.create({
   welcomeSection: { marginBottom: 25 },
   welcomeTitle: { fontSize: 28, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.5 },
   welcomeSubtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, marginTop: 4 },
-  statsRow: { flexDirection: 'row', gap: 15, marginBottom: 25 },
-  statCard: { flex: 1, alignItems: 'center', paddingVertical: 20 },
-  statValue: { fontSize: 20, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginTop: 8 },
-  statLabel: { fontSize: 12, color: THEME.COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase' },
+  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
+  statCard: { flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 4, borderRadius: 16 },
+  statCardTouch: {
+    backgroundColor: THEME.COLORS.glassSurface,
+    borderWidth: 1,
+    borderColor: 'rgba(212, 175, 55, 0.3)',
+  },
+  statValue: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginTop: 6, textAlign: 'center' },
+  statLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase', fontWeight: '600', textAlign: 'center' },
+  ledgerActionCard: {
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: 'rgba(212, 175, 55, 0.35)',
+    elevation: 4,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+  },
+  ledgerGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+  },
+  ledgerIconBg: {
+    width: 48,
+    height: 48,
+    borderRadius: 14,
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 14,
+  },
+  ledgerTextContainer: {
+    flex: 1,
+    marginRight: 8,
+  },
+  ledgerHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  ledgerCardTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: THEME.COLORS.textPrimary,
+  },
+  ledgerCardAmount: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: THEME.COLORS.primary,
+  },
+  ledgerCardSubtitle: {
+    fontSize: 12.5,
+    color: THEME.COLORS.textSecondary,
+    lineHeight: 16,
+  },
   mainActionCard: {
     flexDirection: 'row',
     alignItems: 'center',

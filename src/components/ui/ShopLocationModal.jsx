@@ -357,9 +357,10 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
             style={styles.gpsBtn} 
             onPress={handleGPSLocation}
             disabled={isLocatingGPS || isSaving}
+            activeOpacity={0.8}
           >
-            <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
-            <Text style={styles.gpsBtnText}>Ma position actuelle</Text>
+            <Ionicons name="navigate" size={16} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
+            <Text style={styles.gpsBtnText} numberOfLines={1}>Position GPS</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
@@ -369,13 +370,14 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
             ]} 
             onPress={handleConfirm}
             disabled={!selectedCoords || isSaving || isResolvingAddress}
+            activeOpacity={0.85}
           >
             {isSaving ? (
               <ActivityIndicator size="small" color="#000" />
             ) : (
               <>
-                <Ionicons name="checkmark-circle" size={18} color="#000" style={{ marginRight: 6 }} />
-                <Text style={styles.confirmBtnText}>Confirmer</Text>
+                <Ionicons name="checkmark-circle" size={16} color="#000" style={{ marginRight: 6 }} />
+                <Text style={styles.confirmBtnText} numberOfLines={1}>Confirmer</Text>
               </>
             )}
           </TouchableOpacity>
@@ -543,10 +545,12 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    gap: 8,
+    gap: 10,
+    marginTop: 2,
   },
   gpsBtn: {
     flex: 1,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -554,21 +558,23 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: THEME.COLORS.champagneGold,
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   gpsBtnText: {
     color: THEME.COLORS.champagneGold,
     fontWeight: '800',
-    fontSize: 12.5,
+    fontSize: 13,
+    textAlign: 'center',
   },
   confirmBtn: {
     flex: 1,
+    height: 48,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: THEME.COLORS.primary,
     borderRadius: 14,
-    paddingVertical: 12,
+    paddingHorizontal: 8,
   },
   confirmBtnDisabled: {
     opacity: 0.5,
@@ -576,7 +582,8 @@ const styles = StyleSheet.create({
   confirmBtnText: {
     color: '#000',
     fontWeight: '900',
-    fontSize: 12.5,
+    fontSize: 13,
+    textAlign: 'center',
   },
 });
 
