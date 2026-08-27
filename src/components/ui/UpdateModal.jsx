@@ -9,6 +9,7 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
+  useColorScheme,
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
@@ -31,7 +32,18 @@ export default function UpdateModal({
   onUpdate,
   onDismiss,
 }) {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
+
   if (!visible) return null;
+
+  const cardBg = isDark ? '#0A0A0A' : '#FFFFFF';
+  const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
+  const subTextColor = isDark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 26, 26, 0.75)';
+  const dismissBg = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)';
+  const dismissBorder = isDark ? 'rgba(255, 255, 255, 0.15)' : 'rgba(0, 0, 0, 0.12)';
+  const dismissTextColor = isDark ? 'rgba(255, 255, 255, 0.85)' : '#1A1A1A';
+  const iconBorderColor = isDark ? '#0A0A0A' : '#FFFFFF';
 
   return (
     <Modal
@@ -40,18 +52,18 @@ export default function UpdateModal({
       animationType="fade"
       onRequestClose={isForced ? () => {} : onDismiss}
     >
-      <View style={styles.overlay}>
-        <BlurView intensity={90} tint="dark" style={StyleSheet.absoluteFill} />
+      <View style={[styles.overlay, { backgroundColor: isDark ? 'rgba(0,0,0,0.75)' : 'rgba(0,0,0,0.45)' }]}>
+        <BlurView intensity={isDark ? 90 : 60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
 
-        <View style={styles.alertCard}>
-          {/* Badge Icone Haute Définition */}
-          <View style={styles.iconContainer}>
-            <Ionicons name="cloud-download-outline" size={40} color="#000000" />
+        <View style={[styles.alertCard, { backgroundColor: cardBg, borderColor: isDark ? 'rgba(212, 175, 55, 0.35)' : 'rgba(212, 175, 55, 0.45)' }]}>
+          {/* Badge Icône Haute Définition */}
+          <View style={[styles.iconContainer, { borderColor: iconBorderColor }]}>
+            <Ionicons name="cloud-download-outline" size={38} color="#000000" />
           </View>
 
           {/* Titre & Message explicatif */}
-          <Text style={styles.title}>{title || 'Mise à jour disponible'}</Text>
-          <Text style={styles.message}>
+          <Text style={[styles.title, { color: textColor }]}>{title || 'Mise à jour disponible'}</Text>
+          <Text style={[styles.message, { color: subTextColor }]}>
             {message || 'Une nouvelle version de Yély est disponible sur le Play Store avec des améliorations importantes.'}
           </Text>
 
@@ -59,11 +71,11 @@ export default function UpdateModal({
           <View style={styles.buttonRow}>
             {!isForced && onDismiss && (
               <TouchableOpacity
-                style={styles.dismissBtn}
+                style={[styles.dismissBtn, { backgroundColor: dismissBg, borderColor: dismissBorder }]}
                 onPress={onDismiss}
                 activeOpacity={0.7}
               >
-                <Text style={styles.dismissText}>Plus tard</Text>
+                <Text style={[styles.dismissText, { color: dismissTextColor }]}>Plus tard</Text>
               </TouchableOpacity>
             )}
 
@@ -86,7 +98,6 @@ export default function UpdateModal({
 const styles = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     padding: 20,
@@ -94,16 +105,14 @@ const styles = StyleSheet.create({
   alertCard: {
     width: '100%',
     maxWidth: 340,
-    backgroundColor: '#0A0A0A',
     borderRadius: 24,
     padding: 24,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.35)',
     elevation: 16,
     shadowColor: '#000000',
     shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.5,
+    shadowOpacity: 0.25,
     shadowRadius: 20,
   },
   iconContainer: {
@@ -116,7 +125,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     marginTop: -48,
     borderWidth: 4,
-    borderColor: '#0A0A0A',
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -126,14 +134,12 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 20,
     fontWeight: '800',
-    color: '#FFFFFF',
     marginBottom: 10,
     textAlign: 'center',
     letterSpacing: 0.3,
   },
   message: {
     fontSize: 14,
-    color: 'rgba(255, 255, 255, 0.75)',
     textAlign: 'center',
     marginBottom: 24,
     lineHeight: 20,
@@ -149,13 +155,10 @@ const styles = StyleSheet.create({
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.08)',
     borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.15)',
   },
   dismissText: {
-    color: 'rgba(255, 255, 255, 0.8)',
-    fontWeight: '600',
+    fontWeight: '700',
     fontSize: 14,
   },
   updateBtn: {
@@ -182,8 +185,10 @@ const styles = StyleSheet.create({
   footerNote: {
     marginTop: 18,
     fontSize: 11,
-    color: 'rgba(212, 175, 55, 0.6)',
+    color: THEME.COLORS.champagneGold,
     textTransform: 'uppercase',
     letterSpacing: 1,
+    fontWeight: '700',
+    opacity: 0.85,
   },
 });

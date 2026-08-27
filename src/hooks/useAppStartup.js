@@ -40,7 +40,7 @@ const isVersionOutdated = (current, latest) => {
 
 const useAppStartup = () => {
   const dispatch = useDispatch();
-  const currentAppVersion = Constants.expoConfig?.version || '1.2.0';
+  const currentAppVersion = Constants.nativeAppVersion || Constants.expoConfig?.version || '1.7';
 
   // Lecture RÉACTIVE pour déclencher l'effet socket (string/bool = stable, pas d'objet)
   const isAuthenticated = useSelector(selectIsAuthenticated);

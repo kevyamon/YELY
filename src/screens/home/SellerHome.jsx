@@ -15,7 +15,8 @@ import {
   Share,
   Linking,
   Platform,
-  Alert
+  Alert,
+  useColorScheme
 } from 'react-native';
 import Animated, { useSharedValue, useAnimatedScrollHandler } from 'react-native-reanimated';
 import { useSelector, useDispatch } from 'react-redux';
@@ -24,7 +25,6 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useIsFocused } from '@react-navigation/native';
 
 import SmartHeader from '../../components/ui/SmartHeader';
-import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 
 import { selectCurrentUser, logout, selectSubscriptionStatus, selectPromoMode, selectIsSubscriptionModalDismissed, updateUserInfo } from '../../store/slices/authSlice';
@@ -39,6 +39,8 @@ import { selectLastAddress, updateAddress } from '../../store/slices/locationSli
 import { showToast } from '../../store/slices/uiSlice';
 
 const SellerHome = ({ navigation }) => {
+  const colorScheme = useColorScheme();
+  const isDark = colorScheme === 'dark';
   const scrollY = useSharedValue(0);
   const user = useSelector(selectCurrentUser);
   const lastKnownAddress = useSelector(selectLastAddress);
@@ -50,6 +52,10 @@ const SellerHome = ({ navigation }) => {
   const promoMode = useSelector(selectPromoMode);
   const isSubscriptionModalDismissed = useSelector(selectIsSubscriptionModalDismissed);
   const isFocused = useIsFocused();
+
+  const cardBg = isDark ? THEME.COLORS.glassSurface : '#FFFFFF';
+  const cardBorder = isDark ? THEME.COLORS.border : 'rgba(0, 0, 0, 0.08)';
+  const cardShadow = isDark ? THEME.SHADOWS.md : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 };
 
   const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
 
@@ -356,77 +362,93 @@ const SellerHome = ({ navigation }) => {
 
             {/* STATS DU COMMERCE */}
             <View style={styles.statsRow}>
-              <GlassCard style={styles.statCard}>
+              <View style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}>
                 <Ionicons name="cube-outline" size={22} color={THEME.COLORS.primary} />
                 {isLoadingProducts ? (
-                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 6 }} />
                 ) : (
-                  <Text style={styles.statValue}>{productCount}</Text>
+                  <Text style={[styles.statValue, { color: THEME.COLORS.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {productCount}
+                  </Text>
                 )}
-                <Text style={styles.statLabel}>Produits</Text>
-              </GlassCard>
+                <Text style={[styles.statLabel, { color: THEME.COLORS.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>
+                  Produits
+                </Text>
+              </View>
 
-              <GlassCard style={styles.statCard}>
+              <View style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}>
                 <Ionicons name="cash-outline" size={22} color={THEME.COLORS.success || '#27ae60'} />
                 {isLoadingStats ? (
-                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 6 }} />
                 ) : (
-                  <Text style={styles.statValue}>{totalSales.toLocaleString()} F</Text>
+                  <Text style={[styles.statValue, { color: THEME.COLORS.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
+                    {totalSales.toLocaleString()} F
+                  </Text>
                 )}
-                <Text style={styles.statLabel}>Ventes</Text>
-              </GlassCard>
+                <Text style={[styles.statLabel, { color: THEME.COLORS.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>
+                  Ventes
+                </Text>
+              </View>
 
               <TouchableOpacity 
-                style={[styles.statCardTouch, styles.statCard]} 
+                style={[styles.statBox, { backgroundColor: cardBg, borderColor: pendingCash > 0 ? THEME.COLORS.primary : cardBorder }, cardShadow]} 
                 onPress={() => navigation.navigate('LedgerHistory')}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
               >
-                <Ionicons name="wallet-outline" size={22} color={pendingCash > 0 ? '#FFBA52' : THEME.COLORS.textSecondary} />
+                <Ionicons name="wallet-outline" size={22} color={pendingCash > 0 ? '#FFBA52' : THEME.COLORS.primary} />
                 {isLoadingStats ? (
-                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 8 }} />
+                  <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 6 }} />
                 ) : (
-                  <Text style={[styles.statValue, pendingCash > 0 && { color: '#FFBA52' }]}>
+                  <Text style={[styles.statValue, { color: pendingCash > 0 ? '#FFBA52' : THEME.COLORS.textPrimary }]} numberOfLines={1} adjustsFontSizeToFit>
                     {pendingCash.toLocaleString()} F
                   </Text>
                 )}
-                <Text style={[styles.statLabel, pendingCash > 0 && { color: '#FFBA52' }]}>À Encaisser</Text>
+                <Text style={[styles.statLabel, { color: pendingCash > 0 ? '#FFBA52' : THEME.COLORS.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>
+                  À Encaisser
+                </Text>
               </TouchableOpacity>
             </View>
 
             {/* CARTE D'ACTION FINANCIÈRE : JOURNAL DE CAISSE (LEDGER) */}
             <TouchableOpacity
-              style={styles.ledgerActionCard}
+              style={[
+                styles.ledgerActionCard,
+                { 
+                  backgroundColor: cardBg,
+                  borderColor: pendingCash > 0 ? THEME.COLORS.primary : cardBorder,
+                },
+                cardShadow
+              ]}
               onPress={() => navigation.navigate('LedgerHistory')}
               activeOpacity={0.85}
             >
-              <LinearGradient
-                colors={pendingCash > 0 ? ['rgba(212, 175, 55, 0.16)', 'rgba(212, 175, 55, 0.03)'] : ['rgba(255, 255, 255, 0.05)', 'rgba(255, 255, 255, 0.01)']}
-                style={styles.ledgerGradient}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-              >
-                <View style={[styles.ledgerIconBg, pendingCash > 0 && { backgroundColor: THEME.COLORS.primary }]}>
+              <View style={styles.ledgerCardInner}>
+                <View style={[styles.ledgerIconBg, { backgroundColor: pendingCash > 0 ? THEME.COLORS.primary : (isDark ? 'rgba(212, 175, 55, 0.15)' : 'rgba(212, 175, 55, 0.12)') }]}>
                   <MaterialCommunityIcons 
                     name="cash-register" 
                     size={24} 
                     color={pendingCash > 0 ? '#000000' : THEME.COLORS.primary} 
                   />
                 </View>
+                
                 <View style={styles.ledgerTextContainer}>
-                  <View style={styles.ledgerHeaderRow}>
-                    <Text style={styles.ledgerCardTitle}>Journal de Caisse</Text>
-                    <Text style={[styles.ledgerCardAmount, pendingCash > 0 && { color: '#FFBA52' }]}>
-                      {pendingCash.toLocaleString()} FCFA
-                    </Text>
-                  </View>
-                  <Text style={styles.ledgerCardSubtitle} numberOfLines={1}>
+                  <Text style={[styles.ledgerCardTag, { color: isDark ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)' }]}>
+                    JOURNAL DE CAISSE
+                  </Text>
+                  <Text style={[styles.ledgerCardAmount, { color: pendingCash > 0 ? '#FFBA52' : THEME.COLORS.textPrimary }]}>
+                    {pendingCash.toLocaleString()} FCFA
+                  </Text>
+                  <Text style={[styles.ledgerCardSubtitle, { color: THEME.COLORS.textSecondary }]}>
                     {pendingCash > 0
                       ? (pendingCount > 1 ? `${pendingCount} livreurs ont encaissé votre argent` : `${pendingCount || 1} livreur a encaissé votre argent`)
                       : "Aucun encaissement en attente"}
                   </Text>
                 </View>
-                <MaterialCommunityIcons name="chevron-right" size={22} color={THEME.COLORS.primary} />
-              </LinearGradient>
+
+                <View style={[styles.ledgerArrowCircle, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.04)' }]}>
+                  <Ionicons name="chevron-forward" size={18} color={THEME.COLORS.primary} />
+                </View>
+              </View>
             </TouchableOpacity>
 
             {/* Localisation de ma boutique */}
@@ -604,65 +626,81 @@ const styles = StyleSheet.create({
   welcomeSection: { marginBottom: 25 },
   welcomeTitle: { fontSize: 28, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.5 },
   welcomeSubtitle: { fontSize: 16, color: THEME.COLORS.textSecondary, marginTop: 4 },
-  statsRow: { flexDirection: 'row', gap: 10, marginBottom: 20 },
-  statCard: { flex: 1, alignItems: 'center', paddingVertical: 16, paddingHorizontal: 4, borderRadius: 16 },
-  statCardTouch: {
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
+  statsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 18,
   },
-  statValue: { fontSize: 16, fontWeight: 'bold', color: THEME.COLORS.textPrimary, marginTop: 6, textAlign: 'center' },
-  statLabel: { fontSize: 11, color: THEME.COLORS.textSecondary, marginTop: 4, textTransform: 'uppercase', fontWeight: '600', textAlign: 'center' },
+  statBox: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 14,
+    paddingHorizontal: 6,
+    borderRadius: 18,
+    borderWidth: 1,
+    minHeight: 96,
+  },
+  statValue: {
+    fontSize: 16,
+    fontWeight: '800',
+    marginTop: 6,
+    textAlign: 'center',
+  },
+  statLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 4,
+    textAlign: 'center',
+    letterSpacing: 0.1,
+    textTransform: 'uppercase',
+  },
   ledgerActionCard: {
     borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 20,
     borderWidth: 1.5,
-    borderColor: 'rgba(212, 175, 55, 0.35)',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
+    marginBottom: 20,
+    overflow: 'hidden',
   },
-  ledgerGradient: {
+  ledgerCardInner: {
     flexDirection: 'row',
     alignItems: 'center',
     padding: 16,
   },
   ledgerIconBg: {
-    width: 48,
-    height: 48,
+    width: 46,
+    height: 46,
     borderRadius: 14,
-    backgroundColor: 'rgba(212, 175, 55, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
     marginRight: 14,
   },
   ledgerTextContainer: {
     flex: 1,
-    marginRight: 8,
+    marginRight: 10,
   },
-  ledgerHeaderRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  ledgerCardTitle: {
-    fontSize: 16,
+  ledgerCardTag: {
+    fontSize: 10.5,
     fontWeight: '800',
-    color: THEME.COLORS.textPrimary,
+    letterSpacing: 0.6,
+    marginBottom: 2,
   },
   ledgerCardAmount: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: THEME.COLORS.primary,
+    fontSize: 19,
+    fontWeight: '900',
+    letterSpacing: -0.3,
+    marginBottom: 3,
   },
   ledgerCardSubtitle: {
-    fontSize: 12.5,
-    color: THEME.COLORS.textSecondary,
+    fontSize: 12,
     lineHeight: 16,
+    fontWeight: '500',
+  },
+  ledgerArrowCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   mainActionCard: {
     flexDirection: 'row',
