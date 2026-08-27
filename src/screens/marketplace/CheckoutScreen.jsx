@@ -1,33 +1,39 @@
 // src/screens/marketplace/CheckoutScreen.jsx
+// ORCHESTRATEUR DU TUNNEL DE COMMANDE (3 ÉTAPES)
+// STANDARD: Industriel / Bank Grade
+
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  View, 
-  Text, 
-  StyleSheet, 
-  ScrollView, 
-  TextInput, 
+import {
+  View,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  Text,
   TouchableOpacity,
-  ActivityIndicator,
-  useColorScheme
+  useColorScheme,
 } from 'react-native';
-import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector, useDispatch } from 'react-redux';
+import { LinearGradient } from 'expo-linear-gradient';
+import * as Location from 'expo-location';
+
 import { selectCartItems, selectCartTotal, clearCart } from '../../store/slices/cartSlice';
 import useMarketplaceSocketEvents from '../../hooks/useMarketplaceSocketEvents';
 import { useCreateOrderMutation } from '../../store/api/marketplaceApiSlice';
 import { showToast } from '../../store/slices/uiSlice';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import MarketplaceDetailsHeader from '../../components/marketplace/MarketplaceDetailsHeader';
-import GlassCard from '../../components/ui/GlassCard';
-import GoldButton from '../../components/ui/GoldButton';
-import THEME from '../../theme/theme';
-import * as Location from 'expo-location';
-import { LinearGradient } from 'expo-linear-gradient';
 import GlassModal from '../../components/ui/GlassModal';
+import GoldButton from '../../components/ui/GoldButton';
 import MapService from '../../services/mapService';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 import useGeolocation from '../../hooks/useGeolocation';
+import THEME from '../../theme/theme';
+
+import CheckoutStepper from '../../components/marketplace/checkout/CheckoutStepper';
+import DeliveryStep from '../../components/marketplace/checkout/DeliveryStep';
+import PaymentStep from '../../components/marketplace/checkout/PaymentStep';
+import ConfirmationStep from '../../components/marketplace/checkout/ConfirmationStep';
 
 const CheckoutScreen = ({ navigation }) => {
   useMarketplaceSocketEvents();
@@ -40,114 +46,72 @@ const CheckoutScreen = ({ navigation }) => {
   const dispatch = useDispatch();
   const cartItems = useSelector(selectCartItems);
   const cartTotal = useSelector(selectCartTotal);
-  
-  const user = useSelector(state => state.auth.user);
-  
-  const scrollRef = useRef(null);
-  const receiptScrollRef = useRef(null);
-  const [receiptScrollOffset, setReceiptScrollOffset] = useState(0);
+  const user = useSelector((state) => state.auth.user);
 
-  const handleInputFocus = (offset) => {
-    setTimeout(() => {
-      scrollRef.current?.scrollTo({ y: offset, animated: true });
-    }, 150);
-  };
-  
+  const [currentStep, setCurrentStep] = useState(1);
   const [address, setAddress] = useState('');
   const [phone, setPhone] = useState(user?.phone || user?.phoneNumber || '');
   const [name, setName] = useState(user?.name || '');
   const [note, setNote] = useState('');
-  const [deliveryMode, setDeliveryMode] = useState('current'); // 'current' or 'other'
+  const [deliveryMode, setDeliveryMode] = useState('current');
+  const [clientCoords, setClientCoords] = useState(null);
+  const [deliveryPrice, setDeliveryPrice] = useState(100);
+  const [isLocating, setIsLocating] = useState(false);
+
   const [isAddressModalVisible, setIsAddressModalVisible] = useState(false);
   const [isOutOfZoneModalVisible, setIsOutOfZoneModalVisible] = useState(false);
   const [tempAddress, setTempAddress] = useState('');
 
-  // FORCE AUTO-FILL (Si les données arrivent après le chargement de l'écran)
+  const [createOrder, { isLoading }] = useCreateOrderMutation();
+
+  // Remplissage automatique des coordonnées client
   useEffect(() => {
     if (user) {
-      console.log('[CHECKOUT] User Data detected:', user);
       if (!name && user.name) setName(user.name);
       if (!phone) {
         const p = user.phone || user.phoneNumber;
-        if (p) {
-          console.log('[CHECKOUT] Setting phone to:', p);
-          setPhone(p);
-        }
+        if (p) setPhone(p);
       }
     }
   }, [user]);
-  const [clientCoords, setClientCoords] = useState(null);
-  const [deliveryPrice, setDeliveryPrice] = useState(null);
-  const [distanceKm, setDistanceKm] = useState(null);
-  const [isLocating, setIsLocating] = useState(false);
 
-  const [createOrder, { isLoading }] = useCreateOrderMutation();
-
+  // Localisation intelligente par cache puis GPS en direct
   const getCurrentLocation = async () => {
     if (isLocating) return;
     setIsLocating(true);
     try {
-      console.log('[CHECKOUT] Démarrage localisation...');
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        dispatch(showToast({ type: 'warning', title: 'Permission refusée', message: 'Veuillez activer la localisation pour calculer les frais.' }));
+        dispatch(showToast({ type: 'warning', title: 'GPS Requis', message: 'Veuillez activer la localisation.' }));
         setIsLocating(false);
         return;
       }
 
-      // 1. Tenter d'abord la position rapide du cache
-      console.log('[CHECKOUT] Recherche cache GPS...');
       let location = await Location.getLastKnownPositionAsync({});
-      
-      // 2. Si le cache est vide, interroger le GPS en direct
       if (!location) {
-        console.log('[CHECKOUT] Cache vide, calcul position temps réel...');
-        location = await Location.getCurrentPositionAsync({ 
-          accuracy: Location.Accuracy.Balanced,
-          timeout: 8000 
-        });
-      }
-      
-      if (!location) {
-        throw new Error('Impossible de capter la position GPS');
+        location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced, timeout: 8000 });
       }
 
-      const coords = [location.coords.longitude, location.coords.latitude];
-      console.log('[CHECKOUT] Coords obtenues:', coords);
-      setClientCoords(coords);
+      if (location) {
+        const coords = [location.coords.longitude, location.coords.latitude];
+        setClientCoords(coords);
 
-      // On tente de récupérer l'adresse textuelle de manière robuste (même intelligence que Taxi/SmartHeader)
-      try {
-        console.log('[CHECKOUT] Géocodage intelligent via MapService...');
-        const addressStr = await MapService.getAddressFromCoordinates(location.coords.latitude, location.coords.longitude);
-        if (addressStr && addressStr !== 'Adresse introuvable') {
-          setAddress(addressStr);
-        } else {
+        try {
+          const addressStr = await MapService.getAddressFromCoordinates(location.coords.latitude, location.coords.longitude);
+          if (addressStr && addressStr !== 'Adresse introuvable') {
+            setAddress(addressStr);
+          } else {
+            setAddress("Ma position (Abidjan, Côte d'Ivoire)");
+          }
+        } catch {
           setAddress("Ma position (Abidjan, Côte d'Ivoire)");
         }
-      } catch (err) {
-        console.warn('[CHECKOUT] MapService reverse geocode failed:', err);
-        setAddress("Ma position (Abidjan, Côte d'Ivoire)");
       }
-
-    } catch (error) {
-      console.error('[CHECKOUT] Location error:', error);
-      dispatch(showToast({ type: 'error', title: 'Erreur GPS', message: 'Impossible de capter votre position automatiquement. Saisissez-la.' }));
+    } catch {
+      dispatch(showToast({ type: 'error', title: 'Erreur GPS', message: 'Impossible de capter la position.' }));
     } finally {
       setIsLocating(false);
     }
-  };
-
-  const calculateHaversineDistance = (coords1, coords2) => {
-    if (!coords1 || !coords2 || coords1.length !== 2 || coords2.length !== 2) return 0;
-    const [lon1, lat1] = coords1;
-    const [lon2, lat2] = coords2;
-    const R = 6371;
-    const dLat = (lat2 - lat1) * (Math.PI / 180);
-    const dLon = (lon2 - lon1) * (Math.PI / 180);
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) + Math.cos(lat1 * (Math.PI / 180)) * Math.cos(lat2 * (Math.PI / 180)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return Math.round(R * c * 10) / 10;
   };
 
   useEffect(() => {
@@ -156,32 +120,42 @@ const CheckoutScreen = ({ navigation }) => {
     }
   }, [cartItems, deliveryMode]);
 
-  const calculateDeliveryPrice = (nbSellers) => {
-    if (nbSellers <= 0) return 0;
-    let price = 100 + (nbSellers - 1) * 50;
-    return Math.min(300, price);
-  };
-
+  // Calcul du prix de livraison selon le nombre de vendeurs
   useEffect(() => {
     if (cartItems.length > 0) {
-      // Identifier les vendeurs uniques
-      const uniqueSellersIds = new Set(cartItems.map(item => item.sellerId));
-      const nbSellers = uniqueSellersIds.size;
-      
-      const price = calculateDeliveryPrice(nbSellers);
+      const uniqueSellers = new Set(cartItems.map((item) => item.sellerId));
+      const nb = uniqueSellers.size;
+      const price = Math.min(300, 100 + (nb - 1) * 50);
       setDeliveryPrice(price);
-      console.log(`[CHECKOUT] ${nbSellers} vendeurs. Prix livraison: ${price}F`);
     }
   }, [cartItems]);
 
-  const handlePlaceOrder = async () => {
-    if (!address || !phone || !name) {
-      dispatch(showToast({ type: 'error', title: 'Infos manquantes', message: 'Veuillez remplir tous les champs obligatoires.' }));
+  // Navigation du Stepper
+  const handleBack = () => {
+    if (currentStep === 3) setCurrentStep(2);
+    else if (currentStep === 2) setCurrentStep(1);
+    else navigation.goBack();
+  };
+
+  const handleNextFromDelivery = () => {
+    if (!name.trim()) {
+      dispatch(showToast({ type: 'warning', title: 'Nom requis', message: 'Veuillez renseigner votre nom complet.' }));
       return;
     }
+    if (!phone.trim()) {
+      dispatch(showToast({ type: 'warning', title: 'Téléphone requis', message: 'Veuillez saisir votre numéro de téléphone.' }));
+      return;
+    }
+    if (!address.trim()) {
+      dispatch(showToast({ type: 'warning', title: 'Adresse requise', message: 'Veuillez spécifier votre adresse de livraison.' }));
+      return;
+    }
+    setCurrentStep(2);
+  };
 
-    // Vérification de zone de couverture Yély
-    const checkCoords = (clientCoords && clientCoords[0] !== 0 && clientCoords[1] !== 0) 
+  // Envoi de la commande finale au Backend
+  const handlePlaceOrder = async () => {
+    const checkCoords = clientCoords && clientCoords[0] !== 0 && clientCoords[1] !== 0
       ? { latitude: clientCoords[1], longitude: clientCoords[0] }
       : userGeoLocation;
 
@@ -192,38 +166,38 @@ const CheckoutScreen = ({ navigation }) => {
 
     try {
       const orderData = {
-        items: cartItems.map(item => ({
+        items: cartItems.map((item) => ({
           product: item.id,
           name: item.name,
           quantity: item.quantity,
           price: item.price,
-          sellerId: item.sellerId // CRUCIAL POUR LE CALCUL BACKEND
+          sellerId: item.sellerId,
         })),
-        sellerId: cartItems[0].sellerId,
+        sellerId: cartItems[0]?.sellerId,
         shippingAddress: {
           address: address,
-          coordinates: clientCoords || [0, 0]
+          coordinates: clientCoords || [0, 0],
         },
         customerName: name,
         customerPhone: phone,
-        note: note
+        note: note,
       };
 
       const result = await createOrder(orderData).unwrap();
-      
+
       dispatch(clearCart());
-      dispatch(showToast({ 
-        type: 'success', 
-        title: 'Commande validée !', 
-        message: 'Votre commande a été transmise au vendeur.' 
+      dispatch(showToast({
+        type: 'success',
+        title: 'Commande validée !',
+        message: 'Votre commande a été transmise avec succès.',
       }));
 
       navigation.replace('OrderTracking', { orderId: result.data._id });
     } catch (error) {
-      dispatch(showToast({ 
-        type: 'error', 
-        title: 'Erreur', 
-        message: error.data?.message || 'Impossible de valider la commande.' 
+      dispatch(showToast({
+        type: 'error',
+        title: 'Erreur',
+        message: error.data?.message || 'Impossible de valider la commande.',
       }));
     }
   };
@@ -231,637 +205,109 @@ const CheckoutScreen = ({ navigation }) => {
   return (
     <LinearGradient colors={gradientColors} style={styles.container}>
       <ScreenWrapper style={{ flex: 1, backgroundColor: 'transparent' }}>
-        <MarketplaceDetailsHeader title="Validation" showCart={false} isOverlay={false} />
+        <CheckoutStepper currentStep={currentStep} onBack={handleBack} />
 
-        <ScrollView 
-          ref={scrollRef}
-          contentContainerStyle={styles.scrollContent} 
+        <ScrollView
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingTop: 10, paddingBottom: insets.bottom + 20 }}
           keyboardShouldPersistTaps="handled"
         >
-          <Text style={styles.mainTitle}>Détails de livraison</Text>
-          <GlassCard style={styles.section}>
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Ionicons name="person-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>NOM COMPLET</Text>
-              </View>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Ex: Jean Dupont" 
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={name}
-                onChangeText={setName}
-                onFocus={() => handleInputFocus(0)}
-              />
-            </View>
+          {currentStep === 1 && (
+            <DeliveryStep
+              name={name}
+              setName={setName}
+              phone={phone}
+              setPhone={setPhone}
+              deliveryMode={deliveryMode}
+              setDeliveryMode={setDeliveryMode}
+              address={address}
+              setAddress={setAddress}
+              note={note}
+              setNote={setNote}
+              isLocating={isLocating}
+              onLocatePress={getCurrentLocation}
+              onSelectOtherAddress={() => {
+                setDeliveryMode('other');
+                setTempAddress(address.startsWith('Ma position') ? '' : address);
+                setIsAddressModalVisible(true);
+              }}
+              onNext={handleNextFromDelivery}
+            />
+          )}
 
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Ionicons name="call-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>TÉLÉPHONE</Text>
-              </View>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Ex: 07 00 00 00 00" 
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                keyboardType="phone-pad"
-                value={phone}
-                onChangeText={setPhone}
-                onFocus={() => handleInputFocus(80)}
-              />
-            </View>
+          {currentStep === 2 && (
+            <PaymentStep onNext={() => setCurrentStep(3)} />
+          )}
 
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Ionicons name="bicycle-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>MODE DE LIVRAISON</Text>
-              </View>
-              
-              <View style={styles.deliveryToggleRow}>
-                <TouchableOpacity 
-                  style={[styles.toggleBtn, deliveryMode === 'current' && styles.toggleBtnActive]}
-                  onPress={() => {
-                    setDeliveryMode('current');
-                    getCurrentLocation();
-                  }}
-                >
-                  <Ionicons name="locate" size={18} color={deliveryMode === 'current' ? '#000' : '#AAA'} />
-                  <Text style={[styles.toggleText, deliveryMode === 'current' && styles.toggleTextActive]}>Ma position</Text>
-                </TouchableOpacity>
-
-                <TouchableOpacity 
-                  style={[styles.toggleBtn, deliveryMode === 'other' && styles.toggleBtnActive]}
-                  onPress={() => {
-                    setDeliveryMode('other');
-                    setTempAddress(
-                      address === 'Position GPS...' || 
-                      address.startsWith('Position GPS:') || 
-                      address.startsWith('Ma position') ? '' : address
-                    );
-                    setIsAddressModalVisible(true);
-                  }}
-                >
-                  <Ionicons name="map" size={18} color={deliveryMode === 'other' ? '#000' : '#AAA'} />
-                  <Text style={[styles.toggleText, deliveryMode === 'other' && styles.toggleTextActive]}>Ailleurs</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Ionicons name="location-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>{deliveryMode === 'current' ? 'VOTRE POSITION ACTUELLE' : 'ADRESSE DE LIVRAISON'}</Text>
-              </View>
-              <View style={styles.addressWrapper}>
-                {deliveryMode === 'other' ? (
-                  <TouchableOpacity 
-                    style={{ flex: 1 }}
-                    onPress={() => {
-                      setTempAddress(address);
-                      setIsAddressModalVisible(true);
-                    }}
-                  >
-                    <View pointerEvents="none" style={{ flex: 1 }}>
-                      <TextInput 
-                        style={[styles.input, { flex: 1, paddingRight: 50 }]} 
-                        placeholder="Cliquez pour saisir l'adresse..." 
-                        placeholderTextColor="rgba(255,255,255,0.4)"
-                        value={address}
-                        editable={false}
-                        multiline
-                      />
-                    </View>
-                  </TouchableOpacity>
-                ) : (
-                  <TextInput 
-                    style={[styles.input, { flex: 1, paddingRight: 50 }]} 
-                    placeholder="Riviera, Angré..." 
-                    placeholderTextColor="rgba(255,255,255,0.4)"
-                    value={address}
-                    onChangeText={setAddress}
-                    multiline
-                    onFocus={() => handleInputFocus(180)}
-                  />
-                )}
-                {deliveryMode === 'current' && (
-                  <TouchableOpacity 
-                    style={styles.inlineLocateBtn} 
-                    onPress={getCurrentLocation}
-                    disabled={isLocating}
-                  >
-                    {isLocating ? (
-                      <ActivityIndicator size="small" color={THEME.COLORS.primary} />
-                    ) : (
-                      <Ionicons name="locate" size={22} color={THEME.COLORS.primary} />
-                    )}
-                  </TouchableOpacity>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.inputGroup}>
-              <View style={styles.labelRow}>
-                <Ionicons name="chatbubble-ellipses-outline" size={16} color={THEME.COLORS.primary} />
-                <Text style={styles.label}>NOTE (OPTIONNEL)</Text>
-              </View>
-              <TextInput 
-                style={styles.input} 
-                placeholder="Précisions pour le livreur..." 
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                value={note}
-                onChangeText={setNote}
-                onFocus={() => handleInputFocus(260)}
-              />
-            </View>
-          </GlassCard>
-
-          <View style={styles.orderHeaderRow}>
-            <Text style={styles.mainTitle}>VOTRE COMMANDE</Text>
-            <View style={styles.itemCountBadge}>
-              <Text style={styles.itemCountText}>{cartItems.length} ARTICLES</Text>
-            </View>
-          </View>
-
-          <View style={styles.receiptContainer}>
-            <View style={styles.receiptItemsContainer}>
-              <ScrollView
-                ref={receiptScrollRef}
-                style={styles.receiptScroll}
-                contentContainerStyle={styles.receiptScrollContent}
-                showsVerticalScrollIndicator={true}
-                nestedScrollEnabled={true}
-                onScroll={e => setReceiptScrollOffset(e.nativeEvent.contentOffset.y)}
-                scrollEventThrottle={16}
-              >
-                {cartItems.map((item, idx) => (
-                  <View key={idx} style={styles.proReceiptItem}>
-                    <View style={styles.proItemLead}>
-                      <View style={styles.proQtyCircle}>
-                        <Text style={styles.proQtyText}>{item.quantity}</Text>
-                      </View>
-                      <View style={styles.proItemDetails}>
-                        <Text style={styles.proItemName} numberOfLines={1}>{item.name}</Text>
-                        <Text style={styles.proItemSeller}>Chez {item.sellerName || 'Vendeur Yély'}</Text>
-                      </View>
-                    </View>
-                    <Text style={styles.proItemPrice}>{(item.price * item.quantity).toLocaleString()} FCFA</Text>
-                  </View>
-                ))}
-              </ScrollView>
-              
-              {receiptScrollOffset > 30 && (
-                <TouchableOpacity 
-                  style={styles.receiptScrollToTopBtn} 
-                  onPress={() => receiptScrollRef.current?.scrollTo({ y: 0, animated: true })}
-                  activeOpacity={0.8}
-                >
-                  <Ionicons name="chevron-up" size={14} color="#000000" />
-                </TouchableOpacity>
-              )}
-            </View>
-            
-            <View style={styles.proDashedLine} />
-            
-            <View style={styles.proSummaryRow}>
-              <Text style={styles.proSummaryLabel}>SOUS-TOTAL</Text>
-              <Text style={styles.proSummaryValue}>{cartTotal.toLocaleString()} FCFA</Text>
-            </View>
-
-            <View style={styles.proSummaryRow}>
-              <Text style={styles.proSummaryLabel}>FRAIS DE LIVRAISON</Text>
-              <Text style={[styles.proSummaryValue, { color: '#2ECC71' }]}>
-                {deliveryPrice ? `+ ${deliveryPrice.toLocaleString()} FCFA` : '--'}
-              </Text>
-            </View>
-
-            <View style={[
-              styles.proTotalBlock,
-              {
-                backgroundColor: isDark ? 'rgba(212, 175, 55, 0.12)' : 'rgba(212, 175, 55, 0.14)',
-                borderColor: isDark ? 'rgba(212, 175, 55, 0.4)' : 'rgba(212, 175, 55, 0.5)',
-              }
-            ]}>
-              <View style={styles.proTotalLeft}>
-                <View style={styles.proTotalHeaderRow}>
-                  <View style={styles.proTotalIconBg}>
-                    <Ionicons name="wallet-outline" size={16} color={THEME.COLORS.primary} />
-                  </View>
-                  <Text style={[styles.proTotalLabel, { color: isDark ? '#FFFFFF' : '#121418' }]}>TOTAL À RÉGLER</Text>
-                </View>
-                <Text style={[styles.proTotalSub, { color: isDark ? 'rgba(255,255,255,0.65)' : 'rgba(18,20,24,0.6)' }]}>Net à payer (TTC)</Text>
-              </View>
-              <View style={styles.proTotalRight}>
-                <Text style={styles.proTotalAmount} numberOfLines={1}>
-                  {deliveryPrice ? (cartTotal + deliveryPrice).toLocaleString() : cartTotal.toLocaleString()}
-                </Text>
-                <Text style={styles.proTotalCurrency}>FCFA</Text>
-              </View>
-            </View>
-
-            <View style={styles.receiptFooter}>
-              <Ionicons name="shield-checkmark" size={14} color={THEME.COLORS.primary} />
-              <Text style={styles.receiptFooterText}>PAIEMENT SÉCURISÉ PAR YÉLY</Text>
-            </View>
-          </View>
-          <View style={{ height: 100 }} />
+          {currentStep === 3 && (
+            <ConfirmationStep
+              cartItems={cartItems}
+              cartTotal={cartTotal}
+              deliveryPrice={deliveryPrice}
+              isLoading={isLoading}
+              onConfirmOrder={handlePlaceOrder}
+            />
+          )}
         </ScrollView>
 
-        <GlassModal
-          visible={isAddressModalVisible}
-          onClose={() => {
-            setIsAddressModalVisible(false);
-            if (!address) setDeliveryMode('current');
-          }}
-          position="center"
-          closeOnBackdrop={false}
-        >
+        {/* Modale de saisie manuelle d'adresse */}
+        <GlassModal visible={isAddressModalVisible} onClose={() => setIsAddressModalVisible(false)} position="center">
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="map-outline" size={28} color={THEME.COLORS.primary} />
-              <Text style={styles.modalTitle}>Adresse de livraison</Text>
-              <Text style={styles.modalSubtitle}>Saisissez l'adresse de destination pour votre livraison.</Text>
-            </View>
-            
+            <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#1A1A1A' }]}>Adresse de livraison</Text>
             <TextInput
-              style={styles.modalInput}
-              placeholder="Ex: Cocody Riviera 3, Cité de l'Or, Villa 12..."
-              placeholderTextColor="rgba(255,255,255,0.4)"
+              style={[styles.modalInput, { color: isDark ? '#FFFFFF' : '#1A1A1A' }]}
+              placeholder="Ex: Marché central, près de la pharmacie..."
+              placeholderTextColor={isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.4)'}
               value={tempAddress}
               onChangeText={setTempAddress}
               multiline
-              numberOfLines={4}
+              numberOfLines={3}
             />
-            
-            <View style={styles.modalButtons}>
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.modalBtnCancel]} 
-                onPress={() => {
-                  setIsAddressModalVisible(false);
-                  if (!address) setDeliveryMode('current');
-                }}
-              >
-                <Text style={styles.modalBtnCancelText}>Annuler</Text>
-              </TouchableOpacity>
-              
-              <TouchableOpacity 
-                style={[styles.modalBtn, styles.modalBtnConfirm]} 
-                onPress={() => {
-                  if (!tempAddress.trim()) {
-                    dispatch(showToast({ type: 'warning', title: 'Champ requis', message: 'Veuillez saisir une adresse valide.' }));
-                    return;
-                  }
-                  setAddress(tempAddress);
-                  setClientCoords([0, 0]); // Mettre des coords non-nulles
-                  setIsAddressModalVisible(false);
-                  dispatch(showToast({ type: 'success', title: 'Adresse enregistrée', message: 'Votre adresse a été enregistrée avec succès.' }));
-                }}
-              >
-                <Text style={styles.modalBtnConfirmText}>Valider</Text>
-              </TouchableOpacity>
-            </View>
+            <GoldButton
+              title="Valider l'adresse"
+              onPress={() => {
+                if (!tempAddress.trim()) {
+                  dispatch(showToast({ type: 'warning', title: 'Champ requis', message: 'Saisissez une adresse.' }));
+                  return;
+                }
+                setAddress(tempAddress);
+                setClientCoords([0, 0]);
+                setIsAddressModalVisible(false);
+              }}
+              style={{ marginTop: 12 }}
+            />
           </View>
         </GlassModal>
 
-        <GlassModal
-          visible={isOutOfZoneModalVisible}
-          onClose={() => setIsOutOfZoneModalVisible(false)}
-          position="center"
-        >
+        {/* Modale Hors Zone */}
+        <GlassModal visible={isOutOfZoneModalVisible} onClose={() => setIsOutOfZoneModalVisible(false)} position="center">
           <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="location-outline" size={32} color={THEME.COLORS.danger} />
-              <Text style={styles.modalTitle}>Zone non couverte</Text>
-              <Text style={[styles.modalSubtitle, { marginTop: 10 }]}>
-                Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély, vous ne pouvez donc pas effectuer de commandes
-              </Text>
-            </View>
-            <GoldButton 
-              title="J'ai compris" 
-              onPress={() => setIsOutOfZoneModalVisible(false)} 
-              style={{ marginTop: 15 }}
-            />
+            <Ionicons name="location-outline" size={36} color={THEME.COLORS.danger} style={{ alignSelf: 'center', marginBottom: 8 }} />
+            <Text style={[styles.modalTitle, { color: isDark ? '#FFFFFF' : '#1A1A1A', textAlign: 'center' }]}>Zone non couverte</Text>
+            <Text style={[styles.modalDesc, { color: isDark ? 'rgba(255,255,255,0.7)' : 'rgba(0,0,0,0.6)' }]}>
+              Désolé, vous êtes actuellement hors de la zone de couverture Yély.
+            </Text>
+            <GoldButton title="J'ai compris" onPress={() => setIsOutOfZoneModalVisible(false)} style={{ marginTop: 16 }} />
           </View>
         </GlassModal>
-
-        <View style={[styles.footer, { paddingBottom: insets.bottom + 20 }]}>
-          <GoldButton 
-            title={!deliveryPrice ? "Calcul du trajet..." : "Confirmer la commande"} 
-            onPress={handlePlaceOrder}
-            loading={isLoading || isLocating}
-            disabled={!deliveryPrice || isLocating}
-            style={styles.confirmBtn}
-          />
-        </View>
       </ScreenWrapper>
     </LinearGradient>
   );
 };
 
+export default CheckoutScreen;
+
 const styles = StyleSheet.create({
   container: { flex: 1 },
-  header: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    paddingHorizontal: 25, 
-    paddingBottom: 20 
-  },
-  backBtn: { 
-    width: 50, 
-    height: 50, 
-    borderRadius: 15, 
-    backgroundColor: 'rgba(212,175,55,0.1)', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    marginRight: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)'
-  },
-  headerTitleContainer: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  headerSubtitle: { color: THEME.COLORS.textTertiary, fontSize: 10, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 2 },
-  title: { fontSize: 20, fontWeight: '800', color: THEME.COLORS.textPrimary },
-  scrollContent: { paddingHorizontal: 25 },
-  mainTitle: { 
-    fontSize: 16, 
-    fontWeight: '700', 
-    color: THEME.COLORS.textPrimary, 
-    marginTop: 20, 
-    marginBottom: 15,
-    paddingLeft: 5
-  },
-  section: { 
-    padding: 20, 
-    borderRadius: 25, 
-    backgroundColor: THEME.COLORS.glassSurface,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border
-  },
-  inputGroup: { marginBottom: 20 },
-  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 10, gap: 8 },
-  label: { color: THEME.COLORS.primary, fontSize: 11, fontWeight: '800', letterSpacing: 1.5 },
-  addressWrapper: { flexDirection: 'row', alignItems: 'center', width: '100%', position: 'relative' },
-  input: { 
-    backgroundColor: THEME.COLORS.overlay,
-    borderRadius: 16, 
-    padding: 16, 
-    color: THEME.COLORS.textPrimary,
-    fontSize: 15,
-    fontWeight: '600',
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.border
-  },
-  inlineLocateBtn: {
-    position: 'absolute',
-    right: 15,
-    height: 40,
-    width: 40,
-    justifyContent: 'center',
-    alignItems: 'center'
-  },
-  deliveryToggleRow: { 
-    flexDirection: 'row', 
-    backgroundColor: 'rgba(255,255,255,0.05)', 
-    borderRadius: 12, 
-    padding: 4, 
-    gap: 4,
-    marginBottom: 10
-  },
-  toggleBtn: { 
-    flex: 1, 
-    flexDirection: 'row',
-    height: 40, 
-    borderRadius: 10, 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    gap: 8
-  },
-  toggleBtnActive: { backgroundColor: THEME.COLORS.primary },
-  toggleText: { color: THEME.COLORS.textSecondary, fontSize: 13, fontWeight: '700' },
-  toggleTextActive: { color: THEME.COLORS.textInverse, fontWeight: '800' },
-  orderHeaderRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginTop: 25, 
-    marginBottom: 10 
-  },
-  itemCountBadge: { 
-    backgroundColor: 'rgba(212,175,55,0.15)', 
-    paddingHorizontal: 12, 
-    paddingVertical: 4, 
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.3)'
-  },
-  itemCountText: { color: THEME.COLORS.primary, fontSize: 10, fontWeight: '900', letterSpacing: 1 },
-  receiptContainer: { 
-    backgroundColor: THEME.COLORS.glassSurface, 
-    padding: 24,
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    marginBottom: 20
-  },
-  receiptItemsContainer: {
-    maxHeight: 180,
-    position: 'relative',
-    borderBottomWidth: 1,
-    borderBottomColor: THEME.COLORS.border,
-    paddingBottom: 10
-  },
-  receiptScroll: {
-    flexGrow: 0,
-  },
-  receiptScrollContent: {
-    paddingRight: 5
-  },
-  receiptScrollToTopBtn: {
-    position: 'absolute',
-    bottom: 15,
-    right: 5,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
-    backgroundColor: THEME.COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...THEME.SHADOWS.gold,
-    zIndex: 10
-  },
-  proReceiptItem: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center', 
-    marginBottom: 20 
-  },
-  proItemLead: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  proQtyCircle: { 
-    width: 32, 
-    height: 32, 
-    borderRadius: 16, 
-    backgroundColor: 'rgba(212, 175, 55, 0.08)', 
-    justifyContent: 'center', 
-    alignItems: 'center',
-    marginRight: 15,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.25)'
-  },
-  proQtyText: { color: THEME.COLORS.primary, fontWeight: '900', fontSize: 13 },
-  proItemDetails: { flex: 1 },
-  proItemName: { color: THEME.COLORS.textPrimary, fontSize: 15, fontWeight: '700' },
-  proItemSeller: { color: THEME.COLORS.textTertiary, fontSize: 11, textTransform: 'uppercase', marginTop: 2 },
-  proItemPrice: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: '800', marginLeft: 10 },
-  proDashedLine: { 
-    height: 1, 
-    borderWidth: 1, 
-    borderColor: THEME.COLORS.border, 
-    borderStyle: 'dashed', 
-    marginVertical: 20 
-  },
-  proSummaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 12 },
-  proSummaryLabel: { color: THEME.COLORS.textSecondary, fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
-  proSummaryValue: { color: THEME.COLORS.textPrimary, fontSize: 16, fontWeight: '700' },
-  proTotalBlock: { 
-    marginTop: 18, 
-    paddingVertical: 16, 
-    paddingHorizontal: 16, 
-    borderRadius: 20, 
-    flexDirection: 'row', 
-    justifyContent: 'space-between', 
-    alignItems: 'center',
-    borderWidth: 1.5,
-  },
-  proTotalLeft: {
-    flex: 1,
-    justifyContent: 'center',
-  },
-  proTotalHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8
-  },
-  proTotalIconBg: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(212, 175, 55, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  proTotalLabel: { 
-    fontWeight: '900', 
-    fontSize: 13, 
-    letterSpacing: 0.5 
-  },
-  proTotalSub: { 
-    fontSize: 10.5, 
-    fontWeight: '600', 
-    paddingLeft: 36,
-    marginTop: 2
-  },
-  proTotalRight: {
-    alignItems: 'flex-end',
-    justifyContent: 'center',
-    marginLeft: 15
-  },
-  proTotalAmount: { 
-    color: THEME.COLORS.primary, 
-    fontSize: 24, 
-    fontWeight: '900',
-    lineHeight: 26
-  },
-  proTotalCurrency: {
-    color: THEME.COLORS.primary,
-    fontSize: 11,
-    fontWeight: '900',
-    letterSpacing: 1,
-    marginTop: 2
-  },
-  receiptFooter: { 
-    flexDirection: 'row', 
-    alignItems: 'center', 
-    justifyContent: 'center', 
-    marginTop: 25, 
-    gap: 6,
-    opacity: 0.8
-  },
-  receiptFooterText: { color: THEME.COLORS.textTertiary, fontSize: 10, fontWeight: '800', letterSpacing: 1 },
-  footer: { 
-    paddingHorizontal: 25, 
-    paddingBottom: 20,
-    paddingTop: 10,
-    backgroundColor: 'transparent'
-  },
-  confirmBtn: {
-    shadowColor: THEME.COLORS.primary,
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.3,
-    elevation: 10
-  },
-  modalContent: {
-    padding: 5,
-  },
-  modalHeader: {
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: THEME.COLORS.textPrimary,
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  modalSubtitle: {
-    fontSize: 13,
-    color: THEME.COLORS.textSecondary,
-    textAlign: 'center',
-    paddingHorizontal: 10,
-  },
+  modalContent: { padding: 20 },
+  modalTitle: { fontSize: 18, fontWeight: '800', marginBottom: 10 },
+  modalDesc: { fontSize: 13, lineHeight: 18, textAlign: 'center' },
   modalInput: {
-    backgroundColor: THEME.COLORS.overlay,
-    borderRadius: 15,
-    padding: 15,
-    color: THEME.COLORS.textPrimary,
-    fontSize: 16,
-    borderWidth: 1.5,
-    borderColor: THEME.COLORS.border,
-    minHeight: 100,
-    textAlignVertical: 'top',
-    marginBottom: 20,
-  },
-  modalButtons: {
-    flexDirection: 'row',
-    gap: 12,
-  },
-  modalBtn: {
-    flex: 1,
-    height: 50,
-    borderRadius: 25,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  modalBtnCancel: {
-    backgroundColor: THEME.COLORS.overlay,
     borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    borderColor: 'rgba(212,175,55,0.3)',
+    borderRadius: 14,
+    padding: 12,
+    minHeight: 70,
+    textAlignVertical: 'top',
   },
-  modalBtnCancelText: {
-    color: THEME.COLORS.textSecondary,
-    fontWeight: '600',
-    fontSize: 15,
-  },
-  modalBtnConfirm: {
-    backgroundColor: THEME.COLORS.primary,
-  },
-  modalBtnConfirmText: {
-    color: THEME.COLORS.textInverse,
-    fontWeight: 'bold',
-    fontSize: 15,
-  }
 });
-
-export default CheckoutScreen;

@@ -18,6 +18,7 @@ import THEME from '../../theme/theme';
 /**
  * @param {Object} props
  * @param {boolean} props.visible
+ * @param {'store' | 'ota'} [props.type]
  * @param {string} [props.title]
  * @param {string} [props.message]
  * @param {boolean} [props.isForced]
@@ -26,6 +27,7 @@ import THEME from '../../theme/theme';
  */
 export default function UpdateModal({
   visible,
+  type = 'store',
   title,
   message,
   isForced,
@@ -37,6 +39,7 @@ export default function UpdateModal({
 
   if (!visible) return null;
 
+  const isOta = type === 'ota';
   const cardBg = isDark ? '#0A0A0A' : '#FFFFFF';
   const textColor = isDark ? '#FFFFFF' : '#1A1A1A';
   const subTextColor = isDark ? 'rgba(255, 255, 255, 0.75)' : 'rgba(26, 26, 26, 0.75)';
@@ -58,13 +61,21 @@ export default function UpdateModal({
         <View style={[styles.alertCard, { backgroundColor: cardBg, borderColor: isDark ? 'rgba(212, 175, 55, 0.35)' : 'rgba(212, 175, 55, 0.45)' }]}>
           {/* Badge Icône Haute Définition */}
           <View style={[styles.iconContainer, { borderColor: iconBorderColor }]}>
-            <Ionicons name="cloud-download-outline" size={38} color="#000000" />
+            <Ionicons 
+              name={isOta ? "sparkles" : "cloud-download-outline"} 
+              size={36} 
+              color="#000000" 
+            />
           </View>
 
           {/* Titre & Message explicatif */}
-          <Text style={[styles.title, { color: textColor }]}>{title || 'Mise à jour disponible'}</Text>
+          <Text style={[styles.title, { color: textColor }]}>
+            {title || (isOta ? 'Mise à jour prête !' : 'Mise à jour disponible')}
+          </Text>
           <Text style={[styles.message, { color: subTextColor }]}>
-            {message || 'Une nouvelle version de Yély est disponible sur le Play Store avec des améliorations importantes.'}
+            {message || (isOta 
+              ? 'Une amélioration a été téléchargée. Redémarrez l\'application pour l\'appliquer immédiatement.' 
+              : 'Une nouvelle version de Yély est disponible sur le Play Store avec des améliorations importantes.')}
           </Text>
 
           {/* Boutons d'action */}
@@ -84,7 +95,12 @@ export default function UpdateModal({
               onPress={onUpdate}
               activeOpacity={0.85}
             >
-              <Text style={styles.updateText}>Mettre à jour</Text>
+              {isOta && (
+                <Ionicons name="refresh" size={18} color="#000000" style={{ marginRight: 6 }} />
+              )}
+              <Text style={styles.updateText}>
+                {isOta ? "Redémarrer" : "Mettre à jour"}
+              </Text>
             </TouchableOpacity>
           </View>
 
@@ -165,6 +181,7 @@ const styles = StyleSheet.create({
     flex: 1.3,
     height: 48,
     borderRadius: 14,
+    flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: THEME.COLORS.champagneGold,

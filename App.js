@@ -31,7 +31,6 @@ import THEME from './src/theme/theme';
 
 import AppToast from './src/components/ui/AppToast';
 import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
-import ForceUpdateModal from './src/components/ui/ForceUpdateModal';
 import UpdateModal from './src/components/ui/UpdateModal';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import GlobalErrorFallback from './src/components/ui/GlobalErrorFallback';
@@ -176,23 +175,15 @@ const AppContent = () => {
         <GlobalSkeleton visible={loading.visible} fullScreen={true} />
         <SessionRecoveryOverlay />
 
-        {/* Modale de mise à jour Play Store (Remote Config) */}
+        {/* Modale de mise à jour Unifiée (Play Store & OTA Expo) */}
         <UpdateModal
           visible={updateState.visible}
+          type={updateState.type}
           title={updateState.title}
           message={updateState.message}
           isForced={updateState.isForced}
           onUpdate={handleApplyUpdate}
           onDismiss={handleDismiss}
-        />
-
-        {/* Modale OTA / PWA */}
-        <ForceUpdateModal 
-          visible={appUpdate.isAvailable}
-          latestVersion={appUpdate.latestVersion}
-          mandatoryUpdate={appUpdate.mandatoryUpdate}
-          updateUrl={appUpdate.updateUrl}
-          isOta={appUpdate.isOta} 
         />
 
         <FacebookFollowModal />

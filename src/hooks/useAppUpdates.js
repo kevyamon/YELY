@@ -1,11 +1,12 @@
 // src/hooks/useAppUpdates.js
-// HOOK DE DÉTECTION & FORÇAGE DES MISES À JOUR PLAY STORE (REMOTE CONFIG)
+// HOOK DE DÉTECTION & GESTION DES MISES À JOUR (PLAY STORE & OTA EXPO)
 // STANDARD: Industriel / Bank Grade
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
+import * as Updates from 'expo-updates';
 import ENV from '../config/env';
 
 const DISMISSED_UPDATE_KEY = 'yely_dismissed_store_update_code';
@@ -27,17 +28,42 @@ const getLocalVersionCode = () => {
 export const useAppUpdates = () => {
   const [updateState, setUpdateState] = useState({
     visible: false,
-    type: 'store',
+    type: 'store', // 'store' ou 'ota'
     isForced: false,
     title: 'Mise à jour disponible',
-    message: 'Une nouvelle version de Yély est disponible sur le Play Store.',
+    message: 'Une nouvelle version de Yély est disponible.',
     storeUrl: 'https://play.google.com/store/apps/details?id=com.yely.app',
     targetVersionCode: null,
   });
 
   const isChecking = useRef(false);
 
-  // 1. Vérification des versions distantes via l'endpoint Remote Config
+  // 1. Vérification OTA Expo (Patch JS sans passer par le Store)
+  const checkOtaUpdates = async () => {
+    if (__DEV__ || Platform.OS === 'web' || !Updates.isEnabled) return false;
+
+    try {
+      const update = await Updates.checkForUpdateAsync();
+      if (update.isAvailable) {
+        await Updates.fetchUpdateAsync();
+        setUpdateState({
+          visible: true,
+          type: 'ota',
+          title: 'Mise à jour prête !',
+          message: 'Une amélioration a été téléchargée. Redémarrez l\'application pour en profiter immédiatement.',
+          isForced: false,
+          storeUrl: null,
+          targetVersionCode: null,
+        });
+        return true;
+      }
+    } catch (error) {
+      console.warn('[OTA] Vérification silencieuse:', error.message);
+    }
+    return false;
+  };
+
+  // 2. Vérification des versions Store via Remote Config
   const checkStoreUpdates = async () => {
     if (Platform.OS === 'web') return;
 
@@ -62,9 +88,7 @@ export const useAppUpdates = () => {
 
       clearTimeout(timeoutId);
 
-      if (!response || !response.ok) {
-        return;
-      }
+      if (!response || !response.ok) return;
 
       const resJson = await response.json();
       const versioning = resJson.data?.versioning || resJson.versioning;
@@ -75,28 +99,25 @@ export const useAppUpdates = () => {
       const remoteMinCode = Number(versioning.minVersionCode) || 0;
       const isForced = Boolean(versioning.forceUpdate || localVersionCode < remoteMinCode);
 
-      // Si le Store a une version plus récente que le téléphone
       if (remoteLatestCode > localVersionCode) {
-        // Si la mise à jour n'est PAS obligatoire, vérifier si l'utilisateur a cliqué "Plus tard"
         if (!isForced) {
           const dismissedCode = await AsyncStorage.getItem(DISMISSED_UPDATE_KEY);
           if (dismissedCode && Number(dismissedCode) >= remoteLatestCode) {
-            return; // L'utilisateur a déjà ignoré cette version
+            return;
           }
         }
 
         setUpdateState({
           visible: true,
           type: 'store',
-          title: versioning.updateTitle || 'Mise à jour disponible',
-          message: versioning.updateMessage || 'Une nouvelle version de Yély est disponible sur le Play Store avec des améliorations importantes.',
+          title: versioning.updateTitle || 'Mise à jour Play Store',
+          message: versioning.updateMessage || 'Une nouvelle version de Yély est disponible sur le Google Play Store.',
           isForced,
           storeUrl: versioning.storeUrl || 'https://play.google.com/store/apps/details?id=com.yely.app',
           targetVersionCode: remoteLatestCode,
         });
       } else {
-        // Le téléphone est à jour : masquer la modale si elle était ouverte
-        setUpdateState((prev) => (prev.visible ? { ...prev, visible: false } : prev));
+        setUpdateState((prev) => (prev.visible && prev.type === 'store' ? { ...prev, visible: false } : prev));
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
@@ -111,13 +132,16 @@ export const useAppUpdates = () => {
     if (isChecking.current) return;
     isChecking.current = true;
     try {
-      await checkStoreUpdates();
+      const otaFound = await checkOtaUpdates();
+      if (!otaFound) {
+        await checkStoreUpdates();
+      }
     } finally {
       isChecking.current = false;
     }
   }, []);
 
-  // 2. Déclenchement automatique au démarrage et à chaque reprise d'activité (Foreground)
+  // 3. Déclenchement au démarrage et au retour d'arrière-plan
   useEffect(() => {
     runCheck();
 
@@ -130,8 +154,17 @@ export const useAppUpdates = () => {
     return () => subscription.remove();
   }, [runCheck]);
 
-  // 3. Redirection automatique vers la fiche Google Play Store
+  // 4. Action de mise à jour (Rechargement instantané pour OTA OU Redirection Store)
   const handleApplyUpdate = async () => {
+    if (updateState.type === 'ota') {
+      try {
+        await Updates.reloadAsync();
+      } catch (e) {
+        console.warn('[OTA] Erreur rechargement:', e.message);
+      }
+      return;
+    }
+
     const url = updateState.storeUrl || 'https://play.google.com/store/apps/details?id=com.yely.app';
     try {
       await Linking.openURL(url);
@@ -140,10 +173,10 @@ export const useAppUpdates = () => {
     }
   };
 
-  // 4. Fermeture contrôlée avec mémorisation permanente dans AsyncStorage
+  // 5. Fermeture contrôlée
   const handleDismiss = async () => {
     if (!updateState.isForced) {
-      if (updateState.targetVersionCode) {
+      if (updateState.type === 'store' && updateState.targetVersionCode) {
         try {
           await AsyncStorage.setItem(DISMISSED_UPDATE_KEY, String(updateState.targetVersionCode));
         } catch (e) {
