@@ -71,7 +71,7 @@ export default function PaymentStep({ onNext }) {
       {/* Carte d'information sur les futurs paiements digitaux */}
       <View style={[styles.upcomingCard, { backgroundColor: isDark ? 'rgba(255,255,255,0.03)' : '#F9FAFB', borderColor: cardBorder }]}>
         <View style={styles.upcomingHeaderRow}>
-          <Ionicons name="sparkles" size={16} color={THEME.COLORS.champagneGold} />
+          <Ionicons name="phone-portrait-outline" size={17} color={THEME.COLORS.champagneGold} />
           <Text style={[styles.upcomingTitle, { color: textColor }]}>
             Paiements mobiles & digitaux
           </Text>

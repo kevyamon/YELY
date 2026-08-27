@@ -3,7 +3,8 @@
 // STANDARD: Industriel / Bank Grade
 
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, useColorScheme } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, useColorScheme, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import THEME from '../../../theme/theme';
 
@@ -13,6 +14,7 @@ import THEME from '../../../theme/theme';
  * @param {() => void} props.onBack - Action retour
  */
 export default function CheckoutStepper({ currentStep = 1, onBack }) {
+  const insets = useSafeAreaInsets();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -23,35 +25,39 @@ export default function CheckoutStepper({ currentStep = 1, onBack }) {
   ];
 
   return (
-    <View style={styles.headerContainer}>
-      {/* Bouton Retour */}
-      <TouchableOpacity 
-        style={[
-          styles.backBtn, 
-          { 
-            backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.05)',
-            borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'
-          }
-        ]} 
-        onPress={onBack}
-        activeOpacity={0.7}
-      >
-        <Ionicons name="arrow-back" size={20} color={isDark ? '#FFFFFF' : '#1A1A1A'} />
-      </TouchableOpacity>
+    <View style={[styles.headerContainer, { paddingTop: Math.max(insets.top + (Platform.OS === 'android' ? 12 : 6), 24) }]}>
+      {/* Barre supérieure avec bouton Retour et Titre centré */}
+      <View style={styles.topNavRow}>
+        <TouchableOpacity 
+          style={[
+            styles.backBtn, 
+            { 
+              backgroundColor: isDark ? 'rgba(255, 255, 255, 0.08)' : '#FFFFFF',
+              borderColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)'
+            }
+          ]} 
+          onPress={onBack}
+          activeOpacity={0.7}
+          hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
+        >
+          <Ionicons name="arrow-back" size={20} color={isDark ? '#FFFFFF' : '#1A1A1A'} />
+        </TouchableOpacity>
 
-      {/* Titre Validation */}
-      <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1A1A1A' }]}>
-        Validation
-      </Text>
+        <Text style={[styles.headerTitle, { color: isDark ? '#FFFFFF' : '#1A1A1A' }]}>
+          Validation
+        </Text>
 
-      {/* Stepper avec indicateurs */}
+        <View style={styles.backBtnPlaceholder} />
+      </View>
+
+      {/* Stepper avec ligne de progression épaissie */}
       <View style={styles.stepperWrapper}>
-        <View style={styles.stepperLineBg}>
+        <View style={[styles.stepperLineBg, { backgroundColor: isDark ? 'rgba(255, 255, 255, 0.12)' : 'rgba(0, 0, 0, 0.08)' }]}>
           <View 
             style={[
               styles.stepperLineProgress, 
               { 
-                width: currentStep === 1 ? '15%' : currentStep === 2 ? '50%' : '100%',
+                width: currentStep === 1 ? '16%' : currentStep === 2 ? '50%' : '100%',
                 backgroundColor: THEME.COLORS.champagneGold 
               }
             ]} 
@@ -69,13 +75,16 @@ export default function CheckoutStepper({ currentStep = 1, onBack }) {
                   style={[
                     styles.stepDot,
                     {
-                      backgroundColor: isActive || isCompleted ? THEME.COLORS.champagneGold : (isDark ? '#333333' : '#E0E0E0'),
+                      backgroundColor: isActive || isCompleted ? THEME.COLORS.champagneGold : (isDark ? '#2A2A2A' : '#E5E7EB'),
                       borderColor: isActive ? (isDark ? '#000000' : '#FFFFFF') : 'transparent',
                     }
                   ]}
                 >
                   {isCompleted && (
                     <Ionicons name="checkmark" size={10} color="#000000" />
+                  )}
+                  {isActive && !isCompleted && (
+                    <View style={styles.activeDotInner} />
                   )}
                 </View>
                 <Text 
@@ -84,8 +93,8 @@ export default function CheckoutStepper({ currentStep = 1, onBack }) {
                     {
                       color: isActive 
                         ? (isDark ? '#FFFFFF' : '#1A1A1A') 
-                        : (isDark ? 'rgba(255, 255, 255, 0.4)' : 'rgba(0, 0, 0, 0.4)'),
-                      fontWeight: isActive ? '700' : '500',
+                        : (isDark ? 'rgba(255, 255, 255, 0.45)' : 'rgba(0, 0, 0, 0.4)'),
+                      fontWeight: isActive ? '800' : '600',
                     }
                   ]}
                 >
@@ -103,43 +112,53 @@ export default function CheckoutStepper({ currentStep = 1, onBack }) {
 const styles = StyleSheet.create({
   headerContainer: {
     paddingHorizontal: 20,
-    paddingTop: 10,
     paddingBottom: 16,
   },
+  topNavRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 16,
+  },
   backBtn: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 42,
+    height: 42,
+    borderRadius: 21,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
-    marginBottom: 8,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+  },
+  backBtnPlaceholder: {
+    width: 42,
+    height: 42,
   },
   headerTitle: {
     fontSize: 22,
-    fontWeight: '800',
+    fontWeight: '900',
     textAlign: 'center',
-    marginTop: -32,
-    marginBottom: 16,
     letterSpacing: 0.2,
   },
   stepperWrapper: {
     position: 'relative',
-    marginTop: 6,
-    paddingHorizontal: 12,
+    marginTop: 4,
+    paddingHorizontal: 8,
   },
   stepperLineBg: {
     position: 'absolute',
-    top: 5,
-    left: 28,
-    right: 28,
-    height: 2,
-    backgroundColor: 'rgba(200, 200, 200, 0.3)',
-    borderRadius: 1,
+    top: 7,
+    left: 24,
+    right: 24,
+    height: 3.5,
+    borderRadius: 2,
   },
   stepperLineProgress: {
-    height: 2,
-    borderRadius: 1,
+    height: 3.5,
+    borderRadius: 2,
   },
   stepsRow: {
     flexDirection: 'row',
@@ -150,13 +169,19 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   stepDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
-    borderWidth: 1.5,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    borderWidth: 2,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 6,
+  },
+  activeDotInner: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#000000',
   },
   stepLabel: {
     fontSize: 12,

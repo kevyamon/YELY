@@ -1,8 +1,8 @@
 // src/components/marketplace/checkout/DeliveryStep.jsx
 // ÉTAPE 1 - Détails de Livraison & Coordonnées Client
-// STANDARD: Industriel / Bank Grade
+// STANDARD: Industriel / Bank Grade (Strict <= 325 lignes)
 
-import React from 'react';
+import React, { useRef } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   TextInput,
   TouchableOpacity,
   ActivityIndicator,
+  Image,
   useColorScheme,
 } from 'react-native';
 import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
@@ -31,6 +32,8 @@ export default function DeliveryStep({
   onSelectOtherAddress,
   onNext,
 }) {
+  const nameInputRef = useRef(null);
+  const phoneInputRef = useRef(null);
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -44,23 +47,20 @@ export default function DeliveryStep({
 
   return (
     <View style={styles.container}>
-      {/* En-tête avec titre et badge 3D */}
+      {/* En-tête avec titre et badge 3D location */}
       <View style={styles.headerRow}>
         <View style={styles.headerTextGroup}>
-          <Text style={[styles.title, { color: textColor }]}>
-            Détails de livraison
-          </Text>
+          <Text style={[styles.title, { color: textColor }]}>Détails de livraison</Text>
           <Text style={[styles.subtitle, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
             Vérifiez vos informations pour une livraison sans souci.
           </Text>
         </View>
 
-        <View style={[styles.badge3DContainer, { backgroundColor: isDark ? 'rgba(212,175,55,0.12)' : 'rgba(212,175,55,0.14)' }]}>
-          <MaterialCommunityIcons name="map-marker-radius" size={28} color={THEME.COLORS.champagneGold} />
-          <View style={styles.parcelIconOverlay}>
-            <Ionicons name="cube" size={14} color="#000000" />
-          </View>
-        </View>
+        <Image
+          source={require('../../../../assets/images/location3D.png')}
+          style={{ width: 76, height: 76 }}
+          resizeMode="contain"
+        />
       </View>
 
       {/* Champs d'information client */}
@@ -71,19 +71,20 @@ export default function DeliveryStep({
             <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
               <Ionicons name="person-outline" size={16} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
-              Nom complet
-            </Text>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Nom complet</Text>
           </View>
           <View style={[styles.inputWrapper, { backgroundColor: inputBg, borderColor: inputBorder }]}>
             <TextInput
+              ref={nameInputRef}
               style={[styles.input, { color: textColor }]}
               value={name}
               onChangeText={setName}
               placeholder="Votre nom"
               placeholderTextColor={placeholderColor}
             />
-            <Ionicons name="pencil-outline" size={16} color={THEME.COLORS.champagneGold} />
+            <TouchableOpacity onPress={() => nameInputRef.current?.focus()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="pencil" size={18} color={THEME.COLORS.champagneGold} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -93,12 +94,11 @@ export default function DeliveryStep({
             <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
               <Ionicons name="call-outline" size={16} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
-              Téléphone
-            </Text>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Téléphone</Text>
           </View>
           <View style={[styles.inputWrapper, { backgroundColor: inputBg, borderColor: inputBorder }]}>
             <TextInput
+              ref={phoneInputRef}
               style={[styles.input, { color: textColor }]}
               value={phone}
               onChangeText={setPhone}
@@ -106,7 +106,9 @@ export default function DeliveryStep({
               placeholder="+225 00 00 00 00 00"
               placeholderTextColor={placeholderColor}
             />
-            <Ionicons name="pencil-outline" size={16} color={THEME.COLORS.champagneGold} />
+            <TouchableOpacity onPress={() => phoneInputRef.current?.focus()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
+              <MaterialCommunityIcons name="pencil" size={18} color={THEME.COLORS.champagneGold} />
+            </TouchableOpacity>
           </View>
         </View>
 
@@ -116,9 +118,7 @@ export default function DeliveryStep({
             <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
               <MaterialCommunityIcons name="bicycle" size={16} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
-              Mode de livraison
-            </Text>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Mode de livraison</Text>
           </View>
           <View style={styles.toggleRow}>
             <TouchableOpacity
@@ -131,20 +131,8 @@ export default function DeliveryStep({
               onPress={() => setDeliveryMode('current')}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="locate"
-                size={16}
-                color={deliveryMode === 'current' ? '#000000' : (isDark ? '#AAAAAA' : '#666666')}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[
-                  styles.toggleTabText,
-                  { color: deliveryMode === 'current' ? '#000000' : (isDark ? '#AAAAAA' : '#666666') },
-                ]}
-              >
-                Ma position
-              </Text>
+              <Ionicons name="locate" size={16} color={deliveryMode === 'current' ? '#000000' : (isDark ? '#AAA' : '#666')} style={{ marginRight: 6 }} />
+              <Text style={[styles.toggleTabText, { color: deliveryMode === 'current' ? '#000000' : (isDark ? '#AAA' : '#666') }]}>Ma position</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -157,20 +145,8 @@ export default function DeliveryStep({
               onPress={onSelectOtherAddress}
               activeOpacity={0.8}
             >
-              <Ionicons
-                name="map"
-                size={16}
-                color={deliveryMode === 'other' ? '#000000' : (isDark ? '#AAAAAA' : '#666666')}
-                style={{ marginRight: 6 }}
-              />
-              <Text
-                style={[
-                  styles.toggleTabText,
-                  { color: deliveryMode === 'other' ? '#000000' : (isDark ? '#AAAAAA' : '#666666') },
-                ]}
-              >
-                Ailleurs
-              </Text>
+              <Ionicons name="map" size={16} color={deliveryMode === 'other' ? '#000000' : (isDark ? '#AAA' : '#666')} style={{ marginRight: 6 }} />
+              <Text style={[styles.toggleTabText, { color: deliveryMode === 'other' ? '#000000' : (isDark ? '#AAA' : '#666') }]}>Ailleurs</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -206,15 +182,13 @@ export default function DeliveryStep({
           </View>
         </View>
 
-        {/* Note au vendeur avec contraste parfait */}
+        {/* Note au vendeur */}
         <View style={styles.inputGroup}>
           <View style={styles.labelRow}>
             <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
               <Ionicons name="chatbubble-outline" size={15} color={THEME.COLORS.champagneGold} />
             </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>
-              Note (optionnel)
-            </Text>
+            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Note (optionnel)</Text>
           </View>
           <View style={[styles.noteWrapper, { backgroundColor: noteCardBg, borderColor: inputBorder }]}>
             <TextInput
@@ -245,49 +219,11 @@ export default function DeliveryStep({
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingHorizontal: 20,
-    paddingBottom: 24,
-  },
-  headerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    marginBottom: 20,
-  },
-  headerTextGroup: {
-    flex: 1,
-    paddingRight: 14,
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: '800',
-    letterSpacing: 0.2,
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    lineHeight: 18,
-  },
-  badge3DContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
-  },
-  parcelIconOverlay: {
-    position: 'absolute',
-    bottom: 6,
-    right: 6,
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    backgroundColor: THEME.COLORS.champagneGold,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  container: { paddingHorizontal: 20, paddingBottom: 24 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
+  headerTextGroup: { flex: 1, paddingRight: 14 },
+  title: { fontSize: 22, fontWeight: '800', letterSpacing: 0.2, marginBottom: 4 },
+  subtitle: { fontSize: 13, lineHeight: 18 },
   card: {
     borderRadius: 24,
     padding: 18,
@@ -299,110 +235,24 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 8,
   },
-  inputGroup: {
-    marginBottom: 16,
-  },
-  labelRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 6,
-  },
-  labelIconBg: {
-    width: 26,
-    height: 26,
-    borderRadius: 8,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 8,
-  },
-  fieldLabel: {
-    fontSize: 11.5,
-    fontWeight: '600',
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderRadius: 14,
-    borderWidth: 1,
-    paddingHorizontal: 14,
-    height: 48,
-  },
-  input: {
-    flex: 1,
-    fontSize: 14,
-    fontWeight: '600',
-  },
-  toggleRow: {
-    flexDirection: 'row',
-    gap: 10,
-  },
-  toggleTab: {
-    flex: 1,
-    flexDirection: 'row',
-    height: 44,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  toggleTabText: {
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  locationCard: {
-    borderRadius: 16,
-    borderWidth: 1,
-    padding: 14,
-    marginBottom: 16,
-  },
-  locationHeaderRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  locationCardTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-  },
-  locationBodyRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  locationAddressText: {
-    flex: 1,
-    fontSize: 13,
-    fontWeight: '600',
-    lineHeight: 18,
-    marginRight: 10,
-  },
-  locateActionBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(212,175,55,0.2)',
-  },
-  noteWrapper: {
-    borderRadius: 14,
-    borderWidth: 1,
-    padding: 12,
-    minHeight: 80,
-    justifyContent: 'space-between',
-  },
-  noteInput: {
-    fontSize: 13,
-    fontWeight: '500',
-    minHeight: 46,
-    textAlignVertical: 'top',
-  },
-  charCounter: {
-    alignSelf: 'flex-end',
-    fontSize: 10.5,
-    fontWeight: '600',
-  },
+  inputGroup: { marginBottom: 16 },
+  labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  labelIconBg: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
+  fieldLabel: { fontSize: 11.5, fontWeight: '600' },
+  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, height: 48 },
+  input: { flex: 1, fontSize: 14, fontWeight: '600' },
+  toggleRow: { flexDirection: 'row', gap: 10 },
+  toggleTab: { flex: 1, flexDirection: 'row', height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
+  toggleTabText: { fontSize: 13, fontWeight: '700' },
+  locationCard: { borderRadius: 16, borderWidth: 1, padding: 14, marginBottom: 16 },
+  locationHeaderRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 6 },
+  locationCardTitle: { fontSize: 12, fontWeight: '700' },
+  locationBodyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  locationAddressText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18, marginRight: 10 },
+  locateActionBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
+  noteWrapper: { borderRadius: 14, borderWidth: 1, padding: 12, minHeight: 80, justifyContent: 'space-between' },
+  noteInput: { fontSize: 13, fontWeight: '500', minHeight: 46, textAlignVertical: 'top' },
+  charCounter: { alignSelf: 'flex-end', fontSize: 10.5, fontWeight: '600' },
   nextBtn: {
     flexDirection: 'row',
     height: 52,
@@ -416,18 +266,6 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  nextBtnText: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#000000',
-    marginRight: 10,
-  },
-  nextArrowCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+  nextBtnText: { fontSize: 16, fontWeight: '800', color: '#000000', marginRight: 10 },
+  nextArrowCircle: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0, 0, 0, 0.1)', justifyContent: 'center', alignItems: 'center' },
 });
