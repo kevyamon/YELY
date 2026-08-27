@@ -29,8 +29,9 @@ import {
 } from './markers/MobileMarkers';
 import UserLocationMarker from './markers/UserLocationMarker';
 
-const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const DARK_TILE_URL = 'https://basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_TOKEN || 'pk.4e174e5a5b55092ab9d70c29533077b2';
+const LIGHT_TILE_URL = `https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
+const DARK_TILE_URL = `https://tiles.locationiq.com/v3/dark/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
 
 // Algorithme de désambiguïsation géographique des labels de POI pour éviter les chevauchements
 const resolvePoiCollisions = (pois) => {

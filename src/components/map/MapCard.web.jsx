@@ -25,8 +25,9 @@ import {
   userIcon
 } from './markers/WebMarkers';
 
-const LIGHT_TILE_URL = 'https://basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
-const ATTRIBUTION = '&copy; OpenStreetMap contributors &copy; CARTO';
+const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_TOKEN || 'pk.4e174e5a5b55092ab9d70c29533077b2';
+const LIGHT_TILE_URL = `https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
+const ATTRIBUTION = '&copy; <a href="https://locationiq.com">LocationIQ</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>';
 
 // Algorithme de désencombrement géographique dynamique des POIs pour éviter les chevauchements
 const resolvePoiCollisions = (pois, zoom) => {
