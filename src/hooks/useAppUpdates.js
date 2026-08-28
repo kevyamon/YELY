@@ -22,7 +22,7 @@ const getLocalVersionCode = () => {
   if (Constants.expoConfig?.android?.versionCode) {
     return Number(Constants.expoConfig.android.versionCode);
   }
-  return Platform.OS === 'android' ? 21 : 1;
+  return Platform.OS === 'android' ? 22 : 1;
 };
 
 export const useAppUpdates = () => {
