@@ -2,7 +2,6 @@
 // RACINE DE L'APPLICATION MOBILE & PWA YELY
 // STANDARD: Industriel / Bank Grade / NASA Resilience (< 325 lignes, Sans Emojis)
 
-import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { applyThemeUpdate } from './src/theme/themeEngine';
@@ -63,10 +62,8 @@ class UniversalErrorBoundary extends Component {
   }
 
   componentDidCatch(error, errorInfo) {
+    console.error('[CRITICAL CRASH INTERCEPTED]', error, errorInfo);
     this.setState({ componentStack: errorInfo?.componentStack || '' });
-    if (typeof Sentry?.captureException === 'function') {
-      Sentry.captureException(error);
-    }
   }
 
   handleReset = () => {
@@ -298,9 +295,7 @@ const App = () => {
       <ReduxProvider store={store}>
         <PaperProvider>
           <SafeAreaProvider>
-            <UniversalErrorBoundary>
-              <AppContent />
-            </UniversalErrorBoundary>
+            <AppContent />
           </SafeAreaProvider>
         </PaperProvider>
       </ReduxProvider>
@@ -308,7 +303,13 @@ const App = () => {
   );
 };
 
-export default Sentry.wrap(App);
+export default function AppRoot() {
+  return (
+    <UniversalErrorBoundary>
+      <App />
+    </UniversalErrorBoundary>
+  );
+}
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
