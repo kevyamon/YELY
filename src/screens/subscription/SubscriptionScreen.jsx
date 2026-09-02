@@ -1,6 +1,6 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ECRAN D'ABONNEMENT - Orchestrateur (Automatisé GeniusPay & Temps Réel)
-// STANDARD: Clean Architecture / Bank Grade (Modularisé < 325 lignes)
+// ECRAN D'ABONNEMENT - Orchestrateur (Automatise GeniusPay, Auto-Verification & Temps Reel)
+// STANDARD: Clean Architecture / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -13,7 +13,8 @@ import { useDispatch, useSelector } from 'react-redux';
 import {
   useGetConfigQuery,
   useGetSubscriptionStatusQuery,
-  useInitializePaymentMutation
+  useInitializePaymentMutation,
+  useLazyVerifyPaymentQuery
 } from '../../store/api/subscriptionApiSlice';
 import {
   selectCurrentUser,
@@ -46,6 +47,7 @@ const SubscriptionScreen = ({ navigation }) => {
   const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
   const [initializePayment, { isLoading: isInitiating }] = useInitializePaymentMutation();
+  const [verifyPaymentTrigger] = useLazyVerifyPaymentQuery();
 
   const [currentStep, setCurrentStep] = useState(null);
 
@@ -67,11 +69,27 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [configData, dispatch]);
 
-  // Synchronisation en temps réel via Sockets
+  // Synchronisation dynamique du statut recu du serveur vers Redux
+  useEffect(() => {
+    if (statusData?.data) {
+      const isSubActive = Boolean(
+        statusData.data.isActive || 
+        (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
+      );
+
+      dispatch(updateSubscriptionStatus({
+        isActive: isSubActive,
+        isPending: Boolean(statusData.data.isPending),
+        expiresAt: statusData.data.expiresAt
+      }));
+    }
+  }, [statusData, dispatch]);
+
+  // Synchronisation en temps reel via Sockets
   useEffect(() => {
     const handleSubscriptionActivated = (payload) => {
-      dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
-      dispatch(showSuccessToast({ title: "Succès", message: "Votre Passe Yély a été activé avec succès." }));
+      dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: payload?.expiresAt }));
+      dispatch(showSuccessToast({ title: "Succes", message: "Votre Passe Yely a ete active avec succes." }));
       refetchConfig();
       refetchStatus();
       setCurrentStep(STEPS.DASHBOARD);
@@ -110,7 +128,12 @@ const SubscriptionScreen = ({ navigation }) => {
     if (isStatusLoading || isConfigLoading) return;
 
     if (statusData?.data) {
-      if (statusData.data.isActive || promoMode?.isActive) {
+      const isSubActive = Boolean(
+        statusData.data.isActive || 
+        (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
+      );
+
+      if (isSubActive || promoMode?.isActive) {
         setCurrentStep(STEPS.DASHBOARD);
       } else {
         setCurrentStep(STEPS.CHOOSE_PLAN);
@@ -124,7 +147,9 @@ const SubscriptionScreen = ({ navigation }) => {
     try {
       const platform = Platform.OS === 'web' ? 'pwa' : 'mobile';
       const response = await initializePayment({ planId: 'MONTHLY', platform }).unwrap();
-      const paymentUrl = response?.data?.paymentUrl || response?.paymentUrl;
+      const payload = response?.data || response;
+      const paymentUrl = payload?.paymentUrl;
+      const reference = payload?.reference;
 
       if (!paymentUrl) {
         throw new Error("Lien de paiement non disponible.");
@@ -133,12 +158,25 @@ const SubscriptionScreen = ({ navigation }) => {
       if (Platform.OS === 'web') {
         window.location.href = paymentUrl;
       } else {
-        // Mode Mobile : Ouverture dans le navigateur sécurisé intégré avec retour Deep Link
         const result = await WebBrowser.openAuthSessionAsync(paymentUrl, 'yely://subscription');
-        if (result.type === 'success' || result.type === 'dismiss') {
-          refetchStatus();
-          refetchConfig();
+        
+        // Auto-Verification immediate a la fermeture du navigateur securise
+        if (reference) {
+          try {
+            const verifyRes = await verifyPaymentTrigger(reference).unwrap();
+            const verifyData = verifyRes?.data || verifyRes;
+            if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
+              dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
+              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+              setCurrentStep(STEPS.DASHBOARD);
+            }
+          } catch (vErr) {
+            console.warn('[VERIFY SYNC] Interrogation retour:', vErr.message);
+          }
         }
+
+        refetchStatus();
+        refetchConfig();
       }
     } catch (err) {
       const msg = err?.data?.message || err?.message || "Erreur lors de l'ouverture du paiement.";
@@ -169,7 +207,7 @@ const SubscriptionScreen = ({ navigation }) => {
         </TouchableOpacity>
       )}
 
-      <Text style={styles.headerTitle}>Passe Yély</Text>
+      <Text style={styles.headerTitle}>Passe Yely</Text>
       <View style={styles.headerIconBtn} />
     </View>
   );
@@ -198,25 +236,21 @@ const SubscriptionScreen = ({ navigation }) => {
 
   return (
     <View style={styles.safeArea}>
+      <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       <View style={styles.container}>
         {renderHeader()}
-
         <View style={styles.content}>
-          {currentStep === STEPS.DASHBOARD && (
+          {currentStep === STEPS.DASHBOARD ? (
             <SubscriptionDashboard
-              status={statusData?.data}
-              onProlong={handleProlong}
+              statusData={statusData?.data}
+              onRenew={handleProlong}
+              onSelectOtherPlan={handleProlong}
             />
-          )}
-
-          {currentStep === STEPS.CHOOSE_PLAN && (
+          ) : (
             <PlanSelection
-              config={configData?.data}
-              status={statusData?.data}
-              onInitiatePayment={handleInitiatePayment}
-              isInitiating={isInitiating}
-              onBack={() => setCurrentStep(STEPS.DASHBOARD)}
-              userRole={userRole}
+              configData={configData?.data}
+              onSelectPlan={handleInitiatePayment}
+              isLoading={isInitiating}
             />
           )}
         </View>
@@ -228,26 +262,10 @@ const SubscriptionScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   safeArea: { flex: 1, backgroundColor: THEME.COLORS.background },
   container: { flex: 1 },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 20,
-    paddingBottom: 12,
-  },
-  headerIconBtn: {
-    width: 40,
-    height: 40,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: '700',
-    color: THEME.COLORS.textPrimary,
-    letterSpacing: 0.3,
-  },
-  content: { flex: 1, paddingHorizontal: 20, paddingBottom: 20, justifyContent: 'center' }
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 20, paddingBottom: 12 },
+  headerIconBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center', borderRadius: 20, backgroundColor: 'rgba(255, 255, 255, 0.05)' },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: THEME.COLORS.textPrimary },
+  content: { flex: 1 }
 });
 
 export default SubscriptionScreen;

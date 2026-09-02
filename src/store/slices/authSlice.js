@@ -1,6 +1,6 @@
 // src/store/slices/authSlice.js
 // GESTION SESSION - SECURISATION PII & FONCTIONS PURES REDUX
-// CSCSM Level: Bank Grade
+// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { createSlice } from '@reduxjs/toolkit';
 import { Platform } from 'react-native';
@@ -40,6 +40,15 @@ const safeStorageRemove = (key) => {
   });
 };
 
+const computeIsActive = (sub) => {
+  if (!sub || typeof sub !== 'object') return false;
+  if (sub.isActive) return true;
+  if (sub.expiresAt) {
+    return new Date(sub.expiresAt) > new Date();
+  }
+  return false;
+};
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -57,7 +66,7 @@ const authSlice = createSlice({
         if (user.subscription && typeof user.subscription === 'object') {
           state.subscriptionStatus = {
             ...state.subscriptionStatus,
-            isActive: user.subscription.isActive || false,
+            isActive: computeIsActive(user.subscription),
             isPending: user.subscription.isPending || false,
             expiresAt: user.subscription.expiresAt || null
           };
@@ -90,7 +99,7 @@ const authSlice = createSlice({
       if (action.payload.subscription) {
         state.subscriptionStatus = {
           ...state.subscriptionStatus,
-          isActive: action.payload.subscription.isActive || false,
+          isActive: computeIsActive(action.payload.subscription),
           isPending: action.payload.subscription.isPending || false,
           isRejected: action.payload.subscription.isPending ? false : state.subscriptionStatus.isRejected,
           expiresAt: action.payload.subscription.expiresAt || null
@@ -100,7 +109,16 @@ const authSlice = createSlice({
     },
 
     updateSubscriptionStatus: (state, action) => {
-      state.subscriptionStatus = { ...state.subscriptionStatus, ...action.payload };
+      const payload = action.payload || {};
+      const isActive = payload.isActive !== undefined 
+        ? payload.isActive 
+        : (payload.expiresAt ? new Date(payload.expiresAt) > new Date() : state.subscriptionStatus.isActive);
+
+      state.subscriptionStatus = { 
+        ...state.subscriptionStatus, 
+        ...payload,
+        isActive
+      };
     },
 
     updatePromoMode: (state, action) => {
@@ -146,7 +164,7 @@ const authSlice = createSlice({
       if (user && user.subscription && typeof user.subscription === 'object') {
         state.subscriptionStatus = {
           ...state.subscriptionStatus,
-          isActive: user.subscription.isActive || false,
+          isActive: computeIsActive(user.subscription),
           isPending: user.subscription.isPending || false,
           expiresAt: user.subscription.expiresAt || null
         };
@@ -176,7 +194,7 @@ export const fetchPromoConfig = () => async (dispatch, getState) => {
 
   try {
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-    const response = await fetch(`${API_URL}/subscription/config`, {
+    const response = await fetch(`${API_URL}/subscriptions/config`, {
       headers: { 'Authorization': `Bearer ${auth.token}`, 'Accept': 'application/json' }
     });
 
@@ -198,88 +216,38 @@ let isSilentRefreshing = false;
 
 export const forceSilentRefresh = () => async (dispatch, getState) => {
   const { auth } = getState();
-
-  // ANTI-RACE CONDITION : On verifie l'etat local de rafraichissement
-  if (isSilentRefreshing) return;
-
-  if (auth.token && auth.tokenAcquiredAt) {
-    const ageInMs = Date.now() - auth.tokenAcquiredAt;
-    if (ageInMs < 14 * 60 * 1000) { 
-      return;
-    }
-  }
+  if (!auth.refreshToken || isSilentRefreshing) return;
 
   isSilentRefreshing = true;
-
   try {
-    let currentRefreshToken = auth.refreshToken;
-    if (!currentRefreshToken) {
-       currentRefreshToken = await SecureStorageAdapter.getItem('refreshToken');
-    }
-
-    if (!currentRefreshToken) {
-      return;
-    }
-
     const API_URL = process.env.EXPO_PUBLIC_API_URL || '';
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000);
-
     const response = await fetch(`${API_URL}/auth/refresh`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-      body: JSON.stringify({ 
-        refreshToken: currentRefreshToken,
-        clientPlatform: Platform.OS
-      }),
-      credentials: 'omit',
-      signal: controller.signal
+      body: JSON.stringify({ refreshToken: auth.refreshToken, clientPlatform: Platform.OS })
     });
 
-    clearTimeout(timeoutId);
-    const result = await response.json().catch(() => null);
-
-    if (response.ok && result?.success) {
-      const payload = result.data || result;
-      const newAccessToken = payload.accessToken || payload.token;
-      const newRefreshToken = payload.refreshToken || currentRefreshToken;
-
-      if (newAccessToken) {
-        socketService.updateToken(newAccessToken);
-        dispatch(setCredentials({
-          user: payload.user || auth.user,
-          accessToken: newAccessToken,
-          refreshToken: newRefreshToken
-        }));
-        
-        dispatch(fetchPromoConfig());
-      }
-    } else if (response.status === 401 || response.status === 403) {
-      // PROTECTION ANTI-LOGOUT SAUVAGE : 
-      // Si apiSlice.js a reussi a rafraichir le token pendant notre appel fetch (collision),
-      // auth.tokenAcquiredAt aura change. On ne se deconnecte SURTOUT PAS.
-      const currentAuth = getState().auth;
-      if (currentAuth.tokenAcquiredAt !== auth.tokenAcquiredAt) {
-        console.info('[AUTH] Race condition evitee silencieusement : apiSlice a pris le relais.');
-      } else {
-        socketService.disconnect();
-        dispatch(logout({ reason: 'WAKEUP_REFRESH_REJECTED' }));
-      }
+    const result = await response.json();
+    if (response.ok && result?.data) {
+      const payload = result.data;
+      dispatch(setCredentials({
+        user: payload.user,
+        accessToken: payload.accessToken || payload.token,
+        refreshToken: payload.refreshToken || auth.refreshToken
+      }));
     }
-  } catch (error) {
-    console.error("[AUTH] Echec reseau du rafraichissement force. Session conservee:", error);
+  } catch (err) {
+    console.warn("[AUTH] Rafraichissement silencieux ignore");
   } finally {
     isSilentRefreshing = false;
   }
 };
 
-export default authSlice.reducer;
-
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
-export const selectUserRole = (state) => state.auth.user?.role;
-export const selectToken = (state) => state.auth.token;
-export const selectIsRefreshing = (state) => state.auth.isRefreshing;
+export const selectCurrentToken = (state) => state.auth.token;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
 export const selectPromoMode = (state) => state.auth.promoMode;
 export const selectIsSubscriptionModalDismissed = (state) => state.auth.isSubscriptionModalDismissed;
+
+export default authSlice.reducer;
