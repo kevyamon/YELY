@@ -1,6 +1,6 @@
 // src/components/subscription/PlanSelection.jsx
 // Selection de plan et declenchement du paiement automatique securise
-// STANDARD: Clean Architecture / Bank Grade
+// STANDARD: Clean Architecture / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
@@ -39,25 +39,24 @@ const STEPS_CONFIG = [
 ];
 
 const PlanSelection = ({
-  config,
-  status,
-  onInitiatePayment,
-  isInitiating = false,
+  configData,
+  onSelectPlan,
+  isLoading = false,
   onBack,
   userRole
 }) => {
-  const isPioneer = config?.isPioneer || false;
+  const isPioneer = configData?.isPioneer || false;
   const isSeller = userRole === 'seller';
 
   const description = isPioneer
-    ? 'Tarif Special Pionnier active a vie.'
+    ? 'Tarif Spécial Pionnier activé à vie.'
     : isSeller
-    ? 'Vendez en illimite sans commissions.'
-    : 'Roulez en illimite et gardez 100% de vos gains.';
+    ? 'Vendez en illimité sans commissions.'
+    : 'Roulez en illimité et gardez 100% de vos gains.';
 
   const handlePayPress = () => {
-    if (isInitiating) return;
-    onInitiatePayment();
+    if (isLoading) return;
+    onSelectPlan();
   };
 
   return (
@@ -69,15 +68,15 @@ const PlanSelection = ({
     >
       <PricingCard
         title="Passe 1 Mois"
-        price={config?.monthly?.price || 2000}
-        originalPrice={config?.monthly?.originalPrice || 2000}
-        isPromo={config?.isPromoActive}
+        price={configData?.monthly?.price || 2000}
+        originalPrice={configData?.monthly?.originalPrice || 2000}
+        isPromo={configData?.isPromoActive}
         description={description}
         onPress={handlePayPress}
       />
 
       <View style={styles.howSection}>
-        <Text style={styles.howTitle}>Procedure de paiement securisee</Text>
+        <Text style={styles.howTitle}>Procédure de paiement sécurisée</Text>
         <View style={styles.timeline}>
           {STEPS_CONFIG.map((step, index) => (
             <View key={index} style={styles.timelineRow}>
@@ -101,33 +100,35 @@ const PlanSelection = ({
         </View>
       </View>
 
-      <Text style={styles.paymentMethodTitle}>Passerelle de paiement :</Text>
+      <Text style={styles.paymentMethodTitle}>Passerelle de paiement sécurisée :</Text>
 
       <TouchableOpacity
-        style={[styles.payButtonMain, isInitiating && styles.payButtonDisabled]}
+        style={[styles.payButtonMain, isLoading && styles.payButtonDisabled]}
         onPress={handlePayPress}
         activeOpacity={0.85}
-        disabled={isInitiating}
+        disabled={isLoading}
       >
         <View style={styles.payButtonLeft}>
           <View style={styles.iconCircleGold}>
             <Ionicons name="lock-closed" size={18} color="#121418" />
           </View>
-          <View>
+          <View style={styles.buttonTextContainer}>
             <Text style={styles.payButtonTextMain}>
-              {isInitiating ? 'Connexion securisee en cours...' : 'Payer avec Wave / Orange / MTN'}
+              {isLoading ? 'Connexion sécurisée en cours...' : 'Payer mon abonnement'}
             </Text>
-            <Text style={styles.payButtonSubtext}>Paiement chiffre et active automatiquement</Text>
+            <Text style={styles.payButtonSubtext}>
+              Paiement chiffré et activé automatiquement
+            </Text>
           </View>
         </View>
-        {isInitiating ? (
+        {isLoading ? (
           <ActivityIndicator size="small" color="#121418" />
         ) : (
           <Ionicons name="arrow-forward" size={20} color="#121418" />
         )}
       </TouchableOpacity>
 
-      {status?.isActive && (
+      {onBack && (
         <TouchableOpacity
           style={styles.backLink}
           onPress={onBack}
@@ -144,7 +145,6 @@ const PlanSelection = ({
 const styles = StyleSheet.create({
   scroll: { width: '100%' },
   container: { paddingBottom: 24, gap: 16 },
-
   howSection: {
     backgroundColor: THEME.COLORS.surface || 'rgba(255,255,255,0.04)',
     borderRadius: 18,
@@ -212,7 +212,6 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: THEME.COLORS.textPrimary || '#FFFFFF',
   },
-
   paymentMethodTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -221,7 +220,6 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-
   payButtonMain: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -242,36 +240,40 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   iconCircleGold: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: 'rgba(0,0,0,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
+  buttonTextContainer: {
+    flex: 1,
+  },
   payButtonTextMain: {
-    color: '#121418',
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '800',
+    color: '#121418',
+    letterSpacing: 0.2,
   },
   payButtonSubtext: {
-    color: 'rgba(18,20,24,0.7)',
     fontSize: 11,
-    fontWeight: '500',
+    fontWeight: '600',
+    color: 'rgba(18, 20, 24, 0.75)',
     marginTop: 2,
   },
-
   backLink: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    paddingVertical: 6,
+    paddingVertical: 8,
     marginTop: 4,
   },
   backLinkText: {
-    color: THEME.COLORS.textTertiary || '#718096',
     fontSize: 13,
+    color: THEME.COLORS.textTertiary || '#718096',
+    fontWeight: '600',
   },
 });
 

@@ -158,7 +158,8 @@ const SubscriptionScreen = ({ navigation }) => {
       if (Platform.OS === 'web') {
         window.location.href = paymentUrl;
       } else {
-        const result = await WebBrowser.openAuthSessionAsync(paymentUrl, 'yely://subscription');
+        const returnUrl = 'https://yely-amber.vercel.app';
+        const result = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
         
         // Auto-Verification immediate a la fermeture du navigateur securise
         if (reference) {
