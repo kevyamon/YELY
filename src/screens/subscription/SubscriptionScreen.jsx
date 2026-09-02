@@ -51,12 +51,20 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const [currentStep, setCurrentStep] = useState(null);
 
+  const redirectToHome = useCallback(() => {
+    dispatch(setSubscriptionModalDismissed(true));
+    const target = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
+    setTimeout(() => {
+      navigation.replace(target);
+    }, 350);
+  }, [dispatch, navigation, userRole]);
+
   const handleClose = () => {
     dispatch(setSubscriptionModalDismissed(true));
     if (navigation.canGoBack()) {
       navigation.goBack();
     } else {
-      navigation.navigate(userRole === 'seller' ? 'SellerHome' : 'DriverHome');
+      redirectToHome();
     }
   };
 
@@ -85,14 +93,14 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [statusData, dispatch]);
 
-  // Synchronisation en temps reel via Sockets
+  // Synchronisation en temps reel via Sockets & Redirection instantanee
   useEffect(() => {
     const handleSubscriptionActivated = (payload) => {
       dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: payload?.expiresAt }));
-      dispatch(showSuccessToast({ title: "Succes", message: "Votre Passe Yely a ete active avec succes." }));
+      dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
       refetchConfig();
       refetchStatus();
-      setCurrentStep(STEPS.DASHBOARD);
+      redirectToHome();
     };
 
     const handlePromoUpdate = () => {
@@ -109,7 +117,41 @@ const SubscriptionScreen = ({ navigation }) => {
       socketService.off('promo_updated', handlePromoUpdate);
       socketService.off('PROMO_MODE_CHANGED', handlePromoUpdate);
     };
-  }, [dispatch, refetchConfig, refetchStatus]);
+  }, [dispatch, refetchConfig, refetchStatus, redirectToHome]);
+
+  // Reprise et verification automatique au retour sur PWA (Web)
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const queryRef = urlParams.get('reference');
+    const storedRef = sessionStorage.getItem('yely_pending_payment_ref');
+    const refToVerify = queryRef || storedRef;
+
+    if (refToVerify) {
+      sessionStorage.removeItem('yely_pending_payment_ref');
+      if (queryRef && window.history?.replaceState) {
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      verifyPaymentTrigger(refToVerify)
+        .unwrap()
+        .then((res) => {
+          const verifyData = res?.data || res;
+          if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
+            dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
+            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
+            refetchStatus();
+            refetchConfig();
+            redirectToHome();
+          }
+        })
+        .catch((err) => {
+          console.warn('[PWA VERIFY SYNC] Verification:', err?.message);
+          refetchStatus();
+        });
+    }
+  }, [verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig]);
 
   useEffect(() => {
     return () => {
@@ -156,10 +198,13 @@ const SubscriptionScreen = ({ navigation }) => {
       }
 
       if (Platform.OS === 'web') {
+        if (typeof window !== 'undefined' && reference) {
+          sessionStorage.setItem('yely_pending_payment_ref', reference);
+        }
         window.location.href = paymentUrl;
       } else {
         const returnUrl = 'https://yely-amber.vercel.app';
-        const result = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
+        await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
         
         // Auto-Verification immediate a la fermeture du navigateur securise
         if (reference) {
@@ -167,9 +212,12 @@ const SubscriptionScreen = ({ navigation }) => {
             const verifyRes = await verifyPaymentTrigger(reference).unwrap();
             const verifyData = verifyRes?.data || verifyRes;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
-              dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
-              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
-              setCurrentStep(STEPS.DASHBOARD);
+              dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
+              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
+              refetchStatus();
+              refetchConfig();
+              redirectToHome();
+              return;
             }
           } catch (vErr) {
             console.warn('[VERIFY SYNC] Interrogation retour:', vErr.message);
