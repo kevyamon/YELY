@@ -10,18 +10,14 @@ import { Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View 
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
+import { apiSlice } from '../../store/slices/apiSlice';
 import {
-  useGetConfigQuery,
-  useGetSubscriptionStatusQuery,
-  useInitializePaymentMutation,
-  useLazyVerifyPaymentQuery
+  useGetConfigQuery, useGetSubscriptionStatusQuery,
+  useInitializePaymentMutation, useLazyVerifyPaymentQuery
 } from '../../store/api/subscriptionApiSlice';
 import {
-  selectCurrentUser,
-  selectPromoMode,
-  setSubscriptionModalDismissed,
-  updatePromoMode,
-  updateSubscriptionStatus
+  selectCurrentUser, selectPromoMode,
+  setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus
 } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
@@ -32,10 +28,7 @@ import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 
-const STEPS = {
-  DASHBOARD: 'DASHBOARD',
-  CHOOSE_PLAN: 'CHOOSE_PLAN'
-};
+const STEPS = { DASHBOARD: 'DASHBOARD', CHOOSE_PLAN: 'CHOOSE_PLAN' };
 
 const SubscriptionScreen = ({ navigation }) => {
   const dispatch = useDispatch();
@@ -53,10 +46,15 @@ const SubscriptionScreen = ({ navigation }) => {
 
   const redirectToHome = useCallback(() => {
     dispatch(setSubscriptionModalDismissed(true));
-    const target = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
+    dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
     setTimeout(() => {
-      navigation.replace(target);
-    }, 350);
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      } else {
+        const target = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
+        navigation.navigate(target);
+      }
+    }, 300);
   }, [dispatch, navigation, userRole]);
 
   const handleClose = () => {
@@ -97,7 +95,8 @@ const SubscriptionScreen = ({ navigation }) => {
   useEffect(() => {
     const handleSubscriptionActivated = (payload) => {
       dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: payload?.expiresAt }));
-      dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
+      dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
       refetchConfig();
       refetchStatus();
       redirectToHome();
@@ -140,7 +139,8 @@ const SubscriptionScreen = ({ navigation }) => {
           const verifyData = res?.data || res;
           if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
             dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
+            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+            dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
             refetchStatus();
             refetchConfig();
             redirectToHome();
@@ -213,9 +213,8 @@ const SubscriptionScreen = ({ navigation }) => {
             const verifyData = verifyRes?.data || verifyRes;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
               dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif. Redirection..." }));
-              refetchStatus();
-              refetchConfig();
+              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+              dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
               redirectToHome();
               return;
             }
@@ -224,7 +223,20 @@ const SubscriptionScreen = ({ navigation }) => {
           }
         }
 
-        refetchStatus();
+        try {
+          const statusRes = await refetchStatus().unwrap();
+          const sData = statusRes?.data || statusRes;
+          if (sData?.isActive) {
+            dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: sData?.expiresAt }));
+            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+            dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+            redirectToHome();
+            return;
+          }
+        } catch (sErr) {
+          // Ignorer si échec réseau passager
+        }
+
         refetchConfig();
       }
     } catch (err) {
@@ -290,17 +302,9 @@ const SubscriptionScreen = ({ navigation }) => {
         {renderHeader()}
         <View style={styles.content}>
           {currentStep === STEPS.DASHBOARD ? (
-            <SubscriptionDashboard
-              statusData={statusData?.data}
-              onRenew={handleProlong}
-              onSelectOtherPlan={handleProlong}
-            />
+            <SubscriptionDashboard statusData={statusData?.data} onRenew={handleProlong} onSelectOtherPlan={handleProlong} />
           ) : (
-            <PlanSelection
-              configData={configData?.data}
-              onSelectPlan={handleInitiatePayment}
-              isLoading={isInitiating}
-            />
+            <PlanSelection configData={configData?.data} onSelectPlan={handleInitiatePayment} isLoading={isInitiating} />
           )}
         </View>
       </View>

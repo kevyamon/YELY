@@ -119,6 +119,15 @@ const authSlice = createSlice({
         ...payload,
         isActive
       };
+
+      if (state.user) {
+        state.user.subscription = {
+          ...(state.user.subscription || {}),
+          isActive,
+          expiresAt: payload.expiresAt !== undefined ? payload.expiresAt : (state.user.subscription?.expiresAt || null)
+        };
+        safeStorageSet('userInfo', JSON.stringify(state.user));
+      }
     },
 
     updatePromoMode: (state, action) => {

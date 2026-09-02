@@ -30,6 +30,7 @@ import GoldButton from '../../components/ui/GoldButton';
 import { selectCurrentUser, logout, selectSubscriptionStatus, selectPromoMode, selectIsSubscriptionModalDismissed, updateUserInfo } from '../../store/slices/authSlice';
 import ShopLocationModal from '../../components/ui/ShopLocationModal';
 import { useGetMyProductsQuery, useGetLedgerStatsQuery } from '../../store/api/marketplaceApiSlice';
+import { useGetSubscriptionStatusQuery } from '../../store/api/subscriptionApiSlice';
 import { useGetUserProfileQuery } from '../../store/api/usersApiSlice';
 import THEME from '../../theme/theme';
 import ENV from '../../config/env';
@@ -58,10 +59,20 @@ const SellerHome = ({ navigation }) => {
   const cardShadow = isDark ? THEME.SHADOWS.md : { shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 8, elevation: 2 };
 
   const { data: profileResponse, refetch: refetchProfile } = useGetUserProfileQuery(undefined, { skip: !isFocused });
+  const { data: subscriptionData, isLoading: isSubLoading, refetch: refetchSubscription } = useGetSubscriptionStatusQuery(undefined, { skip: !isFocused });
 
-  const isActive = subStatus?.isActive === true;
-  const isPending = subStatus?.isPending === true;
-  const isBlocked = !isActive && !promoMode?.isActive;
+  const subscriptionState = useMemo(() => {
+    const apiSubStatus = subscriptionData?.data || subscriptionData || { isActive: false, isPending: false };
+    const isLocallyActive = user?.subscription?.isActive === true;
+
+    const isActive = apiSubStatus.isActive === true || isLocallyActive === true || subStatus?.isActive === true;
+    const isPending = !isActive && (apiSubStatus.isPending === true || subStatus?.isPending === true);
+    const isBlocked = !isActive && !promoMode?.isActive;
+
+    return { isActive, isPending, isBlocked };
+  }, [subscriptionData, user?.subscription?.isActive, subStatus, promoMode]);
+
+  const { isActive, isPending, isBlocked } = subscriptionState;
 
   React.useEffect(() => {
     if (profileResponse?.data) {
@@ -72,12 +83,13 @@ const SellerHome = ({ navigation }) => {
   React.useEffect(() => {
     if (isFocused) {
       refetchProfile();
+      refetchSubscription();
     }
-  }, [isFocused, refetchProfile]);
+  }, [isFocused, refetchProfile, refetchSubscription]);
 
   React.useEffect(() => {
     // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
-    if (promoMode === null || !subStatus) return;
+    if (promoMode === null || isSubLoading) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isBlocked) {
@@ -90,7 +102,7 @@ const SellerHome = ({ navigation }) => {
         }
       }
     }
-  }, [isFocused, isBlocked, isPending, subStatus, isSubscriptionModalDismissed, promoMode, navigation]);
+  }, [isFocused, isBlocked, isPending, subStatus?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
 
   const renderSubscriptionBanner = () => {
     if (isActive || promoMode?.isActive) return null;
