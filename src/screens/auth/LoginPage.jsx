@@ -1,6 +1,6 @@
 // src/screens/auth/LoginPage.jsx
-// ÉCRAN DE CONNEXION - Native Google Auth & Securite Renforcee
-// STANDARD: Industriel / Bank Grade
+// ECRAN DE CONNEXION - Native Google Auth & Securite Renforcee
+// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
@@ -11,7 +11,6 @@ import { useDispatch, useSelector } from 'react-redux';
 
 import AuthActionLinks from '../../components/auth/AuthActionLinks';
 import AuthFormWrapper from '../../components/auth/AuthFormWrapper';
-import GoogleAuthButton from '../../components/auth/GoogleAuthButton';
 import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
@@ -20,6 +19,7 @@ import { configureGoogleSignIn, signInWithGoogle } from '../../services/auth/goo
 import { useLoginMutation, useGoogleAuthMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
+import { getApiErrorMessage } from '../../utils/errorHelper';
 import THEME from '../../theme/theme';
 
 const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com';
@@ -50,7 +50,7 @@ const LoginPage = ({ navigation }) => {
     let identifier = '';
     if (authMode === 'phone') {
       if (!phoneNumber.trim()) {
-        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre numéro de téléphone." }));
+        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre numero de telephone." }));
         return;
       }
       const cleanPhone = phoneNumber.replace(/\s/g, '');
@@ -72,44 +72,43 @@ const LoginPage = ({ navigation }) => {
       const res = await login({ identifier, password, clientPlatform: Platform.OS }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      dispatch(showSuccessToast({ title: "Connexion réussie", message: `Bon retour parmi nous, ${user.name} !` }));
+      dispatch(showSuccessToast({ title: "Connexion reussie", message: `Bon retour parmi nous, ${user.name} !` }));
     } catch (err) {
-      dispatch(showErrorToast({ title: "Erreur de connexion", message: err?.data?.message || "Identifiants incorrects." }));
+      dispatch(showErrorToast({ 
+        title: "Erreur de connexion", 
+        message: getApiErrorMessage(err, "Identifiants incorrects.") 
+      }));
     }
   };
 
-const ensureGoogleScriptLoaded = () => {
-  return new Promise((resolve) => {
-    if (typeof window !== 'undefined' && window.google?.accounts) {
-      return resolve(true);
-    }
-    if (typeof document === 'undefined') return resolve(false);
+  const ensureGoogleScriptLoaded = () => {
+    return new Promise((resolve) => {
+      if (typeof window !== 'undefined' && window.google?.accounts) return resolve(true);
+      if (typeof document === 'undefined') return resolve(false);
 
-    const existingScript = document.getElementById('google-gsi-script');
-    if (existingScript) {
-      existingScript.addEventListener('load', () => resolve(true));
-      existingScript.addEventListener('error', () => resolve(false));
-      return;
-    }
+      const existingScript = document.getElementById('google-gsi-script');
+      if (existingScript) {
+        existingScript.addEventListener('load', () => resolve(true));
+        existingScript.addEventListener('error', () => resolve(false));
+        return;
+      }
 
-    const script = document.createElement('script');
-    script.id = 'google-gsi-script';
-    script.src = 'https://accounts.google.com/gsi/client';
-    script.async = true;
-    script.defer = true;
-    script.onload = () => resolve(true);
-    script.onerror = () => resolve(false);
-    document.head.appendChild(script);
-  });
-};
+      const script = document.createElement('script');
+      script.id = 'google-gsi-script';
+      script.src = 'https://accounts.google.com/gsi/client';
+      script.async = true;
+      script.defer = true;
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  };
 
   const handleGoogleSignIn = async () => {
     if (isGoogleSubmitting || isGoogleLoading) return;
     setIsGoogleSubmitting(true);
 
-    const safetyTimer = setTimeout(() => {
-      setIsGoogleSubmitting(false);
-    }, 15000);
+    const safetyTimer = setTimeout(() => setIsGoogleSubmitting(false), 15000);
 
     try {
       if (Platform.OS === 'web') {
@@ -118,10 +117,10 @@ const ensureGoogleScriptLoaded = () => {
           const tokenClient = window.google.accounts.oauth2.initTokenClient({
             client_id: GOOGLE_WEB_CLIENT_ID,
             scope: 'email profile openid',
-            error_callback: (err) => {
+            error_callback: () => {
               clearTimeout(safetyTimer);
               setIsGoogleSubmitting(false);
-              dispatch(showErrorToast({ title: "Connexion Google", message: "Connexion annulée ou fermée." }));
+              dispatch(showErrorToast({ title: "Connexion Google", message: "Connexion annulee ou fermee." }));
             },
             callback: async (tokenResponse) => {
               clearTimeout(safetyTimer);
@@ -147,11 +146,11 @@ const ensureGoogleScriptLoaded = () => {
                 const user = authData?.user;
                 const accessToken = authData?.accessToken;
                 const refreshToken = authData?.refreshToken;
-                if (!user) throw new Error("Données de connexion invalides.");
+                if (!user) throw new Error("Donnees de connexion invalides.");
                 dispatch(setCredentials({ user, accessToken, refreshToken }));
-                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yely, ${user.name} !` }));
               } catch (authErr) {
-                dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || authErr?.message || "Échec de connexion." }));
+                dispatch(showErrorToast({ title: "Authentification Google", message: getApiErrorMessage(authErr, "Echec de connexion.") }));
               } finally {
                 setIsGoogleSubmitting(false);
               }
@@ -159,37 +158,6 @@ const ensureGoogleScriptLoaded = () => {
           });
           tokenClient.requestAccessToken({ prompt: 'consent' });
           return;
-        } else if (typeof window !== 'undefined' && window.google?.accounts?.id) {
-          window.google.accounts.id.initialize({
-            client_id: GOOGLE_WEB_CLIENT_ID,
-            callback: async (response) => {
-              clearTimeout(safetyTimer);
-              if (response.credential) {
-                try {
-                  const res = await googleAuth({ idToken: response.credential, role: 'rider', isLoginOnly: true }).unwrap();
-                  const authData = res?.data || res;
-                  const user = authData?.user;
-                  const accessToken = authData?.accessToken;
-                  const refreshToken = authData?.refreshToken;
-                  if (!user) throw new Error("Données de connexion invalides.");
-                  dispatch(setCredentials({ user, accessToken, refreshToken }));
-                  dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
-                } catch (authErr) {
-                  dispatch(showErrorToast({ title: "Authentification Google", message: authErr?.data?.message || authErr?.message || "Échec de connexion." }));
-                } finally {
-                  setIsGoogleSubmitting(false);
-                }
-              } else {
-                setIsGoogleSubmitting(false);
-              }
-            }
-          });
-          window.google.accounts.id.prompt();
-          return;
-        } else {
-          clearTimeout(safetyTimer);
-          dispatch(showErrorToast({ title: "Connexion Google", message: "Service Google indisponible sur ce navigateur." }));
-          setIsGoogleSubmitting(false);
         }
       } else {
         clearTimeout(safetyTimer);
@@ -213,27 +181,25 @@ const ensureGoogleScriptLoaded = () => {
           const user = authData?.user;
           const accessToken = authData?.accessToken;
           const refreshToken = authData?.refreshToken;
-          if (!user) throw new Error("Données de connexion invalides.");
+          if (!user) throw new Error("Donnees de connexion invalides.");
           dispatch(setCredentials({ user, accessToken, refreshToken }));
-          dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yély, ${user.name} !` }));
+          dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yely, ${user.name} !` }));
         }
         setIsGoogleSubmitting(false);
       }
     } catch (err) {
       setIsGoogleSubmitting(false);
-      if (err.message !== 'PLATFORM_WEB_GSI') {
-        dispatch(showErrorToast({
-          title: "Connexion Google",
-          message: err?.message || err?.data?.message || "Impossible de se connecter avec Google."
-        }));
-      }
+      dispatch(showErrorToast({
+        title: "Connexion Google",
+        message: getApiErrorMessage(err, "Impossible de se connecter avec Google.")
+      }));
     }
   };
 
   return (
     <AuthFormWrapper
       title="Bon retour"
-      subtitle="Accédez à votre espace sécurisé."
+      subtitle="Accedez a votre espace securise."
       onBack={() => navigation.navigate('Landing')}
       actionButton={
         <GoldButton
@@ -253,7 +219,7 @@ const ensureGoogleScriptLoaded = () => {
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>
-            {authMode === 'phone' ? 'Numéro de Téléphone' : 'Adresse E-mail'}
+            {authMode === 'phone' ? 'Numero de Telephone' : 'Adresse E-mail'}
           </Text>
 
           {authMode === 'phone' ? (
@@ -313,7 +279,7 @@ const ensureGoogleScriptLoaded = () => {
             style={styles.switchAuthModeBtn}
           >
             <Text style={styles.switchAuthModeText}>
-              {authMode === 'phone' ? 'Utiliser mon adresse e-mail' : 'Utiliser mon numéro de téléphone'}
+              {authMode === 'phone' ? 'Utiliser mon adresse e-mail' : 'Utiliser mon numero de telephone'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -336,9 +302,9 @@ const ensureGoogleScriptLoaded = () => {
       </View>
 
       <AuthActionLinks
-        leftLabel="Mot de passe oublié ?"
+        leftLabel="Mot de passe oublie ?"
         leftOnPress={() => navigation.navigate('ForgotPassword')}
-        rightLabel="Créer un compte"
+        rightLabel="Creer un compte"
         rightOnPress={() => navigation.navigate('Register')}
       />
 
@@ -374,9 +340,6 @@ const styles = StyleSheet.create({
   flexItem: { flex: 1 },
   switchAuthModeBtn: { marginTop: 6, alignSelf: 'flex-end' },
   switchAuthModeText: { color: THEME.COLORS.primary, fontSize: 12, fontWeight: '600' },
-  dividerContainer: { flexDirection: 'row', alignItems: 'center', marginVertical: THEME.SPACING.xs },
-  dividerLine: { flex: 1, height: 1, backgroundColor: 'rgba(255, 255, 255, 0.08)' },
-  dividerText: { color: THEME.COLORS.textTertiary, paddingHorizontal: 12, fontSize: 12, fontWeight: '600', textTransform: 'uppercase' },
   errorBox: {
     backgroundColor: 'rgba(192, 57, 43, 0.1)',
     paddingVertical: THEME.SPACING.md,
