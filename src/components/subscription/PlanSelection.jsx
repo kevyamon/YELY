@@ -1,72 +1,64 @@
 // src/components/subscription/PlanSelection.jsx
-// Sélection de plan — Design épuré, sans titre redondant, sans bouton déconnexion
+// Selection de plan et declenchement du paiement automatique securise
+// STANDARD: Clean Architecture / Bank Grade
 
 import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
-import { Linking, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import {
+  ActivityIndicator,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View
+} from 'react-native';
 import THEME from '../../theme/theme';
 import PricingCard from './PricingCard';
 
-const PLAN_TYPES = { MONTHLY: 'MONTHLY' };
-
-// Étapes de la procédure de paiement Wave
 const STEPS_CONFIG = [
   {
     icon: 'card-outline',
     label: 'Cliquez sur',
-    highlight: 'Payer avec Wave',
+    highlight: 'Payer mon abonnement',
   },
   {
-    icon: 'checkmark-done-outline',
-    label: 'Validez le paiement dans l\'application',
-    highlight: 'Wave',
+    icon: 'phone-portrait-outline',
+    label: 'Choisissez votre opérateur',
+    highlight: 'Wave, Orange, MTN ou Moov',
   },
   {
-    icon: 'camera-outline',
-    label: 'Faites une',
-    highlight: 'capture d\'écran du reçu',
+    icon: 'shield-checkmark-outline',
+    label: 'Validez la transaction',
+    highlight: 'sur votre application Mobile Money',
   },
   {
-    icon: 'cloud-upload-outline',
-    label: 'Revenez sur Yély et',
-    highlight: 'soumettez la capture',
+    icon: 'checkmark-circle-outline',
+    label: 'Activation immédiate',
+    highlight: 'sans attente ni validation manuelle',
   },
 ];
 
-const PlanSelection = ({ config, status, onSelectPlan, onBack, userRole }) => {
+const PlanSelection = ({
+  config,
+  status,
+  onInitiatePayment,
+  isInitiating = false,
+  onBack,
+  userRole
+}) => {
   const isPioneer = config?.isPioneer || false;
   const isSeller = userRole === 'seller';
 
-  const handlePayWave = async () => {
-    const rawWaveLink = config?.monthly?.link;
-    const waveLink = (rawWaveLink && typeof rawWaveLink === 'string' && rawWaveLink.trim().length > 0)
-      ? rawWaveLink.trim()
-      : 'https://pay.wave.com/';
-
-    try {
-      // Ouverture directe du lien marchand Wave (Déclenche le Deep Linking vers l'application Wave)
-      await Linking.openURL(waveLink);
-    } catch (err) {
-      console.warn('[Wave Payment] Erreur ouverture directe lien marchand, tentative fallback web:', err);
-      try {
-        await Linking.openURL('https://pay.wave.com/');
-      } catch (fallbackErr) {
-        console.error('[Wave Payment] Échec ouverture fallback Wave:', fallbackErr);
-      }
-    }
-
-    onSelectPlan({
-      id: PLAN_TYPES.MONTHLY,
-      link: waveLink,
-      price: config?.monthly?.price || 2000,
-    });
-  };
-
   const description = isPioneer
-    ? 'Tarif Spécial Pionnier activé à vie !'
+    ? 'Tarif Special Pionnier active a vie.'
     : isSeller
-    ? 'Vendez en illimité sans commissions.'
-    : 'Roulez en illimité et gardez 100% de vos gains.';
+    ? 'Vendez en illimite sans commissions.'
+    : 'Roulez en illimite et gardez 100% de vos gains.';
+
+  const handlePayPress = () => {
+    if (isInitiating) return;
+    onInitiatePayment();
+  };
 
   return (
     <ScrollView
@@ -75,30 +67,26 @@ const PlanSelection = ({ config, status, onSelectPlan, onBack, userRole }) => {
       showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
     >
-      {/* Carte de prix */}
       <PricingCard
         title="Passe 1 Mois"
         price={config?.monthly?.price || 2000}
         originalPrice={config?.monthly?.originalPrice || 2000}
         isPromo={config?.isPromoActive}
         description={description}
-        onPress={handlePayWave}
+        onPress={handlePayPress}
       />
 
-      {/* Section "Comment ça marche" — Timeline */}
       <View style={styles.howSection}>
-        <Text style={styles.howTitle}>Comment ça marche ?</Text>
+        <Text style={styles.howTitle}>Procedure de paiement securisee</Text>
         <View style={styles.timeline}>
           {STEPS_CONFIG.map((step, index) => (
             <View key={index} style={styles.timelineRow}>
-              {/* Connecteur + Numéro */}
               <View style={styles.timelineLeft}>
                 <View style={styles.stepBullet}>
                   <Text style={styles.stepBulletText}>{index + 1}</Text>
                 </View>
                 {index < STEPS_CONFIG.length - 1 && <View style={styles.stepLine} />}
               </View>
-              {/* Contenu */}
               <View style={styles.stepContent}>
                 <View style={styles.stepIconWrap}>
                   <Ionicons name={step.icon} size={16} color={THEME.COLORS.champagneGold || '#D4AF37'} />
@@ -113,51 +101,38 @@ const PlanSelection = ({ config, status, onSelectPlan, onBack, userRole }) => {
         </View>
       </View>
 
-      {/* Boutons de paiement */}
-      <Text style={styles.paymentMethodTitle}>Moyen de paiement :</Text>
+      <Text style={styles.paymentMethodTitle}>Passerelle de paiement :</Text>
 
-      <View style={styles.paymentContainer}>
-        {/* Wave — Actif */}
-        <TouchableOpacity style={styles.payButtonWave} onPress={handlePayWave} activeOpacity={0.85}>
-          <View style={styles.payButtonLeft}>
-            <View style={styles.iconCircleWave}>
-              <Ionicons name="card" size={18} color="#FFF" />
-            </View>
-            <Text style={styles.payButtonTextWave}>Payer avec Wave</Text>
+      <TouchableOpacity
+        style={[styles.payButtonMain, isInitiating && styles.payButtonDisabled]}
+        onPress={handlePayPress}
+        activeOpacity={0.85}
+        disabled={isInitiating}
+      >
+        <View style={styles.payButtonLeft}>
+          <View style={styles.iconCircleGold}>
+            <Ionicons name="lock-closed" size={18} color="#121418" />
           </View>
-          <Ionicons name="chevron-forward" size={18} color="#FFF" />
-        </TouchableOpacity>
-
-        {/* MTN — Bientôt */}
-        <View style={[styles.payButtonDisabled, styles.borderMtn]}>
-          <View style={styles.payButtonLeft}>
-            <View style={styles.iconCircleMtn}>
-              <Ionicons name="phone-portrait-outline" size={18} color="#A0AEC0" />
-            </View>
-            <Text style={styles.payButtonTextDisabled}>MTN Mobile Money</Text>
-          </View>
-          <View style={styles.badgeBientot}>
-            <Text style={styles.badgeText}>Bientôt</Text>
+          <View>
+            <Text style={styles.payButtonTextMain}>
+              {isInitiating ? 'Connexion securisee en cours...' : 'Payer avec Wave / Orange / MTN'}
+            </Text>
+            <Text style={styles.payButtonSubtext}>Paiement chiffre et active automatiquement</Text>
           </View>
         </View>
+        {isInitiating ? (
+          <ActivityIndicator size="small" color="#121418" />
+        ) : (
+          <Ionicons name="arrow-forward" size={20} color="#121418" />
+        )}
+      </TouchableOpacity>
 
-        {/* Orange Money — Bientôt */}
-        <View style={[styles.payButtonDisabled, styles.borderOrange]}>
-          <View style={styles.payButtonLeft}>
-            <View style={styles.iconCircleOrange}>
-              <Ionicons name="wallet-outline" size={18} color="#A0AEC0" />
-            </View>
-            <Text style={styles.payButtonTextDisabled}>Orange Money</Text>
-          </View>
-          <View style={styles.badgeBientot}>
-            <Text style={styles.badgeText}>Bientôt</Text>
-          </View>
-        </View>
-      </View>
-
-      {/* Lien discret "retour" si abonnement actif (ex: renouveler) */}
       {status?.isActive && (
-        <TouchableOpacity style={styles.backLink} onPress={onBack} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+        <TouchableOpacity
+          style={styles.backLink}
+          onPress={onBack}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
           <Ionicons name="arrow-back-outline" size={16} color={THEME.COLORS.textTertiary || '#718096'} />
           <Text style={styles.backLinkText}>Retour au tableau de bord</Text>
         </TouchableOpacity>
@@ -170,7 +145,6 @@ const styles = StyleSheet.create({
   scroll: { width: '100%' },
   container: { paddingBottom: 24, gap: 16 },
 
-  // Section "Comment ça marche"
   howSection: {
     backgroundColor: THEME.COLORS.surface || 'rgba(255,255,255,0.04)',
     borderRadius: 18,
@@ -239,7 +213,6 @@ const styles = StyleSheet.create({
     color: THEME.COLORS.textPrimary || '#FFFFFF',
   },
 
-  // Titre méthode de paiement
   paymentMethodTitle: {
     fontSize: 13,
     fontWeight: '700',
@@ -248,78 +221,46 @@ const styles = StyleSheet.create({
     letterSpacing: 0.5,
     marginBottom: 2,
   },
-  paymentContainer: { gap: 10 },
 
-  // Bouton Wave
-  payButtonWave: {
+  payButtonMain: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    backgroundColor: '#FF9900',
+    backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
     borderRadius: 14,
-    paddingVertical: 13,
+    paddingVertical: 14,
     paddingHorizontal: 16,
     ...THEME.SHADOWS.md,
   },
-  payButtonLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
-  iconCircleWave: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  payButtonTextWave: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
-
-  // Boutons désactivés
   payButtonDisabled: {
+    opacity: 0.7,
+  },
+  payButtonLeft: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: 'rgba(255,255,255,0.02)',
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    opacity: 0.45,
+    gap: 12,
+    flex: 1,
   },
-  borderMtn: { borderColor: 'rgba(255, 204, 0, 0.15)' },
-  borderOrange: { borderColor: 'rgba(255, 102, 0, 0.15)' },
-  iconCircleMtn: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,204,0,0.06)',
+  iconCircleGold: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: 'rgba(0,0,0,0.12)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  iconCircleOrange: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
-    backgroundColor: 'rgba(255,102,0,0.06)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  payButtonTextDisabled: {
-    color: THEME.COLORS.textTertiary || '#718096',
+  payButtonTextMain: {
+    color: '#121418',
     fontSize: 14,
-    fontWeight: '700',
+    fontWeight: '800',
   },
-  badgeBientot: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-  },
-  badgeText: {
-    color: THEME.COLORS.textTertiary || '#718096',
+  payButtonSubtext: {
+    color: 'rgba(18,20,24,0.7)',
     fontSize: 11,
-    fontWeight: '700',
+    fontWeight: '500',
+    marginTop: 2,
   },
 
-  // Lien retour discret
   backLink: {
     flexDirection: 'row',
     alignItems: 'center',

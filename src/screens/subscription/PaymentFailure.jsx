@@ -1,18 +1,25 @@
 // src/screens/subscription/PaymentFailure.jsx
-// ECRAN DE REJET - Gestion des refus d'abonnement
-// CSCSM Level: Bank Grade
+// ECRAN DE REJET / ANNULATION - Gestion des echecs de paiement Mobile Money
+// STANDARD: Clean Architecture / Bank Grade (Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
-import { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
 import GoldButton from '../../components/ui/GoldButton';
 import ScreenWrapper from '../../components/ui/ScreenWrapper';
-import { logout, selectPromoMode, selectSubscriptionStatus, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
+import {
+  logout,
+  selectCurrentUser,
+  selectPromoMode,
+  selectSubscriptionStatus,
+  setSubscriptionModalDismissed,
+  updateSubscriptionStatus
+} from '../../store/slices/authSlice';
 import THEME from '../../theme/theme';
 
-const PaymentFailureScreen = ({ navigation }) => {
+const PaymentFailureScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const subStatus = useSelector(selectSubscriptionStatus);
   const promoMode = useSelector(selectPromoMode);
@@ -21,6 +28,7 @@ const PaymentFailureScreen = ({ navigation }) => {
 
   const canGoToDashboard = subStatus?.isActive || promoMode?.isActive;
   const homeScreen = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
+  const customReason = route?.params?.reason || subStatus?.rejectionReason;
 
   useEffect(() => {
     return () => {
@@ -33,7 +41,6 @@ const PaymentFailureScreen = ({ navigation }) => {
   };
 
   const handleRetry = () => {
-    // CORRECTION : On purge le flag de rejet avant de retourner sur l'écran d'abonnement
     dispatch(updateSubscriptionStatus({ isRejected: false, isPending: false }));
     navigation.navigate('Subscription');
   };
@@ -52,40 +59,39 @@ const PaymentFailureScreen = ({ navigation }) => {
     <ScreenWrapper>
       <View style={styles.container}>
         <GlassCard style={styles.card}>
-          
           <TouchableOpacity style={styles.closeButton} onPress={handleDashboard}>
             <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
           </TouchableOpacity>
 
           <Ionicons name="close-circle" size={80} color="#FF4D4D" style={{ marginTop: 20 }} />
-          <Text style={styles.title}>Paiement Refusé</Text>
-          
-          <Text style={styles.reasonTitle}>Motif du refus :</Text>
+          <Text style={styles.title}>Paiement Non Abouti</Text>
+
+          <Text style={styles.reasonTitle}>Statut de la transaction :</Text>
           <Text style={styles.reasonText}>
-            {subStatus?.rejectionReason || "La capture d'écran fournie est invalide ou illisible. Veuillez soumettre une preuve conforme."}
+            {customReason || "La transaction a ete annulee ou refusee par votre operateur. Aucun montant n'a ete debite."}
           </Text>
 
           <View style={styles.actions}>
-            <GoldButton 
-              title="Reprendre le processus" 
-              onPress={handleRetry} 
-              style={styles.btn} 
+            <GoldButton
+              title="Nouvelle tentative de paiement"
+              onPress={handleRetry}
+              style={styles.btn}
             />
-            
+
             {canGoToDashboard && (
-              <GoldButton 
-                title="Revenir au Tableau de bord" 
-                onPress={handleDashboard} 
-                style={[styles.btn, styles.dashboardBtn]} 
-                textStyle={{ color: THEME.COLORS.textPrimary }} 
+              <GoldButton
+                title="Revenir au Tableau de bord"
+                onPress={handleDashboard}
+                style={[styles.btn, styles.dashboardBtn]}
+                textStyle={{ color: THEME.COLORS.textPrimary }}
               />
             )}
 
-            <GoldButton 
-              title="Se déconnecter" 
-              onPress={handleLogout} 
-              style={[styles.btn, styles.logoutBtn]} 
-              textStyle={{ color: '#FF4D4D', fontWeight: 'bold' }} 
+            <GoldButton
+              title="Se deconnecter"
+              onPress={handleLogout}
+              style={[styles.btn, styles.logoutBtn]}
+              textStyle={{ color: '#FF4D4D', fontWeight: 'bold' }}
             />
           </View>
         </GlassCard>
@@ -116,7 +122,7 @@ const styles = StyleSheet.create({
   title: {
     fontSize: 24,
     fontWeight: '900',
-    color: '#FF4D4D', // Rouge vibrant contrasté pour lisibilité
+    color: '#FF4D4D',
     marginTop: 15,
     marginBottom: 25,
     textAlign: 'center',
@@ -127,12 +133,13 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   reasonText: {
-    fontSize: 18,
+    fontSize: 16,
     color: THEME.COLORS.textPrimary,
     textAlign: 'center',
     fontWeight: 'bold',
     marginBottom: 35,
-    lineHeight: 26,
+    lineHeight: 24,
+    paddingHorizontal: 10,
   },
   actions: {
     width: '100%',
@@ -143,7 +150,7 @@ const styles = StyleSheet.create({
   },
   logoutBtn: {
     backgroundColor: 'transparent',
-    borderColor: '#FF4D4D', // Rouge vibrant
+    borderColor: '#FF4D4D',
     borderWidth: 1.5,
   },
   dashboardBtn: {

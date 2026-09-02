@@ -1,21 +1,30 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ECRAN D'ABONNEMENT - Orchestrateur (Modulaire & Temps Reel)
-// STANDARD: Clean Architecture / Bank Grade
+// ECRAN D'ABONNEMENT - Orchestrateur (Automatisé GeniusPay & Temps Réel)
+// STANDARD: Clean Architecture / Bank Grade (Modularisé < 325 lignes)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
-import * as ImagePicker from 'expo-image-picker';
-import { useCallback, useEffect, useState } from 'react';
-import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import * as WebBrowser from 'expo-web-browser';
+import React, { useCallback, useEffect, useState } from 'react';
+import { Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 
-import { useGetConfigQuery, useGetSubscriptionStatusQuery, useSubmitProofMutation } from '../../store/api/subscriptionApiSlice';
-import { selectPromoMode, updatePromoMode, updateSubscriptionStatus, selectCurrentUser, setSubscriptionModalDismissed } from '../../store/slices/authSlice';
+import {
+  useGetConfigQuery,
+  useGetSubscriptionStatusQuery,
+  useInitializePaymentMutation
+} from '../../store/api/subscriptionApiSlice';
+import {
+  selectCurrentUser,
+  selectPromoMode,
+  setSubscriptionModalDismissed,
+  updatePromoMode,
+  updateSubscriptionStatus
+} from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
-import ProofUploadForm from '../../components/subscription/ProofUploadForm';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 
@@ -24,33 +33,7 @@ import THEME from '../../theme/theme';
 
 const STEPS = {
   DASHBOARD: 'DASHBOARD',
-  CHOOSE_PLAN: 'CHOOSE_PLAN',
-  UPLOAD_PROOF: 'UPLOAD_PROOF'
-};
-
-// Résolution PWA (web) & natif — miroir de la logique robuste de ManageProducts.jsx
-const formatImageForUpload = async (imageAsset) => {
-  let localUri = imageAsset.uri;
-  const filename = imageAsset.fileName || `proof_${Date.now()}.jpg`;
-  const type = imageAsset.mimeType || 'image/jpeg';
-
-  if (Platform.OS === 'web') {
-    try {
-      const response = await fetch(localUri);
-      const blob = await response.blob();
-      return { blob, filename, type, isBlob: true };
-    } catch (e) {
-      // Fallback : si fetch échoue, on continue avec l'objet natif
-    }
-  }
-
-  if (Platform.OS === 'android' && !localUri.includes('file://') && !localUri.startsWith('content://')) {
-    localUri = `file://${localUri}`;
-  } else if (Platform.OS === 'ios') {
-    localUri = localUri.replace('file://', '');
-  }
-
-  return { uri: localUri, name: filename, type, isBlob: false };
+  CHOOSE_PLAN: 'CHOOSE_PLAN'
 };
 
 const SubscriptionScreen = ({ navigation }) => {
@@ -59,15 +42,12 @@ const SubscriptionScreen = ({ navigation }) => {
   const promoMode = useSelector(selectPromoMode);
   const user = useSelector(selectCurrentUser);
   const userRole = user?.role;
-  
+
   const { data: configData, isLoading: isConfigLoading, refetch: refetchConfig } = useGetConfigQuery();
   const { data: statusData, isLoading: isStatusLoading, refetch: refetchStatus } = useGetSubscriptionStatusQuery();
-  const [submitProof, { isLoading: isSubmitting }] = useSubmitProofMutation();
+  const [initializePayment, { isLoading: isInitiating }] = useInitializePaymentMutation();
 
-  const [currentStep, setCurrentStep] = useState(null); 
-  const [selectedPlan, setSelectedPlan] = useState(null);
-  const [senderPhone, setSenderPhone] = useState('');
-  const [proofImage, setProofImage] = useState(null);
+  const [currentStep, setCurrentStep] = useState(null);
 
   const handleClose = () => {
     dispatch(setSubscriptionModalDismissed(true));
@@ -87,20 +67,31 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [configData, dispatch]);
 
+  // Synchronisation en temps réel via Sockets
   useEffect(() => {
+    const handleSubscriptionActivated = (payload) => {
+      dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
+      dispatch(showSuccessToast({ title: "Succès", message: "Votre Passe Yély a été activé avec succès." }));
+      refetchConfig();
+      refetchStatus();
+      setCurrentStep(STEPS.DASHBOARD);
+    };
+
     const handlePromoUpdate = () => {
       refetchConfig();
       refetchStatus();
     };
-    
+
+    socketService.on('subscription_updated', handleSubscriptionActivated);
     socketService.on('promo_updated', handlePromoUpdate);
     socketService.on('PROMO_MODE_CHANGED', handlePromoUpdate);
-    
+
     return () => {
+      socketService.off('subscription_updated', handleSubscriptionActivated);
       socketService.off('promo_updated', handlePromoUpdate);
       socketService.off('PROMO_MODE_CHANGED', handlePromoUpdate);
     };
-  }, [refetchConfig, refetchStatus]);
+  }, [dispatch, refetchConfig, refetchStatus]);
 
   useEffect(() => {
     return () => {
@@ -119,7 +110,7 @@ const SubscriptionScreen = ({ navigation }) => {
     if (isStatusLoading || isConfigLoading) return;
 
     if (statusData?.data) {
-      if (statusData.data.isActive || statusData.data.isPending || promoMode?.isActive) {
+      if (statusData.data.isActive || promoMode?.isActive) {
         setCurrentStep(STEPS.DASHBOARD);
       } else {
         setCurrentStep(STEPS.CHOOSE_PLAN);
@@ -129,94 +120,47 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [statusData, isStatusLoading, isConfigLoading, promoMode?.isActive]);
 
-  const handleSelectPlan = (plan) => {
-    setSelectedPlan(plan);
-    setCurrentStep(STEPS.UPLOAD_PROOF);
+  const handleInitiatePayment = async () => {
+    try {
+      const platform = Platform.OS === 'web' ? 'pwa' : 'mobile';
+      const response = await initializePayment({ planId: 'MONTHLY', platform }).unwrap();
+      const paymentUrl = response?.data?.paymentUrl || response?.paymentUrl;
+
+      if (!paymentUrl) {
+        throw new Error("Lien de paiement non disponible.");
+      }
+
+      if (Platform.OS === 'web') {
+        window.location.href = paymentUrl;
+      } else {
+        // Mode Mobile : Ouverture dans le navigateur sécurisé intégré avec retour Deep Link
+        const result = await WebBrowser.openAuthSessionAsync(paymentUrl, 'yely://subscription');
+        if (result.type === 'success' || result.type === 'dismiss') {
+          refetchStatus();
+          refetchConfig();
+        }
+      }
+    } catch (err) {
+      const msg = err?.data?.message || err?.message || "Erreur lors de l'ouverture du paiement.";
+      dispatch(showErrorToast({ title: "Erreur", message: msg }));
+    }
   };
 
   const handleProlong = () => {
     setCurrentStep(STEPS.CHOOSE_PLAN);
   };
 
-  const pickImage = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') {
-      dispatch(showErrorToast({ message: "Permission d'accès aux photos requise." }));
-      return;
-    }
-
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets && result.assets.length > 0) {
-      setProofImage(result.assets[0]);
-    }
-  };
-
-  const handleSubmitProof = async () => {
-    if (!senderPhone || !proofImage) {
-      dispatch(showErrorToast({ message: "Veuillez remplir le numéro expéditeur et choisir une image." }));
-      return;
-    }
-
-    try {
-      const formattedFile = await formatImageForUpload(proofImage);
-      
-      const formData = new FormData();
-      formData.append('planId', selectedPlan.id);
-      formData.append('senderPhone', senderPhone);
-
-      if (formattedFile.isBlob) {
-        // Mode PWA / Web : on passe un vrai Blob natif que le navigateur comprend
-        formData.append('proofImage', formattedFile.blob, formattedFile.filename);
-      } else {
-        // Mode natif Android/iOS
-        formData.append('proofImage', {
-          uri: formattedFile.uri,
-          name: formattedFile.name,
-          type: formattedFile.type,
-        });
-      }
-
-      await submitProof(formData).unwrap();
-      
-      dispatch(updateSubscriptionStatus({ isPending: true, isRejected: false }));
-      dispatch(showSuccessToast({ message: "Preuve soumise avec succès." }));
-      
-      setProofImage(null);
-      setSenderPhone('');
-      
-      navigation.replace('WaitSubscription');
-
-    } catch (err) {
-      dispatch(showErrorToast({ message: err?.data?.message || "Erreur lors de la soumission de la preuve." }));
-    }
-  };
-
-  // Calcul de la marge supérieure : évite tout chevauchement avec la barre système (PWA, APK, iOS)
   const headerTopPadding = Math.max(
     insets.top,
     Platform.OS === 'android' ? (StatusBar.currentHeight || 24) : 0
   ) + 12;
 
-  const canGoBack = currentStep === STEPS.UPLOAD_PROOF || 
-                    (currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive));
-
-  const handleBackPress = () => {
-    if (currentStep === STEPS.UPLOAD_PROOF) {
-      setCurrentStep(STEPS.CHOOSE_PLAN);
-    } else if (currentStep === STEPS.CHOOSE_PLAN) {
-      setCurrentStep(STEPS.DASHBOARD);
-    }
-  };
+  const canGoBack = currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive);
 
   const renderHeader = () => (
     <View style={[styles.header, { paddingTop: headerTopPadding }]}>
       {canGoBack ? (
-        <TouchableOpacity onPress={handleBackPress} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
+        <TouchableOpacity onPress={() => setCurrentStep(STEPS.DASHBOARD)} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
           <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
       ) : (
@@ -224,10 +168,8 @@ const SubscriptionScreen = ({ navigation }) => {
           <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
         </TouchableOpacity>
       )}
-      
-      <Text style={styles.headerTitle}>Passe Yély</Text>
 
-      {/* Espaceur invisible pour centrer le titre */}
+      <Text style={styles.headerTitle}>Passe Yély</Text>
       <View style={styles.headerIconBtn} />
     </View>
   );
@@ -257,40 +199,27 @@ const SubscriptionScreen = ({ navigation }) => {
   return (
     <View style={styles.safeArea}>
       <View style={styles.container}>
-        
         {renderHeader()}
 
         <View style={styles.content}>
           {currentStep === STEPS.DASHBOARD && (
-            <SubscriptionDashboard 
-              status={statusData?.data} 
-              onProlong={handleProlong} 
+            <SubscriptionDashboard
+              status={statusData?.data}
+              onProlong={handleProlong}
             />
           )}
 
           {currentStep === STEPS.CHOOSE_PLAN && (
-            <PlanSelection 
-              config={configData?.data} 
+            <PlanSelection
+              config={configData?.data}
               status={statusData?.data}
-              onSelectPlan={handleSelectPlan}
+              onInitiatePayment={handleInitiatePayment}
+              isInitiating={isInitiating}
               onBack={() => setCurrentStep(STEPS.DASHBOARD)}
               userRole={userRole}
             />
           )}
-
-          {currentStep === STEPS.UPLOAD_PROOF && (
-            <ProofUploadForm 
-              senderPhone={senderPhone}
-              setSenderPhone={setSenderPhone}
-              proofImage={proofImage}
-              onPickImage={pickImage}
-              onSubmit={handleSubmitProof}
-              onCancel={() => setCurrentStep(STEPS.CHOOSE_PLAN)}
-              isSubmitting={isSubmitting}
-            />
-          )}
         </View>
-
       </View>
     </View>
   );

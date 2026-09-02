@@ -1,8 +1,11 @@
 // src/screens/admin/AdminDashboard.jsx
+// TOUR DE CONTROLE ADMIN - Pilotage en temps reel
+// STANDARD: Clean Architecture / Bank Grade (Modularise < 325 lignes, Sans Emojis)
+
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { BlurView } from 'expo-blur';
-import { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { RefreshControl, ScrollView, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 
@@ -20,9 +23,7 @@ import THEME from '../../theme/theme';
 const GlassMenuCard = ({ children, style }) => (
   <View style={[styles.glassContainer, style]}>
     <BlurView intensity={60} tint="default" style={StyleSheet.absoluteFill} />
-    <View style={styles.glassContent}>
-      {children}
-    </View>
+    <View style={styles.glassContent}>{children}</View>
   </View>
 );
 
@@ -39,12 +40,11 @@ const AdminDashboard = () => {
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   
-  const [seenValidations, setSeenValidations] = useState(false);
   const [seenUsers, setSeenUsers] = useState(true); 
   const [seenReports, setSeenReports] = useState(false); 
   const [seenIdentities, setSeenIdentities] = useState(false); 
 
-  const prevStatsRef = useRef({ pendingValidations: 0, totalUsers: 0, pendingDriverValidations: 0 });
+  const prevStatsRef = useRef({ totalUsers: 0, pendingDriverValidations: 0 });
   const prevReportsCountRef = useRef(0);
   const isFirstLoad = useRef(true);
   
@@ -67,7 +67,6 @@ const AdminDashboard = () => {
     totalRiders: rawStats.totalRiders || 0,
     totalDrivers: rawStats.totalDrivers || 0,
     activeDrivers: rawStats.activeDrivers || 0,
-    pendingValidations: rawStats.pendingValidations || 0,
     pendingDriverValidations: rawStats.pendingDriverValidations || 0
   };
   
@@ -77,13 +76,9 @@ const AdminDashboard = () => {
   useEffect(() => {
     if (statsData) {
       if (isFirstLoad.current) {
-        setSeenValidations(stats.pendingValidations === 0);
         setSeenIdentities(stats.pendingDriverValidations === 0);
         isFirstLoad.current = false;
       } else {
-        if (stats.pendingValidations > prevStatsRef.current.pendingValidations) {
-          setSeenValidations(false);
-        }
         if (stats.pendingDriverValidations > (prevStatsRef.current.pendingDriverValidations || 0)) {
           setSeenIdentities(false);
         }
@@ -92,12 +87,11 @@ const AdminDashboard = () => {
         }
       }
       prevStatsRef.current = { 
-        pendingValidations: stats.pendingValidations, 
         totalUsers: stats.totalUsers,
         pendingDriverValidations: stats.pendingDriverValidations
       };
     }
-  }, [stats.pendingValidations, stats.pendingDriverValidations, stats.totalUsers, statsData]);
+  }, [stats.pendingDriverValidations, stats.totalUsers, statsData]);
 
   useEffect(() => {
     if (unresolvedReportsCount > prevReportsCountRef.current) {
@@ -107,7 +101,6 @@ const AdminDashboard = () => {
   }, [unresolvedReportsCount]);
 
   const handleNavigate = (route, id) => {
-    if (id === 'validations') setSeenValidations(true);
     if (id === 'users') setSeenUsers(true);
     if (id === 'reports') setSeenReports(true); 
     if (id === 'identities') setSeenIdentities(true); 
@@ -116,11 +109,18 @@ const AdminDashboard = () => {
 
   const menuItems = [
     { 
-      id: 'validations', 
-      title: 'Validations', 
-      icon: 'checkmark-circle-outline', 
-      route: 'ValidationCenter', 
-      badge: !seenValidations && stats.pendingValidations > 0 ? stats.pendingValidations : undefined, 
+      id: 'subscriptions', 
+      title: 'Abonnements & Relevés', 
+      icon: 'calendar-outline', 
+      route: 'SubscriptionManagement', 
+      allowed: true 
+    },
+    { 
+      id: 'identities', 
+      title: 'Verifications ID', 
+      icon: 'shield-checkmark-outline', 
+      route: 'IdentityValidationCenter', 
+      badge: !seenIdentities && stats.pendingDriverValidations > 0 ? stats.pendingDriverValidations : undefined, 
       allowed: true 
     },
     { 
@@ -132,21 +132,6 @@ const AdminDashboard = () => {
       allowed: true 
     },
     { 
-      id: 'subscriptions', 
-      title: 'Abonnements', 
-      icon: 'calendar-outline', 
-      route: 'SubscriptionManagement', 
-      allowed: true 
-    },
-    { 
-      id: 'identities', 
-      title: 'Vérifications ID', 
-      icon: 'shield-checkmark-outline', 
-      route: 'IdentityValidationCenter', 
-      badge: !seenIdentities && stats.pendingDriverValidations > 0 ? stats.pendingDriverValidations : undefined, 
-      allowed: true 
-    },
-    { 
       id: 'reports', 
       title: 'Signalements', 
       icon: 'alert-circle-outline', 
@@ -155,9 +140,9 @@ const AdminDashboard = () => {
       allowed: true 
     },
     { id: 'rides', title: 'Historique Courses', icon: 'car-sport-outline', route: 'AdminRides', allowed: true },
-    { id: 'marketplace', title: 'Marketplace Yély', icon: 'basket-outline', route: 'AdminMarketplace', allowed: true },
-    { id: 'journal', title: 'Journal', icon: 'book-outline', route: 'AdminJournal', allowed: true },
-    { id: 'banners', title: 'Bannières Live', icon: 'images-outline', route: 'AdminBanners', allowed: isSuperAdmin },
+    { id: 'marketplace', title: 'Marketplace Yely', icon: 'basket-outline', route: 'AdminMarketplace', allowed: true },
+    { id: 'journal', title: 'Journal d\'Audit', icon: 'book-outline', route: 'AdminJournal', allowed: true },
+    { id: 'banners', title: 'Bannieres Live', icon: 'images-outline', route: 'AdminBanners', allowed: isSuperAdmin },
     { id: 'finance', title: 'Finance & Config', icon: 'cash-outline', route: 'FinanceConfig', allowed: isSuperAdmin },
     { id: 'operationalReports', title: 'Rapports Fiscaux', icon: 'document-text-outline', route: 'AdminOperationalReports', allowed: isSuperAdmin },
     { id: 'map', title: 'Gestion Carte', icon: 'map-outline', route: 'MapManagement', allowed: isSuperAdmin },
@@ -168,17 +153,13 @@ const AdminDashboard = () => {
     setShowScrollTop(event.nativeEvent.contentOffset.y > 100);
   };
 
-  const scrollToTop = () => {
-    scrollViewRef.current?.scrollTo({ y: 0, animated: true });
-  };
-
-  const helpText = "Cockpit Yely :\n\n- Chauffeurs Actifs : Chauffeurs en ligne à Maféré.\n- En Attente : Paiements Wave à valider.\n- Passagers : Nombre total de clients inscrits.\n- Chauffeurs : Total des conducteurs inscrits (actifs ou non).";
+  const helpText = "Cockpit Yely :\n\n- Chauffeurs Actifs : Chauffeurs en ligne sur le terrain.\n- Passagers : Nombre total de clients inscrits.\n- Chauffeurs : Total des conducteurs inscrits.\n- Abonnements & Releves : Registre et historique financier des paiements.";
 
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTextContainer}>
-          <Text style={styles.headerTitle}>Yély Control</Text>
+          <Text style={styles.headerTitle}>Yely Control</Text>
           <Text style={styles.headerSubtitle}>Hello, {user?.name || 'Admin'}</Text>
         </View>
         <View style={styles.headerActions}>
@@ -200,17 +181,17 @@ const AdminDashboard = () => {
             <Ionicons name="warning-outline" size={24} color={THEME.COLORS.pureWhite} style={styles.errorIcon} />
             <View style={styles.errorTextContainer}>
               <Text style={styles.errorTitle}>Erreur Serveur</Text>
-              <Text style={styles.errorDetail}>Vérifiez votre connexion Railway.</Text>
+              <Text style={styles.errorDetail}>Verification de synchronisation reseau.</Text>
             </View>
           </View>
         )}
 
-        <Text style={styles.sectionTitle}>Indicateurs en temps réel</Text>
+        <Text style={styles.sectionTitle}>Indicateurs en temps reel</Text>
         <View style={styles.statsGrid}>
           <View style={styles.statWrapper}><StatCard title="Chauffeurs Actifs" value={stats.activeDrivers} icon="car-sport-outline" /></View>
-          <View style={styles.statWrapper}><StatCard title="En Attente" value={stats.pendingValidations} icon="time-outline" iconColor={stats.pendingValidations > 0 ? THEME.COLORS.danger : THEME.COLORS.primary} /></View>
-          <View style={styles.statWrapper}><StatCard title="Passagers" value={stats.totalRiders} icon="person-outline" /></View>
           <View style={styles.statWrapper}><StatCard title="Total Chauffeurs" value={stats.totalDrivers} icon="people-circle-outline" /></View>
+          <View style={styles.statWrapper}><StatCard title="Passagers" value={stats.totalRiders} icon="person-outline" /></View>
+          <View style={styles.statWrapper}><StatCard title="Total Inscrits" value={stats.totalUsers} icon="people-outline" /></View>
         </View>
 
         <Text style={styles.sectionTitle}>Modules d'Administration</Text>
@@ -242,12 +223,12 @@ const AdminDashboard = () => {
         onLogout={() => setLogoutModalVisible(true)}
       />
 
-      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Contrôle" content={helpText} />
+      <HelpModal visible={helpVisible} onClose={() => setHelpVisible(false)} title="Aide : Tour de Controle" content={helpText} />
       
       <ConfirmModal 
         visible={logoutModalVisible}
-        title="Déconnexion"
-        message="Êtes-vous sûr de vouloir quitter le cockpit ?"
+        title="Deconnexion"
+        message="Etes-vous sur de vouloir quitter le cockpit ?"
         isDestructive={true}
         onConfirm={() => {
           setLogoutModalVisible(false);
@@ -256,7 +237,7 @@ const AdminDashboard = () => {
         onCancel={() => setLogoutModalVisible(false)}
       />
 
-      <ScrollToTopButton visible={showScrollTop} onPress={scrollToTop} />
+      <ScrollToTopButton visible={showScrollTop} onPress={() => scrollViewRef.current?.scrollTo({ y: 0, animated: true })} />
     </View>
   );
 };
@@ -278,13 +259,13 @@ const styles = StyleSheet.create({
   sectionTitle: { fontSize: 18, fontWeight: '600', color: THEME.COLORS.textPrimary, marginBottom: 15, marginTop: 10 },
   statsGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', marginBottom: 20 },
   statWrapper: { width: '48%', marginBottom: 15 },
-  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.xl, borderWidth: THEME.BORDERS.width.thin, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay },
+  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS.radius.xl, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay },
   glassContent: { padding: 20, alignItems: 'center', justifyContent: 'center' },
   menuGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between' },
   menuButtonWrapper: { width: '48%', marginBottom: 15 },
   menuCard: { height: 120 },
   menuIconContainer: { position: 'relative', marginBottom: 12 },
-  menuTitle: { color: THEME.COLORS.textPrimary, fontSize: 14, fontWeight: '500', textAlign: 'center' }
+  menuTitle: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '500', textAlign: 'center' }
 });
 
 export default AdminDashboard;

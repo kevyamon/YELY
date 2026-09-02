@@ -1,5 +1,5 @@
 // src/store/api/subscriptionApiSlice.js
-// CONNEXION API SOUSCRIPTION - RTK Query
+// CONNEXION API SOUSCRIPTION - RTK Query (Passerelle Automatisée GeniusPay)
 // STANDARD: Industriel / Bank Grade
 
 import { apiSlice } from '../slices/apiSlice';
@@ -10,7 +10,6 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
     getConfig: builder.query({
       query: () => '/subscriptions/config',
       providesTags: ['Subscription'],
-      // Nettoyage: retrait de keepUnusedDataFor pour laisser le cache RTK (60s) operer
     }),
 
     getSubscriptionStatus: builder.query({
@@ -18,30 +17,17 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
       providesTags: ['Subscription'],
     }),
 
-    submitProof: builder.mutation({
-      query: (formData) => ({
-        url: '/subscriptions/submit-proof',
+    initializePayment: builder.mutation({
+      query: (body) => ({
+        url: '/subscriptions/initialize',
         method: 'POST',
-        body: formData,
+        body,
       }),
-      extraOptions: { silent: true }, 
-      
-      async onQueryStarted(formData, { dispatch, queryFulfilled }) {
-        const patchResult = dispatch(
-          subscriptionApiSlice.util.updateQueryData('getSubscriptionStatus', undefined, (draft) => {
-            if (draft && draft.data) {
-              draft.data.isPending = true;
-            } else {
-              draft.data = { isPending: true, isActive: false };
-            }
-          })
-        );
-        try {
-          await queryFulfilled;
-        } catch {
-          patchResult.undo(); 
-        }
-      }
+    }),
+
+    verifyPayment: builder.query({
+      query: (reference) => `/subscriptions/verify/${reference}`,
+      providesTags: ['Subscription'],
     }),
     
   }),
@@ -51,5 +37,6 @@ export const subscriptionApiSlice = apiSlice.injectEndpoints({
 export const {
   useGetConfigQuery,
   useGetSubscriptionStatusQuery,
-  useSubmitProofMutation,
+  useInitializePaymentMutation,
+  useLazyVerifyPaymentQuery,
 } = subscriptionApiSlice;

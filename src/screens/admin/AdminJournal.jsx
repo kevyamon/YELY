@@ -1,6 +1,6 @@
 // src/screens/admin/AdminJournal.jsx
-// JOURNAL ADMIN - Historique de tracabilite (Adaptatif Light/Dark, Strictement Read-Only)
-// CSCSM Level: Bank Grade
+// JOURNAL D'AUDIT ADMIN - Historique de tracabilite financiere et systeme
+// STANDARD: Clean Architecture / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import { BlurView } from 'expo-blur';
@@ -14,25 +14,24 @@ import THEME from '../../theme/theme';
 const GlassCard = ({ children, style }) => (
   <View style={[styles.glassContainer, style]}>
     <BlurView intensity={60} tint="default" style={StyleSheet.absoluteFill} />
-    <View style={styles.glassContent}>
-      {children}
-    </View>
+    <View style={styles.glassContent}>{children}</View>
   </View>
 );
 
 const ACTION_DICTIONARY = {
+  'PAYMENT_SUCCESS': 'Paiement Automatique Valide',
+  'PAYMENT_FAILED': 'Echec de Paiement Mobile Money',
+  'INITIALIZED': 'Session de Paiement Generee',
   'PROMOTE_USER': 'Promotion Admin',
-  'REVOKE_USER': 'Révocation Admin',
-  'BAN_USER': 'Bannissement',
-  'UNBAN_USER': 'Levée de Bannissement',
-  'UPDATE_SETTINGS': 'Mise à jour Paramètres',
-  'UPDATE_MAP_SETTINGS': 'Mise à jour Zone/Carte',
-  'APPROVE_TRANSACTION': 'Transaction Financière Approuvée',
-  'REJECT_TRANSACTION': 'Transaction Financière Rejetée',
-  'APPROVE_SUBSCRIPTION': 'Abonnement Activé',
-  'REJECT_SUBSCRIPTION': 'Abonnement Refusé',
-  'TOGGLE_PROMO': 'Changement Mode Promotionnel',
-  'UPDATE_WAVE_LINKS': 'Mise à jour Liens Wave',
+  'REVOKE_USER': 'Revocation Admin',
+  'BAN_USER': 'Suspension de Compte',
+  'UNBAN_USER': 'Reactivation de Compte',
+  'UPDATE_SETTINGS': 'Mise a jour Parametres',
+  'UPDATE_MAP_SETTINGS': 'Mise a jour Zone/Carte',
+  'APPROVE_TRANSACTION': 'Transaction Validee',
+  'REJECT_TRANSACTION': 'Transaction Rejetee',
+  'APPROVE_SUBSCRIPTION': 'Abonnement Active',
+  'TOGGLE_PROMO': 'Changement Mode Promo',
   'DELETE_ACCOUNT': 'Suppression de Compte',
   'UPDATE_PROFILE': 'Modification de Profil'
 };
@@ -66,7 +65,7 @@ const AdminJournal = ({ navigation }) => {
     });
 
     const sections = [];
-    if (periods['24h'].length > 0) sections.push({ title: 'Dernières 24 heures', data: periods['24h'] });
+    if (periods['24h'].length > 0) sections.push({ title: 'Dernieres 24 heures', data: periods['24h'] });
     if (periods['7j'].length > 0) sections.push({ title: '7 derniers jours', data: periods['7j'] });
     if (periods['15j'].length > 0) sections.push({ title: '15 derniers jours', data: periods['15j'] });
     if (periods['30j'].length > 0) sections.push({ title: '30 derniers jours', data: periods['30j'] });
@@ -76,8 +75,7 @@ const AdminJournal = ({ navigation }) => {
 
   const handleScroll = (event) => {
     const { contentOffset, layoutMeasurement } = event.nativeEvent;
-    const halfScreenHeight = layoutMeasurement.height / 2;
-    setShowScrollTop(contentOffset.y > halfScreenHeight);
+    setShowScrollTop(contentOffset.y > layoutMeasurement.height / 2);
   };
 
   const scrollToTop = () => {
@@ -98,11 +96,11 @@ const AdminJournal = ({ navigation }) => {
         <View style={styles.logHeader}>
           <Text style={styles.logAction}>{translatedAction}</Text>
           <Text style={styles.logDate}>
-              {new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
+            {new Date(item.createdAt).toLocaleDateString('fr-FR')} {new Date(item.createdAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute:'2-digit' })}
           </Text>
         </View>
-        <Text style={styles.logDetails}>{item.details || 'Aucun détail fourni'}</Text>
-        <Text style={styles.logTarget}>Par: {item.actor?.name || item.actor?.email || 'Système'}</Text>
+        <Text style={styles.logDetails}>{item.details || 'Aucun detail fourni'}</Text>
+        <Text style={styles.logTarget}>Par : {item.actor?.name || item.actor?.email || 'Systeme GeniusPay'}</Text>
       </GlassCard>
     );
   };
@@ -122,46 +120,45 @@ const AdminJournal = ({ navigation }) => {
             <View style={styles.sectionHeader}>
               <SkeletonBone width={150} height={16} />
             </View>
-            {[1, 2, 3, 4, 5, 6].map((key) => (
+            {[1, 2, 3, 4].map((key) => (
               <GlassCard key={key} style={styles.logCard}>
                 <View style={styles.logHeader}>
                   <SkeletonBone width={130} height={16} />
                   <SkeletonBone width={80} height={12} />
                 </View>
                 <SkeletonBone width="100%" height={14} style={{ marginBottom: 6 }} />
-                <SkeletonBone width="80%" height={14} style={{ marginBottom: 10 }} />
-                <SkeletonBone width={120} height={12} />
+                <SkeletonBone width="120" height={12} />
               </GlassCard>
             ))}
           </View>
         ) : (
           <>
             <SectionList
-                ref={sectionListRef}
-                onScroll={handleScroll}
-                scrollEventThrottle={16}
-                sections={groupedData}
-                keyExtractor={(item, index) => item._id || index.toString()}
-                renderItem={renderItem}
-                renderSectionHeader={({ section: { title } }) => (
-                  <View style={styles.sectionHeader}>
-                      <Text style={styles.sectionTitle}>{title}</Text>
-                  </View>
-                )}
-                contentContainerStyle={styles.listContent}
-                onRefresh={refetch}
-                refreshing={isFetching}
-                ListEmptyComponent={
-                  <View style={styles.emptyContainer}>
-                      <GlassCard style={styles.emptyCard}>
-                      <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
-                      <Text style={styles.emptyTitle}>Journal d'activité</Text>
-                      <Text style={styles.emptyText}>
-                          Le journal est complètement vide. Aucune action d'administration n'a encore été effectuée récemment.
-                      </Text>
-                      </GlassCard>
-                  </View>
-                }
+              ref={sectionListRef}
+              onScroll={handleScroll}
+              scrollEventThrottle={16}
+              sections={groupedData}
+              keyExtractor={(item, index) => item._id || index.toString()}
+              renderItem={renderItem}
+              renderSectionHeader={({ section: { title } }) => (
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>{title}</Text>
+                </View>
+              )}
+              contentContainerStyle={styles.listContent}
+              onRefresh={refetch}
+              refreshing={isFetching}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <GlassCard style={styles.emptyCard}>
+                    <Ionicons name="library-outline" size={48} color={THEME.COLORS.primary} style={styles.emptyIcon} />
+                    <Text style={styles.emptyTitle}>Journal d'activite</Text>
+                    <Text style={styles.emptyText}>
+                      Le journal est completement vide. Aucune action recente.
+                    </Text>
+                  </GlassCard>
+                </View>
+              }
             />
             <ScrollToTopButton onPress={scrollToTop} visible={showScrollTop} />
           </>
@@ -173,25 +170,25 @@ const AdminJournal = ({ navigation }) => {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: THEME.COLORS.background },
-  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center', zIndex: 10 },
+  header: { paddingTop: 60, paddingHorizontal: 20, paddingBottom: 15, flexDirection: 'row', alignItems: 'center' },
   backButton: { marginRight: 15 },
-  headerTitle: { fontSize: 24, fontWeight: 'bold', color: THEME.COLORS.primary },
+  headerTitle: { fontSize: 22, fontWeight: 'bold', color: THEME.COLORS.primary },
   listContent: { paddingHorizontal: 20, paddingBottom: 40, flexGrow: 1 },
-  sectionHeader: { backgroundColor: THEME.COLORS.background, paddingVertical: 10, marginTop: 10 },
-  sectionTitle: { color: THEME.COLORS.textSecondary, fontSize: 14, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
-  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS?.radius?.lg || 12, borderWidth: THEME.BORDERS?.width?.thin || 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay },
-  glassContent: { padding: 15 },
-  logCard: { marginBottom: 12 },
-  logHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
+  sectionHeader: { backgroundColor: THEME.COLORS.background, paddingVertical: 8, marginTop: 10 },
+  sectionTitle: { color: THEME.COLORS.textSecondary, fontSize: 13, fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1 },
+  glassContainer: { overflow: 'hidden', borderRadius: THEME.BORDERS?.radius?.lg || 12, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.overlay },
+  glassContent: { padding: 14 },
+  logCard: { marginBottom: 10 },
+  logHeader: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 6 },
   logAction: { color: THEME.COLORS.primary, fontWeight: 'bold', fontSize: 13 },
   logDate: { color: THEME.COLORS.textTertiary, fontSize: 11 },
-  logDetails: { color: THEME.COLORS.textPrimary, fontSize: 13, marginBottom: 5 },
+  logDetails: { color: THEME.COLORS.textPrimary, fontSize: 13, marginBottom: 4 },
   logTarget: { color: THEME.COLORS.textSecondary, fontSize: 11, fontStyle: 'italic' },
   emptyContainer: { flex: 1, justifyContent: 'center', marginTop: 40 },
   emptyCard: { alignItems: 'center', padding: 25 },
   emptyIcon: { marginBottom: 15, opacity: 0.8 },
-  emptyTitle: { color: THEME.COLORS.textPrimary, fontSize: 18, fontWeight: 'bold', marginBottom: 10 },
-  emptyText: { color: THEME.COLORS.textSecondary, fontSize: 14, textAlign: 'center', lineHeight: 22 }
+  emptyTitle: { color: THEME.COLORS.textPrimary, fontSize: 17, fontWeight: 'bold', marginBottom: 8 },
+  emptyText: { color: THEME.COLORS.textSecondary, fontSize: 13, textAlign: 'center', lineHeight: 20 }
 });
 
 export default AdminJournal;
