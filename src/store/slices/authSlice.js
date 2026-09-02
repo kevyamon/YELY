@@ -245,6 +245,7 @@ export const forceSilentRefresh = () => async (dispatch, getState) => {
 
 export const selectCurrentUser = (state) => state.auth.user;
 export const selectIsAuthenticated = (state) => state.auth.isAuthenticated;
+export const selectToken = (state) => state.auth.token;
 export const selectCurrentToken = (state) => state.auth.token;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
 export const selectPromoMode = (state) => state.auth.promoMode;

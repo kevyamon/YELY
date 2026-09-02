@@ -1,8 +1,8 @@
 // src/components/ui/UpdateModal.jsx
-// MODALE PLAY STORE - Détection & Forçage des Mises à Jour Distantes
-// STANDARD: Industriel / Bank Grade
+// MODALE PLAY STORE & OTA - Double Engrenage Mecanique 3D Anime
+// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Modal,
   View,
@@ -10,21 +10,56 @@ import {
   StyleSheet,
   TouchableOpacity,
   useColorScheme,
+  Animated,
+  Easing
 } from 'react-native';
 import { BlurView } from 'expo-blur';
 import { Ionicons } from '@expo/vector-icons';
 import THEME from '../../theme/theme';
 
-/**
- * @param {Object} props
- * @param {boolean} props.visible
- * @param {'store' | 'ota'} [props.type]
- * @param {string} [props.title]
- * @param {string} [props.message]
- * @param {boolean} [props.isForced]
- * @param {() => void} props.onUpdate
- * @param {() => void} [props.onDismiss]
- */
+const AnimatedGears = () => {
+  const spinAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const loop = Animated.loop(
+      Animated.timing(spinAnim, {
+        toValue: 1,
+        duration: 4000,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      })
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [spinAnim]);
+
+  // Grand engrenage : rotation horaire
+  const spinClockwise = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '360deg'],
+  });
+
+  // Petit engrenage : rotation anti-horaire synchronisee (vitesse x1.5)
+  const spinCounterClockwise = spinAnim.interpolate({
+    inputRange: [0, 1],
+    outputRange: ['0deg', '-540deg'],
+  });
+
+  return (
+    <View style={styles.gearsWrapper}>
+      {/* Grand Engrenage (Principal) */}
+      <Animated.View style={[styles.mainGear, { transform: [{ rotate: spinClockwise }] }]}>
+        <Ionicons name="settings-sharp" size={36} color="#121418" />
+      </Animated.View>
+
+      {/* Petit Engrenage (Satellite Interconnecte) */}
+      <Animated.View style={[styles.secondaryGear, { transform: [{ rotate: spinCounterClockwise }] }]}>
+        <Ionicons name="settings-sharp" size={24} color="#121418" />
+      </Animated.View>
+    </View>
+  );
+};
+
 export default function UpdateModal({
   visible,
   type = 'store',
@@ -59,16 +94,12 @@ export default function UpdateModal({
         <BlurView intensity={isDark ? 90 : 60} tint={isDark ? "dark" : "light"} style={StyleSheet.absoluteFill} />
 
         <View style={[styles.alertCard, { backgroundColor: cardBg, borderColor: isDark ? 'rgba(212, 175, 55, 0.35)' : 'rgba(212, 175, 55, 0.45)' }]}>
-          {/* Badge Icône Haute Définition */}
+          {/* Badge Mecanique Double Engrenage 3D Anime */}
           <View style={[styles.iconContainer, { borderColor: iconBorderColor }]}>
-            <Ionicons 
-              name={isOta ? "sparkles" : "cloud-download-outline"} 
-              size={36} 
-              color="#000000" 
-            />
+            <AnimatedGears />
           </View>
 
-          {/* Titre & Message explicatif */}
+          {/* Titre & Message explicatif avec typographie francaise certifiee */}
           <Text style={[styles.title, { color: textColor }]}>
             {title || (isOta ? 'Mise à jour prête !' : 'Mise à jour disponible')}
           </Text>
@@ -132,20 +163,37 @@ const styles = StyleSheet.create({
     shadowRadius: 20,
   },
   iconContainer: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: THEME.COLORS.champagneGold,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-    marginTop: -48,
+    marginTop: -52,
     borderWidth: 4,
     shadowColor: THEME.COLORS.champagneGold,
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
+    shadowOpacity: 0.35,
     shadowRadius: 10,
     elevation: 8,
+  },
+  gearsWrapper: {
+    width: 52,
+    height: 52,
+    position: 'relative',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  mainGear: {
+    position: 'absolute',
+    left: 4,
+    top: 10,
+  },
+  secondaryGear: {
+    position: 'absolute',
+    right: 4,
+    top: 2,
   },
   title: {
     fontSize: 20,

@@ -1,6 +1,6 @@
 // src/components/ui/GlobalErrorFallback.jsx
 // BOUCLIER DE SECOURS ANTI-CRASH & TELEMETRIE D'URGENCE
-// STANDARD: Industriel / Bank Grade / NASA Resilience (Sans Emojis)
+// STANDARD: Industriel / Bank Grade / NASA Resilience (Modularise < 325 lignes, Sans Emojis)
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -67,7 +67,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           userContext = {
             id: parsed._id || parsed.id || 'N/A',
             name: parsed.name || 'Visiteur',
-            phone: parsed.phone || 'Non renseigne',
+            phone: parsed.phone || 'Non renseigné',
             role: parsed.role || 'visiteur',
           };
         }
@@ -140,9 +140,9 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           <Ionicons name="shield-half" size={44} color={THEME.COLORS.champagneGold} />
         </View>
 
-        <Text style={styles.title}>Incident Technique Intercepte</Text>
+        <Text style={styles.title}>Incident Technique Intercepté</Text>
         <Text style={styles.subtitle}>
-          Le bouclier de securite Yely a bloque l'anomalie. Aucune donnee n'a ete alteree.
+          Le bouclier de sécurité Yély a bloqué l'anomalie. Aucune donnée n'a été altérée.
         </Text>
 
         <View style={styles.statusBox}>
@@ -154,10 +154,10 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           />
           <Text style={styles.statusText}>
             {isSent
-              ? 'Rapport technique transmis aux ingenieurs.'
+              ? 'Rapport technique transmis aux ingénieurs.'
               : isSending
               ? 'Transmission du diagnostic technique en cours...'
-              : 'Diagnostic pret a etre transmis.'}
+              : 'Diagnostic prêt à être transmis.'}
           </Text>
         </View>
 
@@ -165,7 +165,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           <TouchableOpacity style={styles.patchButton} onPress={handleOpenStore} activeOpacity={0.8}>
             <Ionicons name="arrow-up-circle" size={18} color="#000000" style={{ marginRight: 8 }} />
             <Text style={styles.patchButtonText}>
-              {Platform.OS === 'web' ? 'Recharger la version corrigee' : 'Installer le correctif Play Store'}
+              {Platform.OS === 'web' ? 'Recharger la version corrigée' : 'Installer le correctif Play Store'}
             </Text>
           </TouchableOpacity>
         ) : null}
@@ -187,7 +187,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
                 style={{ marginRight: 8 }}
               />
               <Text style={[styles.reportButtonText, isSent && { color: '#FFFFFF' }]}>
-                {isSent ? 'Rapport transmis avec succes' : 'Transmettre le rapport technique'}
+                {isSent ? 'Rapport transmis avec succès' : 'Transmettre le rapport technique'}
               </Text>
             </>
           )}
@@ -195,7 +195,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
 
         <TouchableOpacity style={styles.restartButton} onPress={handleCleanRestart} activeOpacity={0.8}>
           <Ionicons name="refresh" size={18} color={THEME.COLORS.champagneGold} style={{ marginRight: 8 }} />
-          <Text style={styles.restartButtonText}>Reinitialiser et Redemarrer</Text>
+          <Text style={styles.restartButtonText}>Réinitialiser et Redémarrer</Text>
         </TouchableOpacity>
 
       </View>
