@@ -8,11 +8,6 @@
     "scheme": "yely",
     "userInterfaceStyle": "automatic",
     "owner": "kevyllc",
-    "splash": {
-      "image": "./assets/images/splash-center.png",
-      "resizeMode": "contain",
-      "backgroundColor": "#D4AF37"
-    },
     "updates": {
       "url": "https://u.expo.dev/be0e185d-b91e-41bf-9e18-91923cf7deb5",
       "fallbackToCacheTimeout": 3000,
@@ -46,10 +41,6 @@
         "backgroundColor": "#000000"
       },
       "predictiveBackGestureEnabled": false,
-      "navigationBar": {
-        "backgroundColor": "#000000",
-        "barStyle": "light-content"
-      },
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
@@ -84,7 +75,6 @@
       }
     },
     "plugins": [
-      "@react-native-google-signin/google-signin",
       [
         "expo-splash-screen",
         {

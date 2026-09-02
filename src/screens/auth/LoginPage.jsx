@@ -1,9 +1,9 @@
 // src/screens/auth/LoginPage.jsx
-// ECRAN DE CONNEXION - Native Google Auth & Securite Renforcee
+// ECRAN DE CONNEXION - Standard Phone / Email & Securite Renforcee
 // STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { LayoutAnimation, Platform, StyleSheet, TouchableOpacity, View } from 'react-native';
 import CountryPicker from 'react-native-country-picker-modal';
 import { Text } from 'react-native-paper';
@@ -15,19 +15,15 @@ import GlassInput from '../../components/ui/GlassInput';
 import GoldButton from '../../components/ui/GoldButton';
 import PwaIOSWarningModal from '../../components/ui/PwaIOSWarningModal';
 
-import { configureGoogleSignIn, signInWithGoogle } from '../../services/auth/googleAuth';
-import { useLoginMutation, useGoogleAuthMutation } from '../../store/api/usersApiSlice';
+import { useLoginMutation } from '../../store/api/usersApiSlice';
 import { setCredentials } from '../../store/slices/authSlice';
 import { clearError, showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import { getApiErrorMessage } from '../../utils/errorHelper';
 import THEME from '../../theme/theme';
 
-const GOOGLE_WEB_CLIENT_ID = process.env.EXPO_PUBLIC_GOOGLE_CLIENT_ID || '874118617681-k2lm3s264crj6910cqhd4e4ehqa6g6mc.apps.googleusercontent.com';
-
 const LoginPage = ({ navigation }) => {
   const dispatch = useDispatch();
   const [login, { isLoading }] = useLoginMutation();
-  const [googleAuth, { isLoading: isGoogleLoading }] = useGoogleAuthMutation();
 
   const { error } = useSelector((state) => state.ui);
 
@@ -40,11 +36,6 @@ const LoginPage = ({ navigation }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isGoogleSubmitting, setIsGoogleSubmitting] = useState(false);
-
-  useEffect(() => {
-    configureGoogleSignIn();
-  }, []);
 
   const handleLogin = async () => {
     let identifier = '';
@@ -77,121 +68,6 @@ const LoginPage = ({ navigation }) => {
       dispatch(showErrorToast({ 
         title: "Erreur de connexion", 
         message: getApiErrorMessage(err, "Identifiants incorrects.") 
-      }));
-    }
-  };
-
-  const ensureGoogleScriptLoaded = () => {
-    return new Promise((resolve) => {
-      if (typeof window !== 'undefined' && window.google?.accounts) return resolve(true);
-      if (typeof document === 'undefined') return resolve(false);
-
-      const existingScript = document.getElementById('google-gsi-script');
-      if (existingScript) {
-        existingScript.addEventListener('load', () => resolve(true));
-        existingScript.addEventListener('error', () => resolve(false));
-        return;
-      }
-
-      const script = document.createElement('script');
-      script.id = 'google-gsi-script';
-      script.src = 'https://accounts.google.com/gsi/client';
-      script.async = true;
-      script.defer = true;
-      script.onload = () => resolve(true);
-      script.onerror = () => resolve(false);
-      document.head.appendChild(script);
-    });
-  };
-
-  const handleGoogleSignIn = async () => {
-    if (isGoogleSubmitting || isGoogleLoading) return;
-    setIsGoogleSubmitting(true);
-
-    const safetyTimer = setTimeout(() => setIsGoogleSubmitting(false), 15000);
-
-    try {
-      if (Platform.OS === 'web') {
-        await ensureGoogleScriptLoaded();
-        if (typeof window !== 'undefined' && window.google?.accounts?.oauth2) {
-          const tokenClient = window.google.accounts.oauth2.initTokenClient({
-            client_id: GOOGLE_WEB_CLIENT_ID,
-            scope: 'email profile openid',
-            error_callback: () => {
-              clearTimeout(safetyTimer);
-              setIsGoogleSubmitting(false);
-              dispatch(showErrorToast({ title: "Connexion Google", message: "Connexion annulee ou fermee." }));
-            },
-            callback: async (tokenResponse) => {
-              clearTimeout(safetyTimer);
-              if (tokenResponse.error) {
-                setIsGoogleSubmitting(false);
-                return;
-              }
-              try {
-                const userInfoRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
-                  headers: { Authorization: `Bearer ${tokenResponse.access_token}` }
-                });
-                const userInfo = await userInfoRes.json();
-                
-                const res = await googleAuth({
-                  email: userInfo.email,
-                  name: userInfo.name || userInfo.given_name,
-                  profilePicture: userInfo.picture,
-                  role: 'rider',
-                  isLoginOnly: true
-                }).unwrap();
-
-                const authData = res?.data || res;
-                const user = authData?.user;
-                const accessToken = authData?.accessToken;
-                const refreshToken = authData?.refreshToken;
-                if (!user) throw new Error("Donnees de connexion invalides.");
-                dispatch(setCredentials({ user, accessToken, refreshToken }));
-                dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yely, ${user.name} !` }));
-              } catch (authErr) {
-                dispatch(showErrorToast({ title: "Authentification Google", message: getApiErrorMessage(authErr, "Echec de connexion.") }));
-              } finally {
-                setIsGoogleSubmitting(false);
-              }
-            },
-          });
-          tokenClient.requestAccessToken({ prompt: 'consent' });
-          return;
-        }
-      } else {
-        clearTimeout(safetyTimer);
-        const googleResult = await signInWithGoogle();
-        if (googleResult?.cancelled || googleResult?.inProgress) {
-          setIsGoogleSubmitting(false);
-          return;
-        }
-
-        if (googleResult?.idToken || googleResult?.email) {
-          const res = await googleAuth({
-            idToken: googleResult.idToken,
-            email: googleResult.email,
-            name: googleResult.name,
-            profilePicture: googleResult.profilePicture,
-            role: 'rider',
-            isLoginOnly: true
-          }).unwrap();
-
-          const authData = res?.data || res;
-          const user = authData?.user;
-          const accessToken = authData?.accessToken;
-          const refreshToken = authData?.refreshToken;
-          if (!user) throw new Error("Donnees de connexion invalides.");
-          dispatch(setCredentials({ user, accessToken, refreshToken }));
-          dispatch(showSuccessToast({ title: "Connexion Google", message: `Bienvenue sur Yely, ${user.name} !` }));
-        }
-        setIsGoogleSubmitting(false);
-      }
-    } catch (err) {
-      setIsGoogleSubmitting(false);
-      dispatch(showErrorToast({
-        title: "Connexion Google",
-        message: getApiErrorMessage(err, "Impossible de se connecter avec Google.")
       }));
     }
   };
