@@ -1,6 +1,6 @@
 // src/store/api/adminApiSlice.js
-// GESTIONNAIRE D'API ADMIN - Contrats stricts et invalidation dynamique
-// CSCSM Level: Bank Grade
+// GESTIONNAIRE D'API ADMIN - Contrats stricts, maintenance et versions
+// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import { apiSlice } from '../slices/apiSlice';
 
@@ -9,32 +9,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     getDashboardStats: builder.query({
       query: () => '/admin/stats',
       providesTags: ['Stats'],
-    }),
-    
-    getValidationQueue: builder.query({
-      query: ({ page = 1, viewAll = false } = {}) => {
-        let url = `/admin/validations?page=${page}`;
-        if (viewAll) url += `&viewAll=true`;
-        return url;
-      },
-      providesTags: ['Transaction'],
-    }),
-    
-    approveTransaction: builder.mutation({
-      query: (transactionId) => ({
-        url: `/admin/approve/${transactionId}`,
-        method: 'POST',
-      }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'],
-    }),
-    
-    rejectTransaction: builder.mutation({
-      query: ({ transactionId, reason }) => ({
-        url: `/admin/reject/${transactionId}`,
-        method: 'POST',
-        body: { reason },
-      }),
-      invalidatesTags: ['Transaction', 'Stats', 'Subscription', 'Notification', 'AuditLog'],
     }),
     
     getAllUsers: builder.query({
@@ -142,19 +116,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['MapSettings', 'AuditLog'],
     }),
     
-    getNotifications: builder.query({
-      query: () => '/notifications',
-      providesTags: ['Notification'],
-    }),
-    
-    markNotificationsRead: builder.mutation({
-      query: () => ({
-        url: '/notifications/mark-read',
-        method: 'PUT',
-      }),
-      invalidatesTags: ['Notification'],
-    }),
-
     getAuditLogs: builder.query({
       query: ({ page = 1 }) => `/admin/logs?page=${page}`,
       providesTags: ['AuditLog'],
@@ -163,6 +124,15 @@ export const adminApiSlice = apiSlice.injectEndpoints({
     getSystemConfig: builder.query({
       query: () => '/admin/system-config',
       providesTags: ['SystemConfig'],
+    }),
+
+    toggleMaintenanceMode: builder.mutation({
+      query: ({ isMaintenanceMode, maintenanceMessage }) => ({
+        url: '/admin/maintenance/toggle',
+        method: 'PUT',
+        body: { isMaintenanceMode, maintenanceMessage },
+      }),
+      invalidatesTags: ['SystemConfig', 'AuditLog'],
     }),
 
     updateAppVersion: builder.mutation({
@@ -249,9 +219,6 @@ export const adminApiSlice = apiSlice.injectEndpoints({
 
 export const {
   useGetDashboardStatsQuery,
-  useGetValidationQueueQuery,
-  useApproveTransactionMutation,
-  useRejectTransactionMutation,
   useGetAllUsersQuery,
   useToggleUserBanMutation,
   useUpdateUserRoleMutation,
@@ -264,10 +231,9 @@ export const {
   useToggleLoadReduceMutation,
   useToggleGlobalFreeAccessMutation,
   useUpdateMapSettingsMutation,
-  useGetNotificationsQuery,
-  useMarkNotificationsReadMutation,
   useGetAuditLogsQuery,
   useGetSystemConfigQuery,
+  useToggleMaintenanceModeMutation,
   useUpdateAppVersionMutation,
   useGetAllRidesQuery,
   useToggleRideArchiveMutation,

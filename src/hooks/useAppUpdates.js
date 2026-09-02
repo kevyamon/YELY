@@ -1,6 +1,6 @@
 // src/hooks/useAppUpdates.js
-// HOOK DE DÉTECTION & GESTION DES MISES À JOUR (PLAY STORE & OTA EXPO)
-// STANDARD: Industriel / Bank Grade
+// HOOK DE DETECTION & GESTION DES MISES A JOUR ET DU MODE MAINTENANCE
+// STANDARD: Industriel / Bank Grade / NASA Resilience (Sans Emojis)
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { AppState, Linking, Platform } from 'react-native';
@@ -8,12 +8,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import * as Updates from 'expo-updates';
 import ENV from '../config/env';
+import socketService from '../services/socketService';
 
 const DISMISSED_UPDATE_KEY = 'yely_dismissed_store_update_code';
 
-/**
- * Récupère le versionCode binaire réel installé sur l'appareil
- */
 const getLocalVersionCode = () => {
   if (Constants.nativeBuildVersion) {
     const parsed = parseInt(Constants.nativeBuildVersion, 10);
@@ -28,17 +26,25 @@ const getLocalVersionCode = () => {
 export const useAppUpdates = () => {
   const [updateState, setUpdateState] = useState({
     visible: false,
-    type: 'store', // 'store' ou 'ota'
+    type: 'store',
     isForced: false,
-    title: 'Mise à jour disponible',
-    message: 'Une nouvelle version de Yély est disponible.',
+    title: 'Mise a jour disponible',
+    message: 'Une nouvelle version de Yely est disponible.',
     storeUrl: 'https://play.google.com/store/apps/details?id=com.yely.app',
     targetVersionCode: null,
   });
 
+  const [maintenanceState, setMaintenanceState] = useState({
+    isMaintenance: false,
+    message: '',
+    allowedRoles: ['superadmin', 'admin'],
+    updateAvailable: false,
+    storeUrl: 'https://play.google.com/store/apps/details?id=com.yely.app'
+  });
+
   const isChecking = useRef(false);
 
-  // 1. Vérification OTA Expo (Patch JS sans passer par le Store)
+  // 1. Verification OTA Expo
   const checkOtaUpdates = async () => {
     if (__DEV__ || Platform.OS === 'web' || !Updates.isEnabled) return false;
 
@@ -49,8 +55,8 @@ export const useAppUpdates = () => {
         setUpdateState({
           visible: true,
           type: 'ota',
-          title: 'Mise à jour prête !',
-          message: 'Une amélioration a été téléchargée. Redémarrez l\'application pour en profiter immédiatement.',
+          title: 'Mise a jour prete',
+          message: 'Une amelioration a ete telechargee. Redemarrez l\'application pour en profiter immediatement.',
           isForced: false,
           storeUrl: null,
           targetVersionCode: null,
@@ -58,15 +64,13 @@ export const useAppUpdates = () => {
         return true;
       }
     } catch (error) {
-      console.warn('[OTA] Vérification silencieuse:', error.message);
+      console.warn('[OTA] Verification silencieuse:', error.message);
     }
     return false;
   };
 
-  // 2. Vérification des versions Store via Remote Config
-  const checkStoreUpdates = async () => {
-    if (Platform.OS === 'web') return;
-
+  // 2. Verification Remote Config (Play Store & Mode Maintenance)
+  const checkRemoteConfig = async () => {
     const apiUrl = ENV.API_URL || process.env.EXPO_PUBLIC_API_URL;
     if (!apiUrl) return;
 
@@ -91,37 +95,55 @@ export const useAppUpdates = () => {
       if (!response || !response.ok) return;
 
       const resJson = await response.json();
-      const versioning = resJson.data?.versioning || resJson.versioning;
-      if (!versioning) return;
+      const payload = resJson.data || resJson;
+      const maintenance = payload.maintenance;
+      const versioning = payload.versioning;
 
       const localVersionCode = getLocalVersionCode();
-      const remoteLatestCode = Number(versioning.latestVersionCode) || 0;
-      const remoteMinCode = Number(versioning.minVersionCode) || 0;
-      const isForced = Boolean(versioning.forceUpdate || localVersionCode < remoteMinCode);
+      const remoteLatestCode = Number(versioning?.latestVersionCode) || 0;
+      const remoteMinCode = Number(versioning?.minVersionCode) || 0;
+      const hasNewVersion = remoteLatestCode > localVersionCode;
+      const storeUrl = versioning?.storeUrl || 'https://play.google.com/store/apps/details?id=com.yely.app';
 
-      if (remoteLatestCode > localVersionCode) {
-        if (!isForced) {
-          const dismissedCode = await AsyncStorage.getItem(DISMISSED_UPDATE_KEY);
-          if (dismissedCode && Number(dismissedCode) >= remoteLatestCode) {
-            return;
-          }
-        }
-
-        setUpdateState({
-          visible: true,
-          type: 'store',
-          title: versioning.updateTitle || 'Mise à jour Play Store',
-          message: versioning.updateMessage || 'Une nouvelle version de Yély est disponible sur le Google Play Store.',
-          isForced,
-          storeUrl: versioning.storeUrl || 'https://play.google.com/store/apps/details?id=com.yely.app',
-          targetVersionCode: remoteLatestCode,
+      // Mise a jour de l'etat de maintenance
+      if (maintenance) {
+        setMaintenanceState({
+          isMaintenance: Boolean(maintenance.isMaintenanceMode),
+          message: maintenance.message || '',
+          allowedRoles: maintenance.allowedRoles || ['superadmin', 'admin'],
+          updateAvailable: hasNewVersion,
+          storeUrl
         });
-      } else {
-        setUpdateState((prev) => (prev.visible && prev.type === 'store' ? { ...prev, visible: false } : prev));
+      }
+
+      // Mise a jour de l'etat de mise a jour Play Store
+      if (versioning && Platform.OS !== 'web') {
+        const isForced = Boolean(versioning.forceUpdate || localVersionCode < remoteMinCode);
+
+        if (hasNewVersion) {
+          if (!isForced) {
+            const dismissedCode = await AsyncStorage.getItem(DISMISSED_UPDATE_KEY);
+            if (dismissedCode && Number(dismissedCode) >= remoteLatestCode) {
+              return;
+            }
+          }
+
+          setUpdateState({
+            visible: !maintenance?.isMaintenanceMode,
+            type: 'store',
+            title: versioning.updateTitle || 'Mise a jour Play Store',
+            message: versioning.updateMessage || 'Une nouvelle version de Yely est disponible.',
+            isForced,
+            storeUrl,
+            targetVersionCode: remoteLatestCode,
+          });
+        } else {
+          setUpdateState((prev) => (prev.visible && prev.type === 'store' ? { ...prev, visible: false } : prev));
+        }
       }
     } catch (e) {
       if (e.name !== 'AbortError') {
-        console.warn('[UPDATES] Vérification Store ignorée:', e.message);
+        console.warn('[CONFIG] Verification ignoree:', e.message);
       }
     } finally {
       clearTimeout(timeoutId);
@@ -134,14 +156,31 @@ export const useAppUpdates = () => {
     try {
       const otaFound = await checkOtaUpdates();
       if (!otaFound) {
-        await checkStoreUpdates();
+        await checkRemoteConfig();
       }
     } finally {
       isChecking.current = false;
     }
   }, []);
 
-  // 3. Déclenchement au démarrage et au retour d'arrière-plan
+  // 3. Ecoute des Sockets en direct pour basculement instantane
+  useEffect(() => {
+    const handleMaintenanceSocket = (data) => {
+      setMaintenanceState((prev) => ({
+        ...prev,
+        isMaintenance: Boolean(data.isMaintenanceMode),
+        message: data.maintenanceMessage || prev.message
+      }));
+    };
+
+    socketService.on('SYSTEM_MAINTENANCE_TOGGLED', handleMaintenanceSocket);
+
+    return () => {
+      socketService.off('SYSTEM_MAINTENANCE_TOGGLED', handleMaintenanceSocket);
+    };
+  }, []);
+
+  // 4. Declenchement au demarrage et au reveil d'arriere-plan
   useEffect(() => {
     runCheck();
 
@@ -154,7 +193,6 @@ export const useAppUpdates = () => {
     return () => subscription.remove();
   }, [runCheck]);
 
-  // 4. Action de mise à jour (Rechargement instantané pour OTA OU Redirection Store)
   const handleApplyUpdate = async () => {
     if (updateState.type === 'ota') {
       try {
@@ -173,14 +211,13 @@ export const useAppUpdates = () => {
     }
   };
 
-  // 5. Fermeture contrôlée
   const handleDismiss = async () => {
     if (!updateState.isForced) {
       if (updateState.type === 'store' && updateState.targetVersionCode) {
         try {
           await AsyncStorage.setItem(DISMISSED_UPDATE_KEY, String(updateState.targetVersionCode));
         } catch (e) {
-          console.warn('[UPDATES] Échec sauvegarde du dismiss:', e.message);
+          console.warn('[UPDATES] Echec sauvegarde dismiss:', e.message);
         }
       }
       setUpdateState((prev) => ({ ...prev, visible: false }));
@@ -189,6 +226,7 @@ export const useAppUpdates = () => {
 
   return {
     updateState,
+    maintenanceState,
     handleApplyUpdate,
     handleDismiss,
     checkStoreUpdates: runCheck,

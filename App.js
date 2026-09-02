@@ -1,6 +1,6 @@
 // App.js
-// RACINE DE L'APPLICATION MOBILE & PWA YÉLY
-// CSCSM Level: Bank Grade
+// RACINE DE L'APPLICATION MOBILE & PWA YELY
+// STANDARD: Industriel / Bank Grade / NASA Resilience (< 325 lignes, Sans Emojis)
 
 import * as Sentry from '@sentry/react-native';
 import * as NativeSplashScreen from 'expo-splash-screen';
@@ -32,6 +32,7 @@ import THEME from './src/theme/theme';
 import AppToast from './src/components/ui/AppToast';
 import FacebookFollowModal from './src/components/ui/FacebookFollowModal';
 import UpdateModal from './src/components/ui/UpdateModal';
+import MaintenanceOverlay from './src/components/ui/MaintenanceOverlay';
 import GlobalSkeleton from './src/components/ui/GlobalSkeleton';
 import GlobalErrorFallback from './src/components/ui/GlobalErrorFallback';
 import PwaIOSInstallGuide from './src/components/ui/PwaIOSInstallGuide';
@@ -44,61 +45,27 @@ import usePwaAutoUpdate from './src/hooks/usePwaAutoUpdate';
 import useSocketEvents from './src/hooks/useSocketEvents';
 import { unlockWebAudio } from './src/utils/soundHelper';
 
-import { hideToast, selectAppUpdate, selectLoading, selectToast } from './src/store/slices/uiSlice';
+import { hideToast, selectLoading, selectToast } from './src/store/slices/uiSlice';
+import { logout, selectCurrentUser } from './src/store/slices/authSlice';
 
 import './src/tasks/backgroundLocationTask';
 
 const linking = {
-  prefixes: [
-    'http://localhost:19006',
-    'https://yely-backend-yzw4.onrender.com',
-    'https://yely.io',
-    'yely://',
-  ],
+  prefixes: ['http://localhost:19006', 'https://yely-backend-yzw4.onrender.com', 'https://yely.io', 'yely://'],
   config: {
     screens: {
-      Home: 'home',
-      RiderHome: 'rider-home',
-      DriverHome: 'driver-home',
-      SellerHome: 'seller-home',
-      MarketplaceHub: 'marketplace',
-      ProductList: 'products',
-      ProductDetails: 'product/:productId',
-      SellerProfile: 'store/:sellerId',
-      Cart: 'cart',
-      Checkout: 'checkout',
-      OrderTracking: 'order-tracking/:orderId',
-      ClientOrders: 'client-orders',
-      SellerDashboard: 'seller-dashboard',
-      SellerOrders: 'seller-orders',
-      ManageProducts: 'manage-products',
-      LedgerHistory: 'ledger-history',
-      Profile: 'profile',
-      Menu: 'menu',
-      Pancarte: 'pancarte',
-      History: 'history',
-      Report: 'report',
-      Notifications: 'notifications',
-      Subscription: 'subscription',
-      WaitSubscription: 'wait-subscription',
-      PaymentFailure: 'payment-failure',
-      Landing: 'landing',
-      Login: 'login',
-      Register: 'register',
-      ForgotPassword: 'forgot-password',
-      ResetPassword: 'reset-password',
-      PrivacyPolicy: 'privacy-policy',
-      TermsOfService: 'terms-of-service',
-      AdminDashboard: 'admin-dashboard',
-      ValidationCenter: 'validation-center',
-      UsersManagement: 'users-management',
-      SubscriptionManagement: 'subscription-management',
-      AdminRides: 'admin-rides',
-      AdminMarketplace: 'admin-marketplace',
-      FinanceConfig: 'finance-config',
-      SystemConfig: 'system-config',
-      AdminJournal: 'admin-journal',
-      AdminReports: 'admin-reports',
+      Home: 'home', RiderHome: 'rider-home', DriverHome: 'driver-home', SellerHome: 'seller-home',
+      MarketplaceHub: 'marketplace', ProductList: 'products', ProductDetails: 'product/:productId',
+      SellerProfile: 'store/:sellerId', Cart: 'cart', Checkout: 'checkout', OrderTracking: 'order-tracking/:orderId',
+      ClientOrders: 'client-orders', SellerDashboard: 'seller-dashboard', SellerOrders: 'seller-orders',
+      ManageProducts: 'manage-products', LedgerHistory: 'ledger-history', Profile: 'profile', Menu: 'menu',
+      Pancarte: 'pancarte', History: 'history', Report: 'report', Notifications: 'notifications',
+      Subscription: 'subscription', WaitSubscription: 'wait-subscription', PaymentFailure: 'payment-failure',
+      Landing: 'landing', Login: 'login', Register: 'register', ForgotPassword: 'forgot-password',
+      ResetPassword: 'reset-password', PrivacyPolicy: 'privacy-policy', TermsOfService: 'terms-of-service',
+      AdminDashboard: 'admin-dashboard', UsersManagement: 'users-management', SubscriptionManagement: 'subscription-management',
+      AdminRides: 'admin-rides', AdminMarketplace: 'admin-marketplace', FinanceConfig: 'finance-config',
+      SystemConfig: 'system-config', AdminJournal: 'admin-journal', AdminReports: 'admin-reports',
       MapManagement: 'map-management',
     },
   },
@@ -108,12 +75,14 @@ const AppContent = () => {
   const dispatch = useDispatch();
   const colorScheme = useColorScheme();
 
+  const user = useSelector(selectCurrentUser);
   const toast = useSelector(selectToast);
   const loading = useSelector(selectLoading);
-  const appUpdate = useSelector(selectAppUpdate);
 
-  // Détection des mises à jour Play Store pilotables à distance (Remote Config)
-  const { updateState, handleApplyUpdate, handleDismiss } = useAppUpdates();
+  const isAuthorizedAdmin = user?.role === 'superadmin' || user?.role === 'admin';
+
+  // Detection unifiee des Mises a jour & du Mode Maintenance
+  const { updateState, maintenanceState, handleApplyUpdate, handleDismiss, checkStoreUpdates } = useAppUpdates();
 
   const navigationTheme = useMemo(() => ({
     ...DefaultTheme,
@@ -137,7 +106,7 @@ const AppContent = () => {
       if (savedRouteStr) {
         await AsyncStorage.removeItem('theme_reload_route');
         const savedRoute = JSON.parse(savedRouteStr);
-        if (savedRoute && savedRoute.name) {
+        if (savedRoute?.name) {
           setTimeout(() => {
             navigationRef.current?.navigate(savedRoute.name, savedRoute.params);
           }, 50);
@@ -175,9 +144,19 @@ const AppContent = () => {
         <GlobalSkeleton visible={loading.visible} fullScreen={true} />
         <SessionRecoveryOverlay />
 
-        {/* Modale de mise à jour Unifiée (Play Store & OTA Expo) */}
+        {/* Bouclier de Maintenance Infranchissable (Bypass autorise pour superadmin/admin) */}
+        <MaintenanceOverlay
+          visible={maintenanceState.isMaintenance && !isAuthorizedAdmin}
+          message={maintenanceState.message}
+          updateAvailable={maintenanceState.updateAvailable}
+          storeUrl={maintenanceState.storeUrl}
+          onCheckStatus={checkStoreUpdates}
+          onLogout={() => dispatch(logout())}
+        />
+
+        {/* Modale de mise a jour Unifiee (Play Store & OTA Expo) */}
         <UpdateModal
-          visible={updateState.visible}
+          visible={updateState.visible && (!maintenanceState.isMaintenance || isAuthorizedAdmin)}
           type={updateState.type}
           title={updateState.title}
           message={updateState.message}
@@ -201,7 +180,6 @@ const App = () => {
   useEffect(() => {
     if (Platform.OS !== 'web') {
       SystemUI.setBackgroundColorAsync(colorScheme === 'dark' ? '#000000' : '#F8F9FA').catch(() => {});
-      
       const navBarColor = colorScheme === 'dark' ? '#000000' : '#F8F9FA';
       const navBarStyle = colorScheme === 'dark' ? 'light' : 'dark';
       NavigationBar.setBackgroundColorAsync(navBarColor).catch(() => {});
@@ -237,7 +215,7 @@ const App = () => {
       try {
         if (navigationRef.current) {
           const currentRoute = navigationRef.current.getCurrentRoute();
-          if (currentRoute && currentRoute.name) {
+          if (currentRoute?.name) {
             await AsyncStorage.setItem('theme_reload_route', JSON.stringify({
               name: currentRoute.name,
               params: currentRoute.params,
@@ -266,7 +244,6 @@ const App = () => {
     };
 
     const appStateSub = AppState.addEventListener('change', handleAppStateChange);
-
     const appearanceSub = Appearance.addChangeListener(async (preferences) => {
       if (preferences.colorScheme !== lastTheme) {
         lastTheme = preferences.colorScheme;

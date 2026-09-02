@@ -1,12 +1,13 @@
 // src/components/ui/GlobalErrorFallback.jsx
-// COMPOSANT CRASH REPORT & TÉLÉMÉTRIE AUTOMATISÉE VIA BREVO
-// STANDARD: Industriel / Bank Grade / Self-Reporting
+// BOUCLIER DE SECOURS ANTI-CRASH & TELEMETRIE D'URGENCE
+// STANDARD: Industriel / Bank Grade / NASA Resilience (Sans Emojis)
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Platform,
   SafeAreaView,
   StyleSheet,
@@ -14,15 +15,36 @@ import {
   TouchableOpacity,
   View,
 } from 'react-native';
+import * as Updates from 'expo-updates';
 import ENV from '../../config/env';
 import THEME from '../../theme/theme';
 
-const THROTTLE_INTERVAL_MS = 5 * 60 * 1000; // 5 minutes anti-spam
+const THROTTLE_INTERVAL_MS = 5 * 60 * 1000;
 
 const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
-  const [sendError, setSendError] = useState(false);
+  const [hasStoreUpdate, setHasStoreUpdate] = useState(false);
+  const [storeUrl, setStoreUrl] = useState('https://play.google.com/store/apps/details?id=com.yely.app');
+
+  // Verification d'un correctif d'urgence disponible sur le Store
+  const checkEmergencyPatch = async () => {
+    try {
+      const backendUrl = ENV.API_URL || 'https://yely-backend-yzw4.onrender.com/api';
+      const response = await fetch(`${backendUrl}/config`, { headers: { Accept: 'application/json' } }).catch(() => null);
+      if (response && response.ok) {
+        const json = await response.json();
+        const versioning = json.data?.versioning || json.versioning;
+        if (versioning) {
+          if (versioning.storeUrl) setStoreUrl(versioning.storeUrl);
+          const remoteCode = Number(versioning.latestVersionCode) || 0;
+          if (remoteCode > 22) {
+            setHasStoreUpdate(true);
+          }
+        }
+      }
+    } catch (e) {}
+  };
 
   const dispatchCrashReport = async (isManual = false) => {
     try {
@@ -30,16 +52,13 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
         const lastSentStr = await AsyncStorage.getItem('@yely_last_crash_sent_time');
         const now = Date.now();
         if (lastSentStr && now - parseInt(lastSentStr, 10) < THROTTLE_INTERVAL_MS) {
-          // Anti-spam actif, on évite d'épuiser les quotas
           setIsSent(true);
           return;
         }
       }
 
       setIsSending(true);
-      setSendError(false);
 
-      // Récupération de l'utilisateur stocké en local
       let userContext = {};
       try {
         const storedUser = await AsyncStorage.getItem('user');
@@ -48,7 +67,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           userContext = {
             id: parsed._id || parsed.id || 'N/A',
             name: parsed.name || 'Visiteur',
-            phone: parsed.phone || 'Non renseigné',
+            phone: parsed.phone || 'Non renseigne',
             role: parsed.role || 'visiteur',
           };
         }
@@ -63,7 +82,7 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
         device: {
           os: Platform.OS,
           osVersion: String(Platform.Version || ''),
-          appVersion: '1.6.0',
+          appVersion: '1.7.0',
         },
         timestamp: new Date().toISOString(),
       };
@@ -78,11 +97,8 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
       if (response.ok) {
         await AsyncStorage.setItem('@yely_last_crash_sent_time', String(Date.now()));
         setIsSent(true);
-      } else {
-        setSendError(true);
       }
     } catch (err) {
-      setSendError(true);
     } finally {
       setIsSending(false);
     }
@@ -90,24 +106,45 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
 
   useEffect(() => {
     dispatchCrashReport(false);
+    checkEmergencyPatch();
   }, []);
+
+  const handleCleanRestart = async () => {
+    try {
+      await AsyncStorage.multiRemove(['theme_reload_route', 'theme_reload']);
+      if (Platform.OS === 'web') {
+        window.location.reload();
+      } else {
+        Updates.reloadAsync().catch(() => resetError && resetError());
+      }
+    } catch (e) {
+      if (resetError) resetError();
+    }
+  };
+
+  const handleOpenStore = async () => {
+    if (Platform.OS === 'web') {
+      window.location.reload();
+      return;
+    }
+    try {
+      await Linking.openURL(storeUrl);
+    } catch (e) {}
+  };
 
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.content}>
         
-        {/* ICON BADGE */}
         <View style={styles.iconContainer}>
           <Ionicons name="shield-half" size={44} color={THEME.COLORS.champagneGold} />
         </View>
 
-        {/* TITLES */}
-        <Text style={styles.title}>Oups ! Erreur inattendue</Text>
+        <Text style={styles.title}>Incident Technique Intercepte</Text>
         <Text style={styles.subtitle}>
-          L'application a rencontré un problème technique imprévu.
+          Le bouclier de securite Yely a bloque l'anomalie. Aucune donnee n'a ete alteree.
         </Text>
 
-        {/* STATUS BOX */}
         <View style={styles.statusBox}>
           <Ionicons
             name={isSent ? 'checkmark-circle' : isSending ? 'sync' : 'mail-outline'}
@@ -117,14 +154,22 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           />
           <Text style={styles.statusText}>
             {isSent
-              ? 'Rapport technique transmis par e-mail à l\'équipe.'
+              ? 'Rapport technique transmis aux ingenieurs.'
               : isSending
               ? 'Transmission du diagnostic technique en cours...'
-              : 'Diagnostic prêt à être transmis.'}
+              : 'Diagnostic pret a etre transmis.'}
           </Text>
         </View>
 
-        {/* REPORT BUTTON */}
+        {hasStoreUpdate ? (
+          <TouchableOpacity style={styles.patchButton} onPress={handleOpenStore} activeOpacity={0.8}>
+            <Ionicons name="arrow-up-circle" size={18} color="#000000" style={{ marginRight: 8 }} />
+            <Text style={styles.patchButtonText}>
+              {Platform.OS === 'web' ? 'Recharger la version corrigee' : 'Installer le correctif Play Store'}
+            </Text>
+          </TouchableOpacity>
+        ) : null}
+
         <TouchableOpacity
           style={[styles.reportButton, isSent && styles.reportButtonSent]}
           onPress={() => dispatchCrashReport(true)}
@@ -142,20 +187,15 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
                 style={{ marginRight: 8 }}
               />
               <Text style={[styles.reportButtonText, isSent && { color: '#FFFFFF' }]}>
-                {isSent ? 'Rapport envoyé avec succès' : 'Signaler le problème par e-mail'}
+                {isSent ? 'Rapport transmis avec succes' : 'Transmettre le rapport technique'}
               </Text>
             </>
           )}
         </TouchableOpacity>
 
-        {/* RESTART BUTTON */}
-        <TouchableOpacity
-          style={styles.restartButton}
-          onPress={resetError}
-          activeOpacity={0.8}
-        >
+        <TouchableOpacity style={styles.restartButton} onPress={handleCleanRestart} activeOpacity={0.8}>
           <Ionicons name="refresh" size={18} color={THEME.COLORS.champagneGold} style={{ marginRight: 8 }} />
-          <Text style={styles.restartButtonText}>Redémarrer Yély</Text>
+          <Text style={styles.restartButtonText}>Reinitialiser et Redemarrer</Text>
         </TouchableOpacity>
 
       </View>
@@ -193,7 +233,7 @@ const styles = StyleSheet.create({
     borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   title: {
-    fontSize: 20,
+    fontSize: 19,
     fontWeight: '900',
     color: '#FFFFFF',
     marginBottom: 6,
@@ -214,7 +254,7 @@ const styles = StyleSheet.create({
     padding: 12,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.1)',
-    marginBottom: 20,
+    marginBottom: 16,
     width: '100%',
   },
   statusText: {
@@ -223,21 +263,36 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
+  patchButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: THEME.COLORS.champagneGold,
+    width: '100%',
+    paddingVertical: 14,
+    borderRadius: 14,
+    marginBottom: 10,
+  },
+  patchButtonText: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#000000',
+  },
   reportButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#D4AF37',
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 14,
-    marginBottom: 12,
+    marginBottom: 10,
   },
   reportButtonSent: {
     backgroundColor: '#27AE60',
   },
   reportButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
     color: '#000000',
   },
@@ -247,13 +302,13 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     backgroundColor: 'rgba(255, 255, 255, 0.06)',
     width: '100%',
-    paddingVertical: 14,
+    paddingVertical: 13,
     borderRadius: 14,
     borderWidth: 1,
     borderColor: 'rgba(212, 175, 55, 0.3)',
   },
   restartButtonText: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#FFFFFF',
   },
