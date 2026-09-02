@@ -250,5 +250,6 @@ export const selectCurrentToken = (state) => state.auth.token;
 export const selectSubscriptionStatus = (state) => state.auth.subscriptionStatus;
 export const selectPromoMode = (state) => state.auth.promoMode;
 export const selectIsSubscriptionModalDismissed = (state) => state.auth.isSubscriptionModalDismissed;
+export const selectIsRefreshing = (state) => state.auth.isRefreshing;
 
 export default authSlice.reducer;

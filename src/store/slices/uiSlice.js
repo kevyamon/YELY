@@ -129,6 +129,9 @@ const uiSlice = createSlice({
     resetUI: () => {
       return initialState;
     },
+    clearError: (state) => {
+      // Nettoyage de l'etat d'erreur
+    },
   },
 });
 
@@ -151,6 +154,7 @@ export const {
   setKeyboardVisible,
   setAppUpdate, // EXPORT
   resetUI,
+  clearError,
 } = uiSlice.actions;
 
 export const selectModal = (state) => state.ui.modal;
