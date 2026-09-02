@@ -7,11 +7,13 @@ import * as NativeSplashScreen from 'expo-splash-screen';
 import * as Updates from 'expo-updates';
 import { applyThemeUpdate } from './src/theme/themeEngine';
 
-NativeSplashScreen.preventAutoHideAsync().catch(() => {});
+if (typeof NativeSplashScreen?.preventAutoHideAsync === 'function') {
+  NativeSplashScreen.preventAutoHideAsync().catch(() => {});
+}
 
 import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect, useMemo } from 'react';
+import React, { Component, useEffect, useMemo } from 'react';
 import { Platform, StyleSheet, View, useColorScheme, Appearance, AppState, LogBox } from 'react-native';
 
 LogBox.ignoreLogs(['SafeAreaView has been deprecated']);
@@ -50,6 +52,41 @@ import { logout, selectCurrentUser } from './src/store/slices/authSlice';
 
 import './src/tasks/backgroundLocationTask';
 
+class UniversalErrorBoundary extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null, componentStack: '' };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    this.setState({ componentStack: errorInfo?.componentStack || '' });
+    if (typeof Sentry?.captureException === 'function') {
+      Sentry.captureException(error);
+    }
+  }
+
+  handleReset = () => {
+    this.setState({ hasError: false, error: null, componentStack: '' });
+  };
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <GlobalErrorFallback
+          error={this.state.error}
+          componentStack={this.state.componentStack}
+          resetError={this.handleReset}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const linking = {
   prefixes: ['http://localhost:19006', 'https://yely-backend-yzw4.onrender.com', 'https://yely.io', 'yely://'],
   config: {
@@ -81,7 +118,6 @@ const AppContent = () => {
 
   const isAuthorizedAdmin = user?.role === 'superadmin' || user?.role === 'admin';
 
-  // Detection unifiee des Mises a jour & du Mode Maintenance
   const { updateState, maintenanceState, handleApplyUpdate, handleDismiss, checkStoreUpdates } = useAppUpdates();
 
   const navigationTheme = useMemo(() => ({
@@ -144,7 +180,6 @@ const AppContent = () => {
         <GlobalSkeleton visible={loading.visible} fullScreen={true} />
         <SessionRecoveryOverlay />
 
-        {/* Bouclier de Maintenance Infranchissable (Bypass autorise pour superadmin/admin) */}
         <MaintenanceOverlay
           visible={maintenanceState.isMaintenance && !isAuthorizedAdmin}
           message={maintenanceState.message}
@@ -154,7 +189,6 @@ const AppContent = () => {
           onLogout={() => dispatch(logout())}
         />
 
-        {/* Modale de mise a jour Unifiee (Play Store & OTA Expo) */}
         <UpdateModal
           visible={updateState.visible && (!maintenanceState.isMaintenance || isAuthorizedAdmin)}
           type={updateState.type}
@@ -202,7 +236,9 @@ const App = () => {
         }
       } catch (e) {
       } finally {
-        await NativeSplashScreen.hideAsync().catch(() => {});
+        if (typeof NativeSplashScreen?.hideAsync === 'function') {
+          await NativeSplashScreen.hideAsync().catch(() => {});
+        }
       }
     };
     initApp();
@@ -262,9 +298,9 @@ const App = () => {
       <ReduxProvider store={store}>
         <PaperProvider>
           <SafeAreaProvider>
-            <Sentry.ErrorBoundary fallback={GlobalErrorFallback}>
+            <UniversalErrorBoundary>
               <AppContent />
-            </Sentry.ErrorBoundary>
+            </UniversalErrorBoundary>
           </SafeAreaProvider>
         </PaperProvider>
       </ReduxProvider>

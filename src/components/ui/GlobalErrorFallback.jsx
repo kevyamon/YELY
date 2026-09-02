@@ -1,9 +1,10 @@
 // src/components/ui/GlobalErrorFallback.jsx
-// BOUCLIER DE SECOURS ANTI-CRASH & TELEMETRIE D'URGENCE
+// BOUCLIER DE SECOURS ANTI-CRASH, AUTO-REPARATION OTA, STORE & PWA
 // STANDARD: Industriel / Bank Grade / NASA Resilience (Modularise < 325 lignes, Sans Emojis)
 
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import Constants from 'expo-constants';
 import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -21,24 +22,61 @@ import THEME from '../../theme/theme';
 
 const THROTTLE_INTERVAL_MS = 5 * 60 * 1000;
 
+const getLocalVersionCode = () => {
+  if (Constants.nativeBuildVersion) {
+    const parsed = parseInt(Constants.nativeBuildVersion, 10);
+    if (!isNaN(parsed) && parsed > 0) return parsed;
+  }
+  if (Constants.expoConfig?.android?.versionCode) {
+    return Number(Constants.expoConfig.android.versionCode);
+  }
+  return Platform.OS === 'android' ? 22 : 1;
+};
+
 const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
   const [isSending, setIsSending] = useState(false);
   const [isSent, setIsSent] = useState(false);
+  const [hasOtaPatch, setHasOtaPatch] = useState(false);
   const [hasStoreUpdate, setHasStoreUpdate] = useState(false);
   const [storeUrl, setStoreUrl] = useState('https://play.google.com/store/apps/details?id=com.yely.app');
 
-  // Verification d'un correctif d'urgence disponible sur le Store
-  const checkEmergencyPatch = async () => {
+  const isWeb = Platform.OS === 'web';
+
+  const checkEmergencyPatches = async () => {
+    if (isWeb) return;
+
+    if (!__DEV__ && Updates.isEnabled) {
+      try {
+        const otaUpdate = await Updates.checkForUpdateAsync();
+        if (otaUpdate.isAvailable) {
+          await Updates.fetchUpdateAsync();
+          setHasOtaPatch(true);
+        }
+      } catch (otaErr) {
+        console.warn('[Crash Fallback] Verification OTA:', otaErr.message);
+      }
+    }
+
     try {
       const backendUrl = ENV.API_URL || 'https://yely-backend-yzw4.onrender.com/api';
-      const response = await fetch(`${backendUrl}/config`, { headers: { Accept: 'application/json' } }).catch(() => null);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 6000);
+
+      const response = await fetch(`${backendUrl}/config`, {
+        signal: controller.signal,
+        headers: { Accept: 'application/json' }
+      }).catch(() => null);
+
+      clearTimeout(timeoutId);
+
       if (response && response.ok) {
         const json = await response.json();
         const versioning = json.data?.versioning || json.versioning;
         if (versioning) {
           if (versioning.storeUrl) setStoreUrl(versioning.storeUrl);
           const remoteCode = Number(versioning.latestVersionCode) || 0;
-          if (remoteCode > 22) {
+          const localCode = getLocalVersionCode();
+          if (remoteCode > localCode) {
             setHasStoreUpdate(true);
           }
         }
@@ -61,13 +99,13 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
 
       let userContext = {};
       try {
-        const storedUser = await AsyncStorage.getItem('user');
+        const storedUser = await AsyncStorage.getItem('user') || await AsyncStorage.getItem('userInfo');
         if (storedUser) {
           const parsed = JSON.parse(storedUser);
           userContext = {
             id: parsed._id || parsed.id || 'N/A',
             name: parsed.name || 'Visiteur',
-            phone: parsed.phone || 'Non renseigné',
+            phone: parsed.phone || 'Non renseigne',
             role: parsed.role || 'visiteur',
           };
         }
@@ -106,30 +144,50 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
 
   useEffect(() => {
     dispatchCrashReport(false);
-    checkEmergencyPatch();
+    checkEmergencyPatches();
   }, []);
 
-  const handleCleanRestart = async () => {
+  const handleWebReload = async () => {
     try {
       await AsyncStorage.multiRemove(['theme_reload_route', 'theme_reload']);
-      if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined') {
+        if ('caches' in window) {
+          const cacheKeys = await caches.keys();
+          await Promise.all(cacheKeys.map(key => caches.delete(key)));
+        }
         window.location.reload();
-      } else {
-        Updates.reloadAsync().catch(() => resetError && resetError());
       }
+    } catch (e) {
+      if (typeof window !== 'undefined') window.location.reload();
+    }
+  };
+
+  const handleApplyOtaPatch = async () => {
+    try {
+      await AsyncStorage.multiRemove(['theme_reload_route', 'theme_reload']);
+      await Updates.reloadAsync();
     } catch (e) {
       if (resetError) resetError();
     }
   };
 
   const handleOpenStore = async () => {
-    if (Platform.OS === 'web') {
-      window.location.reload();
-      return;
-    }
     try {
       await Linking.openURL(storeUrl);
     } catch (e) {}
+  };
+
+  const handleCleanRestart = async () => {
+    try {
+      await AsyncStorage.multiRemove(['theme_reload_route', 'theme_reload']);
+      if (isWeb) {
+        handleWebReload();
+      } else {
+        Updates.reloadAsync().catch(() => resetError && resetError());
+      }
+    } catch (e) {
+      if (resetError) resetError();
+    }
   };
 
   return (
@@ -161,14 +219,31 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           </Text>
         </View>
 
-        {hasStoreUpdate ? (
-          <TouchableOpacity style={styles.patchButton} onPress={handleOpenStore} activeOpacity={0.8}>
-            <Ionicons name="arrow-up-circle" size={18} color="#000000" style={{ marginRight: 8 }} />
-            <Text style={styles.patchButtonText}>
-              {Platform.OS === 'web' ? 'Recharger la version corrigée' : 'Installer le correctif Play Store'}
-            </Text>
+        {/* Action PWA Web : Recharge pure & Purge de cache */}
+        {isWeb ? (
+          <TouchableOpacity style={styles.primaryActionBtn} onPress={handleWebReload} activeOpacity={0.8}>
+            <Ionicons name="refresh-circle" size={20} color="#000000" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryActionText}>Recharger l'application</Text>
           </TouchableOpacity>
-        ) : null}
+        ) : (
+          <>
+            {/* Action Mobile 1 : Correctif OTA prêt */}
+            {hasOtaPatch ? (
+              <TouchableOpacity style={styles.primaryActionBtn} onPress={handleApplyOtaPatch} activeOpacity={0.8}>
+                <Ionicons name="sparkles" size={18} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryActionText}>Appliquer le correctif & Redémarrer</Text>
+              </TouchableOpacity>
+            ) : null}
+
+            {/* Action Mobile 2 : Correctif Store détecté */}
+            {!hasOtaPatch && hasStoreUpdate ? (
+              <TouchableOpacity style={styles.primaryActionBtn} onPress={handleOpenStore} activeOpacity={0.8}>
+                <Ionicons name="cloud-download-outline" size={18} color="#000000" style={{ marginRight: 8 }} />
+                <Text style={styles.primaryActionText}>Mettre à jour sur Google Play</Text>
+              </TouchableOpacity>
+            ) : null}
+          </>
+        )}
 
         <TouchableOpacity
           style={[styles.reportButton, isSent && styles.reportButtonSent]}
@@ -193,10 +268,12 @@ const GlobalErrorFallback = ({ error, resetError, componentStack }) => {
           )}
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.restartButton} onPress={handleCleanRestart} activeOpacity={0.8}>
-          <Ionicons name="refresh" size={18} color={THEME.COLORS.champagneGold} style={{ marginRight: 8 }} />
-          <Text style={styles.restartButtonText}>Réinitialiser et Redémarrer</Text>
-        </TouchableOpacity>
+        {!isWeb && (
+          <TouchableOpacity style={styles.restartButton} onPress={handleCleanRestart} activeOpacity={0.8}>
+            <Ionicons name="refresh" size={18} color={THEME.COLORS.champagneGold} style={{ marginRight: 8 }} />
+            <Text style={styles.restartButtonText}>Réinitialiser le cache & Redémarrer</Text>
+          </TouchableOpacity>
+        )}
 
       </View>
     </SafeAreaView>
@@ -263,7 +340,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     flex: 1,
   },
-  patchButton: {
+  primaryActionBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
@@ -272,8 +349,13 @@ const styles = StyleSheet.create({
     paddingVertical: 14,
     borderRadius: 14,
     marginBottom: 10,
+    shadowColor: THEME.COLORS.champagneGold,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 4,
   },
-  patchButtonText: {
+  primaryActionText: {
     fontSize: 14,
     fontWeight: '800',
     color: '#000000',
