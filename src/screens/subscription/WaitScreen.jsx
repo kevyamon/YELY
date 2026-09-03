@@ -114,26 +114,26 @@ const WaitScreen = ({ navigation, route }) => {
           <Text style={styles.title}>Synchronisation en cours</Text>
 
           <Text style={styles.description}>
-            Votre demande a ete transmise a l'operateur. Votre compte s'activera automatiquement des confirmation du debit.
+            Votre demande a été transmise à l'opérateur. Votre compte s'activera automatiquement dès confirmation du débit.
           </Text>
 
           <View style={styles.infoBox}>
-            <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.textSecondary} />
+            <Ionicons name="shield-checkmark-outline" size={20} color={THEME.COLORS.champagneGold} />
             <Text style={styles.infoText}>
-              Activation automatique des reception de l'accord bancaire.
+              Activation automatique dès réception de l'accord bancaire.
             </Text>
           </View>
 
           <View style={styles.buttonContainer}>
             <GoldButton
-              title={isVerifying ? "Verification en cours..." : "VERIFIER MON PAIEMENT"}
+              title={isVerifying ? "Vérification en cours..." : "VÉRIFIER MON PAIEMENT"}
               onPress={handleManualVerify}
               disabled={isVerifying}
               style={styles.button}
             />
 
-            <TouchableOpacity style={styles.logoutLink} onPress={handleLogout}>
-              <Text style={styles.logoutText}>Se deconnecter</Text>
+            <TouchableOpacity style={styles.logoutLink} onPress={handleClose}>
+              <Text style={styles.logoutText}>Retour à l'accueil</Text>
             </TouchableOpacity>
           </View>
         </GlassCard>

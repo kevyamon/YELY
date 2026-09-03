@@ -150,17 +150,15 @@ const DriverHome = ({ navigation, route }) => {
     if (promoMode === null || isSubLoading) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
-      if (isSubscriptionBlocked) {
-        if (isPending) {
-          navigation.navigate('WaitSubscription');
-        } else if (subStatusRedux?.isRejected) {
+      if (isSubscriptionBlocked && !isPending && !isActive) {
+        if (subStatusRedux?.isRejected) {
           navigation.navigate('PaymentFailure');
         } else {
           navigation.navigate('Subscription');
         }
       }
     }
-  }, [isFocused, isSubscriptionBlocked, isPending, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
+  }, [isFocused, isSubscriptionBlocked, isPending, isActive, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
 
 
 

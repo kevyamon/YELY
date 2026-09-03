@@ -92,17 +92,15 @@ const SellerHome = ({ navigation }) => {
     if (promoMode === null || isSubLoading) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
-      if (isBlocked) {
-        if (isPending) {
-          navigation.navigate('WaitSubscription');
-        } else if (subStatus?.isRejected) {
+      if (isBlocked && !isPending && !isActive) {
+        if (subStatus?.isRejected) {
           navigation.navigate('PaymentFailure');
         } else {
           navigation.navigate('Subscription');
         }
       }
     }
-  }, [isFocused, isBlocked, isPending, subStatus?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
+  }, [isFocused, isBlocked, isPending, isActive, subStatus?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
 
   const renderSubscriptionBanner = () => {
     if (isActive || promoMode?.isActive) return null;
