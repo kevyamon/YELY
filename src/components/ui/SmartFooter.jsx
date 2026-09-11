@@ -36,10 +36,10 @@ const SmartFooter = ({
   const [isPassengerModalVisible, setIsPassengerModalVisible] = useState(false);
   const [selectedInfoVehicle, setSelectedInfoVehicle] = useState(null);
 
-  // Initialisation securisee sur le forfait "echo" sans ecraser le tarif calcule
+  // Initialisation sécurisée sur le forfait "echo" (Partagé)
   useEffect(() => {
     if (isRider && onSelectVehicle && !selectedVehicle) {
-      onSelectVehicle({ type: 'echo', id: '1', name: 'Partage' });
+      onSelectVehicle({ type: 'echo', id: '1', name: 'Partagé' });
     }
   }, [isRider, onSelectVehicle, selectedVehicle]);
 
@@ -73,7 +73,7 @@ const SmartFooter = ({
                 onSelect={onSelectVehicle}
                 onInfoPress={(vehicle) => setSelectedInfoVehicle(vehicle)}
                 isLoading={isEstimating}
-                error={!isUserInZone ? { message: 'Vous etes en dehors de la zone de couverture Yely.' } : estimateError}
+                error={!isUserInZone ? { message: 'Vous êtes en dehors de la zone de couverture Yély.' } : estimateError}
               />
 
               <TouchableOpacity 
@@ -102,11 +102,11 @@ const SmartFooter = ({
                 <>
                   <Ionicons name="warning-outline" size={24} color={THEME.COLORS.danger} style={{ marginBottom: 4 }} />
                   <Text style={[styles.emptyText, { color: THEME.COLORS.danger, fontWeight: 'bold' }]}>
-                    Vous etes en dehors de la zone de couverture Yely.
+                    Vous êtes en dehors de la zone de couverture Yély.
                   </Text>
                 </>
               ) : (
-                <Text style={styles.emptyText}>Selectionnez une destination</Text>
+                <Text style={styles.emptyText}>Sélectionnez une destination</Text>
               )}
             </View>
           )}

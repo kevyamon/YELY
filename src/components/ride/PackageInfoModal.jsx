@@ -16,9 +16,9 @@ import THEME from '../../theme/theme';
 
 const PACKAGE_DETAILS = {
   echo: {
-    title: 'Forfait Partage',
-    subtitle: 'Course economique et conviviale',
-    badge: 'PARTAGE',
+    title: 'Forfait Partagé',
+    subtitle: 'Course économique et conviviale',
+    badge: 'PARTAGÉ',
     icon: 'people-outline',
     accentColor: THEME.COLORS.success || '#27AE60',
     accentBg: 'rgba(39, 174, 96, 0.12)',
@@ -27,24 +27,24 @@ const PACKAGE_DETAILS = {
       {
         icon: 'trending-down-outline',
         title: 'Tarif le plus avantageux',
-        description: 'Economisez sur vos trajets quotidiens grace a la mutualisation.',
+        description: 'Économisez sur vos trajets quotidiens grâce à la mutualisation.',
       },
       {
         icon: 'git-merge-outline',
         title: 'Covoiturage intelligent',
-        description: 'Partagez le vehicule avec d autres passagers empruntant le meme axe.',
+        description: "Partagez le véhicule avec d'autres passagers empruntant le même axe.",
       },
       {
         icon: 'person-add-outline',
-        title: 'Flexibilite passagers',
-        description: 'Possibilite de reserver 1 a 3 places selon vos besoins.',
+        title: 'Flexibilité passagers',
+        description: 'Possibilité de réserver 1 à 3 places selon vos besoins.',
       },
     ],
   },
   vip: {
-    title: 'Forfait Prive',
-    subtitle: 'Exclusivite et confort superieur',
-    badge: 'PRIVE',
+    title: 'Forfait Privé',
+    subtitle: 'Exclusivité et confort supérieur',
+    badge: 'PRIVÉ',
     icon: 'star-outline',
     accentColor: THEME.COLORS.champagneGold || '#D4AF37',
     accentBg: 'rgba(212, 175, 55, 0.12)',
@@ -52,18 +52,18 @@ const PACKAGE_DETAILS = {
     features: [
       {
         icon: 'shield-checkmark-outline',
-        title: 'Vehicule exclusivement reserve',
-        description: 'Vous et vos accompagnants occupez seul l integralite du taxi.',
+        title: 'Véhicule exclusivement réservé',
+        description: "Vous et vos accompagnants occupez seuls l'intégralité du taxi.",
       },
       {
         icon: 'navigate-outline',
-        title: 'Trajet direct sans detour',
-        description: 'Aucun arret supplementaire ni passager tiers en cours de route.',
+        title: 'Trajet direct sans détour',
+        description: 'Aucun arrêt supplémentaire ni passager tiers en cours de route.',
       },
       {
         icon: 'sparkles-outline',
-        title: 'Tranquillite et intimite',
-        description: 'Confort optimal pour vos deplacements professionnels ou personnels.',
+        title: 'Tranquillité et intimité',
+        description: 'Confort optimal pour vos déplacements professionnels ou personnels.',
       },
     ],
   },

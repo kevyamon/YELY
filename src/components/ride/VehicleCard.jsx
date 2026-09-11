@@ -1,5 +1,5 @@
 // src/components/ride/VehicleCard.jsx
-// CARTE VEHICULE COMPACTE - Disposition horizontale premium avec icone Info et echelle de prix
+// CARTE VEHICULE COMPACTE - Prix centre et agrandi, typographie soignee et icone Info
 // CSCSM Level: Bank Grade (Strictement modulaire < 325 lignes, Zero Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
@@ -19,7 +19,7 @@ const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
   });
 
   useEffect(() => {
-    priceScale.value = withSpring(isSelected ? 1.10 : 1, { damping: 10, stiffness: 100 });
+    priceScale.value = withSpring(isSelected ? 1.08 : 1, { damping: 10, stiffness: 100 });
   }, [isSelected, priceScale]);
 
   const priceAnimatedStyle = useAnimatedStyle(() => {
@@ -40,7 +40,7 @@ const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
   };
 
   const iconConfig = getIconConfig(vehicle.type);
-  const displayName = vehicle.type?.toLowerCase() === 'echo' ? 'Partage' : (vehicle.name || 'Prive (Seul)');
+  const displayName = vehicle.type?.toLowerCase() === 'echo' ? 'Partagé' : (vehicle.name || 'Privé (Seul)');
   const isEcho = vehicle.type?.toLowerCase() === 'echo';
 
   return (
@@ -54,19 +54,19 @@ const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
           isSelected ? styles.cardSelected : styles.cardUnselected
         ]}
       >
-        {/* Badge VIP Optionnel */}
+        {/* Badge VIP avec typographie soignee */}
         {vehicle.type?.toLowerCase() === 'vip' && (
           <View style={[styles.badge, isSelected ? styles.badgeSelected : styles.badgeUnselected]}>
             <Text style={[styles.badgeText, isSelected ? styles.badgeTextSelected : styles.badgeTextUnselected]}>
-              PRIVE
+              PRIVÉ
             </Text>
           </View>
         )}
 
-        {/* Ligne du haut : Icone a gauche, Prix a droite */}
+        {/* Ligne du haut : Icone a gauche, Prix agrandi et centre */}
         <View style={styles.headerRow}>
           <View style={[styles.iconWrapper, isSelected ? styles.iconWrapperSelected : styles.iconWrapperUnselected]}>
-            <Ionicons name={iconConfig.name} size={15} color={iconConfig.color} />
+            <Ionicons name={iconConfig.name} size={16} color={iconConfig.color} />
           </View>
           
           <Animated.View style={[styles.priceContainer, priceAnimatedStyle]}>
@@ -83,9 +83,12 @@ const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
               <Text style={[styles.currencyText, isSelected && styles.currencyTextSelected]}> F</Text>
             </Text>
           </Animated.View>
+
+          {/* Espaceur droit pour centrage du prix et degagement du badge */}
+          <View style={styles.headerSpacer} />
         </View>
 
-        {/* Ligne du bas : Nom du forfait, sous-titre et bouton Info a droite */}
+        {/* Ligne du bas : Nom du forfait, sous-titre et bouton Info tactile */}
         <View style={styles.detailsContainer}>
           <View style={styles.bottomRow}>
             <View style={styles.nameBlock}>
@@ -103,7 +106,6 @@ const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
               </Text>
             </View>
 
-            {/* Bouton Info tactile dans l angle bas droit */}
             <TouchableOpacity
               style={[styles.infoBtn, isSelected ? styles.infoBtnSelected : styles.infoBtnUnselected]}
               onPress={(e) => {
@@ -132,7 +134,7 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'column',
-    height: 86,
+    height: 88,
     borderRadius: 16,
     paddingVertical: 8,
     paddingHorizontal: 10,
@@ -171,7 +173,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#121418',
   },
   badgeText: {
-    fontSize: 7.5,
+    fontSize: 8,
     fontWeight: '900',
     letterSpacing: 0.5,
   },
@@ -183,14 +185,14 @@ const styles = StyleSheet.create({
   },
   headerRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     alignItems: 'center',
+    justifyContent: 'space-between',
     width: '100%',
   },
   iconWrapper: {
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 28,
+    height: 28,
+    borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -201,13 +203,15 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 0, 0, 0.08)',
   },
   priceContainer: {
-    alignItems: 'flex-end',
+    flex: 1,
+    alignItems: 'center',
     justifyContent: 'center',
+    marginHorizontal: 2,
   },
   priceText: {
-    fontSize: 17,
+    fontSize: 21,
     fontWeight: '900',
-    letterSpacing: 0.2,
+    letterSpacing: 0.3,
   },
   priceTextEcho: {
     color: THEME.COLORS.success,
@@ -222,11 +226,14 @@ const styles = StyleSheet.create({
     color: '#121418',
   },
   currencyText: {
-    fontSize: 11,
+    fontSize: 13,
     fontWeight: '800',
   },
   currencyTextSelected: {
     color: '#121418',
+  },
+  headerSpacer: {
+    width: 24,
   },
   detailsContainer: {
     marginTop: 'auto',
