@@ -1,14 +1,14 @@
 // src/components/ride/VehicleCard.jsx
-// CARTE VÉHICULE - Disposition horizontale premium avec animation d'échelle du prix
-// CSCSM Level: Bank Grade
+// CARTE VEHICULE COMPACTE - Disposition horizontale premium avec icone Info et echelle de prix
+// CSCSM Level: Bank Grade (Strictement modulaire < 325 lignes, Zero Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { useEffect } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import THEME from '../../theme/theme';
 
-const VehicleCard = ({ vehicle, isSelected, onPress }) => {
+const VehicleCard = ({ vehicle, isSelected, onPress, onInfoPress }) => {
   const scale = useSharedValue(1);
   const priceScale = useSharedValue(1);
 
@@ -19,7 +19,7 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
   });
 
   useEffect(() => {
-    priceScale.value = withSpring(isSelected ? 1.12 : 1, { damping: 10, stiffness: 100 });
+    priceScale.value = withSpring(isSelected ? 1.10 : 1, { damping: 10, stiffness: 100 });
   }, [isSelected, priceScale]);
 
   const priceAnimatedStyle = useAnimatedStyle(() => {
@@ -40,7 +40,7 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
   };
 
   const iconConfig = getIconConfig(vehicle.type);
-  const displayName = vehicle.type?.toLowerCase() === 'echo' ? 'Partagé' : (vehicle.name || 'Privé (Seul)');
+  const displayName = vehicle.type?.toLowerCase() === 'echo' ? 'Partage' : (vehicle.name || 'Prive (Seul)');
   const isEcho = vehicle.type?.toLowerCase() === 'echo';
 
   return (
@@ -58,15 +58,15 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
         {vehicle.type?.toLowerCase() === 'vip' && (
           <View style={[styles.badge, isSelected ? styles.badgeSelected : styles.badgeUnselected]}>
             <Text style={[styles.badgeText, isSelected ? styles.badgeTextSelected : styles.badgeTextUnselected]}>
-              PRIVÉ
+              PRIVE
             </Text>
           </View>
         )}
 
-        {/* Ligne du haut : Icône à gauche, Prix à droite */}
+        {/* Ligne du haut : Icone a gauche, Prix a droite */}
         <View style={styles.headerRow}>
           <View style={[styles.iconWrapper, isSelected ? styles.iconWrapperSelected : styles.iconWrapperUnselected]}>
-            <Ionicons name={iconConfig.name} size={18} color={iconConfig.color} />
+            <Ionicons name={iconConfig.name} size={15} color={iconConfig.color} />
           </View>
           
           <Animated.View style={[styles.priceContainer, priceAnimatedStyle]}>
@@ -85,20 +85,41 @@ const VehicleCard = ({ vehicle, isSelected, onPress }) => {
           </Animated.View>
         </View>
 
-        {/* Ligne du bas : Nom du forfait et sous-titre */}
+        {/* Ligne du bas : Nom du forfait, sous-titre et bouton Info a droite */}
         <View style={styles.detailsContainer}>
-          <Text 
-            style={[
-              styles.vehicleName, 
-              isSelected ? styles.vehicleNameSelected : styles.vehicleNameUnselected
-            ]} 
-            numberOfLines={1}
-          >
-            {displayName}
-          </Text>
-          <Text style={[styles.subTitleText, isSelected ? styles.subTitleTextSelected : styles.subTitleTextUnselected]}>
-            Tarif fixe
-          </Text>
+          <View style={styles.bottomRow}>
+            <View style={styles.nameBlock}>
+              <Text 
+                style={[
+                  styles.vehicleName, 
+                  isSelected ? styles.vehicleNameSelected : styles.vehicleNameUnselected
+                ]} 
+                numberOfLines={1}
+              >
+                {displayName}
+              </Text>
+              <Text style={[styles.subTitleText, isSelected ? styles.subTitleTextSelected : styles.subTitleTextUnselected]}>
+                Tarif fixe
+              </Text>
+            </View>
+
+            {/* Bouton Info tactile dans l angle bas droit */}
+            <TouchableOpacity
+              style={[styles.infoBtn, isSelected ? styles.infoBtnSelected : styles.infoBtnUnselected]}
+              onPress={(e) => {
+                e.stopPropagation?.();
+                onInfoPress?.(vehicle);
+              }}
+              hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+              activeOpacity={0.7}
+            >
+              <Ionicons 
+                name="information-circle-outline" 
+                size={16} 
+                color={isSelected ? '#121418' : (THEME.COLORS.champagneGold || '#D4AF37')} 
+              />
+            </TouchableOpacity>
+          </View>
         </View>
       </Pressable>
     </Animated.View>
@@ -111,9 +132,10 @@ const styles = StyleSheet.create({
   },
   card: {
     flexDirection: 'column',
-    height: 108,
-    borderRadius: 18,
-    padding: 12,
+    height: 86,
+    borderRadius: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 10,
     position: 'relative',
     overflow: 'hidden',
     justifyContent: 'space-between',
@@ -128,18 +150,18 @@ const styles = StyleSheet.create({
     borderColor: THEME.COLORS.primaryDark,
     borderWidth: 2,
     shadowColor: THEME.PALETTE.warmYellow,
-    shadowOffset: { width: 0, height: 6 },
+    shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.35,
-    shadowRadius: 10,
+    shadowRadius: 8,
     elevation: 6,
   },
   badge: {
     position: 'absolute',
     top: 0,
     right: 0,
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderBottomLeftRadius: 10,
+    paddingHorizontal: 7,
+    paddingVertical: 2,
+    borderBottomLeftRadius: 8,
     zIndex: 10,
   },
   badgeUnselected: {
@@ -149,9 +171,9 @@ const styles = StyleSheet.create({
     backgroundColor: '#121418',
   },
   badgeText: {
-    fontSize: 8,
+    fontSize: 7.5,
     fontWeight: '900',
-    letterSpacing: 0.6,
+    letterSpacing: 0.5,
   },
   badgeTextUnselected: {
     color: '#121418',
@@ -166,9 +188,9 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   iconWrapper: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -183,7 +205,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   priceText: {
-    fontSize: 20,
+    fontSize: 17,
     fontWeight: '900',
     letterSpacing: 0.2,
   },
@@ -200,7 +222,7 @@ const styles = StyleSheet.create({
     color: '#121418',
   },
   currencyText: {
-    fontSize: 13,
+    fontSize: 11,
     fontWeight: '800',
   },
   currencyTextSelected: {
@@ -209,10 +231,20 @@ const styles = StyleSheet.create({
   detailsContainer: {
     marginTop: 'auto',
   },
+  bottomRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-end',
+    justifyContent: 'space-between',
+    width: '100%',
+  },
+  nameBlock: {
+    flex: 1,
+    marginRight: 6,
+  },
   vehicleName: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '800',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   vehicleNameUnselected: {
     color: THEME.COLORS.textPrimary,
@@ -221,7 +253,7 @@ const styles = StyleSheet.create({
     color: '#121418',
   },
   subTitleText: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
   },
   subTitleTextUnselected: {
@@ -229,6 +261,19 @@ const styles = StyleSheet.create({
   },
   subTitleTextSelected: {
     color: 'rgba(18, 20, 24, 0.75)',
+  },
+  infoBtn: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  infoBtnUnselected: {
+    backgroundColor: 'rgba(212, 175, 55, 0.15)',
+  },
+  infoBtnSelected: {
+    backgroundColor: 'rgba(0, 0, 0, 0.12)',
   },
 });
 

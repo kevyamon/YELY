@@ -1,14 +1,20 @@
 // src/components/ride/VehicleCarousel.jsx
-// CARROUSEL DES FORFAITS - Redessiné pour afficher les 2 forfaits côte à côte
-// CSCSM Level: Bank Grade
+// CARROUSEL DES FORFAITS COMPACT - Affichage des 2 forfaits cote a cote avec support de la modale info
+// CSCSM Level: Bank Grade (Strictement modulaire < 325 lignes, Zero Emojis)
 
 import React from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import THEME from '../../theme/theme';
 import VehicleCard from './VehicleCard';
 
-const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, error }) => {
-  
+const VehicleCarousel = ({
+  vehicles = [],
+  selectedVehicle,
+  onSelect,
+  onInfoPress,
+  isLoading,
+  error,
+}) => {
   if (isLoading) {
     return (
       <View style={styles.centerContainer}>
@@ -20,12 +26,12 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
 
   if (error) {
     const getErrorMessage = (err) => {
-      if (!err) return 'Veuillez réessayer.';
+      if (!err) return 'Veuillez reessayer.';
       if (typeof err === 'string') return err;
       if (err.data?.message) return err.data.message;
       if (err.message) return err.message;
       if (err.error) return err.error;
-      return 'Veuillez réessayer.';
+      return 'Veuillez reessayer.';
     };
 
     return (
@@ -42,9 +48,9 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
     return null;
   }
 
-  // Filtrage de sécurité : on n'affiche que Echo et VIP pour correspondre aux 2 forfaits officiels
-  const activeVehicles = vehicles.filter(v => 
-    v.type?.toLowerCase() === 'echo' || v.type?.toLowerCase() === 'vip'
+  // Filtrage de securite : on n'affiche que Echo et VIP pour correspondre aux 2 forfaits officiels
+  const activeVehicles = vehicles.filter(
+    (v) => v.type?.toLowerCase() === 'echo' || v.type?.toLowerCase() === 'vip'
   );
 
   return (
@@ -56,6 +62,7 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
             vehicle={vehicle}
             isSelected={selectedVehicle?.type === vehicle.type}
             onPress={onSelect}
+            onInfoPress={onInfoPress}
           />
         ))}
       </View>
@@ -65,7 +72,7 @@ const VehicleCarousel = ({ vehicles = [], selectedVehicle, onSelect, isLoading, 
 
 const styles = StyleSheet.create({
   container: {
-    height: 110,
+    height: 88,
     width: '100%',
   },
   row: {
@@ -75,7 +82,7 @@ const styles = StyleSheet.create({
     width: '100%',
   },
   centerContainer: {
-    height: 110,
+    height: 88,
     width: '100%',
     justifyContent: 'center',
     alignItems: 'center',
@@ -99,7 +106,7 @@ const styles = StyleSheet.create({
   errorSubtext: {
     color: THEME.COLORS.textTertiary,
     fontSize: 12,
-  }
+  },
 });
 
 export default VehicleCarousel;
