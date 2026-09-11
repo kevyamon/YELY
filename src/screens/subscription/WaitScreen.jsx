@@ -39,13 +39,18 @@ const WaitScreen = ({ navigation, route }) => {
   const { refetch: refetchStatus } = useGetSubscriptionStatusQuery();
   const [triggerVerify] = useLazyVerifyPaymentQuery();
 
-  const reference = route?.params?.reference;
+  const reference = route?.params?.reference || subStatus?.gatewayReference || subStatus?.pendingReference;
 
   useEffect(() => {
     if (subStatus?.isActive && !subStatus?.isPending) {
       navigation.replace(homeScreen);
     }
   }, [subStatus?.isActive, subStatus?.isPending, navigation, homeScreen]);
+
+  useEffect(() => {
+    // Tentative de synchronisation active immediate au chargement
+    handleManualVerify();
+  }, []);
 
   useEffect(() => {
     return () => {
@@ -56,10 +61,12 @@ const WaitScreen = ({ navigation, route }) => {
   const handleManualVerify = async () => {
     setIsVerifying(true);
     try {
-      if (reference) {
-        const res = await triggerVerify(reference).unwrap();
-        if (res?.data?.isActive || res?.isActive) {
-          dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
+      const activeRef = reference || subStatus?.gatewayReference || subStatus?.pendingReference;
+      if (activeRef) {
+        const res = await triggerVerify(activeRef).unwrap();
+        const resData = res?.data || res;
+        if (resData?.isActive || resData?.status === 'COMPLETED') {
+          dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: resData?.expiresAt }));
           dispatch(showSuccessToast({ title: "Succès", message: "Abonnement validé et activé." }));
           navigation.replace(homeScreen);
           return;
@@ -67,8 +74,9 @@ const WaitScreen = ({ navigation, route }) => {
       }
 
       const statusRes = await refetchStatus().unwrap();
-      if (statusRes?.data?.isActive) {
-        dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
+      const sData = statusRes?.data || statusRes;
+      if (sData?.isActive) {
+        dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: sData?.expiresAt }));
         dispatch(showSuccessToast({ title: "Succès", message: "Abonnement actif." }));
         navigation.replace(homeScreen);
       } else {

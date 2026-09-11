@@ -13,7 +13,8 @@ import {
   useGetSystemConfigQuery,
   useToggleGlobalFreeAccessMutation,
   useToggleLoadReduceMutation,
-  useTogglePromoMutation
+  useTogglePromoMutation,
+  useTogglePioneerProgramMutation
 } from '../../store/api/adminApiSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
@@ -37,10 +38,12 @@ const FinanceConfig = ({ navigation }) => {
   const { data: systemConfigData } = useGetSystemConfigQuery(); 
 
   const [togglePromo, { isLoading: isTogglingPromo }] = useTogglePromoMutation();
+  const [togglePioneerProgram, { isLoading: isTogglingPioneer }] = useTogglePioneerProgramMutation();
   const [toggleLoadReduce, { isLoading: isTogglingLoad }] = useToggleLoadReduceMutation();
   const [toggleGlobalFreeAccess, { isLoading: isTogglingFreeAccess }] = useToggleGlobalFreeAccessMutation();
 
   const [isPromoActive, setIsPromoActive] = useState(false);
+  const [isPioneerProgramActive, setIsPioneerProgramActive] = useState(false);
   const [isLoadReduced, setIsLoadReduced] = useState(false);
   const [isGlobalFreeAccess, setIsGlobalFreeAccess] = useState(false);
   
@@ -53,6 +56,7 @@ const FinanceConfig = ({ navigation }) => {
   useEffect(() => {
     if (statsData?.data?.settings) {
       setIsPromoActive(statsData.data.settings.isPromoActive || false);
+      setIsPioneerProgramActive(statsData.data.settings.isPioneerProgramActive || false);
       setIsLoadReduced(statsData.data.settings.isLoadReduced || false);
     }
   }, [statsData]);
@@ -80,6 +84,23 @@ const FinanceConfig = ({ navigation }) => {
       dispatch(showErrorToast({
         title: 'Échec',
         message: "Impossible de changer le mode promotionnel.",
+      }));
+    }
+  };
+
+  const handleTogglePioneer = async (value) => {
+    setIsPioneerProgramActive(value);
+    try {
+      await togglePioneerProgram({ isActive: value }).unwrap();
+      dispatch(showSuccessToast({
+        title: 'Succès',
+        message: `Programme Pionniers ${value ? 'ACTIVÉ' : 'DÉSACTIVÉ'}`,
+      }));
+    } catch (e) {
+      setIsPioneerProgramActive(!value);
+      dispatch(showErrorToast({
+        title: 'Échec',
+        message: "Impossible de changer l'état du programme pionniers.",
       }));
     }
   };
@@ -217,6 +238,22 @@ const FinanceConfig = ({ navigation }) => {
               onValueChange={handleTogglePromo}
               value={isPromoActive}
               disabled={isTogglingPromo}
+            />
+          </View>
+        </GlassCard>
+
+        <GlassCard style={styles.actionCard}>
+          <View style={styles.rowBetween}>
+            <View style={styles.textContainer}>
+              <Text style={styles.cardTitle}>Programme Pionniers (4 mois max)</Text>
+              <Text style={styles.cardDescription}>Active le tarif pionnier pour les 20 premieres inscriptions chauffeurs/vendeurs creees des l'activation (plafond : 4 mois/compte).</Text>
+            </View>
+            <Switch
+              trackColor={{ false: THEME.COLORS.overlay, true: THEME.COLORS.primary }}
+              thumbColor={THEME.COLORS.background}
+              onValueChange={handleTogglePioneer}
+              value={isPioneerProgramActive}
+              disabled={isTogglingPioneer}
             />
           </View>
         </GlassCard>

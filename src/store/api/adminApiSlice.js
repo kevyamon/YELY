@@ -87,6 +87,15 @@ export const adminApiSlice = apiSlice.injectEndpoints({
       invalidatesTags: ['Stats', 'AuditLog', 'Subscription'], 
     }),
 
+    togglePioneerProgram: builder.mutation({
+      query: ({ isActive }) => ({
+        url: '/admin/pioneer/toggle',
+        method: 'PUT',
+        body: { isActive },
+      }),
+      invalidatesTags: ['Stats', 'AuditLog', 'Subscription', 'SystemConfig'],
+    }),
+
     toggleLoadReduce: builder.mutation({
       query: () => ({
         url: '/admin/load-reduce/toggle',
@@ -228,6 +237,7 @@ export const {
   useGetFinanceDataQuery,
   useUpdateWaveLinksMutation,
   useTogglePromoMutation,
+  useTogglePioneerProgramMutation,
   useToggleLoadReduceMutation,
   useToggleGlobalFreeAccessMutation,
   useUpdateMapSettingsMutation,

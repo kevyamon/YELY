@@ -19,7 +19,9 @@ const initialState = {
     isPending: false,
     isRejected: false,
     rejectionReason: null,
-    expiresAt: null
+    expiresAt: null,
+    pendingReference: null,
+    gatewayReference: null
   },
   promoMode: {
     isActive: false,

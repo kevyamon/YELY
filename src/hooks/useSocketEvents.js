@@ -32,16 +32,24 @@ const useSocketEvents = () => {
 
     const handleSubscriptionRejected = (data) => {
       console.info("[SOCKET] Abonnement refuse:", data);
-      dispatch(updateSubscriptionStatus({ status: 'inactive', isRejected: true, rejectionReason: data.reason }));
-      dispatch(updateUserInfo({ subscriptionStatus: 'inactive' }));
-      dispatch(apiSlice.util.invalidateTags(['Subscription']));
+      dispatch(updateSubscriptionStatus({ isActive: false, isPending: false, isRejected: true, rejectionReason: data?.reason || null }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
     };
 
     const handleSubscriptionValidated = (data) => {
-      console.info("[SOCKET] Abonnement valide:", data);
-      dispatch(updateSubscriptionStatus({ status: 'active', isRejected: false, rejectionReason: null }));
-      dispatch(updateUserInfo({ subscriptionStatus: 'active' }));
-      dispatch(apiSlice.util.invalidateTags(['Subscription']));
+      console.info("[SOCKET] Abonnement active en temps reel:", data);
+      dispatch(updateSubscriptionStatus({ 
+        isActive: true, 
+        isPending: false, 
+        isRejected: false, 
+        rejectionReason: null,
+        expiresAt: data?.expiresAt || null
+      }));
+      dispatch(showSuccessToast({
+        title: "Abonnement Actif",
+        message: "Votre Passe Yely est desormais confirme et actif."
+      }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
     };
 
     const handleIdentityUpdate = (data) => {
@@ -81,8 +89,10 @@ const useSocketEvents = () => {
 
     socketService.on('PROMO_MODE_CHANGED', handlePromoModeChange);
     socketService.on('promo_updated', handlePromoUpdated);
-    socketService.on('subscription_rejected', handleSubscriptionRejected);
+    socketService.on('subscription_updated', handleSubscriptionValidated);
     socketService.on('subscription_validated', handleSubscriptionValidated);
+    socketService.on('subscription_failed', handleSubscriptionRejected);
+    socketService.on('subscription_rejected', handleSubscriptionRejected);
     socketService.on('identity_verification_update', handleIdentityUpdate);
     socketService.on('user_banned', handleUserBanned);
     socketService.on('force_logout', handleForceLogout);
@@ -92,8 +102,10 @@ const useSocketEvents = () => {
     return () => {
       socketService.off('PROMO_MODE_CHANGED', handlePromoModeChange);
       socketService.off('promo_updated', handlePromoUpdated);
-      socketService.off('subscription_rejected', handleSubscriptionRejected);
+      socketService.off('subscription_updated', handleSubscriptionValidated);
       socketService.off('subscription_validated', handleSubscriptionValidated);
+      socketService.off('subscription_failed', handleSubscriptionRejected);
+      socketService.off('subscription_rejected', handleSubscriptionRejected);
       socketService.off('identity_verification_update', handleIdentityUpdate);
       socketService.off('user_banned', handleUserBanned);
       socketService.off('force_logout', handleForceLogout);

@@ -6,19 +6,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Linking, Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-
 import { apiSlice } from '../../store/slices/apiSlice';
-import {
-  useGetConfigQuery, useGetSubscriptionStatusQuery,
-  useInitializePaymentMutation, useLazyVerifyPaymentQuery
-} from '../../store/api/subscriptionApiSlice';
-import {
-  selectCurrentUser, selectPromoMode,
-  setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus
-} from '../../store/slices/authSlice';
+import { useGetConfigQuery, useGetSubscriptionStatusQuery, useInitializePaymentMutation, useLazyVerifyPaymentQuery } from '../../store/api/subscriptionApiSlice';
+import { selectCurrentUser, selectPromoMode, setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 
 import PlanSelection from '../../components/subscription/PlanSelection';
@@ -86,6 +79,8 @@ const SubscriptionScreen = ({ navigation }) => {
       dispatch(updateSubscriptionStatus({
         isActive: isSubActive,
         isPending: Boolean(statusData.data.isPending),
+        pendingReference: statusData.data.pendingReference || null,
+        gatewayReference: statusData.data.gatewayReference || null,
         expiresAt: statusData.data.expiresAt
       }));
     }
@@ -123,12 +118,13 @@ const SubscriptionScreen = ({ navigation }) => {
     if (Platform.OS !== 'web' || typeof window === 'undefined') return;
 
     const urlParams = new URLSearchParams(window.location.search);
-    const queryRef = urlParams.get('reference');
-    const storedRef = sessionStorage.getItem('yely_pending_payment_ref');
+    const queryRef = urlParams.get('reference') || urlParams.get('transaction_id');
+    const storedRef = sessionStorage.getItem('yely_gateway_ref') || sessionStorage.getItem('yely_pending_payment_ref');
     const refToVerify = queryRef || storedRef;
 
     if (refToVerify) {
       sessionStorage.removeItem('yely_pending_payment_ref');
+      sessionStorage.removeItem('yely_gateway_ref');
       if (queryRef && window.history?.replaceState) {
         window.history.replaceState({}, document.title, window.location.pathname);
       }
@@ -192,24 +188,34 @@ const SubscriptionScreen = ({ navigation }) => {
       const payload = response?.data || response;
       const paymentUrl = payload?.paymentUrl;
       const reference = payload?.reference;
+      const gatewayRef = payload?.gatewayReference;
 
-      if (!paymentUrl) {
-        throw new Error("Lien de paiement non disponible.");
-      }
+      if (!paymentUrl) throw new Error("Lien de paiement non disponible.");
 
       if (Platform.OS === 'web') {
-        if (typeof window !== 'undefined' && reference) {
-          sessionStorage.setItem('yely_pending_payment_ref', reference);
+        if (typeof window !== 'undefined') {
+          if (reference) sessionStorage.setItem('yely_pending_payment_ref', reference);
+          if (gatewayRef) sessionStorage.setItem('yely_gateway_ref', gatewayRef);
         }
         window.location.href = paymentUrl;
       } else {
         const returnUrl = 'https://yely-amber.vercel.app';
-        await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
+        const browserRes = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
         
-        // Auto-Verification immediate a la fermeture du navigateur securise
-        if (reference) {
+        let returnRef = null;
+        if (browserRes?.type === 'success' && browserRes?.url) {
           try {
-            const verifyRes = await verifyPaymentTrigger(reference).unwrap();
+            const urlObj = new URL(browserRes.url);
+            returnRef = urlObj.searchParams.get('reference') || 
+                        urlObj.searchParams.get('transaction_id') || 
+                        urlObj.searchParams.get('id');
+          } catch (_) {}
+        }
+
+        const candidateRef = returnRef || gatewayRef || reference;
+        if (candidateRef) {
+          try {
+            const verifyRes = await verifyPaymentTrigger(candidateRef).unwrap();
             const verifyData = verifyRes?.data || verifyRes;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
               dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
@@ -219,7 +225,7 @@ const SubscriptionScreen = ({ navigation }) => {
               return;
             }
           } catch (vErr) {
-            console.warn('[VERIFY SYNC] Interrogation retour:', vErr.message);
+            console.warn('[VERIFY SYNC] Interrogation retour:', vErr?.message);
           }
         }
 
@@ -233,9 +239,7 @@ const SubscriptionScreen = ({ navigation }) => {
             redirectToHome();
             return;
           }
-        } catch (sErr) {
-          // Ignorer si échec réseau passager
-        }
+        } catch (_) {}
 
         refetchConfig();
       }
@@ -255,23 +259,6 @@ const SubscriptionScreen = ({ navigation }) => {
   ) + 12;
 
   const canGoBack = currentStep === STEPS.CHOOSE_PLAN && statusData?.data && (statusData.data.isActive || promoMode?.isActive);
-
-  const renderHeader = () => (
-    <View style={[styles.header, { paddingTop: headerTopPadding }]}>
-      {canGoBack ? (
-        <TouchableOpacity onPress={() => setCurrentStep(STEPS.DASHBOARD)} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
-          <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
-      ) : (
-        <TouchableOpacity onPress={handleClose} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
-          <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
-        </TouchableOpacity>
-      )}
-
-      <Text style={styles.headerTitle}>Passe Yely</Text>
-      <View style={styles.headerIconBtn} />
-    </View>
-  );
 
   if (isConfigLoading || isStatusLoading || !currentStep) {
     return (
@@ -299,7 +286,19 @@ const SubscriptionScreen = ({ navigation }) => {
     <View style={styles.safeArea}>
       <StatusBar barStyle="light-content" backgroundColor="transparent" translucent={true} />
       <View style={styles.container}>
-        {renderHeader()}
+        <View style={[styles.header, { paddingTop: headerTopPadding }]}>
+          {canGoBack ? (
+            <TouchableOpacity onPress={() => setCurrentStep(STEPS.DASHBOARD)} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
+              <Ionicons name="arrow-back" size={24} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+          ) : (
+            <TouchableOpacity onPress={handleClose} style={styles.headerIconBtn} hitSlop={{ top: 10, left: 10, right: 10, bottom: 10 }}>
+              <Ionicons name="close" size={24} color={THEME.COLORS.textPrimary} />
+            </TouchableOpacity>
+          )}
+          <Text style={styles.headerTitle}>Passe Yely</Text>
+          <View style={styles.headerIconBtn} />
+        </View>
         <View style={styles.content}>
           {currentStep === STEPS.DASHBOARD ? (
             <SubscriptionDashboard statusData={statusData?.data} onRenew={handleProlong} onSelectOtherPlan={handleProlong} />

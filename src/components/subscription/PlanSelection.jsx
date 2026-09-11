@@ -48,8 +48,9 @@ const PlanSelection = ({
   const isPioneer = configData?.isPioneer || false;
   const isSeller = userRole === 'seller';
 
+  const remainingMonths = configData?.pioneerMonthsRemaining ?? 4;
   const description = isPioneer
-    ? 'Tarif Spécial Pionnier activé à vie.'
+    ? `Tarif Spécial Pionnier (${remainingMonths} mois restant${remainingMonths > 1 ? 's' : ''}).`
     : isSeller
     ? 'Vendez en illimité sans commissions.'
     : 'Roulez en illimité et gardez 100% de vos gains.';
