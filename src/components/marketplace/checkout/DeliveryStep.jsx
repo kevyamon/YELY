@@ -1,20 +1,21 @@
 // src/components/marketplace/checkout/DeliveryStep.jsx
-// ÉTAPE 1 - Détails de Livraison & Coordonnées Client
-// STANDARD: Industriel / Bank Grade (Strict <= 325 lignes)
+// ETAPE 1 - Details de Livraison & Coordonnees Client
+// STANDARD: Industriel / Bank Grade (Strict <= 325 lignes, Zero Emojis)
 
-import React, { useRef } from 'react';
+import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
+import React, { useRef, useState } from 'react';
 import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  TouchableOpacity,
   ActivityIndicator,
   Image,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
   useColorScheme,
+  View,
 } from 'react-native';
-import { Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import THEME from '../../../theme/theme';
+import EditableField from './EditableField';
 
 export default function DeliveryStep({
   name,
@@ -37,6 +38,8 @@ export default function DeliveryStep({
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const [focusedField, setFocusedField] = useState(null);
+
   const cardBg = isDark ? '#141414' : '#FFFFFF';
   const cardBorder = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.06)';
   const inputBg = isDark ? 'rgba(255, 255, 255, 0.05)' : '#F9FAFB';
@@ -47,7 +50,7 @@ export default function DeliveryStep({
 
   return (
     <View style={styles.container}>
-      {/* En-tête avec titre et badge 3D location */}
+      {/* En-tete avec titre et badge 3D location */}
       <View style={styles.headerRow}>
         <View style={styles.headerTextGroup}>
           <Text style={[styles.title, { color: textColor }]}>Détails de livraison</Text>
@@ -66,53 +69,43 @@ export default function DeliveryStep({
       {/* Champs d'information client */}
       <View style={[styles.card, { backgroundColor: cardBg, borderColor: cardBorder }]}>
         {/* Nom complet */}
-        <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
-              <Ionicons name="person-outline" size={16} color={THEME.COLORS.champagneGold} />
-            </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Nom complet</Text>
-          </View>
-          <View style={[styles.inputWrapper, { backgroundColor: inputBg, borderColor: inputBorder }]}>
-            <TextInput
-              ref={nameInputRef}
-              style={[styles.input, { color: textColor }]}
-              value={name}
-              onChangeText={setName}
-              placeholder="Votre nom"
-              placeholderTextColor={placeholderColor}
-            />
-            <TouchableOpacity onPress={() => nameInputRef.current?.focus()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="pencil" size={18} color={THEME.COLORS.champagneGold} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        <EditableField
+          label="Nom complet"
+          icon="person-outline"
+          inputRef={nameInputRef}
+          value={name}
+          onChangeText={setName}
+          placeholder="Votre nom"
+          isFocused={focusedField === 'name'}
+          onFocus={() => setFocusedField('name')}
+          onBlur={() => setFocusedField(null)}
+          inputBg={inputBg}
+          inputBorder={inputBorder}
+          textColor={textColor}
+          placeholderColor={placeholderColor}
+          isDark={isDark}
+        />
 
-        {/* Téléphone */}
-        <View style={styles.inputGroup}>
-          <View style={styles.labelRow}>
-            <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
-              <Ionicons name="call-outline" size={16} color={THEME.COLORS.champagneGold} />
-            </View>
-            <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Téléphone</Text>
-          </View>
-          <View style={[styles.inputWrapper, { backgroundColor: inputBg, borderColor: inputBorder }]}>
-            <TextInput
-              ref={phoneInputRef}
-              style={[styles.input, { color: textColor }]}
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-              placeholder="+225 00 00 00 00 00"
-              placeholderTextColor={placeholderColor}
-            />
-            <TouchableOpacity onPress={() => phoneInputRef.current?.focus()} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }} activeOpacity={0.7}>
-              <MaterialCommunityIcons name="pencil" size={18} color={THEME.COLORS.champagneGold} />
-            </TouchableOpacity>
-          </View>
-        </View>
+        {/* Telephone */}
+        <EditableField
+          label="Téléphone"
+          icon="call-outline"
+          inputRef={phoneInputRef}
+          value={phone}
+          onChangeText={setPhone}
+          keyboardType="phone-pad"
+          placeholder="+225 00 00 00 00 00"
+          isFocused={focusedField === 'phone'}
+          onFocus={() => setFocusedField('phone')}
+          onBlur={() => setFocusedField(null)}
+          inputBg={inputBg}
+          inputBorder={inputBorder}
+          textColor={textColor}
+          placeholderColor={placeholderColor}
+          isDark={isDark}
+        />
 
-        {/* Sélecteur Mode de livraison */}
+        {/* Selecteur Mode de livraison */}
         <View style={styles.inputGroup}>
           <View style={styles.labelRow}>
             <View style={[styles.labelIconBg, { backgroundColor: isDark ? 'rgba(212,175,55,0.15)' : 'rgba(212,175,55,0.12)' }]}>
@@ -151,7 +144,7 @@ export default function DeliveryStep({
           </View>
         </View>
 
-        {/* Carte Position sélectionnée */}
+        {/* Carte Position selectionnee */}
         <View style={[styles.locationCard, { backgroundColor: isDark ? 'rgba(212,175,55,0.06)' : '#FFFDF5', borderColor: isDark ? 'rgba(212,175,55,0.3)' : '#F5E6BE' }]}>
           <View style={styles.locationHeaderRow}>
             <Ionicons name="location-sharp" size={16} color={THEME.COLORS.champagneGold} />
@@ -190,7 +183,16 @@ export default function DeliveryStep({
             </View>
             <Text style={[styles.fieldLabel, { color: isDark ? 'rgba(255,255,255,0.6)' : 'rgba(0,0,0,0.5)' }]}>Note (optionnel)</Text>
           </View>
-          <View style={[styles.noteWrapper, { backgroundColor: noteCardBg, borderColor: inputBorder }]}>
+          <View
+            style={[
+              styles.noteWrapper,
+              {
+                backgroundColor: noteCardBg,
+                borderColor: focusedField === 'note' ? THEME.COLORS.champagneGold : inputBorder,
+                borderWidth: focusedField === 'note' ? 1.5 : 1,
+              },
+            ]}
+          >
             <TextInput
               style={[styles.noteInput, { color: textColor }]}
               value={note}
@@ -199,6 +201,11 @@ export default function DeliveryStep({
               placeholderTextColor={placeholderColor}
               multiline
               maxLength={120}
+              underlineColorAndroid="transparent"
+              cursorColor={THEME.COLORS.champagneGold}
+              selectionColor={isDark ? 'rgba(212,175,55,0.35)' : 'rgba(212,175,55,0.25)'}
+              onFocus={() => setFocusedField('note')}
+              onBlur={() => setFocusedField(null)}
             />
             <Text style={[styles.charCounter, { color: isDark ? 'rgba(255,255,255,0.4)' : 'rgba(0,0,0,0.35)' }]}>
               {note.length}/120
@@ -219,28 +226,28 @@ export default function DeliveryStep({
 }
 
 const styles = StyleSheet.create({
-  container: { paddingHorizontal: 20, paddingBottom: 24 },
+  container: { width: '100%', paddingHorizontal: 20, paddingBottom: 24 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 },
   headerTextGroup: { flex: 1, paddingRight: 14 },
   title: { fontSize: 22, fontWeight: '800', letterSpacing: 0.2, marginBottom: 4 },
   subtitle: { fontSize: 13, lineHeight: 18 },
   card: {
+    width: '100%',
     borderRadius: 24,
     padding: 18,
     borderWidth: 1,
     marginBottom: 24,
+    overflow: 'hidden',
     elevation: 2,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
   },
-  inputGroup: { marginBottom: 16 },
+  inputGroup: { width: '100%', marginBottom: 16 },
   labelRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   labelIconBg: { width: 26, height: 26, borderRadius: 8, justifyContent: 'center', alignItems: 'center', marginRight: 8 },
   fieldLabel: { fontSize: 11.5, fontWeight: '600' },
-  inputWrapper: { flexDirection: 'row', alignItems: 'center', borderRadius: 14, borderWidth: 1, paddingHorizontal: 14, height: 48 },
-  input: { flex: 1, fontSize: 14, fontWeight: '600' },
   toggleRow: { flexDirection: 'row', gap: 10 },
   toggleTab: { flex: 1, flexDirection: 'row', height: 44, borderRadius: 14, justifyContent: 'center', alignItems: 'center' },
   toggleTabText: { fontSize: 13, fontWeight: '700' },
@@ -250,8 +257,8 @@ const styles = StyleSheet.create({
   locationBodyRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   locationAddressText: { flex: 1, fontSize: 13, fontWeight: '600', lineHeight: 18, marginRight: 10 },
   locateActionBtn: { width: 36, height: 36, borderRadius: 18, justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: 'rgba(212,175,55,0.2)' },
-  noteWrapper: { borderRadius: 14, borderWidth: 1, padding: 12, minHeight: 80, justifyContent: 'space-between' },
-  noteInput: { fontSize: 13, fontWeight: '500', minHeight: 46, textAlignVertical: 'top' },
+  noteWrapper: { width: '100%', borderRadius: 14, padding: 12, minHeight: 80, justifyContent: 'space-between', overflow: 'hidden' },
+  noteInput: { fontSize: 13, fontWeight: '500', minHeight: 46, textAlignVertical: 'top', borderWidth: 0, outlineStyle: 'none', padding: 0 },
   charCounter: { alignSelf: 'flex-end', fontSize: 10.5, fontWeight: '600' },
   nextBtn: {
     flexDirection: 'row',
