@@ -34,7 +34,7 @@ const RegisterPage = ({ navigation, route }) => {
   const [showDriverRestrictionModal, setShowDriverRestrictionModal] = useState(false);
   const [showTermsModal, setShowTermsModal] = useState(false);
 
-  const [formData, setFormData] = useState({ name: '', email: '', password: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', shopName: '', email: '', password: '', phone: '' });
 
   const handleRoleSelection = (selectedRole) => {
     if (selectedRole === 'driver' && Platform.OS !== 'android') {
@@ -45,9 +45,13 @@ const RegisterPage = ({ navigation, route }) => {
   };
 
   const validateFormAndShowTerms = () => {
-    const { name, email, password, phone } = formData;
+    const { name, shopName, email, password, phone } = formData;
     if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
       dispatch(showErrorToast({ title: "Informations manquantes", message: "Veuillez remplir tous les champs." }));
+      return;
+    }
+    if (role === 'seller' && !shopName.trim()) {
+      dispatch(showErrorToast({ title: "Nom de boutique requis", message: "Veuillez renseigner le nom de votre boutique." }));
       return;
     }
     if (!VALIDATORS.name(name)) {
@@ -122,6 +126,18 @@ const RegisterPage = ({ navigation, route }) => {
             onChangeText={(t) => setFormData({ ...formData, name: t })} 
           />
         </View>
+
+        {role === 'seller' && (
+          <View style={styles.inputGroup}>
+            <Text style={styles.inputLabel}>Nom de votre boutique</Text>
+            <GlassInput 
+              icon="storefront-outline" 
+              placeholder="Ex: Boutique Élégance, Chez Koffi..." 
+              value={formData.shopName} 
+              onChangeText={(t) => setFormData({ ...formData, shopName: t })} 
+            />
+          </View>
+        )}
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>Téléphone</Text>

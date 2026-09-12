@@ -45,6 +45,7 @@ const UserInfoModal = ({ visible, user, onClose }) => {
                 <Ionicons name="person" size={50} color={THEME.COLORS.primary} />
               </View>
               <Text style={styles.userName}>{user.name}</Text>
+              {user.shopName ? <Text style={styles.userShopName}>Boutique : {user.shopName}</Text> : null}
               <Text style={styles.userEmail}>{user.email}</Text>
               
               <View style={styles.roleBadge}>
@@ -56,6 +57,14 @@ const UserInfoModal = ({ visible, user, onClose }) => {
             <Text style={styles.sectionTitle}>Informations & Activité</Text>
             
             <View style={styles.gridContainer}>
+              {user.shopName ? (
+                <InfoCard 
+                  icon="storefront" 
+                  label="Nom Boutique" 
+                  value={user.shopName} 
+                  valueColor={THEME.COLORS.primary}
+                />
+              ) : null}
               <InfoCard 
                 icon="call" 
                 label="Téléphone" 
@@ -109,6 +118,7 @@ const styles = StyleSheet.create({
   identitySection: { alignItems: 'center', marginBottom: 30 },
   avatarContainer: { width: 90, height: 90, borderRadius: 45, backgroundColor: THEME.COLORS.overlay, justifyContent: 'center', alignItems: 'center', marginBottom: 15, borderWidth: 2, borderColor: THEME.COLORS.border },
   userName: { color: THEME.COLORS.textPrimary, fontSize: 22, fontWeight: 'bold', marginBottom: 4, textAlign: 'center' },
+  userShopName: { color: THEME.COLORS.primary, fontSize: 15, fontWeight: '600', marginBottom: 6, textAlign: 'center' },
   userEmail: { color: THEME.COLORS.textSecondary, fontSize: 14, marginBottom: 12, textAlign: 'center' },
   roleBadge: { flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(255, 215, 0, 0.1)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: THEME.BORDERS.radius.pill },
   roleIcon: { marginRight: 6 },
