@@ -85,7 +85,7 @@ class UniversalErrorBoundary extends Component {
 }
 
 const linking = {
-  prefixes: ['http://localhost:19006', 'https://yely-backend-yzw4.onrender.com', 'https://yely.io', 'yely://'],
+  prefixes: ['http://localhost:19006', 'https://yely-amber.vercel.app', 'https://yely-backend-yzw4.onrender.com', 'https://yely.io', 'yely://'],
   config: {
     screens: {
       Home: 'home', RiderHome: 'rider-home', DriverHome: 'driver-home', SellerHome: 'seller-home',
