@@ -55,11 +55,11 @@ const RegisterPage = ({ navigation, route }) => {
       return;
     }
     if (!VALIDATORS.email(email)) {
-      dispatch(showErrorToast({ title: "Email invalide", message: ERROR_MESSAGES.email }));
+      dispatch(showErrorToast({ title: "E-mail invalide", message: ERROR_MESSAGES.email }));
       return;
     }
     if (passwordScore < 1 && password.length < 8) { 
-      dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caracteres." }));
+      dispatch(showErrorToast({ title: "Mot de passe trop faible", message: "Votre mot de passe doit contenir au moins 8 caractères." }));
       return;
     }
     setShowTermsModal(true);
@@ -73,7 +73,7 @@ const RegisterPage = ({ navigation, route }) => {
       const { user, accessToken, refreshToken } = res.data;
       dispatch(setCredentials({ user, accessToken, refreshToken }));
       setShowTermsModal(false);
-      dispatch(showSuccessToast({ title: "Bienvenue sur Yely", message: "Votre compte a ete cree avec succes." }));
+      dispatch(showSuccessToast({ title: "Bienvenue sur Yély", message: "Votre compte a été créé avec succès." }));
     } catch (err) {
       setShowTermsModal(false);
       const errorMessage = err?.data?.errors?.[0]?.message || err?.data?.message || "Une erreur est survenue.";
@@ -83,7 +83,7 @@ const RegisterPage = ({ navigation, route }) => {
 
   return (
     <AuthFormWrapper
-      title="Creer un compte"
+      title="Créer un compte"
       onBack={() => navigation.navigate('Landing')}
       actionButton={
         <GoldButton 
@@ -124,7 +124,7 @@ const RegisterPage = ({ navigation, route }) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Telephone</Text>
+          <Text style={styles.inputLabel}>Téléphone</Text>
           <PhoneInputGroup 
             phone={formData.phone} 
             setPhone={(t) => setFormData({ ...formData, phone: t })} 
@@ -136,10 +136,10 @@ const RegisterPage = ({ navigation, route }) => {
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Adresse email</Text>
+          <Text style={styles.inputLabel}>Adresse e-mail</Text>
           <GlassInput 
             icon="mail-outline" 
-            placeholder="Votre adresse email" 
+            placeholder="Votre adresse e-mail" 
             keyboardType="email-address" 
             autoCapitalize="none" 
             value={formData.email} 
@@ -158,7 +158,7 @@ const RegisterPage = ({ navigation, route }) => {
       </View>
 
       <AuthActionLinks 
-        subLabel="Deja membre ?"
+        subLabel="Déjà membre ?"
         subActionLabel="Se connecter"
         subOnPress={() => navigation.navigate('Login')}
       />

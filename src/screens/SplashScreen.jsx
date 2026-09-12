@@ -1,10 +1,10 @@
 // src/screens/SplashScreen.jsx
-// SPLASH SCREEN - LUXURY REVEAL (TRUE DIAGONAL WIPE) & SNAKE LOADER
-// STANDARD: Counter-Translation Masking / High-End UI
+// SPLASH SCREEN - LUXURY REVEAL & TEXTE YELY CENTRÉ
+// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import * as NativeSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -12,19 +12,17 @@ import Animated, {
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
-  withDelay,
   withRepeat,
   withSequence,
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { COLORS, FONTS, SHADOWS, SPACING } from '../theme/theme';
+import { COLORS, FONTS, SPACING } from '../theme/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 const SplashScreen = ({ isServerReady, onFinish }) => {
-  const logoScale = useSharedValue(0);
-  const logoOpacity = useSharedValue(0);
+  const textScale = useSharedValue(0.8);
   const textOpacity = useSharedValue(0);
   
   const snakeAnim = useSharedValue(-100);
@@ -36,14 +34,13 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
   useEffect(() => {
     NativeSplashScreen.hideAsync().catch(() => {});
 
-    logoOpacity.value = withTiming(1, { duration: 600 });
-    logoScale.value = withSequence(
-      withSpring(1.1, { damping: 8, stiffness: 200 }),
+    textOpacity.value = withTiming(1, { duration: 600 });
+    textScale.value = withSequence(
+      withSpring(1.06, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 15, stiffness: 150 })
     );
-    textOpacity.value = withDelay(400, withTiming(1, { duration: 500 }));
 
-    // Animation du serpent infinie (ne s'arrête jamais)
+    // Animation du serpent infinie
     snakeAnim.value = withRepeat(
       withTiming(100, { 
         duration: 1500, 
@@ -94,12 +91,8 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     ],
   }));
 
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: logoScale.value }],
-    opacity: logoOpacity.value,
-  }));
-
   const textStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: textScale.value }],
     opacity: textOpacity.value,
   }));
 
@@ -117,16 +110,8 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     <Animated.View style={[styles.absoluteContainer, containerStyle]}>
       <Animated.View style={[styles.innerContent, innerStyle]}>
         
-        <Animated.View style={[styles.logoContainer, logoStyle]}>
-          <Image
-            source={require('../../assets/logo.png')}
-            style={styles.logoImage}
-            resizeMode="cover"
-          />
-        </Animated.View>
-
         <Animated.View style={[styles.textContainer, textStyle]}>
-          <Text style={styles.appName}>YELY</Text>
+          <Text style={styles.appName}>Yély</Text>
         </Animated.View>
 
         <Animated.View entering={FadeIn.delay(300)} style={styles.loaderWrapper}>
@@ -163,29 +148,16 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  logoContainer: {
-    width: 110,
-    height: 110,
-    borderRadius: 55,
-    overflow: 'hidden',
-    borderWidth: 2.5,
-    borderColor: COLORS.champagneGold,
-    marginBottom: SPACING.xxl,
-    ...SHADOWS.gold,
+  textContainer: { 
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoImage: { width: '100%', height: '100%' },
-  textContainer: { alignItems: 'center' },
   appName: {
-    fontSize: 36,
+    fontSize: 54,
     fontWeight: '800',
     color: COLORS.champagneGold,
-    letterSpacing: 8,
-  },
-  tagline: {
-    fontSize: FONTS.sizes.bodySmall,
-    color: COLORS.textSecondary,
-    marginTop: SPACING.sm,
-    letterSpacing: 1,
+    letterSpacing: 3,
+    textAlign: 'center',
   },
   loaderWrapper: {
     position: 'absolute',

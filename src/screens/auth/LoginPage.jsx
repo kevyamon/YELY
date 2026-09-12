@@ -41,14 +41,14 @@ const LoginPage = ({ navigation }) => {
     let identifier = '';
     if (authMode === 'phone') {
       if (!phoneNumber.trim()) {
-        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre numero de telephone." }));
+        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre numéro de téléphone." }));
         return;
       }
       const cleanPhone = phoneNumber.replace(/\s/g, '');
       identifier = `+${callingCode}${cleanPhone}`;
     } else {
       if (!email.trim()) {
-        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre adresse email." }));
+        dispatch(showErrorToast({ title: "Champ requis", message: "Veuillez entrer votre adresse e-mail." }));
         return;
       }
       identifier = email.trim();
@@ -63,7 +63,7 @@ const LoginPage = ({ navigation }) => {
       const res = await login({ identifier, password, clientPlatform: Platform.OS }).unwrap();
       const { user, accessToken, refreshToken } = res.data;
       dispatch(setCredentials({ user, accessToken, refreshToken }));
-      dispatch(showSuccessToast({ title: "Connexion reussie", message: `Bon retour parmi nous, ${user.name} !` }));
+      dispatch(showSuccessToast({ title: "Connexion réussie", message: `Bon retour parmi nous, ${user.name} !` }));
     } catch (err) {
       dispatch(showErrorToast({ 
         title: "Erreur de connexion", 
@@ -75,7 +75,7 @@ const LoginPage = ({ navigation }) => {
   return (
     <AuthFormWrapper
       title="Bon retour"
-      subtitle="Accedez a votre espace securise."
+      subtitle="Accédez à votre espace sécurisé."
       onBack={() => navigation.navigate('Landing')}
       actionButton={
         <GoldButton
@@ -95,7 +95,7 @@ const LoginPage = ({ navigation }) => {
 
         <View style={styles.inputGroup}>
           <Text style={styles.inputLabel}>
-            {authMode === 'phone' ? 'Numero de Telephone' : 'Adresse E-mail'}
+            {authMode === 'phone' ? 'Numéro de téléphone' : 'Adresse e-mail'}
           </Text>
 
           {authMode === 'phone' ? (
@@ -155,13 +155,13 @@ const LoginPage = ({ navigation }) => {
             style={styles.switchAuthModeBtn}
           >
             <Text style={styles.switchAuthModeText}>
-              {authMode === 'phone' ? 'Utiliser mon adresse e-mail' : 'Utiliser mon numero de telephone'}
+              {authMode === 'phone' ? 'Utiliser mon adresse e-mail' : 'Utiliser mon numéro de téléphone'}
             </Text>
           </TouchableOpacity>
         </View>
 
         <View style={styles.inputGroup}>
-          <Text style={styles.inputLabel}>Mot de Passe</Text>
+          <Text style={styles.inputLabel}>Mot de passe</Text>
           <GlassInput
             value={password}
             onChangeText={(val) => {
@@ -178,9 +178,9 @@ const LoginPage = ({ navigation }) => {
       </View>
 
       <AuthActionLinks
-        leftLabel="Mot de passe oublie ?"
+        leftLabel="Mot de passe oublié ?"
         leftOnPress={() => navigation.navigate('ForgotPassword')}
-        rightLabel="Creer un compte"
+        rightLabel="Créer un compte"
         rightOnPress={() => navigation.navigate('Register')}
       />
 

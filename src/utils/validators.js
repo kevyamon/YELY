@@ -30,8 +30,8 @@ export const VALIDATORS = {
 };
 
 export const ERROR_MESSAGES = {
-  name: "Votre nom ne doit contenir ni chiffres ni caracteres speciaux.",
+  name: "Votre nom ne doit contenir ni chiffres ni caractères spéciaux.",
   email: "Veuillez fournir une adresse e-mail valide.",
-  phone: "Veuillez verifier votre numero de telephone.",
-  password: "Votre mot de passe doit inclure au moins 12 caracteres, une majuscule, un chiffre et un symbole."
+  phone: "Veuillez vérifier votre numéro de téléphone.",
+  password: "Votre mot de passe doit inclure au moins 12 caractères, une majuscule, un chiffre et un symbole."
 };

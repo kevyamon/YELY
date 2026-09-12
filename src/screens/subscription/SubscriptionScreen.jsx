@@ -13,11 +13,9 @@ import { apiSlice } from '../../store/slices/apiSlice';
 import { useGetConfigQuery, useGetSubscriptionStatusQuery, useInitializePaymentMutation, useLazyVerifyPaymentQuery } from '../../store/api/subscriptionApiSlice';
 import { selectCurrentUser, selectPromoMode, setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
 import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
-
 import PlanSelection from '../../components/subscription/PlanSelection';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
-
 import socketService from '../../services/socketService';
 import THEME from '../../theme/theme';
 
@@ -72,10 +70,8 @@ const SubscriptionScreen = ({ navigation }) => {
   useEffect(() => {
     if (statusData?.data) {
       const isSubActive = Boolean(
-        statusData.data.isActive || 
-        (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
+        statusData.data.isActive || (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
       );
-
       dispatch(updateSubscriptionStatus({
         isActive: isSubActive,
         isPending: Boolean(statusData.data.isPending),
@@ -200,7 +196,13 @@ const SubscriptionScreen = ({ navigation }) => {
         window.location.href = paymentUrl;
       } else {
         const returnUrl = 'https://yely-amber.vercel.app';
-        const browserRes = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
+        let browserRes = null;
+        try {
+          browserRes = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
+        } catch (bErr) {
+          console.warn('[AUTH_SESSION] Fallback vers openBrowserAsync:', bErr?.message);
+          await WebBrowser.openBrowserAsync(paymentUrl);
+        }
         
         let returnRef = null;
         if (browserRes?.type === 'success' && browserRes?.url) {
