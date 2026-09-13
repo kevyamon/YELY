@@ -4,6 +4,7 @@
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
+import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
 import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
@@ -145,18 +146,11 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig]);
 
-  useEffect(() => {
-    return () => {
-      dispatch(setSubscriptionModalDismissed(true));
-    };
-  }, [dispatch]);
-
-  useFocusEffect(
-    useCallback(() => {
-      refetchConfig();
-      refetchStatus();
-    }, [refetchConfig, refetchStatus])
-  );
+  useEffect(() => () => { dispatch(setSubscriptionModalDismissed(true)); }, [dispatch]);
+  useFocusEffect(useCallback(() => {
+    refetchConfig();
+    refetchStatus();
+  }, [refetchConfig, refetchStatus]));
 
   useEffect(() => {
     if (isStatusLoading || isConfigLoading) return;
@@ -195,7 +189,7 @@ const SubscriptionScreen = ({ navigation }) => {
         }
         window.location.href = paymentUrl;
       } else {
-        const returnUrl = 'https://yely-amber.vercel.app';
+        const returnUrl = Linking.createURL('subscription') || 'yely://subscription';
         let browserRes = null;
         try {
           browserRes = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
