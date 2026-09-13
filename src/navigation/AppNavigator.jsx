@@ -69,6 +69,7 @@ import ValidationCenter from '../screens/admin/ValidationCenter';
 import IdentityValidationCenter from '../screens/admin/IdentityValidationCenter';
 import PromoAlertModal from '../components/subscription/PromoAlertModal';
 import PaymentFailureScreen from '../screens/subscription/PaymentFailure';
+import PaymentReturnScreen from '../screens/subscription/PaymentReturnScreen';
 import SubscriptionScreen from '../screens/subscription/SubscriptionScreen';
 import WaitScreen from '../screens/subscription/WaitScreen';
 
@@ -213,6 +214,7 @@ const AppNavigator = () => {
             <Stack.Screen name="ResetPassword" component={ResetPasswordScreen} />
             <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
             <Stack.Screen name="TermsOfService" component={TermsOfServiceScreen} />
+            <Stack.Screen name="PaymentReturn" component={PaymentReturnScreen} />
           </Stack.Group>
         ) : isAdmin ? (
           <Stack.Group>
@@ -231,6 +233,7 @@ const AppNavigator = () => {
             <Stack.Screen name="AdminReports" component={AdminReports} />
             <Stack.Screen name="AdminOperationalReports" component={AdminOperationalReports} />
             <Stack.Screen name="MapManagement" component={MapManagement} />
+            <Stack.Screen name="PaymentReturn" component={PaymentReturnScreen} />
           </Stack.Group>
         ) : (
           <Stack.Group>
@@ -262,6 +265,7 @@ const AppNavigator = () => {
               <Stack.Screen name="Subscription" component={SubscriptionScreen} />
               <Stack.Screen name="WaitSubscription" component={WaitScreen} />
               <Stack.Screen name="PaymentFailure" component={PaymentFailureScreen} />
+              <Stack.Screen name="PaymentReturn" component={PaymentReturnScreen} />
             </Stack.Group>
           </Stack.Group>
         )}
