@@ -1,6 +1,6 @@
 // src/services/mapService.js
 // SERVICE CARTO & GEOLOCALISATION
-// Moteurs : Nominatim + OSRM (Routage Resilient) + Haversine + Reperes Locaux (POI)
+// Moteurs : Nominatim + OSRM Multi-Sources + Haversine + Reperes Locaux (POI)
 // CSCSM Level: Bank Grade (Modularise < 325 lignes, Sans Emojis)
 
 import * as Location from 'expo-location';
@@ -16,10 +16,15 @@ const ADDRESS_CACHE_PRECISION = 4;
 const ADDRESS_CACHE_MAX_SIZE = 50;
 const ROUTE_CACHE_MAX_SIZE = 40;
 const ADDRESS_DEBOUNCE_MS = 1500;
-const ROUTE_FETCH_TIMEOUT_MS = 6000;
-const MAX_RETRIES = 3;
-const RETRY_BACKOFF_MS = 1000;
+const ROUTE_FETCH_TIMEOUT_MS = 2800;
+const MAX_RETRIES = 2;
+const RETRY_BACKOFF_MS = 600;
 const MAX_LANDMARK_DISTANCE_METERS = 350;
+
+const ROUTING_SERVERS = [
+  'https://router.project-osrm.org/route/v1/driving',
+  'https://routing.openstreetmap.de/routed-car/route/v1/driving'
+];
 
 const addressCache = new Map();
 const routeCache = new Map();
@@ -28,6 +33,7 @@ let lastSuccessfulCoords = null;
 let globalPoisCache = null;
 let globalPoisCacheTimestamp = 0;
 const POI_CACHE_TTL = 3600 * 1000;
+let hasWarmedUpRouting = false;
 
 const getApiUrl = () => (ENV && ENV.API_URL) ? ENV.API_URL : (process.env.EXPO_PUBLIC_API_URL || '');
 
@@ -93,9 +99,27 @@ const writeAddressCache = (key, address) => {
 const getRouteCacheKey = (sLat, sLng, eLat, eLng) =>
   `${Number(sLat).toFixed(3)},${Number(sLng).toFixed(3)}->${Number(eLat).toFixed(3)},${Number(eLng).toFixed(3)}`;
 
-const writeRouteCache = (key, points) => {
+const writeRouteCache = (key, points, meta) => {
   if (routeCache.size >= ROUTE_CACHE_MAX_SIZE) routeCache.delete(routeCache.keys().next().value);
-  routeCache.set(key, points);
+  routeCache.set(key, { points, meta });
+};
+
+const findSpatialCachedRoute = (sLat, sLng, eLat, eLng) => {
+  const directKey = getRouteCacheKey(sLat, sLng, eLat, eLng);
+  const directHit = routeCache.get(directKey);
+  if (directHit?.points) return directHit.points;
+
+  for (const entry of routeCache.values()) {
+    if (!entry?.meta || !entry?.points || entry.points.length < 2) continue;
+    const destDist = MapService.calculateDistance({ latitude: eLat, longitude: eLng }, entry.meta.end);
+    if (destDist <= 25) {
+      const origDist = MapService.calculateDistance({ latitude: sLat, longitude: sLng }, entry.meta.start);
+      if (origDist <= 60) {
+        return [{ latitude: sLat, longitude: sLng }, ...entry.points.slice(1)];
+      }
+    }
+  }
+  return null;
 };
 
 const fetchWithRetry = async (url, options = {}, retries = MAX_RETRIES) => {
@@ -107,7 +131,7 @@ const fetchWithRetry = async (url, options = {}, retries = MAX_RETRIES) => {
       clearTimeout(timeoutId);
       if (!response.ok) {
         if (response.status === 429) {
-          await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * 2));
+          await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * 1.5));
           continue;
         }
         if (response.status >= 500) throw new Error(`Erreur Serveur: ${response.status}`);
@@ -116,7 +140,7 @@ const fetchWithRetry = async (url, options = {}, retries = MAX_RETRIES) => {
       return response;
     } catch (error) {
       if (i === retries - 1) throw error;
-      await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * Math.pow(2, i)));
+      await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * Math.pow(1.5, i)));
     }
   }
 };
@@ -155,6 +179,16 @@ const FALLBACK_LANDMARKS = [
 ];
 
 class MapService {
+  static preloadRoutingEngine() {
+    if (hasWarmedUpRouting) return;
+    hasWarmedUpRouting = true;
+    setTimeout(() => {
+      fetch('https://router.project-osrm.org/route/v1/driving/-3.0285,5.4215;-3.0296,5.4228?overview=false', {
+        headers: API_HEADERS
+      }).catch(() => {});
+    }, 400);
+  }
+
   static async requestPermissions() {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
@@ -277,28 +311,32 @@ class MapService {
     const distance = this.calculateDistance({ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng });
     if (distance < 10) return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
 
-    const routeKey = getRouteCacheKey(sLat, sLng, eLat, eLng);
-    const cachedRoute = routeCache.get(routeKey);
+    const cachedPoints = findSpatialCachedRoute(sLat, sLng, eLat, eLng);
+    if (cachedPoints && cachedPoints.length > 2) return cachedPoints;
 
-    try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
-      const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, MAX_RETRIES);
-      if (response.ok) {
-        const data = await response.json();
-        if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-          const points = data.routes[0].geometry.coordinates.map((coord) => ({
-            latitude: coord[1],
-            longitude: coord[0],
-          }));
-          writeRouteCache(routeKey, points);
-          return points;
+    const routeKey = getRouteCacheKey(sLat, sLng, eLat, eLng);
+    const meta = { start: { latitude: sLat, longitude: sLng }, end: { latitude: eLat, longitude: eLng } };
+
+    for (const baseUrl of ROUTING_SERVERS) {
+      try {
+        const url = `${baseUrl}/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
+        const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, 2);
+        if (response && response.ok) {
+          const data = await response.json();
+          if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
+            const points = data.routes[0].geometry.coordinates.map((coord) => ({
+              latitude: coord[1],
+              longitude: coord[0],
+            }));
+            writeRouteCache(routeKey, points, meta);
+            return points;
+          }
         }
+      } catch (error) {
+        console.warn(`[MapService] Échec routage (${baseUrl}):`, error.message);
       }
-    } catch (error) {
-      console.warn('[MapService] Erreur OSRM Route:', error.message);
     }
 
-    if (cachedRoute && cachedRoute.length > 2) return cachedRoute;
     return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
   }
 

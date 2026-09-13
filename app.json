@@ -34,20 +34,18 @@
     },
     "android": {
       "package": "com.yely.app",
-      "versionCode": 26,
+      "versionCode": 27,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#000000"
       },
-      "predictiveBackGestureEnabled": false,
       "permissions": [
         "ACCESS_COARSE_LOCATION",
         "ACCESS_FINE_LOCATION",
         "ACCESS_BACKGROUND_LOCATION",
         "FOREGROUND_SERVICE",
         "FOREGROUND_SERVICE_LOCATION",
-        "RECEIVE_BOOT_COMPLETED",
         "VIBRATE",
         "RECORD_AUDIO",
         "MODIFY_AUDIO_SETTINGS",

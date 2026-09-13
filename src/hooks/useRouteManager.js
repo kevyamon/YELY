@@ -1,50 +1,21 @@
 // src/hooks/useRouteManager.js
-// GESTIONNAIRE DE TRACE DE ROUTE - Trace anime, suivi en temps reel et recalcul sur deviation
-// CSCSM Level: Bank Grade
+// GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Animation fluide, réactivité instantanée et résilience
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
-
-const ROUTE_DRAW_DURATION_MS = 300;
-const ROUTE_DRAW_INTERVAL_MS = 16;
-const TRIM_THRESHOLD_METERS = 2;
-const DEVIATION_THRESHOLD_METERS = 60;
-const SILENT_RETRY_DELAY_MS = 10000; 
-
-const computeStepSize = (totalPoints) => {
-  const totalFrames = ROUTE_DRAW_DURATION_MS / ROUTE_DRAW_INTERVAL_MS;
-  return Math.max(1, Math.ceil(totalPoints / totalFrames));
-};
-
-const haversineMeters = (lat1, lng1, lat2, lng2) => {
-  if (lat1 == null || lng1 == null || lat2 == null || lng2 == null) return Infinity;
-  const R = 6371e3;
-  const p1 = (lat1 * Math.PI) / 180;
-  const p2 = (lat2 * Math.PI) / 180;
-  const dp = ((lat2 - lat1) * Math.PI) / 180;
-  const dl = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dp / 2) ** 2 +
-    Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-};
-
-const getProjectedPoint = (A, B, P) => {
-  const dx = B.longitude - A.longitude;
-  const dy = B.latitude - A.latitude;
-  if (dx === 0 && dy === 0) return { latitude: A.latitude, longitude: A.longitude };
-
-  const t = ((P.longitude - A.longitude) * dx + (P.latitude - A.latitude) * dy) / (dx * dx + dy * dy);
-  const tClamped = Math.max(0, Math.min(1, t));
-
-  return {
-    latitude: A.latitude + tClamped * dy,
-    longitude: A.longitude + tClamped * dx,
-  };
-};
-
-const distSq = (p1, p2) =>
-  Math.pow(p1.latitude - p2.latitude, 2) + Math.pow(p1.longitude - p2.longitude, 2);
+import {
+  computeStepSize,
+  distanceToRoute,
+  distSq,
+  FAST_RETRY_DELAY_MS,
+  getProjectedPoint,
+  haversineMeters,
+  ROUTE_DRAW_INTERVAL_MS,
+  SILENT_RETRY_DELAY_MS,
+  TRIM_THRESHOLD_METERS,
+  DEVIATION_THRESHOLD_METERS,
+} from '../utils/routeGeometry';
 
 const useRouteManager = (location, driverLocation, markers) => {
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
@@ -60,6 +31,11 @@ const useRouteManager = (location, driverLocation, markers) => {
   
   const lastRouteFetchTimeRef = useRef(0);
   const retryTimeoutRef = useRef(null);
+  const isFetchingRef = useRef(false);
+
+  useEffect(() => {
+    MapService.preloadRoutingEngine();
+  }, []);
 
   const stopDrawAnimation = useCallback(() => {
     if (drawIntervalRef.current) {
@@ -93,7 +69,7 @@ const useRouteManager = (location, driverLocation, markers) => {
   );
 
   const fetchAndStoreRoute = useCallback(
-    async (pointA, pointB, destKey) => {
+    async (pointA, pointB, destKey, isFastRetry = false) => {
       if (!pointA || !pointB) {
         stopDrawAnimation();
         setVisibleRoutePoints([]);
@@ -105,28 +81,40 @@ const useRouteManager = (location, driverLocation, markers) => {
         return;
       }
 
+      if (isFetchingRef.current && !isFastRetry) return;
+      isFetchingRef.current = true;
+
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
       lastRouteFetchTimeRef.current = Date.now();
 
       try {
         const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+        isFetchingRef.current = false;
         
         if (lastRouteDestKeyRef.current !== destKey) return;
 
-        // Protection Anti-Ligne Droite : Si l'API a expiré/échoué (ou renvoie une ligne droite de secours de 2 points)
-        // alors que nous disposons déjà d'un tracé détaillé en mémoire, on ignore le repli pour conserver le tracé détaillé.
         const isFallbackStraightLine = routePoints && routePoints.length === 2;
         const hasExistingDetailedRoute = fullRoutePointsRef.current && fullRoutePointsRef.current.length > 2;
 
+        if (isFallbackStraightLine && !hasExistingDetailedRoute && !isFastRetry) {
+          clearTimeout(retryTimeoutRef.current);
+          retryTimeoutRef.current = setTimeout(() => {
+            if (lastRouteDestKeyRef.current === destKey) {
+              fetchAndStoreRoute(pointA, pointB, destKey, true);
+            }
+          }, FAST_RETRY_DELAY_MS);
+          return;
+        }
+
         if (!routePoints || (isFallbackStraightLine && hasExistingDetailedRoute)) {
-           clearTimeout(retryTimeoutRef.current);
-           retryTimeoutRef.current = setTimeout(() => {
-              if (lastRouteDestKeyRef.current === destKey) {
-                 lastRouteFetchTimeRef.current = 0; 
-              }
-           }, SILENT_RETRY_DELAY_MS);
-           return;
+          clearTimeout(retryTimeoutRef.current);
+          retryTimeoutRef.current = setTimeout(() => {
+            if (lastRouteDestKeyRef.current === destKey) {
+              lastRouteFetchTimeRef.current = 0; 
+            }
+          }, SILENT_RETRY_DELAY_MS);
+          return;
         }
 
         clearTimeout(retryTimeoutRef.current);
@@ -134,13 +122,14 @@ const useRouteManager = (location, driverLocation, markers) => {
         setFullRoutePoints(routePoints);
         lastPassedIndexRef.current = 0;
         animateRouteDraw(routePoints);
-      } catch (error) {
-         clearTimeout(retryTimeoutRef.current);
-         retryTimeoutRef.current = setTimeout(() => {
-            if (lastRouteDestKeyRef.current === destKey) {
-               lastRouteFetchTimeRef.current = 0;
-            }
-         }, SILENT_RETRY_DELAY_MS);
+      } catch (_) {
+        isFetchingRef.current = false;
+        clearTimeout(retryTimeoutRef.current);
+        retryTimeoutRef.current = setTimeout(() => {
+          if (lastRouteDestKeyRef.current === destKey) {
+            lastRouteFetchTimeRef.current = 0;
+          }
+        }, FAST_RETRY_DELAY_MS);
       }
     },
     [animateRouteDraw, stopDrawAnimation]
@@ -201,16 +190,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
   }, []);
 
-  const distanceToRoute = useCallback((lat, lng, routePoints) => {
-    if (!routePoints || routePoints.length < 2) return Infinity;
-    let minDist = Infinity;
-    for (let i = 0; i < routePoints.length; i++) {
-      const d = haversineMeters(lat, lng, routePoints[i].latitude, routePoints[i].longitude);
-      if (d < minDist) minDist = d;
-    }
-    return minDist;
-  }, []);
-
   useEffect(() => {
     if (!markers || !Array.isArray(markers)) return;
 
@@ -233,8 +212,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
-    
-    // CORRECTION : Si une origine manuelle existe et qu'aucun chauffeur n'est assigné, elle force l'origine du tracé.
     const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
 
     const routeOriginLat = isManualOriginActive 
@@ -278,8 +255,8 @@ const useRouteManager = (location, driverLocation, markers) => {
     const full = fullRoutePointsRef.current;
     if (!full || full.length === 0) {
       const now = Date.now();
-      if (now - lastRouteFetchTimeRef.current > SILENT_RETRY_DELAY_MS) {
-         fetchAndStoreRoute(
+      if (now - lastRouteFetchTimeRef.current > FAST_RETRY_DELAY_MS && !isFetchingRef.current) {
+        fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
           destKey
@@ -291,7 +268,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
-      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 20000)) {
+      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
         fetchAndStoreRoute(
           { latitude: routeOriginLat, longitude: routeOriginLng },
           { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
@@ -311,7 +288,6 @@ const useRouteManager = (location, driverLocation, markers) => {
         )
       : TRIM_THRESHOLD_METERS + 1;
 
-    // CORRECTION : On bloque le rognage (trim) si le point de départ est une origine manuelle fixe.
     if (movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
@@ -325,13 +301,12 @@ const useRouteManager = (location, driverLocation, markers) => {
     fetchAndStoreRoute,
     trimRouteFromCurrentPosition,
     stopDrawAnimation,
-    distanceToRoute,
   ]);
 
   useEffect(() => {
     return () => {
-        stopDrawAnimation();
-        clearTimeout(retryTimeoutRef.current);
+      stopDrawAnimation();
+      clearTimeout(retryTimeoutRef.current);
     };
   }, [stopDrawAnimation]);
 
