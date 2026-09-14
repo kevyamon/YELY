@@ -87,9 +87,11 @@ const SellerHome = ({ navigation }) => {
     }
   }, [isFocused, refetchProfile, refetchSubscription]);
 
+  const isPostPaymentReturn = route?.params?.payment === 'success' || route?.params?.status === 'success';
+
   React.useEffect(() => {
-    // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
-    if (promoMode === null || isSubLoading) return;
+    // Sécurité Senior : Ne pas rediriger tant que les configurations chargent ou si on revient d'un paiement validé
+    if (promoMode === null || isSubLoading || isPostPaymentReturn) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isBlocked && !isPending && !isActive) {
@@ -100,7 +102,7 @@ const SellerHome = ({ navigation }) => {
         }
       }
     }
-  }, [isFocused, isBlocked, isPending, isActive, subStatus?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
+  }, [isFocused, isBlocked, isPending, isActive, subStatus?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation, isPostPaymentReturn]);
 
   const renderSubscriptionBanner = () => {
     if (isActive || promoMode?.isActive) return null;

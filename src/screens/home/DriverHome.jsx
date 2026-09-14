@@ -145,9 +145,11 @@ const DriverHome = ({ navigation, route }) => {
     }
   }, [profileResponse, dispatch]);
 
+  const isPostPaymentReturn = route?.params?.payment === 'success' || route?.params?.status === 'success';
+
   useEffect(() => {
-    // Sécurité Senior : Ne pas rediriger tant que les configurations de démarrage (Promo VIP / Abonnement) chargent
-    if (promoMode === null || isSubLoading) return;
+    // Sécurité Senior : Ne pas rediriger tant que les configurations chargent ou si on revient d'un paiement validé
+    if (promoMode === null || isSubLoading || isPostPaymentReturn) return;
 
     if (isFocused && !isSubscriptionModalDismissed) {
       if (isSubscriptionBlocked && !isPending && !isActive) {
@@ -158,7 +160,7 @@ const DriverHome = ({ navigation, route }) => {
         }
       }
     }
-  }, [isFocused, isSubscriptionBlocked, isPending, isActive, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation]);
+  }, [isFocused, isSubscriptionBlocked, isPending, isActive, subStatusRedux?.isRejected, isSubscriptionModalDismissed, promoMode, isSubLoading, navigation, isPostPaymentReturn]);
 
 
 

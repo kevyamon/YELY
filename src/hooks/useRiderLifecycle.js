@@ -87,13 +87,19 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
 
-  // CORRECTION : Suppression totale de la logique d'origine manuelle pour l'adresse
+  // Résolution Immédiate & Haute Précision de l'Adresse
   useEffect(() => {
     let isMounted = true;
 
     if (location) {
+      // 1. Calcul LOCAL IMMÉDIAT (< 5ms) pour que l'adresse détaillée apparaisse dès la 1ère seconde
+      const immediateAddress = MapService.getFallbackAddress(location.latitude, location.longitude);
+      if (immediateAddress && (!currentAddress || currentAddress.toLowerCase().includes('recherche'))) {
+        setCurrentAddress(immediateAddress);
+        dispatch(updateAddress(immediateAddress));
+      }
+
       let shouldFetch = false;
-      
       if (!lastGeocodedLocationRef.current) {
         shouldFetch = true;
       } else {
@@ -101,7 +107,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
           location.latitude, location.longitude,
           lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
         );
-        if (distance > 50) {
+        if (distance > 30) {
           shouldFetch = true;
         }
       }
@@ -109,20 +115,23 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       if (shouldFetch) {
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
         
+        // Délai ultra-réactif de 350ms pour enrichir l'adresse sans latence
         debounceTimeoutRef.current = setTimeout(async () => {
           try {
             const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
-            if (isMounted) {
+            if (isMounted && addr) {
               setCurrentAddress(addr);
               dispatch(updateAddress(addr));
               lastGeocodedLocationRef.current = location;
             }
           } catch (error) {
             if (isMounted) {
-              setCurrentAddress(MapService.getFallbackAddress(location.latitude, location.longitude));
+              const fallback = MapService.getFallbackAddress(location.latitude, location.longitude);
+              setCurrentAddress(fallback);
+              dispatch(updateAddress(fallback));
             }
           }
-        }, 1500);
+        }, 350);
       }
     } else if (errorMsg) {
       if (isMounted) {
@@ -134,7 +143,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       isMounted = false;
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
     };
-  }, [location, errorMsg]);
+  }, [location, errorMsg, dispatch]);
 
   const handleRefreshLocation = async () => {
     if (!location) {

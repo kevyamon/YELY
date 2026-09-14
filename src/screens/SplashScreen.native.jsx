@@ -1,6 +1,6 @@
 // src/screens/SplashScreen.native.jsx
-// SPLASH SCREEN NATIF (Android & iOS) - Rendu Direct Robuste & Garanti
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Robuste)
+// SPLASH SCREEN NATIF (Android & iOS) - Rendu Direct 100% Garanti & Centrage Parfait
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, Zero-Fail)
 
 import * as NativeSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
@@ -23,11 +23,11 @@ const splashCenterImg = require('../../assets/images/splash-center.png');
 const SplashScreenNative = ({ isServerReady, onFinish }) => {
   const snakeAnim = useSharedValue(-100);
   const isFinishing = useSharedValue(false);
-  const wipeProgress = useSharedValue(0);
+  const opacityAnim = useSharedValue(1);
   const [loadingText, setLoadingText] = useState('Démarrage de Yély...');
 
   useEffect(() => {
-    // Relais immédiat avec l'écran OS
+    // Relais immédiat pour cacher l'écran OS
     NativeSplashScreen.hideAsync().catch(() => {});
 
     // Animation continue du serpentin de chargement
@@ -50,18 +50,12 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
 
       snakeAnim.value = withTiming(
         0,
-        {
-          duration: 250,
-          easing: Easing.inOut(Easing.ease),
-        },
+        { duration: 200, easing: Easing.inOut(Easing.ease) },
         (finished) => {
           if (finished) {
-            wipeProgress.value = withTiming(
-              1.5,
-              {
-                duration: 800,
-                easing: Easing.bezier(0.45, 0, 0.15, 1),
-              },
+            opacityAnim.value = withTiming(
+              0,
+              { duration: 450, easing: Easing.out(Easing.ease) },
               (done) => {
                 if (done && onFinish) {
                   runOnJS(onFinish)();
@@ -72,21 +66,10 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
         }
       );
     }
-  }, [isServerReady, onFinish, isFinishing, snakeAnim, wipeProgress]);
+  }, [isServerReady, onFinish, isFinishing, snakeAnim, opacityAnim]);
 
-  const containerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: -wipeProgress.value * SCREEN_WIDTH },
-      { translateY: -wipeProgress.value * SCREEN_HEIGHT },
-    ],
-    borderBottomRightRadius: wipeProgress.value * (SCREEN_WIDTH * 1.2),
-  }));
-
-  const innerStyle = useAnimatedStyle(() => ({
-    transform: [
-      { translateX: wipeProgress.value * SCREEN_WIDTH },
-      { translateY: wipeProgress.value * SCREEN_HEIGHT },
-    ],
+  const animatedScreenStyle = useAnimatedStyle(() => ({
+    opacity: opacityAnim.value,
   }));
 
   const snakeStyle = useAnimatedStyle(() => {
@@ -100,55 +83,45 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
   });
 
   return (
-    <Animated.View style={[styles.absoluteContainer, containerStyle]}>
-      <Animated.View style={[styles.innerContent, innerStyle]}>
-        
-        {/* Rendu direct et inconditionnel de l'image centrale sans Reanimated scale fragile */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={splashCenterImg}
-            style={styles.splashImage}
-            resizeMode="contain"
-            fadeDuration={0}
-          />
+    <Animated.View style={[styles.rootContainer, animatedScreenStyle]}>
+      {/* 1. Logo Central Pur : Rendu direct sans aucun transform matriciel */}
+      <View style={styles.centerContainer}>
+        <Image
+          source={splashCenterImg}
+          style={styles.splashImage}
+          resizeMode="contain"
+          fadeDuration={0}
+        />
+      </View>
+
+      {/* 2. Loader au bas de l'écran */}
+      <Animated.View entering={FadeIn.delay(100)} style={styles.loaderWrapper}>
+        <View style={styles.progressTrack}>
+          <Animated.View style={[styles.progressFill, snakeStyle]} />
         </View>
-
-        {/* Loader de progression au bas de l'écran */}
-        <Animated.View entering={FadeIn.delay(100)} style={styles.loaderWrapper}>
-          <View style={styles.progressTrack}>
-            <Animated.View style={[styles.progressFill, snakeStyle]} />
-          </View>
-          <Text style={styles.progressText}>{loadingText}</Text>
-        </Animated.View>
-
+        <Text style={styles.progressText}>{loadingText}</Text>
       </Animated.View>
     </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  absoluteContainer: {
+  rootContainer: {
     position: 'absolute',
     top: 0,
     left: 0,
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
-    zIndex: 9999,
-    backgroundColor: '#D4AF37',
-    overflow: 'hidden',
-  },
-  innerContent: {
-    width: SCREEN_WIDTH,
-    height: SCREEN_HEIGHT,
+    zIndex: 99999,
+    backgroundColor: '#D4AF37', // Fond jaune officiel
     justifyContent: 'center',
     alignItems: 'center',
-    position: 'relative',
   },
-  imageContainer: {
+  centerContainer: {
     width: 220,
     height: 220,
-    alignItems: 'center',
     justifyContent: 'center',
+    alignItems: 'center',
   },
   splashImage: {
     width: 220,

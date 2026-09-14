@@ -1,50 +1,53 @@
 // src/services/mapService.js
-// SERVICE CARTO & GEOLOCALISATION
-// Moteurs : Nominatim + OSRM Multi-Sources + Haversine + Reperes Locaux (POI)
-// CSCSM Level: Bank Grade (Modularise < 325 lignes, Sans Emojis)
+// SERVICE CARTOGRAPHIQUE ULTRA-OPTIMISÉ - Nominatim & OSRM (100% Gratuit)
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
-import * as Location from 'expo-location';
-import { Platform } from 'react-native';
-import ENV from '../config/env';
+import { MAFERE_ZONE } from '../utils/mafereZone';
+import { fetchWithRetry } from '../utils/routeGeometry';
 
-const API_HEADERS = {
-  'Accept': 'application/json',
-  ...(Platform.OS !== 'web' && { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' })
-};
-
-const ADDRESS_CACHE_PRECISION = 4;
-const ADDRESS_CACHE_MAX_SIZE = 50;
-const ROUTE_CACHE_MAX_SIZE = 40;
-const ADDRESS_DEBOUNCE_MS = 1500;
-const ROUTE_FETCH_TIMEOUT_MS = 2800;
-const MAX_RETRIES = 2;
-const RETRY_BACKOFF_MS = 600;
-const MAX_LANDMARK_DISTANCE_METERS = 350;
-
+const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
 const ROUTING_SERVERS = [
   'https://router.project-osrm.org/route/v1/driving',
-  'https://routing.openstreetmap.de/routed-car/route/v1/driving'
+  'https://routing.openstreetmap.de/routed-car/route/v1/driving',
+];
+
+const ROUTE_FETCH_TIMEOUT_MS = 3500;
+const MAX_LANDMARK_DISTANCE_METERS = 500;
+const API_HEADERS = { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' };
+
+const FALLBACK_LANDMARKS = [
+  { name: 'Grand terrain de Maféré', latitude: 5.4192, longitude: -3.0234 },
+  { name: 'Mairie de Maféré', latitude: 5.4205, longitude: -3.0211 },
+  { name: 'Hôpital Général de Maféré', latitude: 5.4218, longitude: -3.0245 },
+  { name: 'Gare routière de Maféré', latitude: 5.4180, longitude: -3.0220 },
+  { name: 'Marché central de Maféré', latitude: 5.4210, longitude: -3.0230 },
+  { name: 'Pharmacie Principale', latitude: 5.4200, longitude: -3.0225 },
 ];
 
 const addressCache = new Map();
 const routeCache = new Map();
+const ADDRESS_CACHE_MAX_SIZE = 500;
+const ROUTE_CACHE_MAX_SIZE = 100;
+const ADDRESS_CACHE_PRECISION = 4;
+
 let lastSuccessfulAddress = null;
 let lastSuccessfulCoords = null;
 let globalPoisCache = null;
-let globalPoisCacheTimestamp = 0;
-const POI_CACHE_TTL = 3600 * 1000;
-let hasWarmedUpRouting = false;
+let lastPoisFetchTime = 0;
+const POIS_CACHE_TTL_MS = 5 * 60 * 1000;
 
-const getApiUrl = () => (ENV && ENV.API_URL) ? ENV.API_URL : (process.env.EXPO_PUBLIC_API_URL || '');
-
-const fetchActivePOIs = async () => {
-  if (globalPoisCache && Date.now() - globalPoisCacheTimestamp < POI_CACHE_TTL) return globalPoisCache;
+export const fetchActivePOIs = async () => {
+  const now = Date.now();
+  if (globalPoisCache && now - lastPoisFetchTime < POIS_CACHE_TTL_MS) {
+    return globalPoisCache;
+  }
   try {
-    const res = await fetch(`${getApiUrl()}/pois`, { headers: API_HEADERS });
-    if (res.ok) {
-      const json = await res.json();
-      globalPoisCache = Array.isArray(json.data) ? json.data : (Array.isArray(json) ? json : []);
-      globalPoisCacheTimestamp = Date.now();
+    const { default: store } = await import('../store/store');
+    const { poiApiSlice } = await import('../store/api/poiApiSlice');
+    const result = await store.dispatch(poiApiSlice.endpoints.getAllPOIs.initiate(undefined, { forceRefetch: false }));
+    if (result.data?.data && Array.isArray(result.data.data)) {
+      globalPoisCache = result.data.data;
+      lastPoisFetchTime = now;
       return globalPoisCache;
     }
   } catch (e) {
@@ -54,8 +57,7 @@ const fetchActivePOIs = async () => {
 };
 
 const isPublicLandmark = (poi) => {
-  if (!poi || poi.isActive === false) return false;
-  if (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true) return false;
+  if (!poi || poi.isActive === false || poi.type === 'SHOP' || poi.sellerId || poi.isShop === true) return false;
   const name = String(poi.name || '').trim().toLowerCase();
   if (!name || name.length < 3) return false;
   const banned = ['démo', 'demo', 'compte', 'test', 'fake', 'admin', 'profil', 'sample', 'boutique', 'vendeur'];
@@ -113,137 +115,70 @@ const findSpatialCachedRoute = (sLat, sLng, eLat, eLng) => {
     if (!entry?.meta || !entry?.points || entry.points.length < 2) continue;
     const destDist = MapService.calculateDistance({ latitude: eLat, longitude: eLng }, entry.meta.end);
     if (destDist <= 25) {
-      const origDist = MapService.calculateDistance({ latitude: sLat, longitude: sLng }, entry.meta.start);
-      if (origDist <= 60) {
-        return [{ latitude: sLat, longitude: sLng }, ...entry.points.slice(1)];
-      }
+      const startDist = MapService.calculateDistance({ latitude: sLat, longitude: sLng }, entry.meta.start);
+      if (startDist <= 25) return entry.points;
     }
   }
   return null;
 };
 
-const fetchWithRetry = async (url, options = {}, retries = MAX_RETRIES) => {
-  for (let i = 0; i < retries; i++) {
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), options.timeout || ROUTE_FETCH_TIMEOUT_MS);
-      const response = await fetch(url, { ...options, signal: controller.signal });
-      clearTimeout(timeoutId);
-      if (!response.ok) {
-        if (response.status === 429) {
-          await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * 1.5));
-          continue;
-        }
-        if (response.status >= 500) throw new Error(`Erreur Serveur: ${response.status}`);
-        return response;
-      }
-      return response;
-    } catch (error) {
-      if (i === retries - 1) throw error;
-      await new Promise(r => setTimeout(r, RETRY_BACKOFF_MS * Math.pow(1.5, i)));
-    }
-  }
-};
-
-let addressDebounceTimer = null;
-let pendingGeocodeRequests = [];
+let debounceTimer = null;
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
-  pendingGeocodeRequests.push({ resolve, reject });
-  clearTimeout(addressDebounceTimer);
-  addressDebounceTimer = setTimeout(async () => {
-    const current = [...pendingGeocodeRequests];
-    pendingGeocodeRequests = [];
+  if (debounceTimer) clearTimeout(debounceTimer);
+  debounceTimer = setTimeout(async () => {
     try {
-      const url = `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json&email=contact@yely.ci`;
+      const url = `${NOMINATIM_BASE_URL}/reverse?format=json&lat=${lat}&lon=${lng}&zoom=18&addressdetails=1`;
       const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
-      if (!response.ok) throw new Error(`Erreur HTTP: ${response.status}`);
+      if (!response.ok) throw new Error('Échec du géocodage inverse');
       const data = await response.json();
-      const address = data?.display_name ? data.display_name.split(',').slice(0, 2).join(',').trim() : 'Adresse inconnue';
-      current.forEach(req => req.resolve(address));
-    } catch (err) {
-      current.forEach(req => req.reject(err));
+      if (!data.address) throw new Error('Adresse introuvable');
+      const road = data.address.road || data.address.pedestrian || data.address.suburb || data.address.neighbourhood || '';
+      const city = data.address.city || data.address.town || data.address.village || data.address.county || 'Maféré';
+      const formatted = road ? `${road}, ${city}` : city;
+      resolve(formatted);
+    } catch (error) {
+      reject(error);
     }
-  }, ADDRESS_DEBOUNCE_MS);
+  }, 150);
 };
-
-const FALLBACK_LANDMARKS = [
-  { name: 'Gare de Maféré', latitude: 5.4215, longitude: -3.0285 },
-  { name: 'Marché Central', latitude: 5.4228, longitude: -3.0296 },
-  { name: 'Mairie de Maféré', latitude: 5.4205, longitude: -3.0270 },
-  { name: 'Commissariat de Police', latitude: 5.4190, longitude: -3.0255 },
-  { name: 'Sous-Préfecture', latitude: 5.4245, longitude: -3.0310 },
-  { name: 'Hôpital Général', latitude: 5.4180, longitude: -3.0240 },
-  { name: 'Collège Moderne', latitude: 5.4260, longitude: -3.0330 },
-  { name: 'Pharmacie Principale', latitude: 5.4220, longitude: -3.0290 },
-  { name: 'Grand Carrefour', latitude: 5.4200, longitude: -3.0260 }
-];
 
 class MapService {
   static preloadRoutingEngine() {
-    if (hasWarmedUpRouting) return;
-    hasWarmedUpRouting = true;
-    setTimeout(() => {
-      fetch('https://router.project-osrm.org/route/v1/driving/-3.0285,5.4215;-3.0296,5.4228?overview=false', {
-        headers: API_HEADERS
-      }).catch(() => {});
-    }, 400);
+    fetchActivePOIs().catch(() => {});
   }
 
-  static async requestPermissions() {
+  static async searchPlaces(query, currentCoords = null) {
+    if (!query || query.trim().length === 0) return [];
     try {
-      const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') throw new Error("Accès localisation refusé.");
-      return true;
-    } catch (error) {
-      console.warn('[MapService] Erreur permission GPS:', error.message);
-      throw error;
-    }
-  }
-
-  static async getCurrentLocation() {
-    try {
-      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced });
-      return { latitude: location.coords.latitude, longitude: location.coords.longitude };
-    } catch (error) {
-      console.warn('[MapService] Erreur getCurrentLocation:', error.message);
-      throw new Error('Impossible de récupérer la position actuelle.');
-    }
-  }
-
-  static async getPlaceSuggestions(query) {
-    if (!query || query.length < 3) return [];
-    try {
-      let localMatches = [];
-      try {
-        const pois = await fetchActivePOIs();
-        localMatches = pois
-          .filter(p => isPublicLandmark(p) && p.name.toLowerCase().includes(query.toLowerCase()))
-          .map(p => ({
-            id: `poi-${p._id || p.name}`,
-            description: `${p.name}, Maféré`,
-            mainText: p.name,
-            secondaryText: 'Repère local',
-            latitude: parseFloat(p.latitude),
-            longitude: parseFloat(p.longitude),
-          }));
-      } catch (_) {}
+      const lowerQuery = query.toLowerCase().trim();
+      const rawPois = await fetchActivePOIs();
+      const allPois = [...(rawPois || []), ...FALLBACK_LANDMARKS];
+      const localMatches = allPois
+        .filter(poi => poi.name && poi.name.toLowerCase().includes(lowerQuery))
+        .map(poi => ({
+          placeId: `local_${poi._id || poi.name}_${poi.latitude}_${poi.longitude}`,
+          description: `${poi.name}, Maféré`,
+          mainText: poi.name,
+          secondaryText: 'Maféré, Côte d\'Ivoire',
+          latitude: parseFloat(poi.latitude),
+          longitude: parseFloat(poi.longitude),
+        }));
 
       let nominatimMatches = [];
       try {
-        const url = `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(query)}&format=json&addressdetails=1&countrycodes=ci&limit=5&email=contact@yely.ci`;
+        const viewbox = `${MAFERE_ZONE.minLongitude},${MAFERE_ZONE.maxLatitude},${MAFERE_ZONE.maxLongitude},${MAFERE_ZONE.minLatitude}`;
+        const url = `${NOMINATIM_BASE_URL}/search?format=json&q=${encodeURIComponent(query)}&countrycodes=ci&viewbox=${viewbox}&bounded=1&limit=5`;
         const response = await fetchWithRetry(url, { headers: API_HEADERS }, 2);
         if (response.ok) {
           const data = await response.json();
-          if (Array.isArray(data)) {
-            nominatimMatches = data.map((item) => ({
-              id: item.place_id.toString(),
-              description: item.display_name,
-              mainText: item.name || item.address?.road || item.display_name.split(',')[0],
-              secondaryText: item.display_name,
-              latitude: parseFloat(item.lat),
-              longitude: parseFloat(item.lon),
-            }));
-          }
+          nominatimMatches = data.map(item => ({
+            placeId: `osm_${item.place_id}`,
+            description: item.display_name,
+            mainText: item.name || item.address?.road || item.display_name.split(',')[0],
+            secondaryText: item.display_name,
+            latitude: parseFloat(item.lat),
+            longitude: parseFloat(item.lon),
+          }));
         }
       } catch (_) {}
 
