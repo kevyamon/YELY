@@ -1,6 +1,6 @@
 // src/screens/SplashScreen.native.jsx
-// SPLASH SCREEN NATIF (Android & iOS) - Fond Jaune Officiel & Logo Centré Garanti
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Natif)
+// SPLASH SCREEN NATIF (Android & iOS) - Rendu Direct Robuste & Garanti
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Robuste)
 
 import * as NativeSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
@@ -13,8 +13,6 @@ import Animated, {
   useAnimatedStyle,
   useSharedValue,
   withRepeat,
-  withSequence,
-  withSpring,
   withTiming,
 } from 'react-native-reanimated';
 import { FONTS } from '../theme/theme';
@@ -23,21 +21,16 @@ const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
 const splashCenterImg = require('../../assets/images/splash-center.png');
 
 const SplashScreenNative = ({ isServerReady, onFinish }) => {
-  const imageScale = useSharedValue(0.92);
   const snakeAnim = useSharedValue(-100);
   const isFinishing = useSharedValue(false);
   const wipeProgress = useSharedValue(0);
   const [loadingText, setLoadingText] = useState('Démarrage de Yély...');
 
   useEffect(() => {
-    // Masquer le splash OS Android une fois le composant React prêt
+    // Relais immédiat avec l'écran OS
     NativeSplashScreen.hideAsync().catch(() => {});
 
-    imageScale.value = withSequence(
-      withSpring(1.04, { damping: 10, stiffness: 180 }),
-      withSpring(1, { damping: 14, stiffness: 140 })
-    );
-
+    // Animation continue du serpentin de chargement
     snakeAnim.value = withRepeat(
       withTiming(100, {
         duration: 1400,
@@ -46,7 +39,7 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
       -1,
       false
     );
-  }, [imageScale, snakeAnim]);
+  }, [snakeAnim]);
 
   useEffect(() => {
     if (isServerReady) {
@@ -66,7 +59,7 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
             wipeProgress.value = withTiming(
               1.5,
               {
-                duration: 850,
+                duration: 800,
                 easing: Easing.bezier(0.45, 0, 0.15, 1),
               },
               (done) => {
@@ -96,10 +89,6 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
     ],
   }));
 
-  const logoStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: imageScale.value }],
-  }));
-
   const snakeStyle = useAnimatedStyle(() => {
     if (isFinishing.value) {
       return { left: '0%', width: '100%' };
@@ -113,22 +102,25 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
   return (
     <Animated.View style={[styles.absoluteContainer, containerStyle]}>
       <Animated.View style={[styles.innerContent, innerStyle]}>
-        {/* Conteneur et Image avec dimensions explicites pour garantir la visibilité sur Android */}
-        <Animated.View style={[styles.imageContainer, logoStyle]}>
+        
+        {/* Rendu direct et inconditionnel de l'image centrale sans Reanimated scale fragile */}
+        <View style={styles.imageContainer}>
           <Image
             source={splashCenterImg}
             style={styles.splashImage}
             resizeMode="contain"
             fadeDuration={0}
           />
-        </Animated.View>
+        </View>
 
-        <Animated.View entering={FadeIn.delay(200)} style={styles.loaderWrapper}>
+        {/* Loader de progression au bas de l'écran */}
+        <Animated.View entering={FadeIn.delay(100)} style={styles.loaderWrapper}>
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressFill, snakeStyle]} />
           </View>
           <Text style={styles.progressText}>{loadingText}</Text>
         </Animated.View>
+
       </Animated.View>
     </Animated.View>
   );
@@ -150,18 +142,17 @@ const styles = StyleSheet.create({
     height: SCREEN_HEIGHT,
     justifyContent: 'center',
     alignItems: 'center',
+    position: 'relative',
   },
   imageContainer: {
-    width: 240,
-    height: 240,
+    width: 220,
+    height: 220,
     alignItems: 'center',
     justifyContent: 'center',
   },
   splashImage: {
-    width: 240,
-    height: 240,
-    maxWidth: SCREEN_WIDTH * 0.7,
-    maxHeight: SCREEN_WIDTH * 0.7,
+    width: 220,
+    height: 220,
   },
   loaderWrapper: {
     position: 'absolute',

@@ -1,5 +1,5 @@
 // src/screens/home/HomeRouter.jsx
-// ROUTEUR D'ACCUEIL — Point d'entrée stable par rôle & Récepteur Post-Paiement
+// ROUTEUR D'ACCUEIL — Point d'entrée stable par rôle & Récepteur Post-Paiement (Anti-Rebond)
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import * as Linking from 'expo-linking';
@@ -14,11 +14,13 @@ import DriverHome from './DriverHome';
 import RiderHome from './RiderHome';
 import SellerHome from './SellerHome';
 
+let globalLastHomePaymentToastTime = 0;
+
 /**
  * Ce composant est le seul écran "Home" enregistré dans le Navigator.
  * Sa structure est STABLE — le Navigator ne la voit jamais changer.
  * C'est lui qui décide quel écran afficher selon le rôle, PAS le Navigator.
- * Il intercepte également les retours de paiement pour valider l'abonnement en tâche de fond.
+ * Il intercepte également les retours de paiement pour valider l'abonnement en tâche de fond avec anti-rebond.
  */
 const HomeRouter = ({ navigation, route }) => {
   const dispatch = useDispatch();
@@ -36,11 +38,16 @@ const HomeRouter = ({ navigation, route }) => {
         processedRef.current = true;
         dispatch(setSubscriptionModalDismissed(true));
         dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
-        dispatch(showSuccessToast({ 
-          title: 'Paiement Validé', 
-          message: 'Votre abonnement est désormais actif.' 
-        }));
         dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+
+        const now = Date.now();
+        if (now - globalLastHomePaymentToastTime > 25000) {
+          globalLastHomePaymentToastTime = now;
+          dispatch(showSuccessToast({ 
+            title: 'Paiement Validé', 
+            message: 'Votre abonnement est désormais actif.' 
+          }));
+        }
 
         if (reference) {
           try {

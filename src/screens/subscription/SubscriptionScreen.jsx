@@ -1,12 +1,12 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ECRAN D'ABONNEMENT - Orchestrateur (GeniusPay, Auto-Verification & Redirection Home)
+// ECRAN D'ABONNEMENT - Orchestrateur (GeniusPay, Anti-Rebond & Redirection Home)
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
 import * as Linking from 'expo-linking';
 import * as WebBrowser from 'expo-web-browser';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
@@ -26,6 +26,7 @@ import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const STEPS = { DASHBOARD: 'DASHBOARD', CHOOSE_PLAN: 'CHOOSE_PLAN' };
+let globalLastPaymentToastTime = 0;
 
 const SubscriptionScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
@@ -51,16 +52,21 @@ const SubscriptionScreen = ({ navigation, route }) => {
         const target = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
         navigation.navigate(target);
       }
-    }, 250);
+    }, 200);
   }, [dispatch, navigation, userRole]);
+
+  const notifyPaymentSuccessOnce = useCallback((message = "Votre abonnement est désormais actif.") => {
+    const now = Date.now();
+    if (now - globalLastPaymentToastTime > 25000) {
+      globalLastPaymentToastTime = now;
+      dispatch(showSuccessToast({ title: "Paiement Validé", message }));
+    }
+  }, [dispatch]);
 
   const handleClose = () => {
     dispatch(setSubscriptionModalDismissed(true));
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      redirectToHome();
-    }
+    if (navigation.canGoBack()) navigation.goBack();
+    else redirectToHome();
   };
 
   useEffect(() => {
@@ -87,21 +93,18 @@ const SubscriptionScreen = ({ navigation, route }) => {
     }
   }, [statusData, dispatch]);
 
-  // Synchronisation temps réel par socket
+  // Synchronisation temps réel par socket avec anti-rebond
   useEffect(() => {
     const handleSubscriptionActivated = (payload) => {
       dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: payload?.expiresAt }));
-      dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
       dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
       refetchConfig();
       refetchStatus();
+      notifyPaymentSuccessOnce();
       redirectToHome();
     };
 
-    const handlePromoUpdate = () => {
-      refetchConfig();
-      refetchStatus();
-    };
+    const handlePromoUpdate = () => { refetchConfig(); refetchStatus(); };
 
     socketService.on('subscription_updated', handleSubscriptionActivated);
     socketService.on('promo_updated', handlePromoUpdate);
@@ -112,7 +115,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
       socketService.off('promo_updated', handlePromoUpdate);
       socketService.off('PROMO_MODE_CHANGED', handlePromoUpdate);
     };
-  }, [dispatch, refetchConfig, refetchStatus, redirectToHome]);
+  }, [dispatch, refetchConfig, refetchStatus, redirectToHome, notifyPaymentSuccessOnce]);
 
   // Reprise et vérification automatique au retour de paiement (Mobile & Web)
   useEffect(() => {
@@ -122,8 +125,8 @@ const SubscriptionScreen = ({ navigation, route }) => {
 
     if (isSuccess || ref) {
       dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
-      dispatch(showSuccessToast({ title: "Paiement Validé", message: "Votre abonnement est désormais actif." }));
       dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+      notifyPaymentSuccessOnce();
       if (ref) verifyPaymentTrigger(ref).unwrap().catch(() => {});
       redirectToHome();
       return;
@@ -148,8 +151,8 @@ const SubscriptionScreen = ({ navigation, route }) => {
             const verifyData = res?.data || res;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
               dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-              dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
               dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+              notifyPaymentSuccessOnce();
               refetchStatus();
               refetchConfig();
               redirectToHome();
@@ -158,7 +161,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
           .catch(() => { refetchStatus(); });
       }
     }
-  }, [route?.params, verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig]);
+  }, [route?.params, verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig, notifyPaymentSuccessOnce]);
 
   useEffect(() => () => { dispatch(setSubscriptionModalDismissed(true)); }, [dispatch]);
   useFocusEffect(useCallback(() => {
@@ -168,18 +171,11 @@ const SubscriptionScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (isStatusLoading || isConfigLoading) return;
-
     if (statusData?.data) {
       const isSubActive = Boolean(
-        statusData.data.isActive || 
-        (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
+        statusData.data.isActive || (statusData.data.expiresAt && new Date(statusData.data.expiresAt) > new Date())
       );
-
-      if (isSubActive || promoMode?.isActive) {
-        setCurrentStep(STEPS.DASHBOARD);
-      } else {
-        setCurrentStep(STEPS.CHOOSE_PLAN);
-      }
+      setCurrentStep(isSubActive || promoMode?.isActive ? STEPS.DASHBOARD : STEPS.CHOOSE_PLAN);
     } else {
       setCurrentStep(STEPS.CHOOSE_PLAN);
     }
@@ -215,9 +211,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
         if (browserRes?.type === 'success' && browserRes?.url) {
           try {
             const urlObj = new URL(browserRes.url);
-            returnRef = urlObj.searchParams.get('reference') || 
-                        urlObj.searchParams.get('transaction_id') || 
-                        urlObj.searchParams.get('id');
+            returnRef = urlObj.searchParams.get('reference') || urlObj.searchParams.get('transaction_id') || urlObj.searchParams.get('id');
           } catch (_) {}
         }
 
@@ -228,36 +222,19 @@ const SubscriptionScreen = ({ navigation, route }) => {
             const verifyData = verifyRes?.data || verifyRes;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
               dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-              dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
+              notifyPaymentSuccessOnce();
               dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
               redirectToHome();
               return;
             }
           } catch (_) {}
         }
-
-        try {
-          const statusRes = await refetchStatus().unwrap();
-          const sData = statusRes?.data || statusRes;
-          if (sData?.isActive) {
-            dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: sData?.expiresAt }));
-            dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
-            dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
-            redirectToHome();
-            return;
-          }
-        } catch (_) {}
-
         refetchConfig();
       }
     } catch (err) {
       const msg = err?.data?.message || err?.message || "Erreur lors de l'ouverture du paiement.";
       dispatch(showErrorToast({ title: "Erreur", message: msg }));
     }
-  };
-
-  const handleProlong = () => {
-    setCurrentStep(STEPS.CHOOSE_PLAN);
   };
 
   const headerTopPadding = Math.max(
@@ -308,9 +285,14 @@ const SubscriptionScreen = ({ navigation, route }) => {
         </View>
         <View style={styles.content}>
           {currentStep === STEPS.DASHBOARD ? (
-            <SubscriptionDashboard statusData={statusData?.data} onRenew={handleProlong} onSelectOtherPlan={handleProlong} />
+            <SubscriptionDashboard statusData={statusData?.data} onRenew={() => setCurrentStep(STEPS.CHOOSE_PLAN)} onSelectOtherPlan={() => setCurrentStep(STEPS.CHOOSE_PLAN)} />
           ) : (
-            <PlanSelection configData={configData?.data} onSelectPlan={handleInitiatePayment} isLoading={isInitiating} />
+            <PlanSelection 
+              configData={configData?.data} 
+              userRole={userRole} 
+              onSelectPlan={handleInitiatePayment} 
+              isLoading={isInitiating} 
+            />
           )}
         </View>
       </View>

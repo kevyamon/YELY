@@ -47,13 +47,16 @@ const PlanSelection = ({
 }) => {
   const isPioneer = configData?.isPioneer || false;
   const isSeller = userRole === 'seller';
+  const isDriver = userRole === 'driver';
 
   const remainingMonths = configData?.pioneerMonthsRemaining ?? 4;
   const description = isPioneer
     ? `Tarif Spécial Pionnier (${remainingMonths} mois restant${remainingMonths > 1 ? 's' : ''}).`
     : isSeller
-    ? 'Vendez en illimité sans commissions.'
-    : 'Roulez en illimité et gardez 100% de vos gains.';
+    ? 'Vendez en illimité et boostez vos commandes sans commission.'
+    : isDriver
+    ? 'Recevez des courses en illimité et gardez 100% de vos gains.'
+    : 'Profitez de tous vos services Yély en illimité et sans commission.';
 
   const handlePayPress = () => {
     if (isLoading) return;
