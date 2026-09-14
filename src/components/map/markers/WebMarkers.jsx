@@ -1,5 +1,5 @@
 // src/components/map/markers/WebMarkers.jsx
-// COMPOSANTS VISUELS & CADRAGE CARTE WEB (AFE Standard)
+// COMPOSANTS VISUELS & CADRAGE CARTE WEB - Support Multi-Boutiques / Immeubles
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Gratuit)
 
 import L from 'leaflet';
@@ -29,16 +29,47 @@ export const resolvePoiCollisions = (pois, zoom) => {
   else if (zoom === 14) threshold = 0.0015;
   else threshold = 0.0030;
 
-  const processed = [];
+  // 1. Détection des doublons géographiques stricts (Immeubles / Centres commerciaux multi-boutiques)
+  const exactLocationBuckets = new Map();
+  for (const poi of pois) {
+    const lat = Number(poi.latitude);
+    const lng = Number(poi.longitude);
+    if (isNaN(lat) || isNaN(lng)) continue;
 
-  for (let i = 0; i < pois.length; i++) {
-    const current = { ...pois[i] };
+    const locKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+    if (!exactLocationBuckets.has(locKey)) {
+      exactLocationBuckets.set(locKey, []);
+    }
+    exactLocationBuckets.get(locKey).push({ ...poi });
+  }
+
+  const dispersedPois = [];
+  exactLocationBuckets.forEach((bucket) => {
+    if (bucket.length === 1) {
+      dispersedPois.push(bucket[0]);
+    } else {
+      // Micro-dispersion en rosace (Spiderfy) pour rendre chaque boutique d'un même immeuble cliquable
+      const count = bucket.length;
+      const radiusDeg = 0.00012; // ~12 mètres de dispersion
+      bucket.forEach((item, index) => {
+        const angle = (2 * Math.PI * index) / count;
+        item.latitude = Number(item.latitude) + radiusDeg * Math.sin(angle);
+        item.longitude = Number(item.longitude) + (radiusDeg / Math.cos((Number(item.latitude) * Math.PI) / 180)) * Math.cos(angle);
+        dispersedPois.push(item);
+      });
+    }
+  });
+
+  // 2. Gestion intelligente des labels sans JAMAIS supprimer un marqueur
+  const processed = [];
+  for (let i = 0; i < dispersedPois.length; i++) {
+    const current = dispersedPois[i];
     const curLat = Number(current.latitude);
     const curLng = Number(current.longitude);
-    if (isNaN(curLat) || isNaN(curLng)) continue;
 
     let hasCollision = false;
     for (const p of processed) {
+      if (p.showLabel === false) continue;
       const pLat = Number(p.latitude);
       const pLng = Number(p.longitude);
 
@@ -48,10 +79,8 @@ export const resolvePoiCollisions = (pois, zoom) => {
       }
     }
     
-    if (!hasCollision) {
-      current.showLabel = true;
-      processed.push(current);
-    }
+    current.showLabel = !hasCollision;
+    processed.push(current);
   }
   return processed;
 };
@@ -214,7 +243,6 @@ export const MapAutoFitter = ({
 
     const firstPt = coordsToFit[0];
     const lastPt = coordsToFit[coordsToFit.length - 1];
-    // Signature spatiale indépendante du découpage frame-by-frame pour déclencher un vol instantané sans interruption
     const currentRouteSig = `${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
 
     const isRouteChanged = currentRouteSig !== lastRouteSigRef.current;

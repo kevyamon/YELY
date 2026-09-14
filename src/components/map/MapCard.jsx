@@ -33,14 +33,46 @@ const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_TOKEN || 'pk.4e174e5a5
 const LIGHT_TILE_URL = `https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
 const DARK_TILE_URL = `https://tiles.locationiq.com/v3/dark/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
 
-// Algorithme de désambiguïsation géographique des labels de POI pour éviter les chevauchements
+// Algorithme de désambiguïsation géographique & dispersion des boutiques en immeubles
 const resolvePoiCollisions = (pois) => {
   if (!pois || pois.length === 0) return [];
   const LAT_LNG_THRESHOLD = 0.0006; // environ 70 mètres
-  const processed = [];
 
-  for (let i = 0; i < pois.length; i++) {
-    const current = { ...pois[i] };
+  // 1. Détection des doublons géographiques stricts (Immeubles / Centres commerciaux multi-boutiques)
+  const exactLocationBuckets = new Map();
+  for (const poi of pois) {
+    const lat = Number(poi.latitude);
+    const lng = Number(poi.longitude);
+    if (isNaN(lat) || isNaN(lng)) continue;
+
+    const locKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
+    if (!exactLocationBuckets.has(locKey)) {
+      exactLocationBuckets.set(locKey, []);
+    }
+    exactLocationBuckets.get(locKey).push({ ...poi });
+  }
+
+  const dispersedPois = [];
+  exactLocationBuckets.forEach((bucket) => {
+    if (bucket.length === 1) {
+      dispersedPois.push(bucket[0]);
+    } else {
+      // Micro-dispersion radiale (Spiderfy) pour rendre chaque boutique d'un même immeuble sélectionnable
+      const count = bucket.length;
+      const radiusDeg = 0.00012; // ~12 mètres de décalage
+      bucket.forEach((item, index) => {
+        const angle = (2 * Math.PI * index) / count;
+        item.latitude = Number(item.latitude) + radiusDeg * Math.sin(angle);
+        item.longitude = Number(item.longitude) + (radiusDeg / Math.cos((Number(item.latitude) * Math.PI) / 180)) * Math.cos(angle);
+        dispersedPois.push(item);
+      });
+    }
+  });
+
+  // 2. Gestion intelligente des labels sans superposition
+  const processed = [];
+  for (let i = 0; i < dispersedPois.length; i++) {
+    const current = dispersedPois[i];
     const curLat = Number(current.latitude);
     const curLng = Number(current.longitude);
 

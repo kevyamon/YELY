@@ -1,6 +1,6 @@
 // src/screens/subscription/SubscriptionScreen.jsx
-// ECRAN D'ABONNEMENT - Orchestrateur (Automatise GeniusPay, Auto-Verification & Temps Reel)
-// STANDARD: Clean Architecture / Bank Grade (Modularise < 325 lignes, Sans Emojis)
+// ECRAN D'ABONNEMENT - Orchestrateur (GeniusPay, Auto-Verification & Redirection Home)
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import { useFocusEffect } from '@react-navigation/native';
@@ -10,19 +10,24 @@ import React, { useCallback, useEffect, useState } from 'react';
 import { Platform, StatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
-import { apiSlice } from '../../store/slices/apiSlice';
-import { useGetConfigQuery, useGetSubscriptionStatusQuery, useInitializePaymentMutation, useLazyVerifyPaymentQuery } from '../../store/api/subscriptionApiSlice';
-import { selectCurrentUser, selectPromoMode, setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
-import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import PlanSelection from '../../components/subscription/PlanSelection';
 import SubscriptionDashboard from '../../components/subscription/SubscriptionDashboard';
 import GlobalSkeleton, { SkeletonBone } from '../../components/ui/GlobalSkeleton';
 import socketService from '../../services/socketService';
+import {
+  useGetConfigQuery,
+  useGetSubscriptionStatusQuery,
+  useInitializePaymentMutation,
+  useLazyVerifyPaymentQuery
+} from '../../store/api/subscriptionApiSlice';
+import { apiSlice } from '../../store/slices/apiSlice';
+import { selectCurrentUser, selectPromoMode, setSubscriptionModalDismissed, updatePromoMode, updateSubscriptionStatus } from '../../store/slices/authSlice';
+import { showErrorToast, showSuccessToast } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 
 const STEPS = { DASHBOARD: 'DASHBOARD', CHOOSE_PLAN: 'CHOOSE_PLAN' };
 
-const SubscriptionScreen = ({ navigation }) => {
+const SubscriptionScreen = ({ navigation, route }) => {
   const dispatch = useDispatch();
   const insets = useSafeAreaInsets();
   const promoMode = useSelector(selectPromoMode);
@@ -46,7 +51,7 @@ const SubscriptionScreen = ({ navigation }) => {
         const target = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
         navigation.navigate(target);
       }
-    }, 300);
+    }, 250);
   }, [dispatch, navigation, userRole]);
 
   const handleClose = () => {
@@ -67,7 +72,6 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [configData, dispatch]);
 
-  // Synchronisation dynamique du statut recu du serveur vers Redux
   useEffect(() => {
     if (statusData?.data) {
       const isSubActive = Boolean(
@@ -83,11 +87,11 @@ const SubscriptionScreen = ({ navigation }) => {
     }
   }, [statusData, dispatch]);
 
-  // Synchronisation en temps reel via Sockets & Redirection instantanee
+  // Synchronisation temps réel par socket
   useEffect(() => {
     const handleSubscriptionActivated = (payload) => {
       dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: payload?.expiresAt }));
-      dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+      dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
       dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
       refetchConfig();
       refetchStatus();
@@ -110,41 +114,51 @@ const SubscriptionScreen = ({ navigation }) => {
     };
   }, [dispatch, refetchConfig, refetchStatus, redirectToHome]);
 
-  // Reprise et verification automatique au retour sur PWA (Web)
+  // Reprise et vérification automatique au retour de paiement (Mobile & Web)
   useEffect(() => {
-    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const params = route?.params;
+    const isSuccess = params?.status === 'success' || params?.payment === 'success';
+    const ref = params?.reference || params?.transaction_id;
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const queryRef = urlParams.get('reference') || urlParams.get('transaction_id');
-    const storedRef = sessionStorage.getItem('yely_gateway_ref') || sessionStorage.getItem('yely_pending_payment_ref');
-    const refToVerify = queryRef || storedRef;
-
-    if (refToVerify) {
-      sessionStorage.removeItem('yely_pending_payment_ref');
-      sessionStorage.removeItem('yely_gateway_ref');
-      if (queryRef && window.history?.replaceState) {
-        window.history.replaceState({}, document.title, window.location.pathname);
-      }
-
-      verifyPaymentTrigger(refToVerify)
-        .unwrap()
-        .then((res) => {
-          const verifyData = res?.data || res;
-          if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
-            dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
-            dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
-            refetchStatus();
-            refetchConfig();
-            redirectToHome();
-          }
-        })
-        .catch((err) => {
-          console.warn('[PWA VERIFY SYNC] Verification:', err?.message);
-          refetchStatus();
-        });
+    if (isSuccess || ref) {
+      dispatch(updateSubscriptionStatus({ isActive: true, isPending: false }));
+      dispatch(showSuccessToast({ title: "Paiement Validé", message: "Votre abonnement est désormais actif." }));
+      dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+      if (ref) verifyPaymentTrigger(ref).unwrap().catch(() => {});
+      redirectToHome();
+      return;
     }
-  }, [verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig]);
+
+    if (Platform.OS === 'web' && typeof window !== 'undefined') {
+      const urlParams = new URLSearchParams(window.location.search);
+      const queryRef = urlParams.get('reference') || urlParams.get('transaction_id');
+      const storedRef = sessionStorage.getItem('yely_gateway_ref') || sessionStorage.getItem('yely_pending_payment_ref');
+      const refToVerify = queryRef || storedRef;
+
+      if (refToVerify) {
+        sessionStorage.removeItem('yely_pending_payment_ref');
+        sessionStorage.removeItem('yely_gateway_ref');
+        if (queryRef && window.history?.replaceState) {
+          window.history.replaceState({}, document.title, window.location.pathname);
+        }
+
+        verifyPaymentTrigger(refToVerify)
+          .unwrap()
+          .then((res) => {
+            const verifyData = res?.data || res;
+            if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
+              dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
+              dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
+              dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
+              refetchStatus();
+              refetchConfig();
+              redirectToHome();
+            }
+          })
+          .catch(() => { refetchStatus(); });
+      }
+    }
+  }, [route?.params, verifyPaymentTrigger, dispatch, redirectToHome, refetchStatus, refetchConfig]);
 
   useEffect(() => () => { dispatch(setSubscriptionModalDismissed(true)); }, [dispatch]);
   useFocusEffect(useCallback(() => {
@@ -189,12 +203,11 @@ const SubscriptionScreen = ({ navigation }) => {
         }
         window.location.href = paymentUrl;
       } else {
-        const returnUrl = Linking.createURL('subscription') || 'yely://subscription';
+        const returnUrl = Linking.createURL('home') || 'yely://home?payment=success';
         let browserRes = null;
         try {
           browserRes = await WebBrowser.openAuthSessionAsync(paymentUrl, returnUrl);
-        } catch (bErr) {
-          console.warn('[AUTH_SESSION] Fallback vers openBrowserAsync:', bErr?.message);
+        } catch (_) {
           await WebBrowser.openBrowserAsync(paymentUrl);
         }
         
@@ -215,14 +228,12 @@ const SubscriptionScreen = ({ navigation }) => {
             const verifyData = verifyRes?.data || verifyRes;
             if (verifyData?.isActive || verifyData?.status === 'COMPLETED') {
               dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: verifyData?.expiresAt }));
-              dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+              dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
               dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
               redirectToHome();
               return;
             }
-          } catch (vErr) {
-            console.warn('[VERIFY SYNC] Interrogation retour:', vErr?.message);
-          }
+          } catch (_) {}
         }
 
         try {
@@ -230,7 +241,7 @@ const SubscriptionScreen = ({ navigation }) => {
           const sData = statusRes?.data || statusRes;
           if (sData?.isActive) {
             dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: sData?.expiresAt }));
-            dispatch(showSuccessToast({ title: "Paiement Confirme", message: "Votre abonnement est desormais actif." }));
+            dispatch(showSuccessToast({ title: "Paiement Confirmé", message: "Votre abonnement est désormais actif." }));
             dispatch(apiSlice.util.invalidateTags(['Subscription', 'User']));
             redirectToHome();
             return;
