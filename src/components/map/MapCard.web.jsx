@@ -1,6 +1,6 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & Metro Ready (Force Light Theme)
-// CSCSM Level: Bank Grade (Avec Cinematic Focus UX et Aération intelligente des POIs)
+// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & CDN Haute Performance (100% Gratuit)
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
@@ -25,22 +25,21 @@ import {
   userIcon
 } from './markers/WebMarkers';
 
-const LOCATIONIQ_KEY = process.env.EXPO_PUBLIC_LOCATIONIQ_TOKEN || 'pk.4e174e5a5b55092ab9d70c29533077b2';
-const LIGHT_TILE_URL = `https://tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${LOCATIONIQ_KEY}`;
-const ATTRIBUTION = '&copy; <a href="https://locationiq.com">LocationIQ</a> &copy; <a href="https://openstreetmap.org">OpenStreetMap</a>';
+const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
-// Algorithme de désencombrement géographique dynamique des POIs pour éviter les chevauchements
+const poiIconCache = new Map();
+
 const resolvePoiCollisions = (pois, zoom) => {
   if (!pois || pois.length === 0) return [];
   
-  // Seuil de collision dynamique (en degrés) selon le niveau de zoom
-  let threshold = 0.0006;
-  if (zoom >= 18) threshold = 0.00015;      // Zoom maximum -> quasi tous les POIs visibles
-  else if (zoom === 17) threshold = 0.0004;
-  else if (zoom === 16) threshold = 0.0008;
-  else if (zoom === 15) threshold = 0.0018; // Zoom initial -> fortement aéré (approx. 200m)
-  else if (zoom === 14) threshold = 0.0035;
-  else threshold = 0.0070;                 // Zoom arrière -> masquer presque tout pour rester propre
+  let threshold = 0.0004;
+  if (zoom >= 18) threshold = 0.0001;
+  else if (zoom === 17) threshold = 0.0002;
+  else if (zoom === 16) threshold = 0.0004;
+  else if (zoom === 15) threshold = 0.0007;
+  else if (zoom === 14) threshold = 0.0015;
+  else threshold = 0.0030;
 
   const processed = [];
 
@@ -48,6 +47,7 @@ const resolvePoiCollisions = (pois, zoom) => {
     const current = { ...pois[i] };
     const curLat = Number(current.latitude);
     const curLng = Number(current.longitude);
+    if (isNaN(curLat) || isNaN(curLng)) continue;
 
     let hasCollision = false;
     for (const p of processed) {
@@ -60,7 +60,6 @@ const resolvePoiCollisions = (pois, zoom) => {
       }
     }
     
-    // Si pas de collision, on conserve le point d'intérêt entier
     if (!hasCollision) {
       current.showLabel = true;
       processed.push(current);
@@ -70,6 +69,11 @@ const resolvePoiCollisions = (pois, zoom) => {
 };
 
 const createPoiIcon = (poi) => {
+  const cacheKey = `${poi._id || poi.id || poi.name}_${poi.iconColor || ''}_${poi.showLabel !== false}`;
+  if (poiIconCache.has(cacheKey)) {
+    return poiIconCache.get(cacheKey);
+  }
+
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
   
@@ -83,19 +87,22 @@ const createPoiIcon = (poi) => {
         ${iconHtml}
       </div>
       ${poi.showLabel !== false ? `
-      <div style="margin-top: 2px; font-size: 13px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
+      <div style="margin-top: 2px; font-size: 12px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
         ${fullName}
       </div>
       ` : ''}
     </div>
   `;
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: '', 
     html: htmlContent,
     iconSize: [26, 26],
     iconAnchor: [13, 26], 
   });
+
+  poiIconCache.set(cacheKey, icon);
+  return icon;
 };
 
 const MapInteractionTracker = ({ onInteract }) => {
@@ -132,7 +139,6 @@ const MapCard = forwardRef(({
   style,
 }, ref) => {
   const mapInstanceRef = useRef(null);
-  
   const [isUserInteracting, setIsUserInteracting] = useState(false);
   const interactionTimeout = useRef(null);
 
@@ -142,14 +148,12 @@ const MapCard = forwardRef(({
   const [currentZoom, setCurrentZoom] = useState(15);
 
   useEffect(() => {
-    if (typeof document !== 'undefined') {
-      if (!document.getElementById('leaflet-css')) {
-        const link = document.createElement('link');
-        link.id = 'leaflet-css';
-        link.rel = 'stylesheet';
-        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-        document.head.appendChild(link);
-      }
+    if (typeof document !== 'undefined' && !document.getElementById('leaflet-css')) {
+      const link = document.createElement('link');
+      link.id = 'leaflet-css';
+      link.rel = 'stylesheet';
+      link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
+      document.head.appendChild(link);
     }
   }, []);
 
@@ -201,7 +205,7 @@ const MapCard = forwardRef(({
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
-      if (mapInstanceRef.current) {
+      if (mapInstanceRef.current && region?.latitude && region?.longitude) {
         mapInstanceRef.current.flyTo([region.latitude, region.longitude], 15, { duration: 0.8 });
       }
     },
@@ -229,25 +233,21 @@ const MapCard = forwardRef(({
   const isRouteValid = polylinePositions.length > 1;
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
-  // --- UX : CINEMATIC FOCUS (Version Web) ---
+  useEffect(() => {
+    if (isRouteValid) {
+      setIsUserInteracting(false);
+    }
+  }, [isRouteValid]);
+
   const isCinematicMode = isRouteValid || rideStatus !== null;
   const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs, currentZoom);
 
   return (
     <View style={[styles.container, style]}>
-      <View style={{ position: 'absolute', width: 0, height: 0, opacity: 0, overflow: 'hidden', zIndex: -1 }}>
-        {mapPOIs.map((poi) => (
-          <UniversalIcon key={`preload-poi-${poi._id || poi.id}`} iconString={poi.icon} size={10} color="transparent" />
-        ))}
-        {markers.map((marker, index) => (
-          marker.icon ? <UniversalIcon key={`preload-marker-${index}`} iconString={marker.icon} size={10} color="transparent" /> : null
-        ))}
-      </View>
- 
       <MapContainer
         center={center}
         zoom={15}
-        style={{ width: '100%', height: '100%', backgroundColor: '#FAFAFA' }}
+        style={{ width: '100%', height: '100%', backgroundColor: '#F8F9FA' }}
         zoomControl={false}
         attributionControl={false}
         ref={(mapInstance) => { if (mapInstance) mapInstanceRef.current = mapInstance; }}
@@ -257,8 +257,9 @@ const MapCard = forwardRef(({
         <MapInteractionTracker onInteract={handleMapInteraction} />
 
         <TileLayer
-          url={LIGHT_TILE_URL}
+          url={TILE_URL}
           attribution={ATTRIBUTION}
+          subdomains={['a', 'b', 'c', 'd']}
           maxZoom={19}
         />
 
@@ -271,7 +272,6 @@ const MapCard = forwardRef(({
           mapBottomPadding={mapBottomPadding}
         />
 
-        {/* Cinematic Focus appliqué ici : on map sur visiblePOIs */}
         {visiblePOIs.map((poi) => (
           <Marker
             key={`map-poi-${poi._id || poi.id}`}
@@ -297,33 +297,28 @@ const MapCard = forwardRef(({
           let markerIcon = defaultIcon;
           
           if (marker.type === 'pickup') {
-            if (isDriver) {
-               markerIcon = pickupIcon; 
-            } else {
-               return null;
-            }
-          }
-          else if (marker.type === 'destination') {
+            if (isDriver) markerIcon = pickupIcon;
+            else return null;
+          } else if (marker.type === 'destination') {
             if (marker.icon) {
-                markerIcon = createPoiIcon({
-                  icon: marker.icon,
-                  iconColor: marker.iconColor || THEME.COLORS.danger,
-                  name: marker.name || "Destination"
-                });
-            } else {
-                markerIcon = destinationIcon;
-            }
-          }
-          else if (marker.type === 'pickup_origin') return null; 
-          else if (marker.icon) {
-              const mColor = marker.iconColor || THEME.COLORS.champagneGold;
-              const mHtml = renderToString(<UniversalIcon iconString={marker.icon} size={18} color="#FFFFFF" />);
-              markerIcon = L.divIcon({
-                  className: '',
-                  html: `<div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(18, 20, 24, 0.92); border: 0.5px solid rgba(242, 244, 246, 0.10); display: flex; justify-content: center; align-items: center;">${mHtml}</div>`,
-                  iconSize: [36, 36],
-                  iconAnchor: [18, 18],
+              markerIcon = createPoiIcon({
+                icon: marker.icon,
+                iconColor: marker.iconColor || THEME.COLORS.danger,
+                name: marker.name || "Destination"
               });
+            } else {
+              markerIcon = destinationIcon;
+            }
+          } else if (marker.type === 'pickup_origin') {
+            return null;
+          } else if (marker.icon) {
+            const mHtml = renderToString(<UniversalIcon iconString={marker.icon} size={18} color="#FFFFFF" />);
+            markerIcon = L.divIcon({
+              className: '',
+              html: `<div style="width: 36px; height: 36px; border-radius: 50%; background: rgba(18, 20, 24, 0.92); border: 0.5px solid rgba(242, 244, 246, 0.10); display: flex; justify-content: center; align-items: center;">${mHtml}</div>`,
+              iconSize: [36, 36],
+              iconAnchor: [18, 18],
+            });
           }
 
           return (
@@ -374,7 +369,7 @@ const styles = StyleSheet.create({
     position: 'relative',
     borderBottomWidth: THEME.BORDERS.width.thin,
     borderBottomColor: THEME.COLORS.glassBorder,
-    backgroundColor: '#FAFAFA'
+    backgroundColor: '#F8F9FA'
   },
   recenterButtonWrapper: { 
     position: 'absolute', 
@@ -393,26 +388,4 @@ const styles = StyleSheet.create({
   },
 });
 
-const arePropsEqual = (prevProps, nextProps) => {
-  const isSameLocation = (loc1, loc2) => {
-    if (!loc1 && !loc2) return true;
-    if (!loc1 || !loc2) return false;
-    if (typeof loc1.latitude !== 'number' || typeof loc2.latitude !== 'number') return false;
-    if (typeof loc1.longitude !== 'number' || typeof loc2.longitude !== 'number') return false;
-    
-    return loc1.latitude.toFixed(4) === loc2.latitude.toFixed(4) && 
-           loc1.longitude.toFixed(4) === loc2.longitude.toFixed(4);
-  };
-
-  return (
-    isSameLocation(prevProps.location, nextProps.location) &&
-    isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
-    prevProps.markers?.length === nextProps.markers?.length &&
-    prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
-    prevProps.showUserMarker === nextProps.showUserMarker &&
-    prevProps.isDriver === nextProps.isDriver &&
-    prevProps.rideStatus === nextProps.rideStatus 
-  );
-};
-
-export default React.memo(MapCard, arePropsEqual);
+export default React.memo(MapCard);

@@ -1,32 +1,40 @@
 // src/components/map/markers/WebMarkers.jsx
 // COMPOSANTS VISUELS CARTE WEB - Intelligence Spatiale & Cadrage Sécurisé (AFE Standard)
-// CSCSM Level: Bank Grade
+// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Gratuit)
 
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { renderToString } from 'react-dom/server';
 import { useMap } from 'react-leaflet';
 import { MAFERE_CENTER } from '../../../utils/mafereZone';
-import UniversalIcon from '../../ui/UniversalIcon'; // AJOUT : Import du composant
+import UniversalIcon from '../../ui/UniversalIcon';
 
 const SVG_PIN = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="20" height="20"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>`;
 const SVG_USER = `<svg viewBox="0 0 24 24" fill="#FFFFFF" width="20" height="20"><path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z"/></svg>`;
 const SVG_FLAG = `<svg viewBox="0 0 24 24" fill="#E74C3C" width="26" height="26"><path d="M14.4 6L14 4H5v17h2v-7h5.6l.4 2h7V6z"/></svg>`;
 const SVG_CAR = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="22" height="22"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`;
 
-// AJOUT MAJEUR : Générateur dynamique d'icônes Leaflet (Transforme le React en HTML)
+const dynamicIconCache = new Map();
+
 export const createDynamicPoiIcon = (iconString, color) => {
-  // On utilise renderToString pour compiler le composant avant de le donner à Leaflet
+  const cacheKey = `${iconString}_${color}`;
+  if (dynamicIconCache.has(cacheKey)) {
+    return dynamicIconCache.get(cacheKey);
+  }
+
   const iconHtml = renderToString(
     <UniversalIcon iconString={iconString || 'Ionicons/location'} size={18} color="#FFFFFF" />
   );
 
-  return L.divIcon({
+  const icon = L.divIcon({
     className: 'yely-dynamic-marker',
     html: `<div style="width: 32px; height: 32px; border-radius: 50%; background: ${color || '#D4AF37'}; border: 2px solid #FFFFFF; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${iconHtml}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
+
+  dynamicIconCache.set(cacheKey, icon);
+  return icon;
 };
 
 export const userIcon = L.divIcon({
@@ -71,7 +79,6 @@ export const driverIcon = L.divIcon({
   iconAnchor: [22, 22],
 });
 
-// 🧠 INTELLIGENCE SPATIALE : Formule de Haversine
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3; 
   const p1 = (lat1 * Math.PI) / 180;
@@ -79,14 +86,13 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   const dp = ((lat2 - lat1) * Math.PI) / 180;
   const dl = ((lon2 - lon1) * Math.PI) / 180;
   const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c; 
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 export const MapAutoFitter = ({ 
   location, 
   driverLocation, 
-  markers, 
+  markers = [], 
   isUserInteracting, 
   mapTopPadding = 140, 
   mapBottomPadding = 240 
@@ -94,24 +100,34 @@ export const MapAutoFitter = ({
   const map = useMap();
   const isInitialFitDone = useRef(false);
   const lastUpdateRef = useRef(0);
+  const lastTargetKeyRef = useRef('');
 
   useEffect(() => {
     if (isUserInteracting) return;
 
     let coordsToFit = [];
 
-    const targetMarker = markers.find((m) => m.type === 'pickup' || m.type === 'destination');
-    const originMarker = driverLocation?.latitude ? driverLocation : location;
+    const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
+    const destinationMarker = markers.find((m) => m.type === 'destination');
+    const pickupMarker = markers.find((m) => m.type === 'pickup');
 
-    if (targetMarker && originMarker) {
+    const targetMarker = pickupMarker || destinationMarker;
+    const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
+    const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
+
+    const originMarker = isManualOriginActive
+      ? pickupOriginMarker
+      : (hasDriverPosition ? driverLocation : location);
+
+    if (targetMarker && originMarker?.latitude && originMarker?.longitude) {
       coordsToFit = [
         [originMarker.latitude, originMarker.longitude],
         [targetMarker.latitude, targetMarker.longitude],
       ];
-    } else if (originMarker) {
+    } else if (originMarker?.latitude && originMarker?.longitude) {
       coordsToFit = [[originMarker.latitude, originMarker.longitude]];
       markers.forEach(m => {
-        if (m.latitude && m.longitude) coordsToFit.push([m.latitude, m.longitude]);
+        if (m?.latitude && m?.longitude) coordsToFit.push([m.latitude, m.longitude]);
       });
     }
 
@@ -123,15 +139,23 @@ export const MapAutoFitter = ({
       return;
     }
 
+    const currentTargetKey = targetMarker
+      ? `${targetMarker.type}_${targetMarker.latitude?.toFixed(4)},${targetMarker.longitude?.toFixed(4)}`
+      : 'NO_TARGET';
+
+    const isTargetChanged = currentTargetKey !== lastTargetKeyRef.current;
     const now = Date.now();
     const isTrackingActive = coordsToFit.length === 2;
-    const debounceTime = isInitialFitDone.current ? (isTrackingActive ? 4000 : 9999999) : 300; 
 
-    if (now - lastUpdateRef.current > debounceTime) {
+    // Si la cible vient de changer (clic destination), zoom IMMEDIAT (0ms). Sinon, debounce doux.
+    const debounceTime = isTargetChanged ? 0 : (isTrackingActive ? 2500 : 9999999);
+
+    if (isTargetChanged || (now - lastUpdateRef.current > debounceTime)) {
       lastUpdateRef.current = now;
+      lastTargetKeyRef.current = currentTargetKey;
       isInitialFitDone.current = true;
 
-      let dynamicMaxZoom = 16; 
+      let dynamicMaxZoom = 16;
 
       if (isTrackingActive && targetMarker && originMarker) {
         const distance = getDistance(
@@ -139,36 +163,32 @@ export const MapAutoFitter = ({
           targetMarker.latitude, targetMarker.longitude
         );
 
-        if (distance < 800) {
-          dynamicMaxZoom = 17;
-        } else {
-          dynamicMaxZoom = 15;
-        }
+        if (distance < 800) dynamicMaxZoom = 17;
+        else if (distance > 3000) dynamicMaxZoom = 14;
+        else dynamicMaxZoom = 15;
 
-        if (distance < 150) {
-            map.flyTo([originMarker.latitude, originMarker.longitude], 17, { duration: 1 });
-            return;
+        if (distance < 80) {
+          map.flyTo([originMarker.latitude, originMarker.longitude], 17, { duration: 0.8 });
+          return;
         }
       }
 
       const mapContainer = map.getContainer();
       const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
       
-      const maxAllowedTop = Math.floor(mapHeight * 0.35);
-      const maxAllowedBottom = Math.floor(mapHeight * 0.45);
+      const maxAllowedTop = Math.floor(mapHeight * 0.30);
+      const maxAllowedBottom = Math.floor(mapHeight * 0.40);
 
       const safeTopPadding = Math.min(mapTopPadding, maxAllowedTop); 
       const safeBottomPadding = Math.min(mapBottomPadding, maxAllowedBottom);
 
-      setTimeout(() => {
-        const bounds = L.latLngBounds(coordsToFit);
-        map.flyToBounds(bounds, {
-          paddingTopLeft: [0, safeTopPadding],
-          paddingBottomRight: [0, safeBottomPadding],
-          duration: 1.5,
-          maxZoom: dynamicMaxZoom,
-        });
-      }, 100);
+      const bounds = L.latLngBounds(coordsToFit);
+      map.flyToBounds(bounds, {
+        paddingTopLeft: [20, safeTopPadding],
+        paddingBottomRight: [20, safeBottomPadding],
+        duration: isTargetChanged ? 0.9 : 1.2,
+        maxZoom: dynamicMaxZoom,
+      });
     }
   }, [markers, map, mapTopPadding, mapBottomPadding, location, driverLocation, isUserInteracting]); 
 

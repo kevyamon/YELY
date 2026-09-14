@@ -2,7 +2,7 @@
 // SERVICE WORKER ULTRA-ROBUSTE PWA - OFFLINE APP SHELL & RESILIENCE RESEAU
 // STANDARD: Bank Grade / Zero Ecran Noir
 
-const CACHE_NAME = 'yely-pwa-v1.8.0';
+const CACHE_NAME = 'yely-pwa-v1.8.1';
 
 // Ressources prioritaires du Shell d'application à pré-mettre en cache
 const PRECACHE_RESOURCES = [
@@ -12,7 +12,8 @@ const PRECACHE_RESOURCES = [
   '/favicon.png',
   '/icon-192.png',
   '/icon-512.png',
-  '/splash-center.png'
+  '/splash-center.png',
+  '/splash-icon-512.png'
 ];
 
 // ─── 1. INSTALLATION & PRE-CACHING DU SHELL ──────────────────────────────────

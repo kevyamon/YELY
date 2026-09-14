@@ -1,10 +1,10 @@
 // src/screens/SplashScreen.jsx
-// SPLASH SCREEN - LUXURY REVEAL & TEXTE YELY CENTRÉ
-// STANDARD: Industriel / Bank Grade (Modularise < 325 lignes, Sans Emojis)
+// SPLASH SCREEN - FOND JAUNE OFFICIEL & VISUEL CENTRÉ (Alignement 100% Natif & PWA)
+// STANDARD: Industriel / Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import * as NativeSplashScreen from 'expo-splash-screen';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -17,33 +17,33 @@ import Animated, {
   withSpring,
   withTiming,
 } from 'react-native-reanimated';
-import { COLORS, FONTS, SPACING } from '../theme/theme';
+import { FONTS } from '../theme/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
+const splashCenterImg = require('../../assets/images/splash-center.png');
 
 const SplashScreen = ({ isServerReady, onFinish }) => {
-  const textScale = useSharedValue(0.8);
-  const textOpacity = useSharedValue(0);
+  const imageScale = useSharedValue(0.85);
+  const imageOpacity = useSharedValue(0);
   
   const snakeAnim = useSharedValue(-100);
   const isFinishing = useSharedValue(false);
 
   const wipeProgress = useSharedValue(0);
-  const [loadingText, setLoadingText] = useState("Réveil du serveur en cours...");
+  const [loadingText, setLoadingText] = useState("Démarrage de Yély...");
 
   useEffect(() => {
     NativeSplashScreen.hideAsync().catch(() => {});
 
-    textOpacity.value = withTiming(1, { duration: 600 });
-    textScale.value = withSequence(
-      withSpring(1.06, { damping: 8, stiffness: 200 }),
+    imageOpacity.value = withTiming(1, { duration: 500 });
+    imageScale.value = withSequence(
+      withSpring(1.04, { damping: 8, stiffness: 200 }),
       withSpring(1, { damping: 15, stiffness: 150 })
     );
 
-    // Animation du serpent infinie
     snakeAnim.value = withRepeat(
       withTiming(100, { 
-        duration: 1500, 
+        duration: 1400, 
         easing: Easing.inOut(Easing.ease) 
       }),
       -1,
@@ -59,12 +59,12 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
       cancelAnimation(snakeAnim);
       
       snakeAnim.value = withTiming(0, { 
-        duration: 400, 
+        duration: 300, 
         easing: Easing.inOut(Easing.ease) 
       }, (finished) => {
         if (finished) {
           wipeProgress.value = withTiming(1.5, {
-            duration: 1100,
+            duration: 900,
             easing: Easing.bezier(0.45, 0, 0.15, 1)
           }, (done) => {
             if (done && onFinish) {
@@ -91,9 +91,9 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     ],
   }));
 
-  const textStyle = useAnimatedStyle(() => ({
-    transform: [{ scale: textScale.value }],
-    opacity: textOpacity.value,
+  const logoStyle = useAnimatedStyle(() => ({
+    transform: [{ scale: imageScale.value }],
+    opacity: imageOpacity.value,
   }));
 
   const snakeStyle = useAnimatedStyle(() => {
@@ -110,11 +110,15 @@ const SplashScreen = ({ isServerReady, onFinish }) => {
     <Animated.View style={[styles.absoluteContainer, containerStyle]}>
       <Animated.View style={[styles.innerContent, innerStyle]}>
         
-        <Animated.View style={[styles.textContainer, textStyle]}>
-          <Text style={styles.appName}>Yély</Text>
+        <Animated.View style={[styles.imageContainer, logoStyle]}>
+          <Image
+            source={splashCenterImg}
+            style={styles.splashImage}
+            resizeMode="contain"
+          />
         </Animated.View>
 
-        <Animated.View entering={FadeIn.delay(300)} style={styles.loaderWrapper}>
+        <Animated.View entering={FadeIn.delay(250)} style={styles.loaderWrapper}>
           <View style={styles.progressTrack}>
             <Animated.View style={[styles.progressFill, snakeStyle]} />
           </View>
@@ -134,13 +138,8 @@ const styles = StyleSheet.create({
     width: SCREEN_WIDTH,
     height: SCREEN_HEIGHT,
     zIndex: 9999,
-    backgroundColor: COLORS.background,
+    backgroundColor: '#D4AF37',
     overflow: 'hidden',
-    shadowColor: COLORS.pureBlack,
-    shadowOffset: { width: 10, height: 10 },
-    shadowOpacity: 0.6,
-    shadowRadius: 20,
-    elevation: 20,
   },
   innerContent: {
     width: SCREEN_WIDTH,
@@ -148,41 +147,40 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  textContainer: { 
+  imageContainer: { 
     alignItems: 'center',
     justifyContent: 'center',
+    width: 260,
+    height: 260,
   },
-  appName: {
-    fontSize: 54,
-    fontWeight: '800',
-    color: COLORS.champagneGold,
-    letterSpacing: 3,
-    textAlign: 'center',
+  splashImage: {
+    width: '100%',
+    height: '100%',
   },
   loaderWrapper: {
     position: 'absolute',
-    bottom: 80,
-    width: '65%',
+    bottom: 70,
+    width: '55%',
     alignItems: 'center',
   },
   progressTrack: {
     width: '100%',
-    height: 6,
-    backgroundColor: COLORS.glassSurface,
+    height: 5,
+    backgroundColor: 'rgba(18, 20, 24, 0.15)',
     borderRadius: 10,
     overflow: 'hidden',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   progressFill: {
     height: '100%',
-    backgroundColor: COLORS.champagneGold,
+    backgroundColor: '#121418',
     borderRadius: 10,
     position: 'absolute',
   },
   progressText: {
-    color: COLORS.champagneGold,
-    fontSize: FONTS.sizes.bodySmall,
-    fontWeight: '600',
+    color: '#121418',
+    fontSize: FONTS.sizes.bodySmall || 12,
+    fontWeight: '700',
     letterSpacing: 0.5,
   }
 });
