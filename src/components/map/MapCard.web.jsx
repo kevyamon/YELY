@@ -18,92 +18,17 @@ import { MAFERE_CENTER } from '../../utils/mafereZone';
 import UniversalIcon from '../ui/UniversalIcon';
 import {
   MapAutoFitter,
+  createPoiIcon,
   defaultIcon,
   destinationIcon,
   driverIcon,
   pickupIcon,
+  resolvePoiCollisions,
   userIcon
 } from './markers/WebMarkers';
 
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
-
-const poiIconCache = new Map();
-
-const resolvePoiCollisions = (pois, zoom) => {
-  if (!pois || pois.length === 0) return [];
-  
-  let threshold = 0.0004;
-  if (zoom >= 18) threshold = 0.0001;
-  else if (zoom === 17) threshold = 0.0002;
-  else if (zoom === 16) threshold = 0.0004;
-  else if (zoom === 15) threshold = 0.0007;
-  else if (zoom === 14) threshold = 0.0015;
-  else threshold = 0.0030;
-
-  const processed = [];
-
-  for (let i = 0; i < pois.length; i++) {
-    const current = { ...pois[i] };
-    const curLat = Number(current.latitude);
-    const curLng = Number(current.longitude);
-    if (isNaN(curLat) || isNaN(curLng)) continue;
-
-    let hasCollision = false;
-    for (const p of processed) {
-      const pLat = Number(p.latitude);
-      const pLng = Number(p.longitude);
-
-      if (Math.abs(curLat - pLat) < threshold && Math.abs(curLng - pLng) < threshold) {
-        hasCollision = true;
-        break;
-      }
-    }
-    
-    if (!hasCollision) {
-      current.showLabel = true;
-      processed.push(current);
-    }
-  }
-  return processed;
-};
-
-const createPoiIcon = (poi) => {
-  const cacheKey = `${poi._id || poi.id || poi.name}_${poi.iconColor || ''}_${poi.showLabel !== false}`;
-  if (poiIconCache.has(cacheKey)) {
-    return poiIconCache.get(cacheKey);
-  }
-
-  const color = poi.iconColor || THEME.COLORS.champagneGold;
-  const fullName = poi.name || '';
-  
-  const iconHtml = renderToString(
-    <UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />
-  );
-
-  const htmlContent = `
-    <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
-      <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
-        ${iconHtml}
-      </div>
-      ${poi.showLabel !== false ? `
-      <div style="margin-top: 2px; font-size: 12px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
-        ${fullName}
-      </div>
-      ` : ''}
-    </div>
-  `;
-
-  const icon = L.divIcon({
-    className: '', 
-    html: htmlContent,
-    iconSize: [26, 26],
-    iconAnchor: [13, 26], 
-  });
-
-  poiIconCache.set(cacheKey, icon);
-  return icon;
-};
 
 const MapInteractionTracker = ({ onInteract }) => {
   useMapEvents({
@@ -180,7 +105,8 @@ const MapCard = forwardRef(({
     return () => clearTimeout(buttonSleepTimeout.current);
   }, []);
 
-  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
+  // Synchronisation Parallèle : fullRoutePoints pour cadrer la caméra instantanément, visibleRoutePoints pour l'animation
+  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery();
@@ -262,11 +188,12 @@ const MapCard = forwardRef(({
           maxZoom={19}
         />
 
+        {/* Cadrage instantané et synchronisé avec le tracé grâce à fullRoutePoints */}
         <MapAutoFitter 
           location={location} 
           driverLocation={driverLocation} 
           markers={markers} 
-          routePoints={visibleRoutePoints}
+          routePoints={fullRoutePoints}
           isUserInteracting={isUserInteracting}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}

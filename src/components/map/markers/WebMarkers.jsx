@@ -1,11 +1,12 @@
 // src/components/map/markers/WebMarkers.jsx
-// COMPOSANTS VISUELS CARTE WEB - Intelligence Spatiale & Cadrage Sécurisé (AFE Standard)
+// COMPOSANTS VISUELS & CADRAGE CARTE WEB (AFE Standard)
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Gratuit)
 
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
 import { renderToString } from 'react-dom/server';
 import { useMap } from 'react-leaflet';
+import THEME from '../../../theme/theme';
 import { MAFERE_CENTER } from '../../../utils/mafereZone';
 import UniversalIcon from '../../ui/UniversalIcon';
 
@@ -15,6 +16,82 @@ const SVG_FLAG = `<svg viewBox="0 0 24 24" fill="#E74C3C" width="26" height="26"
 const SVG_CAR = `<svg viewBox="0 0 24 24" fill="#D4AF37" width="22" height="22"><path d="M18.92 6.01C18.72 5.42 18.16 5 17.5 5h-11c-.66 0-1.21.42-1.42 1.01L3 12v8c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-8l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z"/></svg>`;
 
 const dynamicIconCache = new Map();
+const poiIconCache = new Map();
+
+export const resolvePoiCollisions = (pois, zoom) => {
+  if (!pois || pois.length === 0) return [];
+  
+  let threshold = 0.0004;
+  if (zoom >= 18) threshold = 0.0001;
+  else if (zoom === 17) threshold = 0.0002;
+  else if (zoom === 16) threshold = 0.0004;
+  else if (zoom === 15) threshold = 0.0007;
+  else if (zoom === 14) threshold = 0.0015;
+  else threshold = 0.0030;
+
+  const processed = [];
+
+  for (let i = 0; i < pois.length; i++) {
+    const current = { ...pois[i] };
+    const curLat = Number(current.latitude);
+    const curLng = Number(current.longitude);
+    if (isNaN(curLat) || isNaN(curLng)) continue;
+
+    let hasCollision = false;
+    for (const p of processed) {
+      const pLat = Number(p.latitude);
+      const pLng = Number(p.longitude);
+
+      if (Math.abs(curLat - pLat) < threshold && Math.abs(curLng - pLng) < threshold) {
+        hasCollision = true;
+        break;
+      }
+    }
+    
+    if (!hasCollision) {
+      current.showLabel = true;
+      processed.push(current);
+    }
+  }
+  return processed;
+};
+
+export const createPoiIcon = (poi) => {
+  const cacheKey = `${poi._id || poi.id || poi.name}_${poi.iconColor || ''}_${poi.showLabel !== false}`;
+  if (poiIconCache.has(cacheKey)) {
+    return poiIconCache.get(cacheKey);
+  }
+
+  const color = poi.iconColor || THEME.COLORS.champagneGold;
+  const fullName = poi.name || '';
+  
+  const iconHtml = renderToString(
+    <UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />
+  );
+
+  const htmlContent = `
+    <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
+      <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
+        ${iconHtml}
+      </div>
+      ${poi.showLabel !== false ? `
+      <div style="margin-top: 2px; font-size: 12px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
+        ${fullName}
+      </div>
+      ` : ''}
+    </div>
+  `;
+
+  const icon = L.divIcon({
+    className: '', 
+    html: htmlContent,
+    iconSize: [26, 26],
+    iconAnchor: [13, 26], 
+  });
+
+  poiIconCache.set(cacheKey, icon);
+  return icon;
+};
 
 export const createDynamicPoiIcon = (iconString, color) => {
   const cacheKey = `${iconString}_${color}`;
@@ -97,7 +174,6 @@ export const MapAutoFitter = ({
     if (isUserInteracting) return;
 
     let coordsToFit = [];
-
     const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length > 1;
 
     if (hasDetailedRoute) {
@@ -138,7 +214,8 @@ export const MapAutoFitter = ({
 
     const firstPt = coordsToFit[0];
     const lastPt = coordsToFit[coordsToFit.length - 1];
-    const currentRouteSig = `${coordsToFit.length}_${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
+    // Signature spatiale indépendante du découpage frame-by-frame pour déclencher un vol instantané sans interruption
+    const currentRouteSig = `${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
 
     const isRouteChanged = currentRouteSig !== lastRouteSigRef.current;
     const now = Date.now();
