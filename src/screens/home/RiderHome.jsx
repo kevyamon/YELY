@@ -29,7 +29,7 @@ import { selectCurrentRide, selectRideToRate } from '../../store/slices/rideSlic
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-const RiderHome = ({ navigation }) => {
+const RiderHome = ({ navigation, route }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
   

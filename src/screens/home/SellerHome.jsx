@@ -39,7 +39,7 @@ import MapService from '../../services/mapService';
 import { selectLastAddress, updateAddress } from '../../store/slices/locationSlice';
 import { showToast } from '../../store/slices/uiSlice';
 
-const SellerHome = ({ navigation }) => {
+const SellerHome = ({ navigation, route }) => {
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
   const scrollY = useSharedValue(0);
