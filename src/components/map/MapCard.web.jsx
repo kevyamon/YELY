@@ -1,5 +1,5 @@
 // src/components/map/MapCard.web.jsx
-// COMPOSANT ORCHESTRATEUR CARTE WEB - Injection CSS Dynamique & CDN Haute Performance (100% Gratuit)
+// COMPOSANT ORCHESTRATEUR CARTE WEB - OpenStreetMap Officiel (100% Gratuit, Zéro Filigrane)
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
@@ -25,8 +25,8 @@ import {
   userIcon
 } from './markers/WebMarkers';
 
-const TILE_URL = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
-const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 const poiIconCache = new Map();
 
@@ -259,7 +259,6 @@ const MapCard = forwardRef(({
         <TileLayer
           url={TILE_URL}
           attribution={ATTRIBUTION}
-          subdomains={['a', 'b', 'c', 'd']}
           maxZoom={19}
         />
 
@@ -267,6 +266,7 @@ const MapCard = forwardRef(({
           location={location} 
           driverLocation={driverLocation} 
           markers={markers} 
+          routePoints={visibleRoutePoints}
           isUserInteracting={isUserInteracting}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
