@@ -34,7 +34,7 @@
     },
     "android": {
       "package": "com.yely.app",
-      "versionCode": 34,
+      "versionCode": 35,
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
