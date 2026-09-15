@@ -81,7 +81,7 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
 
   // Recherche de suggestions avec debounce
   useEffect(() => {
-    if (!searchQuery || searchQuery.trim().length < 3) {
+    if (!searchQuery || searchQuery.trim().length < 2) {
       setSuggestions([]);
       return;
     }
@@ -89,9 +89,10 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
     const delayDebounce = setTimeout(async () => {
       setIsSearching(true);
       try {
-        const results = await MapService.getPlaceSuggestions(searchQuery);
+        const results = await MapService.searchPlaces(searchQuery);
         // Filtrer les suggestions pour ne garder que celles dans la zone Maféré
-        const validResults = results.filter(item => {
+        const validResults = (results || []).filter(item => {
+          if (!item.latitude || !item.longitude) return false;
           return isLocationInMafereZone({
             latitude: item.latitude,
             longitude: item.longitude
@@ -103,7 +104,7 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
       } finally {
         setIsSearching(false);
       }
-    }, 800);
+    }, 350);
 
     return () => clearTimeout(delayDebounce);
   }, [searchQuery]);
@@ -287,7 +288,7 @@ const ShopLocationModal = ({ visible, onClose, initialCoords, initialAddress }) 
             <View style={styles.suggestionsContainer}>
               <FlatList
                 data={suggestions}
-                keyExtractor={(item) => item.id}
+                keyExtractor={(item, index) => item.placeId || item.id || String(index)}
                 renderItem={({ item }) => (
                   <TouchableOpacity 
                     style={styles.suggestionItem} 
@@ -428,7 +429,8 @@ const styles = StyleSheet.create({
   searchWrapper: {
     marginBottom: 10,
     position: 'relative',
-    zIndex: 10,
+    zIndex: 100,
+    elevation: 20,
   },
   searchLoader: {
     position: 'absolute',

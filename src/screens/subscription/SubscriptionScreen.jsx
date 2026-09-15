@@ -47,6 +47,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
   const [initializePayment, { isLoading: isInitiating }] = useInitializePaymentMutation();
   const [verifyPaymentTrigger] = useLazyVerifyPaymentQuery();
   const [currentStep, setCurrentStep] = useState(null);
+  const [isRedirecting, setIsRedirecting] = useState(false);
 
   const hasValidAccess = useMemo(() => Boolean(
     statusData?.data?.isActive ||
@@ -191,7 +192,9 @@ const SubscriptionScreen = ({ navigation, route }) => {
   }, [statusData, isStatusLoading, isConfigLoading, promoMode?.isActive]);
 
   const handleInitiatePayment = async () => {
+    if (isInitiating || isRedirecting) return;
     try {
+      setIsRedirecting(true);
       const platform = Platform.OS === 'web' ? 'pwa' : 'mobile';
       const response = await initializePayment({ planId: 'MONTHLY', platform }).unwrap();
       const payload = response?.data || response;
@@ -207,6 +210,8 @@ const SubscriptionScreen = ({ navigation, route }) => {
         try { bRes = await WebBrowser.openAuthSessionAsync(payload.paymentUrl, returnUrl); }
         catch (_) { await WebBrowser.openBrowserAsync(payload.paymentUrl); }
         
+        setIsRedirecting(false);
+
         let rRef = null;
         if (bRes?.type === 'success' && bRes?.url) {
           try {
@@ -232,6 +237,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
         refetchConfig();
       }
     } catch (err) {
+      setIsRedirecting(false);
       dispatch(showErrorToast({ title: "Erreur", message: err?.data?.message || err?.message || "Erreur paiement." }));
     }
   };
@@ -285,7 +291,7 @@ const SubscriptionScreen = ({ navigation, route }) => {
           {currentStep === STEPS.DASHBOARD ? (
             <SubscriptionDashboard statusData={statusData?.data} onRenew={() => setCurrentStep(STEPS.CHOOSE_PLAN)} onSelectOtherPlan={() => setCurrentStep(STEPS.CHOOSE_PLAN)} />
           ) : (
-            <PlanSelection configData={configData?.data} userRole={userRole} onSelectPlan={handleInitiatePayment} isLoading={isInitiating} />
+            <PlanSelection configData={configData?.data} userRole={userRole} onSelectPlan={handleInitiatePayment} isLoading={isInitiating || isRedirecting} />
           )}
         </View>
       </View>

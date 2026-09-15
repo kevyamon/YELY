@@ -118,10 +118,10 @@ const PlanSelection = ({
           </View>
           <View style={styles.buttonTextContainer}>
             <Text style={styles.payButtonTextMain}>
-              {isLoading ? 'Connexion sécurisée en cours...' : 'Payer mon abonnement'}
+              {isLoading ? 'Redirection vers GeniusPay...' : 'Payer mon abonnement'}
             </Text>
             <Text style={styles.payButtonSubtext}>
-              Paiement chiffré et activé automatiquement
+              {isLoading ? 'Veuillez patienter quelques instants...' : 'Paiement chiffré et activé automatiquement'}
             </Text>
           </View>
         </View>

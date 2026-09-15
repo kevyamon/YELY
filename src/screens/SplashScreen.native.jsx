@@ -2,10 +2,7 @@
 // SPLASH SCREEN NATIF (Android & iOS) - Rendu Direct 100% Garanti & Centrage Parfait
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, Zero-Fail)
 
-import { Asset } from 'expo-asset';
-import { Image as ExpoImage } from 'expo-image';
 import * as NativeSplashScreen from 'expo-splash-screen';
-import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useState } from 'react';
 import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, {
@@ -18,35 +15,20 @@ import Animated, {
   withRepeat,
   withTiming,
 } from 'react-native-reanimated';
+import SplashOrbitalLoader from '../components/ui/SplashOrbitalLoader';
 import { FONTS } from '../theme/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const splashVideoModule = require('../../assets/videos/motion.mp4');
-const splashFallbackImg = require('../../assets/images/splash-center.png');
-
-const resolvedVideoUri = Asset.fromModule(splashVideoModule).uri || splashVideoModule;
 
 const SplashScreenNative = ({ isServerReady, onFinish }) => {
   const snakeAnim = useSharedValue(-100);
   const isFinishing = useSharedValue(false);
   const opacityAnim = useSharedValue(1);
   const [loadingText, setLoadingText] = useState('Démarrage de Yély...');
-  const [isVideoReady, setIsVideoReady] = useState(false);
-
-  const player = useVideoPlayer(resolvedVideoUri, (playerInstance) => {
-    playerInstance.loop = true;
-    playerInstance.muted = true;
-    playerInstance.play();
-  });
 
   useEffect(() => {
-    // Relais immédiat pour cacher l'écran OS
+    // Relais immédiat pour cacher l'écran OS natif
     NativeSplashScreen.hideAsync().catch(() => {});
-
-    // Pré-chargement de l'asset vidéo
-    Asset.loadAsync(splashVideoModule)
-      .then(() => setIsVideoReady(true))
-      .catch(() => {});
 
     // Animation continue du serpentin de chargement
     snakeAnim.value = withRepeat(
@@ -102,23 +84,9 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
 
   return (
     <Animated.View style={[styles.rootContainer, animatedScreenStyle]}>
-      {/* 1. Média Central : Vidéo résolue avec fallback visuel instantané */}
+      {/* 1. Média Central : Loader orbital animé à 4 points */}
       <View style={styles.centerContainer}>
-        <ExpoImage
-          source={splashFallbackImg}
-          style={[styles.fallbackImage, isVideoReady && styles.fallbackHidden]}
-          contentFit="contain"
-          priority="high"
-          cachePolicy="memory-disk"
-        />
-        <VideoView
-          player={player}
-          style={styles.videoPlayer}
-          contentFit="contain"
-          nativeControls={false}
-          allowsFullscreen={false}
-          allowsPictureInPicture={false}
-        />
+        <SplashOrbitalLoader />
       </View>
 
       {/* 2. Loader au bas de l'écran */}
@@ -152,19 +120,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     position: 'relative',
   },
-  fallbackImage: {
-    width: 200,
-    height: 200,
-    position: 'absolute',
-  },
-  fallbackHidden: {
-    opacity: 0,
-  },
-  videoPlayer: {
-    width: 240,
-    height: 240,
-    backgroundColor: 'transparent',
-  },
   loaderWrapper: {
     position: 'absolute',
     bottom: 70,
@@ -194,3 +149,4 @@ const styles = StyleSheet.create({
 });
 
 export default React.memo(SplashScreenNative);
+
