@@ -9,6 +9,27 @@ export const DEVIATION_THRESHOLD_METERS = 60;
 export const FAST_RETRY_DELAY_MS = 400;
 export const SILENT_RETRY_DELAY_MS = 6000;
 
+export const fetchWithRetry = async (url, options = {}, retries = 2, delayMs = 300) => {
+  const { timeout = 4000, ...fetchOpts } = options;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeout);
+    try {
+      const response = await fetch(url, {
+        ...fetchOpts,
+        signal: controller.signal,
+      });
+      clearTimeout(timer);
+      if (response.ok) return response;
+      if (attempt === retries) return response;
+    } catch (err) {
+      clearTimeout(timer);
+      if (attempt === retries) throw err;
+    }
+    await new Promise((resolve) => setTimeout(resolve, delayMs * Math.pow(2, attempt)));
+  }
+};
+
 export const computeStepSize = (totalPoints, durationMs = ROUTE_DRAW_DURATION_MS, intervalMs = ROUTE_DRAW_INTERVAL_MS) => {
   const totalFrames = durationMs / intervalMs;
   return Math.max(1, Math.ceil(totalPoints / totalFrames));
