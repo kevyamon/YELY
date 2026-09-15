@@ -94,26 +94,13 @@ const useRouteManager = (location, driverLocation, markers) => {
         
         if (lastRouteDestKeyRef.current !== destKey) return;
 
-        const isFallbackStraightLine = routePoints && routePoints.length === 2;
-        const hasExistingDetailedRoute = fullRoutePointsRef.current && fullRoutePointsRef.current.length > 2;
-
-        if (isFallbackStraightLine && !hasExistingDetailedRoute && !isFastRetry) {
+        if (!routePoints || !Array.isArray(routePoints) || routePoints.length < 2) {
           clearTimeout(retryTimeoutRef.current);
           retryTimeoutRef.current = setTimeout(() => {
             if (lastRouteDestKeyRef.current === destKey) {
               fetchAndStoreRoute(pointA, pointB, destKey, true);
             }
           }, FAST_RETRY_DELAY_MS);
-          return;
-        }
-
-        if (!routePoints || (isFallbackStraightLine && hasExistingDetailedRoute)) {
-          clearTimeout(retryTimeoutRef.current);
-          retryTimeoutRef.current = setTimeout(() => {
-            if (lastRouteDestKeyRef.current === destKey) {
-              lastRouteFetchTimeRef.current = 0; 
-            }
-          }, SILENT_RETRY_DELAY_MS);
           return;
         }
 

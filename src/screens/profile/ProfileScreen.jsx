@@ -138,6 +138,12 @@ const ProfileScreen = ({ navigation }) => {
 
     const formData = new FormData();
     formData.append('vehicleType', form.vehicleType);
+    if (form.vehicleModel) {
+      formData.append('vehicleModel', form.vehicleModel.trim());
+    }
+    if (form.vehiclePlate) {
+      formData.append('vehiclePlate', form.vehiclePlate.trim());
+    }
 
     const frontFilename = form.idCardFront.split('/').pop() || 'id_front.jpg';
     const frontMatch = /\.(\w+)$/.exec(frontFilename);
@@ -165,7 +171,9 @@ const ProfileScreen = ({ navigation }) => {
         verificationStatus: 'pending',
         vehicle: {
           ...currentUser?.vehicle,
-          type: form.vehicleType
+          type: form.vehicleType,
+          model: form.vehicleModel ? form.vehicleModel.trim() : '',
+          plate: form.vehiclePlate ? form.vehiclePlate.trim() : '',
         }
       }));
       refetch();

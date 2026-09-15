@@ -374,7 +374,11 @@ const SellerHome = ({ navigation, route }) => {
 
             {/* STATS DU COMMERCE */}
             <View style={styles.statsRow}>
-              <View style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}>
+              <TouchableOpacity 
+                style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}
+                onPress={() => navigation.navigate('ManageProducts')}
+                activeOpacity={0.75}
+              >
                 <Ionicons name="cube-outline" size={22} color={THEME.COLORS.primary} />
                 {isLoadingProducts ? (
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 6 }} />
@@ -386,9 +390,13 @@ const SellerHome = ({ navigation, route }) => {
                 <Text style={[styles.statLabel, { color: THEME.COLORS.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>
                   Produits
                 </Text>
-              </View>
+              </TouchableOpacity>
 
-              <View style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}>
+              <TouchableOpacity 
+                style={[styles.statBox, { backgroundColor: cardBg, borderColor: cardBorder }, cardShadow]}
+                onPress={() => navigation.navigate('SellerSalesHistory')}
+                activeOpacity={0.75}
+              >
                 <Ionicons name="cash-outline" size={22} color={THEME.COLORS.success || '#27ae60'} />
                 {isLoadingStats ? (
                   <ActivityIndicator size="small" color={THEME.COLORS.primary} style={{ marginTop: 6 }} />
@@ -400,7 +408,7 @@ const SellerHome = ({ navigation, route }) => {
                 <Text style={[styles.statLabel, { color: THEME.COLORS.textSecondary }]} numberOfLines={1} adjustsFontSizeToFit>
                   Ventes
                 </Text>
-              </View>
+              </TouchableOpacity>
 
               <TouchableOpacity 
                 style={[styles.statBox, { backgroundColor: cardBg, borderColor: pendingCash > 0 ? THEME.COLORS.primary : cardBorder }, cardShadow]} 

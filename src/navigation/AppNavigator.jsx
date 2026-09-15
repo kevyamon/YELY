@@ -49,6 +49,7 @@ import OrderTracking from '../screens/marketplace/OrderTracking';
 import ClientOrders from '../screens/marketplace/ClientOrders';
 import SellerDashboard from '../screens/seller/SellerDashboard';
 import SellerOrders from '../screens/seller/SellerOrders';
+import SellerSalesHistory from '../screens/seller/SellerSalesHistory';
 import LedgerHistory from '../screens/seller/LedgerHistory';
 import HistoryScreen from '../screens/history/HistoryScreen';
 import ReportScreen from '../screens/report/ReportScreen';
@@ -252,6 +253,7 @@ const AppNavigator = () => {
             <Stack.Screen name="SellerOrders" component={SellerOrders} />
             <Stack.Screen name="ManageProducts" component={ManageProducts} />
             <Stack.Screen name="LedgerHistory" component={LedgerHistory} />
+            <Stack.Screen name="SellerSalesHistory" component={SellerSalesHistory} />
             
             <Stack.Group screenOptions={{ presentation: 'transparentModal' }}>
               <Stack.Screen name="Menu" component={MenuScreen} options={{ animation: 'fade_from_bottom', gestureEnabled: true, animationDuration: 100 }} />

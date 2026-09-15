@@ -272,7 +272,7 @@ class MapService {
       }
     }
 
-    return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
+    return null;
   }
 
   static calculateDistance(coord1, coord2) {

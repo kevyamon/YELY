@@ -102,6 +102,7 @@ const ProfileForm = ({
               value={form.vehicleModel}
               onChangeText={(txt) => setForm({...form, vehicleModel: txt})}
               placeholder="Marque et modèle"
+              editable={!isLocked}
             />
 
             <Text style={styles.label}>Numéro de Plaque d'Immatriculation</Text>
@@ -109,6 +110,7 @@ const ProfileForm = ({
               value={form.vehiclePlate}
               onChangeText={(txt) => setForm({...form, vehiclePlate: txt})}
               placeholder="Immatriculation ou N° Châssis"
+              editable={!isLocked}
             />
 
             <Text style={styles.label}>Type de Tricycle</Text>

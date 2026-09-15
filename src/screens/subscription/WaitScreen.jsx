@@ -3,8 +3,8 @@
 // STANDARD: Clean Architecture / Bank Grade (Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
-import React, { useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, BackHandler, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useDispatch, useSelector } from 'react-redux';
 import GlassCard from '../../components/ui/GlassCard';
@@ -36,6 +36,10 @@ const WaitScreen = ({ navigation, route }) => {
   const userRole = user?.role;
   const homeScreen = userRole === 'seller' ? 'SellerHome' : 'DriverHome';
 
+  const hasValidAccess = useMemo(() => Boolean(
+    subStatus?.isActive || promoMode?.isActive || user?.subscription?.isActive
+  ), [subStatus?.isActive, promoMode?.isActive, user?.subscription?.isActive]);
+
   const { refetch: refetchStatus } = useGetSubscriptionStatusQuery();
   const [triggerVerify] = useLazyVerifyPaymentQuery();
 
@@ -43,12 +47,18 @@ const WaitScreen = ({ navigation, route }) => {
 
   useEffect(() => {
     if (subStatus?.isActive && !subStatus?.isPending) {
-      navigation.replace(homeScreen);
+      if (navigation?.replace) navigation.replace(homeScreen);
     }
   }, [subStatus?.isActive, subStatus?.isPending, navigation, homeScreen]);
 
   useEffect(() => {
-    // Tentative de synchronisation active immediate au chargement
+    if (!hasValidAccess) {
+      const bh = BackHandler.addEventListener('hardwareBackPress', () => true);
+      return () => bh.remove();
+    }
+  }, [hasValidAccess]);
+
+  useEffect(() => {
     handleManualVerify();
   }, []);
 
@@ -68,7 +78,7 @@ const WaitScreen = ({ navigation, route }) => {
         if (resData?.isActive || resData?.status === 'COMPLETED') {
           dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: resData?.expiresAt }));
           dispatch(showSuccessToast({ title: "Succès", message: "Abonnement validé et activé." }));
-          navigation.replace(homeScreen);
+          if (navigation?.replace) navigation.replace(homeScreen);
           return;
         }
       }
@@ -78,7 +88,7 @@ const WaitScreen = ({ navigation, route }) => {
       if (sData?.isActive) {
         dispatch(updateSubscriptionStatus({ isActive: true, isPending: false, expiresAt: sData?.expiresAt }));
         dispatch(showSuccessToast({ title: "Succès", message: "Abonnement actif." }));
-        navigation.replace(homeScreen);
+        if (navigation?.replace) navigation.replace(homeScreen);
       } else {
         dispatch(showErrorToast({ title: "Information", message: "Paiement toujours en cours de confirmation par l'opérateur." }));
       }
@@ -90,15 +100,14 @@ const WaitScreen = ({ navigation, route }) => {
   };
 
   const handleLogout = () => {
-    dispatch(logout());
+    dispatch(logout({ reason: 'USER_INITIATED' }));
   };
 
   const handleClose = () => {
     dispatch(setSubscriptionModalDismissed(true));
-    if (navigation.canGoBack()) {
-      navigation.goBack();
-    } else {
-      navigation.navigate(homeScreen);
+    if (hasValidAccess) {
+      if (navigation?.canGoBack && navigation.canGoBack()) navigation.goBack();
+      else if (navigation?.navigate) navigation.navigate(homeScreen);
     }
   };
 
@@ -106,9 +115,11 @@ const WaitScreen = ({ navigation, route }) => {
     <ScreenWrapper>
       <View style={[styles.container, { paddingTop: insets.top + 40 }]}>
         <GlassCard style={styles.contentCard}>
-          <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
-            <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
-          </TouchableOpacity>
+          {hasValidAccess && (
+            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+              <Ionicons name="close" size={28} color={THEME.COLORS.textSecondary} />
+            </TouchableOpacity>
+          )}
 
           <View style={styles.iconContainer}>
             <Ionicons name="sync-outline" size={80} color={THEME.COLORS.champagneGold} />
@@ -140,8 +151,8 @@ const WaitScreen = ({ navigation, route }) => {
               style={styles.button}
             />
 
-            <TouchableOpacity style={styles.logoutLink} onPress={handleClose}>
-              <Text style={styles.logoutText}>Retour à l'accueil</Text>
+            <TouchableOpacity style={styles.logoutLink} onPress={handleLogout}>
+              <Text style={styles.logoutText}>Se déconnecter</Text>
             </TouchableOpacity>
           </View>
         </GlassCard>
@@ -221,8 +232,9 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
   },
   logoutText: {
-    color: THEME.COLORS.textTertiary,
+    color: '#FF4D4D',
     fontSize: 14,
+    fontWeight: '700',
   }
 });
 
