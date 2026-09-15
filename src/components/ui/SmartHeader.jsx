@@ -1,16 +1,11 @@
 // src/components/ui/SmartHeader.jsx
-// HEADER INTELLIGENT - Architecture Modulaire & Affichage 2 Lignes Ultra-Précis
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
+// HEADER INTELLIGENT - Design Miroir SmartFooter & Affichage Modulaire
+// CSCSM Level: Bank Grade (Strictement modulaire <= 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, {
-  Extrapolation,
-  interpolate,
-  useAnimatedStyle,
-  useSharedValue
-} from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
@@ -23,18 +18,10 @@ import NotificationBell from './NotificationBell';
 import SessionRefreshSkeleton from './SessionRefreshSkeleton';
 
 const parseAddressParts = (rawAddress) => {
-  if (!rawAddress || typeof rawAddress !== 'string') {
-    return { city: 'Position GPS', detail: null };
-  }
-  const str = rawAddress.trim();
-  const match = str.match(/^(.*?)\s*\((.*?)\)$/);
-  if (match) {
-    return {
-      city: match[1].trim() || 'Position GPS',
-      detail: match[2].trim(),
-    };
-  }
-  return { city: str, detail: null };
+  if (!rawAddress || typeof rawAddress !== 'string') return { city: 'Position GPS', detail: null };
+  const match = rawAddress.trim().match(/^(.*?)\s*\((.*?)\)$/);
+  if (match) return { city: match[1].trim() || 'Position GPS', detail: match[2].trim() };
+  return { city: rawAddress.trim(), detail: null };
 };
 
 const SmartHeader = ({ 
@@ -87,7 +74,7 @@ const SmartHeader = ({
 
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
-      <View style={[styles.background, { backgroundColor: THEME.COLORS.background }]}>
+      <View style={styles.background}>
         {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
 
@@ -96,17 +83,10 @@ const SmartHeader = ({
           <NotificationBell onPress={onNotificationPress} />
 
           <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <TouchableOpacity 
-              onPress={onRefreshLocation} 
-              activeOpacity={0.7} 
-              style={styles.locationTitleWrapper} 
-              disabled={!onRefreshLocation}
-            >
+            <TouchableOpacity onPress={onRefreshLocation} activeOpacity={0.7} style={styles.locationTitleWrapper} disabled={!onRefreshLocation}>
               <Ionicons name="location" size={14} color={THEME.COLORS.textPrimary} style={styles.locationIcon} />
               <Text style={styles.locationTitle} numberOfLines={1}>{primaryCity}</Text>
-              {onRefreshLocation && (
-                <Ionicons name="sync-outline" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />
-              )}
+              {onRefreshLocation && <Ionicons name="sync-outline" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />}
             </TouchableOpacity>
           </Animated.View>
 
@@ -117,36 +97,18 @@ const SmartHeader = ({
 
         <Animated.View style={[styles.ctaContainer, ctaAnimatedStyle]}>
           <View style={styles.greetingHeader}>
-            <SessionRefreshSkeleton 
-              isRefreshing={isRefreshing && !user} 
-              fallbackText={`Bonjour, ${userName}`}
-              textStyle={styles.greetingText}
-            />
+            <SessionRefreshSkeleton isRefreshing={isRefreshing && !user} fallbackText={`Bonjour, ${userName}`} textStyle={styles.greetingText} />
              
             {isRider && (
               <View style={styles.riderAddressRow}>
-                <TouchableOpacity 
-                  onPress={onRefreshLocation} 
-                  activeOpacity={0.7} 
-                  style={styles.originView} 
-                  disabled={!onRefreshLocation}
-                >
-                  <Ionicons 
-                    name="location-sharp" 
-                    size={14} 
-                    color={THEME.COLORS.champagneGold} 
-                    style={locationDetail ? { marginTop: 1 } : null}
-                  />
+                <TouchableOpacity onPress={onRefreshLocation} activeOpacity={0.7} style={styles.originView} disabled={!onRefreshLocation}>
+                  <Ionicons name="location-sharp" size={14} color={THEME.COLORS.champagneGold} style={locationDetail ? { marginTop: 1 } : null} />
                   <View style={styles.addressColumn}>
                     <View style={styles.cityRow}>
                       <Text style={styles.riderCityText} numberOfLines={1}>{primaryCity}</Text>
-                      {onRefreshLocation && (
-                        <Ionicons name="sync-outline" size={11} color={THEME.COLORS.champagneGold} style={{ marginLeft: 4 }} />
-                      )}
+                      {onRefreshLocation && <Ionicons name="sync-outline" size={11} color={THEME.COLORS.champagneGold} style={{ marginLeft: 4 }} />}
                     </View>
-                    {locationDetail ? (
-                      <Text style={styles.riderDetailText} numberOfLines={1}>{locationDetail}</Text>
-                    ) : null}
+                    {locationDetail && <Text style={styles.riderDetailText} numberOfLines={1}>{locationDetail}</Text>}
                   </View>
                 </TouchableOpacity>
               </View>
@@ -155,21 +117,14 @@ const SmartHeader = ({
 
           {!isRider ? (
             <View style={styles.driverCtaRow}>
-              <TouchableOpacity 
-                onPress={onRefreshLocation} 
-                activeOpacity={0.7} 
-                style={styles.driverGpsBadge} 
-                disabled={!onRefreshLocation}
-              >
+              <TouchableOpacity onPress={onRefreshLocation} activeOpacity={0.7} style={styles.driverGpsBadge} disabled={!onRefreshLocation}>
                 <LocationSyncGauge isFetching={isFetchingAddress} variant="driver" />
                 <Ionicons name="navigate" size={18} color={THEME.COLORS.champagneGold} />
                 <View style={[styles.addressColumn, { marginLeft: 8 }]}>
                   <Text style={styles.gpsText} numberOfLines={1}>{primaryCity}</Text>
                   {locationDetail && <Text style={styles.gpsDetailText} numberOfLines={1}>{locationDetail}</Text>}
                 </View>
-                {onRefreshLocation && (
-                  <Ionicons name="sync-outline" size={14} color={THEME.COLORS.champagneGold} style={{ marginLeft: 6 }} />
-                )}
+                {onRefreshLocation && <Ionicons name="sync-outline" size={14} color={THEME.COLORS.champagneGold} style={{ marginLeft: 6 }} />}
               </TouchableOpacity>
               <TouchableOpacity style={styles.shoppingBtnSmall} onPress={onShoppingPress}>
                 <Ionicons name="cart" size={20} color={THEME.COLORS.textPrimary} />
@@ -180,30 +135,17 @@ const SmartHeader = ({
               <View style={styles.riderButtonRow}>
                 {!hasActiveRide && !hasDestination && (
                   <View style={styles.flexBtn}>
-                    <ActionPill 
-                      type="taxi" 
-                      onPress={onSearchPress} 
-                      disabled={false} 
-                      activeRideStatus={currentRide?.status} 
-                    />
+                    <ActionPill type="taxi" onPress={onSearchPress} disabled={false} activeRideStatus={currentRide?.status} />
                   </View>
                 )}
                 {!hasActiveRide && hasDestination && (
                   <View style={styles.flexBtn}>
-                    <ActionPill 
-                      type="cancel_destination" 
-                      onPress={onCancelDestination} 
-                      disabled={false} 
-                    />
+                    <ActionPill type="cancel_destination" onPress={onCancelDestination} disabled={false} />
                   </View>
                 )}
                 {!hasActiveRide && (
                   <View style={[styles.flexBtn, { marginLeft: 10 }]}>
-                    <ActionPill 
-                      type="shopping" 
-                      onPress={onShoppingPress} 
-                      disabled={false} 
-                    />
+                    <ActionPill type="shopping" onPress={onShoppingPress} disabled={false} />
                   </View>
                 )}
               </View>
@@ -217,170 +159,62 @@ const SmartHeader = ({
 
 const styles = StyleSheet.create({
   container: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 100,
-    overflow: 'hidden',
-    shadowColor: THEME.COLORS.pureBlack,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 15,
+    position: 'absolute', top: 0, left: 0, right: 0, zIndex: 100,
+    shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.45, shadowRadius: 14, elevation: 15,
   },
   background: {
-    ...StyleSheet.absoluteFillObject,
-    borderBottomLeftRadius: THEME.BORDERS.radius.headerCurve,
-    borderBottomRightRadius: THEME.BORDERS.radius.headerCurve,
-    borderBottomWidth: 1.5,
-    borderBottomColor: THEME.COLORS.champagneGold,
+    ...StyleSheet.absoluteFillObject, backgroundColor: THEME.COLORS.background,
+    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    borderWidth: 2, borderTopWidth: 0, borderColor: THEME.COLORS.champagneGold,
   },
   contentContainer: {
-    flex: 1,
-    paddingHorizontal: THEME.SPACING.md,
-    justifyContent: 'space-between',
-    paddingBottom: THEME.SPACING.sm,
+    flex: 1, paddingHorizontal: THEME.SPACING.md,
+    justifyContent: 'space-between', paddingBottom: THEME.SPACING.sm,
   },
-  topRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    height: 48,
-  },
-  titleContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 10,
-  },
+  topRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', height: 48 },
+  titleContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 10 },
   locationTitleWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface,
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1, borderColor: THEME.COLORS.border,
   },
   locationIcon: { marginRight: 6 },
-  locationTitle: {
-    color: THEME.COLORS.textPrimary,
-    fontWeight: '800',
-    fontSize: 14,
-    flexShrink: 1,
-  },
+  locationTitle: { color: THEME.COLORS.textPrimary, fontWeight: '800', fontSize: 14, flexShrink: 1 },
   iconButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: THEME.COLORS.glassSurface,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
+    width: 40, height: 40, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface,
+    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border,
   },
   ctaContainer: { marginTop: 0 },
-  greetingHeader: {
-    marginBottom: 4, 
-    minHeight: 38,    
-    justifyContent: 'flex-start',
-  },
-  greetingText: {
-    color: THEME.COLORS.textSecondary,
-    fontSize: 14,
-    marginBottom: 2,
-    marginLeft: 4,
-  },
-  riderAddressRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: 4,
-    marginBottom: 2,
-  },
-  originView: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    flexShrink: 1,
-    gap: 4,
-  },
-  addressColumn: {
-    flexShrink: 1,
-  },
-  cityRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  riderCityText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-    lineHeight: 16,
-    flexShrink: 1,
-  },
-  riderDetailText: {
-    color: 'rgba(212, 175, 55, 0.95)',
-    fontSize: 10.5,
-    fontWeight: '600',
-    lineHeight: 13,
-    marginTop: 1,
-    flexShrink: 1,
-  },
-  driverCtaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 4,
-  },
+  greetingHeader: { marginBottom: 4, minHeight: 38, justifyContent: 'flex-start' },
+  greetingText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginBottom: 2, marginLeft: 4 },
+  riderAddressRow: { flexDirection: 'row', alignItems: 'center', marginLeft: 4, marginBottom: 2 },
+  originView: { flexDirection: 'row', alignItems: 'flex-start', flexShrink: 1, gap: 4 },
+  addressColumn: { flexShrink: 1 },
+  cityRow: { flexDirection: 'row', alignItems: 'center' },
+  riderCityText: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 16, flexShrink: 1 },
+  riderDetailText: { color: 'rgba(212, 175, 55, 0.95)', fontSize: 10.5, fontWeight: '600', lineHeight: 13, marginTop: 1, flexShrink: 1 },
+  driverCtaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   driverGpsBadge: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassSurface,
-    paddingVertical: 8, 
-    paddingHorizontal: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.border,
-    overflow: 'hidden', 
+    flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface,
+    paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, overflow: 'hidden',
   },
-  gpsText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 13,
-    fontWeight: '700',
-  },
-  gpsDetailText: {
-    color: 'rgba(212, 175, 55, 0.95)',
-    fontSize: 10.5,
-    fontWeight: '600',
-    marginTop: 1,
-  },
+  gpsText: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '700' },
+  gpsDetailText: { color: 'rgba(212, 175, 55, 0.95)', fontSize: 10.5, fontWeight: '600', marginTop: 1 },
   shoppingBtnSmall: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    backgroundColor: THEME.COLORS.primary,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginLeft: 10,
-    borderWidth: 1,
-    borderColor: THEME.COLORS.champagneGold,
-    ...THEME.SHADOWS.gold,
+    width: 44, height: 44, borderRadius: 12, backgroundColor: THEME.COLORS.primary,
+    justifyContent: 'center', alignItems: 'center', marginLeft: 10,
+    borderWidth: 1, borderColor: THEME.COLORS.champagneGold, ...THEME.SHADOWS.gold,
   },
   actionPillWrapper: { paddingBottom: 2 },
-  riderButtonRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
+  riderButtonRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   flexBtn: { flex: 1 }
 });
 
-const arePropsEqual = (prevProps, nextProps) => {
-  return (
-    prevProps.address === nextProps.address &&
-    prevProps.hasDestination === nextProps.hasDestination &&
-    prevProps.userName === nextProps.userName &&
-    prevProps.onRefreshLocation === nextProps.onRefreshLocation
-  );
-};
+const arePropsEqual = (prevProps, nextProps) => (
+  prevProps.address === nextProps.address &&
+  prevProps.hasDestination === nextProps.hasDestination &&
+  prevProps.userName === nextProps.userName &&
+  prevProps.onRefreshLocation === nextProps.onRefreshLocation
+);
 
 export default memo(SmartHeader, arePropsEqual);

@@ -3,8 +3,9 @@
 // CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, Zero-Fail)
 
 import * as NativeSplashScreen from 'expo-splash-screen';
+import { useVideoPlayer, VideoView } from 'expo-video';
 import React, { useEffect, useState } from 'react';
-import { Dimensions, Image, StyleSheet, Text, View } from 'react-native';
+import { Dimensions, StyleSheet, Text, View } from 'react-native';
 import Animated, {
   cancelAnimation,
   Easing,
@@ -18,13 +19,19 @@ import Animated, {
 import { FONTS } from '../theme/theme';
 
 const { width: SCREEN_WIDTH, height: SCREEN_HEIGHT } = Dimensions.get('window');
-const splashCenterImg = require('../../assets/images/splash-center.png');
+const splashVideoSource = require('../../assets/videos/motion.mp4');
 
 const SplashScreenNative = ({ isServerReady, onFinish }) => {
   const snakeAnim = useSharedValue(-100);
   const isFinishing = useSharedValue(false);
   const opacityAnim = useSharedValue(1);
   const [loadingText, setLoadingText] = useState('Démarrage de Yély...');
+
+  const player = useVideoPlayer(splashVideoSource, (playerInstance) => {
+    playerInstance.loop = true;
+    playerInstance.muted = true;
+    playerInstance.play();
+  });
 
   useEffect(() => {
     // Relais immédiat pour cacher l'écran OS
@@ -84,13 +91,15 @@ const SplashScreenNative = ({ isServerReady, onFinish }) => {
 
   return (
     <Animated.View style={[styles.rootContainer, animatedScreenStyle]}>
-      {/* 1. Logo Central Pur : Rendu direct sans aucun transform matriciel */}
+      {/* 1. Animation Vidéo Centrale : Rendu direct, sans cadre, centré */}
       <View style={styles.centerContainer}>
-        <Image
-          source={splashCenterImg}
-          style={styles.splashImage}
-          resizeMode="contain"
-          fadeDuration={0}
+        <VideoView
+          player={player}
+          style={styles.videoPlayer}
+          contentFit="contain"
+          nativeControls={false}
+          allowsFullscreen={false}
+          allowsPictureInPicture={false}
         />
       </View>
 
@@ -118,14 +127,18 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   centerContainer: {
-    width: 220,
-    height: 220,
+    width: SCREEN_WIDTH * 0.7,
+    height: SCREEN_WIDTH * 0.7,
+    maxWidth: 280,
+    maxHeight: 280,
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'transparent',
   },
-  splashImage: {
-    width: 220,
-    height: 220,
+  videoPlayer: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'transparent',
   },
   loaderWrapper: {
     position: 'absolute',
@@ -149,7 +162,7 @@ const styles = StyleSheet.create({
   },
   progressText: {
     color: '#121418',
-    fontSize: FONTS.sizes.bodySmall || 12,
+    fontSize: FONTS.sizes?.bodySmall || 12,
     fontWeight: '700',
     letterSpacing: 0.5,
   },

@@ -1,38 +1,87 @@
 // src/components/ui/ActionPill.jsx
-// COMPOSANT RÉUTILISABLE - Bouton d'action "Pilule" (Commander / Annuler) avec animation
+// COMPOSANT RÉUTILISABLE - Bouton d'action "Pilule" (Taxi / Boutique / Annuler)
+// CSCSM Level: Bank Grade (Strictement modulaire < 325 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
+import React from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withSpring } from 'react-native-reanimated';
 import THEME from '../../theme/theme';
 
-const ActionPill = ({ mode = 'primary', onPress, text, icon }) => {
+const TYPE_CONFIGS = {
+  taxi: {
+    text: 'Taxi',
+    icon: 'car-sport',
+    mode: 'primary',
+  },
+  shopping: {
+    text: 'Boutique',
+    icon: 'cart',
+    mode: 'primary',
+  },
+  cancel_destination: {
+    text: 'Annuler',
+    icon: 'close-circle',
+    mode: 'cancel',
+  },
+};
+
+const ActionPill = ({ 
+  mode, 
+  onPress, 
+  text, 
+  icon, 
+  type, 
+  disabled = false,
+  activeRideStatus 
+}) => {
   const scale = useSharedValue(1);
 
   const animatedStyle = useAnimatedStyle(() => {
     return { transform: [{ scale: scale.value }] };
   });
 
-  const isCancel = mode === 'cancel';
+  const config = (type && TYPE_CONFIGS[type]) || {};
+  const resolvedMode = mode || config.mode || 'primary';
+  const resolvedText = text || config.text || '';
+  const resolvedIcon = icon || config.icon || null;
+  const isCancel = resolvedMode === 'cancel';
 
   return (
     <Animated.View style={[styles.container, animatedStyle]}>
       <Pressable
-        style={[styles.button, isCancel ? styles.buttonCancel : styles.buttonPrimary]}
-        onPressIn={() => scale.value = withSpring(0.92)}
-        onPressOut={() => scale.value = withSpring(1)}
+        style={[
+          styles.button, 
+          isCancel ? styles.buttonCancel : styles.buttonPrimary,
+          disabled && styles.buttonDisabled
+        ]}
+        onPressIn={() => {
+          if (!disabled) scale.value = withSpring(0.94);
+        }}
+        onPressOut={() => {
+          if (!disabled) scale.value = withSpring(1);
+        }}
         onPress={onPress}
+        disabled={disabled}
       >
-        {icon && (
+        {resolvedIcon && (
           <Ionicons 
-            name={icon} 
-            size={isCancel ? 20 : 22} 
+            name={resolvedIcon} 
+            size={isCancel ? 18 : 20} 
             color={isCancel ? THEME.COLORS.danger : '#121418'} 
           />
         )}
-        <Text style={[styles.text, isCancel ? styles.textCancel : styles.textPrimary]}>
-          {text}
-        </Text>
+        {resolvedText ? (
+          <Text 
+            style={[
+              styles.text, 
+              isCancel ? styles.textCancel : styles.textPrimary
+            ]}
+            numberOfLines={1}
+          >
+            {resolvedText}
+          </Text>
+        ) : null}
       </Pressable>
     </Animated.View>
   );
@@ -40,49 +89,53 @@ const ActionPill = ({ mode = 'primary', onPress, text, icon }) => {
 
 const styles = StyleSheet.create({
   container: {
-    alignItems: 'center',
-    marginTop: 4,
+    width: '100%',
+    alignItems: 'stretch',
+    marginTop: 2,
   },
   button: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: 30, // Forme de pilule parfaite
+    borderRadius: 22,
+    width: '100%',
+    height: 44,
+    paddingHorizontal: 12,
   },
   buttonPrimary: {
     backgroundColor: THEME.COLORS.champagneGold,
-    paddingVertical: 12,
-    paddingHorizontal: 28,
-    height: 48,
     shadowColor: THEME.COLORS.champagneGold,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
     shadowRadius: 6,
-    elevation: 6,
+    elevation: 5,
   },
   buttonCancel: {
-    backgroundColor: 'rgba(231, 76, 60, 0.1)',
+    backgroundColor: 'rgba(231, 76, 60, 0.12)',
     borderColor: THEME.COLORS.danger,
-    borderWidth: 1,
-    paddingHorizontal: 20,
-    height: 40,
+    borderWidth: 1.5,
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  buttonDisabled: {
+    opacity: 0.5,
     elevation: 0,
     shadowOpacity: 0,
   },
   text: {
     marginLeft: 8,
-    letterSpacing: 0.5,
+    letterSpacing: 0.4,
   },
   textPrimary: {
     color: '#121418',
-    fontSize: 16,
-    fontWeight: '900',
+    fontSize: 14,
+    fontWeight: '800',
   },
   textCancel: {
     color: THEME.COLORS.danger,
-    fontSize: 14,
-    fontWeight: 'bold',
-  }
+    fontSize: 13,
+    fontWeight: '700',
+  },
 });
 
 export default ActionPill;
