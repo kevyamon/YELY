@@ -121,22 +121,32 @@ export default function LandingScreen({ navigation }) {
   );
 
   // Tracé précis de la courbe organique dorée supérieure
-  const curvePath = `M 0 0 L ${width} 0 L ${width} ${height * 0.46} C ${width * 0.70} ${height * 0.58}, ${width * 0.25} ${height * 0.58}, 0 ${height * 0.48} Z`;
+  const curveWidth = width || 390;
+  const curveHeight = height || 844;
+  const curvePath = `M 0 0 L ${curveWidth} 0 L ${curveWidth} ${curveHeight * 0.46} C ${curveWidth * 0.70} ${curveHeight * 0.58}, ${curveWidth * 0.25} ${curveHeight * 0.58}, 0 ${curveHeight * 0.48} Z`;
 
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="transparent" translucent />
 
       {/* FOND VECTORIEL AVEC BULLE ORGANIQUE SUPÉRIEURE & BLANC EN BAS */}
-      <Svg width={width} height={height} style={StyleSheet.absoluteFillObject}>
-        <Defs>
-          <SvgLinearGradient id="goldCurveGrad" x1="0" y1="0" x2="0" y2="1">
-            <Stop offset="0%" stopColor={PALETTE.warmGold} stopOpacity="1" />
-            <Stop offset="100%" stopColor={PALETTE.warmYellow} stopOpacity="1" />
-          </SvgLinearGradient>
-        </Defs>
-        <Path d={curvePath} fill="url(#goldCurveGrad)" />
-      </Svg>
+      <View style={StyleSheet.absoluteFillObject} pointerEvents="none">
+        <Svg
+          width="100%"
+          height="100%"
+          viewBox={`0 0 ${curveWidth} ${curveHeight}`}
+          preserveAspectRatio="none"
+          style={StyleSheet.absoluteFillObject}
+        >
+          <Defs>
+            <SvgLinearGradient id="goldCurveGradLanding" x1="0" y1="0" x2="0" y2="1">
+              <Stop offset="0%" stopColor={PALETTE.warmGold} stopOpacity="1" />
+              <Stop offset="100%" stopColor={PALETTE.warmYellow} stopOpacity="1" />
+            </SvgLinearGradient>
+          </Defs>
+          <Path d={curvePath} fill="url(#goldCurveGradLanding)" />
+        </Svg>
+      </View>
 
       {/* CONTENU PRINCIPAL PARFAITEMENT STRUCTURÉ */}
       <View
@@ -207,123 +217,27 @@ export default function LandingScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: PALETTE.pureWhite,
-  },
-  contentContainer: {
-    flex: 1,
-    justifyContent: 'space-between',
-    paddingHorizontal: SPACING.xl,
-  },
-  topSection: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingTop: SPACING.xl,
-  },
-  titleWrapper: {
-    width: '100%',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xs,
-  },
-  mainTitle: {
-    fontSize: FONTS.sizes.h1 + 6,
-    fontWeight: FONTS.weights.bold,
-    color: PALETTE.charcoal,
-    letterSpacing: -0.3,
-    textAlign: 'center',
-  },
-  subtitleWrapper: {
-    alignItems: 'center',
-    marginTop: SPACING.lg,
-  },
-  separator: {
-    width: 44,
-    height: 4,
-    backgroundColor: PALETTE.pureWhite,
-    borderRadius: BORDERS.radius.xs,
-    marginBottom: SPACING.md,
-  },
-  subTitle: {
-    fontSize: FONTS.sizes.body,
-    fontWeight: FONTS.weights.bold,
-    color: PALETTE.richBlack,
-    letterSpacing: 0.5,
-  },
-  bottomSection: {
-    width: '100%',
-    alignItems: 'center',
-  },
-  buttonWrapper: {
-    width: '100%',
-    marginBottom: SPACING.lg,
-  },
-  primaryButton: {
-    height: 58,
-    borderRadius: BORDERS.radius.pill,
-    backgroundColor: PALETTE.charcoal,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: SPACING.xl,
-    elevation: 6,
-    ...SHADOWS.medium,
-  },
-  buttonIconLeft: {
-    marginRight: SPACING.sm,
-  },
-  buttonIconRight: {
-    marginLeft: SPACING.sm,
-  },
-  primaryButtonText: {
-    fontSize: FONTS.sizes.body,
-    fontWeight: FONTS.weights.bold,
-    color: PALETTE.warmYellow,
-    letterSpacing: 1.2,
-  },
-  linksContainer: {
-    alignItems: 'center',
-  },
-  loginLink: {
-    paddingVertical: SPACING.sm,
-    paddingHorizontal: SPACING.lg,
-    marginBottom: SPACING.xs,
-  },
-  loginText: {
-    fontSize: FONTS.sizes.bodySmall + 1,
-    fontWeight: FONTS.weights.semiBold,
-    color: PALETTE.charcoal,
-  },
-  loginTextBold: {
-    fontWeight: FONTS.weights.bold,
-    color: PALETTE.pureBlack,
-    textDecorationLine: 'underline',
-  },
-  legalLinksRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: SPACING.xs,
-  },
-  termsLink: {
-    padding: SPACING.xs,
-  },
-  termsText: {
-    fontSize: FONTS.sizes.caption + 1,
-    fontWeight: FONTS.weights.bold,
-    color: PALETTE.charcoal,
-  },
-  bullet: {
-    fontSize: FONTS.sizes.caption + 1,
-    marginHorizontal: SPACING.sm,
-    color: PALETTE.charcoal,
-    fontWeight: FONTS.weights.bold,
-  },
-  copyright: {
-    fontSize: FONTS.sizes.caption,
-    marginTop: SPACING.sm,
-    fontWeight: FONTS.weights.semiBold,
-    color: PALETTE.charcoal,
-  },
+  container: { flex: 1, backgroundColor: PALETTE.pureWhite },
+  contentContainer: { flex: 1, justifyContent: 'space-between', paddingHorizontal: SPACING.xl },
+  topSection: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: SPACING.xl },
+  titleWrapper: { width: '100%', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.xs },
+  mainTitle: { fontSize: FONTS.sizes.h1 + 6, fontWeight: FONTS.weights.bold, color: PALETTE.charcoal, letterSpacing: -0.3, textAlign: 'center' },
+  subtitleWrapper: { alignItems: 'center', marginTop: SPACING.lg },
+  separator: { width: 44, height: 4, backgroundColor: PALETTE.pureWhite, borderRadius: BORDERS.radius.xs, marginBottom: SPACING.md },
+  subTitle: { fontSize: FONTS.sizes.body, fontWeight: FONTS.weights.bold, color: PALETTE.richBlack, letterSpacing: 0.5 },
+  bottomSection: { width: '100%', alignItems: 'center' },
+  buttonWrapper: { width: '100%', marginBottom: SPACING.lg },
+  primaryButton: { height: 58, borderRadius: BORDERS.radius.pill, backgroundColor: PALETTE.charcoal, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingHorizontal: SPACING.xl, elevation: 6, ...SHADOWS.medium },
+  buttonIconLeft: { marginRight: SPACING.sm },
+  buttonIconRight: { marginLeft: SPACING.sm },
+  primaryButtonText: { fontSize: FONTS.sizes.body, fontWeight: FONTS.weights.bold, color: PALETTE.warmYellow, letterSpacing: 1.2 },
+  linksContainer: { alignItems: 'center' },
+  loginLink: { paddingVertical: SPACING.sm, paddingHorizontal: SPACING.lg, marginBottom: SPACING.xs },
+  loginText: { fontSize: FONTS.sizes.bodySmall + 1, fontWeight: FONTS.weights.semiBold, color: PALETTE.charcoal },
+  loginTextBold: { fontWeight: FONTS.weights.bold, color: PALETTE.pureBlack, textDecorationLine: 'underline' },
+  legalLinksRow: { flexDirection: 'row', alignItems: 'center', marginVertical: SPACING.xs },
+  termsLink: { padding: SPACING.xs },
+  termsText: { fontSize: FONTS.sizes.caption + 1, fontWeight: FONTS.weights.bold, color: PALETTE.charcoal },
+  bullet: { fontSize: FONTS.sizes.caption + 1, marginHorizontal: SPACING.sm, color: PALETTE.charcoal, fontWeight: FONTS.weights.bold },
+  copyright: { fontSize: FONTS.sizes.caption, marginTop: SPACING.sm, fontWeight: FONTS.weights.semiBold, color: PALETTE.charcoal }
 });
