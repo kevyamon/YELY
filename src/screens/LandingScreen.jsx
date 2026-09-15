@@ -144,7 +144,10 @@ export default function LandingScreen({ navigation }) {
               <Stop offset="100%" stopColor={PALETTE.warmYellow} stopOpacity="1" />
             </SvgLinearGradient>
           </Defs>
-          <Path d={curvePath} fill="url(#goldCurveGradLanding)" />
+          <Path 
+            d={curvePath} 
+            fill={Platform.OS === 'web' ? PALETTE.warmYellow : 'url(#goldCurveGradLanding)'} 
+          />
         </Svg>
       </View>
 
