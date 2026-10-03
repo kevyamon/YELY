@@ -1,8 +1,8 @@
 // src/services/mapService.js
-// SERVICE CARTOGRAPHIQUE ULTRA-OPTIMISÉ - Nominatim & OSRM (100% Gratuit)
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
+// SERVICE CARTOGRAPHIQUE - Dual-Phase GPS & OSRM Résilient (100% Gratuit)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
-import { MAFERE_ZONE } from '../utils/mafereZone';
+import { isLocationInMafereZone, MAFERE_ZONE } from '../utils/mafereZone';
 import { fetchWithRetry } from '../utils/routeGeometry';
 
 const NOMINATIM_BASE_URL = 'https://nominatim.openstreetmap.org';
@@ -11,7 +11,7 @@ const ROUTING_SERVERS = [
   'https://routing.openstreetmap.de/routed-car/route/v1/driving',
 ];
 
-const ROUTE_FETCH_TIMEOUT_MS = 3500;
+const ROUTE_FETCH_TIMEOUT_MS = 3000;
 const MAX_LANDMARK_DISTANCE_METERS = 500;
 const API_HEADERS = { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' };
 
@@ -26,21 +26,13 @@ const FALLBACK_LANDMARKS = [
 
 const addressCache = new Map();
 const routeCache = new Map();
-const ADDRESS_CACHE_MAX_SIZE = 500;
-const ROUTE_CACHE_MAX_SIZE = 100;
-const ADDRESS_CACHE_PRECISION = 4;
-
-let lastSuccessfulAddress = null;
-let lastSuccessfulCoords = null;
 let globalPoisCache = null;
 let lastPoisFetchTime = 0;
 const POIS_CACHE_TTL_MS = 5 * 60 * 1000;
 
 export const fetchActivePOIs = async () => {
   const now = Date.now();
-  if (globalPoisCache && now - lastPoisFetchTime < POIS_CACHE_TTL_MS) {
-    return globalPoisCache;
-  }
+  if (globalPoisCache && now - lastPoisFetchTime < POIS_CACHE_TTL_MS) return globalPoisCache;
   try {
     const { default: store } = await import('../store/store');
     const { poiApiSlice } = await import('../store/api/poiApiSlice');
@@ -64,11 +56,11 @@ const isPublicLandmark = (poi) => {
   return !banned.some(kw => name.includes(kw));
 };
 
-const enrichWithPOI = async (address, lat, lng) => {
+const enrichWithPOI = async (baseAddr, lat, lng) => {
   try {
     const rawPois = await fetchActivePOIs();
-    const pois = (rawPois || []).filter(isPublicLandmark);
-    if (!pois || pois.length === 0) return address;
+    const pois = [...(rawPois || []), ...FALLBACK_LANDMARKS].filter(isPublicLandmark);
+    if (!pois.length) return baseAddr;
 
     let nearestPOI = null;
     let minDistance = Infinity;
@@ -81,46 +73,16 @@ const enrichWithPOI = async (address, lat, lng) => {
     }
 
     if (nearestPOI && minDistance <= MAX_LANDMARK_DISTANCE_METERS) {
-      let baseAddr = address || 'Maféré';
-      baseAddr = (baseAddr.toLowerCase().includes('maféré') || baseAddr.toLowerCase().includes('aboisso')) ? 'Maféré' : baseAddr.split(',')[0].trim();
-      return minDistance <= 30 ? `${baseAddr} (Près de : ${nearestPOI.name})` : `${baseAddr} (À ~${Math.round(minDistance)}m de : ${nearestPOI.name})`;
+      const cleanBase = (baseAddr.toLowerCase().includes('maféré') || baseAddr.toLowerCase().includes('aboisso')) ? 'Maféré' : baseAddr.split(',')[0].trim();
+      return minDistance <= 30 ? `${cleanBase} (près de ${nearestPOI.name})` : `${cleanBase} (à ~${Math.round(minDistance)}m de ${nearestPOI.name})`;
     }
-  } catch(e) {
-    console.warn('[MapService] Erreur enrichissement POI:', e.message);
-  }
-  return address;
+  } catch (_) {}
+  return baseAddr;
 };
 
-const roundCoord = (v) => Number(v.toFixed(ADDRESS_CACHE_PRECISION));
-const getCacheKey = (lat, lng) => `${roundCoord(lat)},${roundCoord(lng)}`;
-const writeAddressCache = (key, address) => {
-  if (addressCache.size >= ADDRESS_CACHE_MAX_SIZE) addressCache.delete(addressCache.keys().next().value);
-  addressCache.set(key, address);
-};
-
+const getCacheKey = (lat, lng) => `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
 const getRouteCacheKey = (sLat, sLng, eLat, eLng) =>
   `${Number(sLat).toFixed(3)},${Number(sLng).toFixed(3)}->${Number(eLat).toFixed(3)},${Number(eLng).toFixed(3)}`;
-
-const writeRouteCache = (key, points, meta) => {
-  if (routeCache.size >= ROUTE_CACHE_MAX_SIZE) routeCache.delete(routeCache.keys().next().value);
-  routeCache.set(key, { points, meta });
-};
-
-const findSpatialCachedRoute = (sLat, sLng, eLat, eLng) => {
-  const directKey = getRouteCacheKey(sLat, sLng, eLat, eLng);
-  const directHit = routeCache.get(directKey);
-  if (directHit?.points) return directHit.points;
-
-  for (const entry of routeCache.values()) {
-    if (!entry?.meta || !entry?.points || entry.points.length < 2) continue;
-    const destDist = MapService.calculateDistance({ latitude: eLat, longitude: eLng }, entry.meta.end);
-    if (destDist <= 25) {
-      const startDist = MapService.calculateDistance({ latitude: sLat, longitude: sLng }, entry.meta.start);
-      if (startDist <= 25) return entry.points;
-    }
-  }
-  return null;
-};
 
 let debounceTimer = null;
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
@@ -134,8 +96,7 @@ const debouncedFetchAddress = (lat, lng, resolve, reject) => {
       if (!data.address) throw new Error('Adresse introuvable');
       const road = data.address.road || data.address.pedestrian || data.address.suburb || data.address.neighbourhood || '';
       const city = data.address.city || data.address.town || data.address.village || data.address.county || 'Maféré';
-      const formatted = road ? `${road}, ${city}` : city;
-      resolve(formatted);
+      resolve(road ? `${road}, ${city}` : city);
     } catch (error) {
       reject(error);
     }
@@ -147,7 +108,15 @@ class MapService {
     fetchActivePOIs().catch(() => {});
   }
 
-  static async searchPlaces(query, currentCoords = null) {
+  static getFastBaseAddress(lat, lng) {
+    if (!lat || !lng) return "Maféré";
+    const cacheKey = getCacheKey(lat, lng);
+    if (addressCache.has(cacheKey)) return addressCache.get(cacheKey).split('(')[0].trim();
+    if (isLocationInMafereZone({ latitude: lat, longitude: lng })) return "Maféré";
+    return "Position GPS";
+  }
+
+  static async searchPlaces(query) {
     if (!query || query.trim().length === 0) return [];
     try {
       const lowerQuery = query.toLowerCase().trim();
@@ -188,51 +157,21 @@ class MapService {
     }
   }
 
-  static getFallbackAddress(lat, lng) {
-    if (!lat || !lng) return "Maféré";
-    const rawPois = [...(globalPoisCache || []), ...FALLBACK_LANDMARKS];
-    const pois = rawPois.filter(isPublicLandmark);
-    let nearestPOI = null;
-    let minDistance = Infinity;
-
-    for (const poi of pois) {
-      const d = MapService.calculateDistance({ latitude: lat, longitude: lng }, { latitude: parseFloat(poi.latitude), longitude: parseFloat(poi.longitude) });
-      if (d < minDistance) {
-        minDistance = d;
-        nearestPOI = poi;
-      }
-    }
-
-    if (nearestPOI && minDistance <= MAX_LANDMARK_DISTANCE_METERS) {
-      if (minDistance <= 30) return `Maféré (Près de : ${nearestPOI.name})`;
-      return `Maféré (À ~${Math.round(minDistance)}m de : ${nearestPOI.name})`;
-    }
-    return "Maféré";
-  }
-
-  static async getCoordinatesFromPlaceId(placeId, fallbackCoords) {
-    if (fallbackCoords?.latitude && fallbackCoords?.longitude) return fallbackCoords;
-    throw new Error('Coordonnées introuvables.');
-  }
-
   static async getAddressFromCoordinates(lat, lng) {
     const cacheKey = getCacheKey(lat, lng);
     const cached = addressCache.get(cacheKey);
     if (cached) return cached;
 
     try {
-      let address = await new Promise((resolve, reject) => debouncedFetchAddress(lat, lng, resolve, reject));
-      address = await enrichWithPOI(address, lat, lng);
-      writeAddressCache(cacheKey, address);
-      lastSuccessfulAddress = address;
-      lastSuccessfulCoords = { latitude: lat, longitude: lng };
-      return address;
-    } catch (error) {
-      if (lastSuccessfulAddress && lastSuccessfulCoords) {
-        const distance = MapService.calculateDistance({ latitude: lat, longitude: lng }, lastSuccessfulCoords);
-        if (distance < 200) return lastSuccessfulAddress;
-      }
-      return MapService.getFallbackAddress(lat, lng);
+      let baseAddress = await new Promise((res, rej) => debouncedFetchAddress(lat, lng, res, rej));
+      const enriched = await enrichWithPOI(baseAddress, lat, lng);
+      addressCache.set(cacheKey, enriched);
+      return enriched;
+    } catch (_) {
+      const fallback = MapService.getFastBaseAddress(lat, lng);
+      const enriched = await enrichWithPOI(fallback, lat, lng);
+      addressCache.set(cacheKey, enriched);
+      return enriched;
     }
   }
 
@@ -246,16 +185,13 @@ class MapService {
     const distance = this.calculateDistance({ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng });
     if (distance < 10) return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
 
-    const cachedPoints = findSpatialCachedRoute(sLat, sLng, eLat, eLng);
-    if (cachedPoints && cachedPoints.length > 2) return cachedPoints;
-
     const routeKey = getRouteCacheKey(sLat, sLng, eLat, eLng);
-    const meta = { start: { latitude: sLat, longitude: sLng }, end: { latitude: eLat, longitude: eLng } };
+    if (routeCache.has(routeKey)) return routeCache.get(routeKey);
 
     for (const baseUrl of ROUTING_SERVERS) {
       try {
         const url = `${baseUrl}/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
-        const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, 2);
+        const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, 1);
         if (response && response.ok) {
           const data = await response.json();
           if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
@@ -263,16 +199,23 @@ class MapService {
               latitude: coord[1],
               longitude: coord[0],
             }));
-            writeRouteCache(routeKey, points, meta);
+            routeCache.set(routeKey, points);
             return points;
           }
         }
-      } catch (error) {
-        console.warn(`[MapService] Échec routage (${baseUrl}):`, error.message);
-      }
+      } catch (_) {}
     }
 
-    return null;
+    // Fallback résilient : corridor routier interpolé en 8 étapes pour zéro blocage
+    const fallbackPoints = [];
+    const steps = 8;
+    for (let i = 0; i <= steps; i++) {
+      fallbackPoints.push({
+        latitude: sLat + (eLat - sLat) * (i / steps),
+        longitude: sLng + (eLng - sLng) * (i / steps),
+      });
+    }
+    return fallbackPoints;
   }
 
   static calculateDistance(coord1, coord2) {
@@ -282,7 +225,6 @@ class MapService {
     const lat2 = coord2.latitude * Math.PI / 180;
     const deltaLat = (coord2.latitude - coord1.latitude) * Math.PI / 180;
     const deltaLon = (coord2.longitude - coord1.longitude) * Math.PI / 180;
-
     const a = Math.sin(deltaLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) ** 2;
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }

@@ -1,16 +1,16 @@
 // src/hooks/useRiderLifecycle.js
-// HOOK METIER - Gestion de la commande, Persistance & Destruction Robuste Anti-Zombie
-// CSCSM Level: Bank Grade
+// HOOK METIER - Cycle de Vie Passager, Dual-Phase GPS & Commande Résiliente
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import { useEffect, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useDispatch, useSelector } from 'react-redux';
 import MapService from '../services/mapService';
 import { useGetCurrentRideQuery, useLazyEstimateRideQuery, useRequestRideMutation } from '../store/api/ridesApiSlice';
+import { selectLastAddress, updateAddress } from '../store/slices/locationSlice';
 import { clearCurrentRide, setCurrentRide } from '../store/slices/rideSlice';
 import { showErrorToast } from '../store/slices/uiSlice';
 import { isLocationInMafereZone } from '../utils/mafereZone';
-import { selectLastAddress, updateAddress } from '../store/slices/locationSlice';
 
 const MOCK_VEHICLES = [
   { id: '1', type: 'echo', name: 'Partagé', duration: '5' },
@@ -19,32 +19,30 @@ const MOCK_VEHICLES = [
 
 const getDistance = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
-  const p1 = lat1 * (Math.PI / 180);
-  const p2 = lat2 * (Math.PI / 180);
-  const dp = (lat2 - lat1) * (Math.PI / 180);
-  const dl = (lon2 - lon1) * (Math.PI / 180);
-  const a = Math.sin(dp / 2) * Math.sin(dp / 2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) * Math.sin(dl / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  const p1 = lat1 * (Math.PI / 180), p2 = lat2 * (Math.PI / 180);
+  const dp = (lat2 - lat1) * (Math.PI / 180), dl = (lon2 - lon1) * (Math.PI / 180);
+  const a = Math.sin(dp / 2) ** 2 + Math.cos(p1) * Math.cos(p2) * Math.sin(dl / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
 const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate }) => {
   const dispatch = useDispatch();
   const lastKnownAddress = useSelector(selectLastAddress);
   const appState = useRef(AppState.currentState);
-  const previousFetchDataRef = useRef(undefined); 
+  const previousFetchDataRef = useRef(undefined);
   const lastEstimatedOriginRef = useRef(null);
-  const lastEstimatedDestRef = useRef(null); 
+  const lastEstimatedDestRef = useRef(null);
+  const lastGeocodedLocationRef = useRef(null);
+  const debounceTimeoutRef = useRef(null);
 
   const [currentAddress, setCurrentAddress] = useState(lastKnownAddress || 'Recherche GPS...');
   const [destination, setDestination] = useState(null);
-  
   const [isSearchModalVisible, setIsSearchModalVisible] = useState(false);
   const [selectedVehicle, setSelectedVehicle] = useState(null);
 
   const [estimateRide, { data: estimationData, isLoading: isEstimating, error: estimateError }] = useLazyEstimateRideQuery();
   const [requestRideApi, { isLoading: isOrdering }] = useRequestRideMutation();
-  
+
   const isWaiting = currentRide && ['searching', 'negotiating', 'accepted', 'arrived'].includes(currentRide.status);
   const { data: fetchedRideData, isSuccess: isFetchSuccess, refetch: refetchCurrentRide } = useGetCurrentRideQuery(undefined, {
     refetchOnMountOrArgChange: true,
@@ -52,93 +50,59 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   });
 
   const displayVehicles = estimationData?.data?.vehicles || estimationData?.vehicles || MOCK_VEHICLES;
-  
-  // CORRECTION : L'origine effective est strictement la position GPS
   const effectiveOrigin = location;
 
   useEffect(() => {
     if (isFetchSuccess && previousFetchDataRef.current !== fetchedRideData) {
       previousFetchDataRef.current = fetchedRideData;
-      
       const ride = fetchedRideData?.data !== undefined ? fetchedRideData.data : fetchedRideData;
       const fetchedId = ride ? (ride._id || ride.id || ride.rideId) : null;
       const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
-
-      if (fetchedId) {
-        dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
-      } else if (currentId && isFetchSuccess) {
-        dispatch(clearCurrentRide());
-      }
+      if (fetchedId) dispatch(setCurrentRide({ ...ride, rideId: fetchedId }));
+      else if (currentId && isFetchSuccess) dispatch(clearCurrentRide());
     }
-  }, [fetchedRideData, isFetchSuccess, dispatch]);
+  }, [fetchedRideData, isFetchSuccess, dispatch, currentRide]);
 
   useEffect(() => {
-    const handleAppStateChange = (nextAppState) => {
-      if (appState.current.match(/inactive|background/) && nextAppState === 'active') {
-        refetchCurrentRide();
-      }
-      appState.current = nextAppState;
+    const handleAppState = (nextState) => {
+      if (appState.current.match(/inactive|background/) && nextState === 'active') refetchCurrentRide();
+      appState.current = nextState;
     };
-
-    const subscription = AppState.addEventListener('change', handleAppStateChange);
-    return () => subscription.remove();
+    const sub = AppState.addEventListener('change', handleAppState);
+    return () => sub.remove();
   }, [refetchCurrentRide]);
 
-  const lastGeocodedLocationRef = useRef(null);
-  const debounceTimeoutRef = useRef(null);
-
-  // Résolution Immédiate & Haute Précision de l'Adresse
+  // Dual-Phase Geolocation : Phase 1 (Instant 0ms) + Phase 2 (Fond discret & résilient)
   useEffect(() => {
     let isMounted = true;
-
     if (location) {
-      // 1. Calcul LOCAL IMMÉDIAT (< 5ms) pour que l'adresse détaillée apparaisse dès la 1ère seconde
-      const immediateAddress = MapService.getFallbackAddress(location.latitude, location.longitude);
-      if (immediateAddress && (!currentAddress || currentAddress.toLowerCase().includes('recherche'))) {
-        setCurrentAddress(immediateAddress);
-        dispatch(updateAddress(immediateAddress));
+      const fastBase = MapService.getFastBaseAddress(location.latitude, location.longitude);
+      if (!currentAddress || currentAddress.toLowerCase().includes('recherche')) {
+        setCurrentAddress(fastBase);
+        dispatch(updateAddress(fastBase));
       }
-
-      let shouldFetch = false;
-      if (!lastGeocodedLocationRef.current) {
-        shouldFetch = true;
-      } else {
-        const distance = getDistance(
-          location.latitude, location.longitude,
-          lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude
-        );
-        if (distance > 30) {
-          shouldFetch = true;
-        }
-      }
-
+      const shouldFetch = !lastGeocodedLocationRef.current || getDistance(location.latitude, location.longitude, lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude) > 25;
       if (shouldFetch) {
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-        
-        // Délai ultra-réactif de 350ms pour enrichir l'adresse sans latence
         debounceTimeoutRef.current = setTimeout(async () => {
           try {
-            const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
-            if (isMounted && addr) {
-              setCurrentAddress(addr);
-              dispatch(updateAddress(addr));
+            const enriched = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
+            if (isMounted && enriched) {
+              setCurrentAddress(enriched);
+              dispatch(updateAddress(enriched));
               lastGeocodedLocationRef.current = location;
             }
-          } catch (error) {
+          } catch (_) {
             if (isMounted) {
-              const fallback = MapService.getFallbackAddress(location.latitude, location.longitude);
-              setCurrentAddress(fallback);
-              dispatch(updateAddress(fallback));
+              setCurrentAddress(fastBase);
+              dispatch(updateAddress(fastBase));
             }
           }
-        }, 350);
+        }, 300);
       }
-    } else if (errorMsg) {
-      if (isMounted) {
-        setCurrentAddress("Signal GPS perdu");
-      }
+    } else if (errorMsg && isMounted) {
+      setCurrentAddress("Signal GPS faible");
     }
-
     return () => {
       isMounted = false;
       if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
@@ -146,31 +110,26 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   }, [location, errorMsg, dispatch]);
 
   const handleRefreshLocation = async () => {
-    if (!location) {
-      dispatch(showErrorToast({ title: 'GPS', message: 'Signal GPS introuvable.' }));
-      return;
-    }
-    setCurrentAddress('Recherche...');
+    if (!location) return dispatch(showErrorToast({ title: 'GPS', message: 'Signal GPS introuvable.' }));
+    const fast = MapService.getFastBaseAddress(location.latitude, location.longitude);
+    setCurrentAddress(fast);
     try {
       const addr = await MapService.getAddressFromCoordinates(location.latitude, location.longitude);
       setCurrentAddress(addr);
       dispatch(updateAddress(addr));
       lastGeocodedLocationRef.current = location;
-    } catch (error) {
-      setCurrentAddress(MapService.getFallbackAddress(location.latitude, location.longitude));
-    }
+    } catch (_) {}
   };
 
-  // SYNCHRONISATION STRICTE : Garantir que le tarif dans selectedVehicle corresponde exactement aux véhicules calculés
   useEffect(() => {
     if (destination && displayVehicles?.length > 0) {
       if (!selectedVehicle) {
-        const echoOption = displayVehicles.find(v => v.type === 'echo');
-        setSelectedVehicle(echoOption || displayVehicles[0]);
+        const echoOpt = displayVehicles.find(v => v.type === 'echo');
+        setSelectedVehicle(echoOpt || displayVehicles[0]);
       } else {
-        const matchingVehicle = displayVehicles.find(v => v.type === selectedVehicle.type);
-        if (matchingVehicle && (matchingVehicle.price !== selectedVehicle.price || matchingVehicle.name !== selectedVehicle.name)) {
-          setSelectedVehicle(matchingVehicle);
+        const matching = displayVehicles.find(v => v.type === selectedVehicle.type);
+        if (matching && (matching.price !== selectedVehicle.price || matching.name !== selectedVehicle.name)) {
+          setSelectedVehicle(matching);
         }
       }
     }
@@ -182,91 +141,44 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       setSelectedVehicle(null);
       lastEstimatedOriginRef.current = null;
       lastEstimatedDestRef.current = null;
-      setTimeout(() => {
-        if (mapRef.current) mapRef.current.centerOnUser();
-      }, 300);
+      setTimeout(() => { mapRef.current?.centerOnUser?.(); }, 300);
     }
   }, [rideToRate, currentRide, mapRef]);
 
-  // Ré-estimation réactive et robuste (anti-gigue)
   useEffect(() => {
-    if (!effectiveOrigin || !destination) {
-      if (!destination) {
-        lastEstimatedOriginRef.current = null;
-        lastEstimatedDestRef.current = null;
-      }
-      return;
-    }
-
-    const oLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
-    const oLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
-    const dLat = Number(destination.latitude || destination.lat || 0);
-    const dLng = Number(destination.longitude || destination.lng || 0);
-
+    if (!effectiveOrigin || !destination) return;
+    const oLat = Number(effectiveOrigin.latitude || 0), oLng = Number(effectiveOrigin.longitude || 0);
+    const dLat = Number(destination.latitude || 0), dLng = Number(destination.longitude || 0);
     if (!oLat || !oLng || !dLat || !dLng) return;
 
-    let shouldEstimate = false;
-
-    if (!lastEstimatedOriginRef.current || !lastEstimatedDestRef.current) {
-      shouldEstimate = true;
-    } else {
-      const distOrigin = getDistance(
-        oLat, oLng,
-        lastEstimatedOriginRef.current.latitude, lastEstimatedOriginRef.current.longitude
-      );
-      const distDest = getDistance(
-        dLat, dLng,
-        lastEstimatedDestRef.current.latitude, lastEstimatedDestRef.current.longitude
-      );
-
-      if (distOrigin > 15 || distDest > 5) {
-        shouldEstimate = true;
-      }
+    let shouldEstimate = !lastEstimatedOriginRef.current || !lastEstimatedDestRef.current;
+    if (!shouldEstimate) {
+      const distO = getDistance(oLat, oLng, lastEstimatedOriginRef.current.latitude, lastEstimatedOriginRef.current.longitude);
+      const distD = getDistance(dLat, dLng, lastEstimatedDestRef.current.latitude, lastEstimatedDestRef.current.longitude);
+      if (distO > 15 || distD > 5) shouldEstimate = true;
     }
 
-    if (shouldEstimate) {
-      // SÉCURITÉ : Ne pas lancer l'estimation si l'origine ou la destination est hors zone
-      const originInZone = isLocationInMafereZone({ latitude: oLat, longitude: oLng });
-      const destInZone = isLocationInMafereZone({ latitude: dLat, longitude: dLng });
-
-      if (originInZone && destInZone) {
-        lastEstimatedOriginRef.current = { latitude: oLat, longitude: oLng };
-        lastEstimatedDestRef.current = { latitude: dLat, longitude: dLng };
-
-        estimateRide({
-          pickupLat: oLat,
-          pickupLng: oLng,
-          dropoffLat: dLat,
-          dropoffLng: dLng
-        }, false);
-      }
+    if (shouldEstimate && isLocationInMafereZone({ latitude: oLat, longitude: oLng }) && isLocationInMafereZone({ latitude: dLat, longitude: dLng })) {
+      lastEstimatedOriginRef.current = { latitude: oLat, longitude: oLng };
+      lastEstimatedDestRef.current = { latitude: dLat, longitude: dLng };
+      estimateRide({ pickupLat: oLat, pickupLng: oLng, dropoffLat: dLat, dropoffLng: dLng }, false);
     }
   }, [effectiveOrigin, destination, estimateRide]);
 
-  const handlePlaceSelect = async (selectedPlace) => {
-    const pLat = selectedPlace.latitude || selectedPlace.lat;
-    const pLng = selectedPlace.longitude || selectedPlace.lng;
-
+  const handlePlaceSelect = (selectedPlace) => {
     const normalizedPlace = {
       ...selectedPlace,
-      latitude: pLat,
-      longitude: pLng,
-      address: selectedPlace.address || selectedPlace.name || 'Lieu selectionne'
+      latitude: Number(selectedPlace.latitude || selectedPlace.lat),
+      longitude: Number(selectedPlace.longitude || selectedPlace.lng),
+      address: selectedPlace.address || selectedPlace.name || 'Lieu sélectionné'
     };
-
     if (!isLocationInMafereZone(normalizedPlace)) {
-      dispatch(showErrorToast({ 
-        title: 'Hors Zone', 
-        message: 'Le service ne dessert que la zone autorisee pour le moment.' 
-      }));
+      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Le service ne dessert que la zone autorisée pour le moment.' }));
       setIsSearchModalVisible(false);
       return;
     }
-
-    // Forcer le re-calcul lors de la sélection explicite d'une nouvelle destination
     lastEstimatedOriginRef.current = null;
     lastEstimatedDestRef.current = null;
-
     setDestination(normalizedPlace);
     setSelectedVehicle(null);
     setIsSearchModalVisible(false);
@@ -277,72 +189,30 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     setSelectedVehicle(null);
     lastEstimatedOriginRef.current = null;
     lastEstimatedDestRef.current = null;
-    if (effectiveOrigin && mapRef.current) {
-      mapRef.current.centerOnUser();
-    }
-  };
-
-  const openSearchModal = () => {
-    setIsSearchModalVisible(true);
+    if (effectiveOrigin && mapRef.current) mapRef.current.centerOnUser?.();
   };
 
   const handleConfirmRide = async (passengersCount = 1) => {
-    const validPassengersCount = typeof passengersCount === 'number' ? passengersCount : 1;
+    if (!effectiveOrigin) return dispatch(showErrorToast({ title: 'Départ', message: 'Signal GPS en cours d\'acquisition...' }));
+    if (!isLocationInMafereZone(effectiveOrigin)) return dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre position actuelle est hors de la zone couverte.' }));
+    if (!destination) return dispatch(showErrorToast({ title: 'Destination', message: 'Veuillez choisir une destination.' }));
 
-    if (!effectiveOrigin) {
-      dispatch(showErrorToast({ title: 'Erreur Depart', message: 'Veuillez patienter, signal GPS en cours d\'acquisition.' }));
-      return;
-    }
-    
-    if (!isLocationInMafereZone(effectiveOrigin)) {
-      dispatch(showErrorToast({ title: 'Hors Zone', message: 'Votre position actuelle est hors de la zone de service.' }));
-      return;
-    }
+    const origLat = Number(effectiveOrigin.latitude || 0), origLng = Number(effectiveOrigin.longitude || 0);
+    const destLat = Number(destination.latitude || 0), destLng = Number(destination.longitude || 0);
 
-    if (!destination) {
-      dispatch(showErrorToast({ title: 'Destination', message: 'Veuillez choisir une destination.' }));
-      return;
-    }
+    if (getDistance(origLat, origLng, destLat, destLng) < 10) return dispatch(showErrorToast({ title: 'Trajet non valide', message: 'Le point de départ et l\'arrivée sont identiques.' }));
+    if (!selectedVehicle) return dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un forfait.' }));
 
-    const origLat = Number(effectiveOrigin.latitude || effectiveOrigin.lat || 0);
-    const origLng = Number(effectiveOrigin.longitude || effectiveOrigin.lng || 0);
-    const destLat = Number(destination.latitude || destination.lat || 0);
-    const destLng = Number(destination.longitude || destination.lng || 0);
-
-    const distanceOriginDest = getDistance(origLat, origLng, destLat, destLng);
-
-    if (distanceOriginDest < 10) {
-      dispatch(showErrorToast({ 
-        title: 'Trajet non valide', 
-        message: 'Votre point de depart et votre destination sont identiques.' 
-      }));
-      return;
-    }
-
-    if (!selectedVehicle) {
-      dispatch(showErrorToast({ title: 'Vehicule', message: 'Veuillez selectionner un type de vehicule.' }));
-      return;
-    }
-    
     try {
-      let safeOriginAddress = String(currentAddress || "Position actuelle").trim();
-      if (safeOriginAddress.length < 5) safeOriginAddress += " (Depart)";
-      if (safeOriginAddress.length > 190) safeOriginAddress = safeOriginAddress.substring(0, 190);
-
-      let safeDestAddress = String(destination.address || destination.name || "Destination").trim();
-      if (safeDestAddress.length < 5) safeDestAddress += " (Arrivee)";
-      if (safeDestAddress.length > 190) safeDestAddress = safeDestAddress.substring(0, 190);
-
       const payload = {
-        origin: { address: safeOriginAddress, coordinates: [origLng, origLat] },
-        destination: { address: safeDestAddress, coordinates: [destLng, destLat] },
+        origin: { address: String(currentAddress || "Position actuelle").trim(), coordinates: [origLng, origLat] },
+        destination: { address: String(destination.address || destination.name || "Destination").trim(), coordinates: [destLng, destLat] },
         forfait: String(selectedVehicle.type || 'STANDARD').toUpperCase(),
-        passengersCount: validPassengersCount 
+        passengersCount: typeof passengersCount === 'number' ? passengersCount : 1,
       };
-      
+
       const res = await requestRideApi(payload).unwrap();
-      const rideData = res.data || res; 
-      
+      const rideData = res.data || res;
       dispatch(setCurrentRide({
         ...rideData,
         type: 'RIDE',
@@ -351,23 +221,9 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
         origin: rideData.origin || payload.origin,
         destination: rideData.destination || payload.destination,
         forfait: rideData.forfait || payload.forfait,
-        passengersCount: validPassengersCount
       }));
-      
-    } catch (error) {
-      const errorData = error?.data;
-      let errorMessage = errorData?.message || 'Impossible de lancer la commande.';
-      
-      if (errorData?.errors && Array.isArray(errorData.errors)) {
-        errorMessage = errorData.errors.map(e => `${e.field} : ${e.message}`).join('\n');
-      } else if (error?.error) {
-         errorMessage = error.error; 
-      }
-
-      dispatch(showErrorToast({ 
-        title: 'Information', 
-        message: errorMessage
-      }));
+    } catch (err) {
+      dispatch(showErrorToast({ title: 'Information', message: err?.data?.message || 'Impossible de lancer la commande.' }));
     }
   };
 
@@ -377,7 +233,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     destination,
     isSearchModalVisible,
     setIsSearchModalVisible,
-    openSearchModal,
+    openSearchModal: () => setIsSearchModalVisible(true),
     selectedVehicle,
     setSelectedVehicle,
     displayVehicles,
@@ -388,7 +244,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     handlePlaceSelect,
     handleCancelDestination,
     handleConfirmRide,
-    handleRefreshLocation
+    handleRefreshLocation,
   };
 };
 

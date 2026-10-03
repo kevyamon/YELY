@@ -30,12 +30,17 @@ import {
 const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const MapInteractionTracker = ({ onInteract }) => {
+const MapInteractionTracker = ({ onInteract, onLongPress }) => {
   useMapEvents({
     dragstart: onInteract,
     zoomstart: onInteract,
     mousedown: onInteract,
     touchstart: onInteract,
+    contextmenu: (e) => {
+      if (onLongPress && e.latlng) {
+        onLongPress({ latitude: e.latlng.lat, longitude: e.latlng.lng });
+      }
+    }
   });
   return null;
 };
@@ -61,6 +66,8 @@ const MapCard = forwardRef(({
   mapBottomPadding = 240,
   onMapReady,
   onMarkerPress,
+  onLongPress,
+  hidePOIs = false,
   style,
 }, ref) => {
   const mapInstanceRef = useRef(null);
@@ -109,8 +116,8 @@ const MapCard = forwardRef(({
   const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
-  const { data: poiResponse } = useGetAllPOIsQuery();
-  const mapPOIs = poiResponse?.data || [];
+  const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
+  const mapPOIs = hidePOIs ? [] : (poiResponse?.data || []);
 
   const handleMapInteraction = () => {
     wakeUpButton();
@@ -165,8 +172,10 @@ const MapCard = forwardRef(({
     }
   }, [isRouteValid]);
 
-  const isCinematicMode = isRouteValid || rideStatus !== null;
-  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs, currentZoom);
+  const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
+  // Décluttering : Seules les vraies boutiques marchandes sont affichées en marqueur superposé
+  const partnerShops = mapPOIs.filter(poi => poi && (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true));
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(partnerShops, currentZoom);
 
   return (
     <View style={[styles.container, style]}>
@@ -180,7 +189,7 @@ const MapCard = forwardRef(({
         whenReady={() => onMapReady?.()}
       >
         <MapEventsHandler onZoomChange={setCurrentZoom} />
-        <MapInteractionTracker onInteract={handleMapInteraction} />
+        <MapInteractionTracker onInteract={handleMapInteraction} onLongPress={onLongPress} />
 
         <TileLayer
           url={TILE_URL}

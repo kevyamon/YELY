@@ -92,8 +92,12 @@ const useRiderMapFeatures = ({
     }];
   }, [destination, isRideActive, rideStatus, safeOriginLat, safeOriginLng, safeDestLat, safeDestLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
-  const mapTopPadding = dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : 140; 
-  const mapBottomPadding = dynamicFooterHeight > 0 ? dynamicFooterHeight + 20 : (isRideActive ? 320 : (destination ? 380 : 240));
+  const mapTopPadding = destination 
+    ? Math.min(dynamicHeaderHeight + 15, 110) 
+    : (dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : 140);
+  const mapBottomPadding = dynamicFooterHeight > 0 
+    ? dynamicFooterHeight + 20 
+    : (isRideActive ? 320 : (destination ? 380 : 240));
 
   const mapTraceOrigin = location;
 

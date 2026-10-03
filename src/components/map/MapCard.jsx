@@ -106,6 +106,7 @@ const MapCard = forwardRef(({
   mapBottomPadding = 240,
   onMapReady,
   onPress,
+  onLongPress,
   onMarkerPress,
   onRegionDidChange,
   style,
@@ -172,33 +173,25 @@ const MapCard = forwardRef(({
 
   useEffect(() => {
     if (isRouteValid && !prevRouteValidRef.current) {
-      // Nouvelle route détectée ! On force l'auto-fit de la caméra et on bloque le pan/zoom pour 5s
       setIsUserInteracting(false);
       routeDrawTimestampRef.current = Date.now();
     }
     prevRouteValidRef.current = isRouteValid;
   }, [isRouteValid]);
 
-  // On ne charge les POIs que si demande (Economie de bande passante et stabilite)
   usePoiSocketEvents(hidePOIs);
   const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
   const mapPOIs = hidePOIs ? [] : (poiResponse?.data || []);
 
   const handleMapInteraction = (e) => {
     const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
-    
     if (isHumanInteraction) {
-      // Bloquer les manipulations de carte si une route a été tracée il y a moins de 5 secondes
-      if (isRouteValid && Date.now() - routeDrawTimestampRef.current < 5000) {
-        return;
-      }
       wakeUpButton();
       setIsUserInteracting(true);
       clearTimeout(interactionTimeout.current);
-      
       interactionTimeout.current = setTimeout(() => {
         setIsUserInteracting(false);
-      }, 8000);
+      }, 7000);
     }
   };
 
@@ -222,18 +215,18 @@ const MapCard = forwardRef(({
         centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
         zoomLevel: 15,
         padding: {
-          paddingTop: mapTopPadding + 40,
-          paddingBottom: mapBottomPadding + 40,
+          paddingTop: mapTopPadding + 20,
+          paddingBottom: mapBottomPadding + 20,
           paddingLeft: 0,
           paddingRight: 0
         },
-        animationDuration: 800
+        animationDuration: 600
       });
     }
   };
 
   useImperativeHandle(ref, () => ({
-    animateToRegion: (region, duration = 800) => {
+    animateToRegion: (region, duration = 600) => {
       if (isMapReady && cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [region.longitude, region.latitude],
@@ -245,11 +238,11 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
-
   const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
-
-  const isCinematicMode = isRouteValid || rideStatus !== null;
-  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(mapPOIs);
+  const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
+  // Décluttering : Seules les vraies boutiques marchandes ont un marqueur superposé
+  const partnerShops = mapPOIs.filter(poi => poi && (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true));
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(partnerShops);
   
   const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
   const actualDriverLocation = isDriver ? safeLocation : driverLocation;
@@ -257,6 +250,17 @@ const MapCard = forwardRef(({
   const handleMapReady = () => {
     setIsMapReady(true);
     if (onMapReady) onMapReady();
+  };
+
+  const handleNativeLongPress = (e) => {
+    if (!onLongPress) return;
+    const coords = e?.geometry?.coordinates || e?.coordinates;
+    if (coords && coords.length >= 2) {
+      onLongPress({
+        latitude: parseFloat(coords[1]),
+        longitude: parseFloat(coords[0]),
+      });
+    }
   };
 
   if (isExpoGo) {
@@ -288,6 +292,7 @@ const MapCard = forwardRef(({
           onRegionWillChange={handleMapInteraction}
           onRegionDidChange={onRegionDidChange}
           onPress={onPress}
+          onLongPress={handleNativeLongPress}
           styleJSON={JSON.stringify({ version: 8, sources: {}, layers: [] })}
         >
           <MapLibreGL.Camera

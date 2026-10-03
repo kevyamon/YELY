@@ -1,6 +1,19 @@
+// src/components/ui/DestinationSearchModal.jsx
+// MODALE DE SÉLECTION DE LIEU — 3 MODES : GPS ACTUEL, RECHERCHE & TOUCHER SUR CARTE
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
+
 import { Ionicons } from '@expo/vector-icons';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, FlatList, Keyboard, StyleSheet, Text, TouchableOpacity, View, useWindowDimensions, useColorScheme } from 'react-native';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  FlatList,
+  Keyboard,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { useDispatch } from 'react-redux';
 
 import { useGetAllPOIsQuery, useSearchPOIsQuery, useResolveExternalPOIMutation } from '../../store/api/poiApiSlice';
@@ -8,76 +21,54 @@ import { showLoading, hideLoading } from '../../store/slices/uiSlice';
 import THEME from '../../theme/theme';
 import GlassInput from './GlassInput';
 import GlassModal from './GlassModal';
-import UniversalIcon from './UniversalIcon'; // AJOUT : Import du moteur universel
+import UniversalIcon from './UniversalIcon';
 
 const normalizeSearchText = (text) => {
   if (!text) return '';
   return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
 };
 
-const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
+const DestinationSearchModal = ({
+  visible,
+  onClose,
+  onPlaceSelect,
+  currentLocation = null,
+  currentAddress = "Ma position actuelle",
+  onPickOnMap = null,
+}) => {
   const dispatch = useDispatch();
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
-  const colorScheme = useColorScheme();
-  const isDarkMode = colorScheme === 'dark';
-
   const { height: screenHeight } = useWindowDimensions();
   const isSmallScreen = screenHeight < 700;
 
-  // 🚀 THEME RESPONSIVE SYSTEM
-  const dynamicBg = isDarkMode ? 'rgba(15, 15, 15, 0.94)' : 'rgba(255, 255, 255, 0.96)';
-  const dynamicBorder = isDarkMode ? 'rgba(212, 175, 55, 0.35)' : 'rgba(212, 175, 55, 0.45)';
-  const dynamicTitleColor = isDarkMode ? '#FFFFFF' : '#1A1A1A';
-  const dynamicSubtitleColor = isDarkMode ? 'rgba(255, 255, 255, 0.5)' : 'rgba(0, 0, 0, 0.5)';
-  const dynamicItemBg = isDarkMode ? 'rgba(255, 255, 255, 0.03)' : 'rgba(0, 0, 0, 0.02)';
-  const dynamicItemBorder = isDarkMode ? 'rgba(255, 255, 255, 0.05)' : 'rgba(0, 0, 0, 0.06)';
-  const dynamicCloseBtnBg = isDarkMode ? 'rgba(255, 255, 255, 0.08)' : 'rgba(0, 0, 0, 0.04)';
-  const dynamicCloseBtnBorder = isDarkMode ? 'rgba(212, 175, 55, 0.3)' : 'rgba(212, 175, 55, 0.4)';
-  const dynamicLoaderColor = THEME.COLORS.champagneGold || '#D4AF37';
-
-  const { data: poiResponse, isLoading, isError } = useGetAllPOIsQuery(undefined, {
-    skip: !visible, 
-    refetchOnMountOrArgChange: true, 
+  const { data: poiResponse, isLoading } = useGetAllPOIsQuery(undefined, {
+    skip: !visible,
+    refetchOnMountOrArgChange: true,
   });
 
   useEffect(() => {
-    const handler = setTimeout(() => {
-      setDebouncedQuery(searchQuery);
-    }, 450); // Debounce de 450ms pour économiser les requêtes réseau
+    const handler = setTimeout(() => setDebouncedQuery(searchQuery), 400);
     return () => clearTimeout(handler);
   }, [searchQuery]);
 
   const { data: searchResponse, isFetching: isSearching } = useSearchPOIsQuery(debouncedQuery, {
     skip: !visible || debouncedQuery.length < 2,
-    refetchOnMountOrArgChange: true
+    refetchOnMountOrArgChange: true,
   });
 
   const [resolveExternal] = useResolveExternalPOIMutation();
-
   const pois = poiResponse?.data || [];
 
   const filteredPOIs = useMemo(() => {
-    if (debouncedQuery.length >= 2) {
-      return searchResponse?.data || [];
-    }
-
-    const normalizedQuery = normalizeSearchText(searchQuery);
-    
-    if (!normalizedQuery) {
-      return pois.slice(0, 5);
-    }
-
-    const results = pois.filter(poi =>
-      normalizeSearchText(poi.name).includes(normalizedQuery)
-    );
-
-    return results.slice(0, 10);
+    if (debouncedQuery.length >= 2) return searchResponse?.data || [];
+    const normalized = normalizeSearchText(searchQuery);
+    if (!normalized) return pois.slice(0, 5);
+    return pois.filter(p => normalizeSearchText(p.name).includes(normalized)).slice(0, 8);
   }, [pois, searchQuery, debouncedQuery, searchResponse]);
 
   const handleSelectPlace = useCallback(async (item) => {
-    Keyboard.dismiss(); 
-    
+    Keyboard.dismiss();
     let finalItem = item;
     if (item.isExternal) {
       try {
@@ -87,13 +78,10 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
           latitude: item.latitude,
           longitude: item.longitude,
           icon: item.icon,
-          iconColor: item.iconColor
+          iconColor: item.iconColor,
         }).unwrap();
-        if (res.data) {
-          finalItem = res.data;
-        }
-      } catch (err) {
-        // En cas d'erreur de cache, on utilise les coordonnées d'origine
+        if (res.data) finalItem = res.data;
+      } catch (_) {
       } finally {
         dispatch(hideLoading());
       }
@@ -102,97 +90,121 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
     onPlaceSelect({
       address: finalItem.name,
       latitude: finalItem.latitude,
-      longitude: finalItem.longitude
+      longitude: finalItem.longitude,
     });
-    
     setSearchQuery('');
-    onClose(); 
+    onClose();
   }, [onPlaceSelect, onClose, resolveExternal, dispatch]);
 
+  const handleUseCurrentLocation = () => {
+    if (currentLocation?.latitude && currentLocation?.longitude) {
+      onPlaceSelect({
+        address: currentAddress || "Position GPS actuelle",
+        latitude: currentLocation.latitude,
+        longitude: currentLocation.longitude,
+      });
+      onClose();
+    }
+  };
+
   const renderSuggestionItem = useCallback(({ item }) => (
-    <TouchableOpacity 
-      style={[
-        styles.suggestionItem, 
-        { backgroundColor: dynamicItemBg, borderColor: dynamicItemBorder },
-        isSmallScreen && { paddingVertical: 10 }
-      ]} 
+    <TouchableOpacity
+      style={styles.suggestionItem}
       onPress={() => handleSelectPlace(item)}
+      activeOpacity={0.7}
     >
-      <View style={[styles.suggestionIcon, { backgroundColor: item.iconColor ? `${item.iconColor}15` : 'rgba(212, 175, 55, 0.1)' }]}>
-        <UniversalIcon 
-          iconString={item.icon || "Ionicons/location"} 
-          size={isSmallScreen ? 14 : 16} 
-          color={item.iconColor || THEME.COLORS.champagneGold || '#D4AF37'} 
+      <View style={styles.suggestionIcon}>
+        <UniversalIcon
+          iconString={item.icon || "Ionicons/location"}
+          size={16}
+          color={item.iconColor || THEME.COLORS.champagneGold}
         />
       </View>
       <View style={styles.suggestionTextContainer}>
-        <Text style={[styles.mainText, { color: dynamicTitleColor }, isSmallScreen && { fontSize: 13 }]} numberOfLines={1}>{item.name}</Text>
-        <Text style={[styles.secondaryText, { color: dynamicSubtitleColor }, isSmallScreen && { fontSize: 11 }]} numberOfLines={1}>
+        <Text style={styles.mainText} numberOfLines={1}>{item.name}</Text>
+        <Text style={styles.secondaryText} numberOfLines={1}>
           {item.isExternal ? "Point suggéré" : "Maféré, Côte d'Ivoire"}
         </Text>
       </View>
-      <Ionicons name="chevron-forward" size={14} color={isDarkMode ? 'rgba(212, 175, 55, 0.6)' : 'rgba(212, 175, 55, 0.8)'} />
+      <Ionicons name="chevron-forward" size={14} color={THEME.COLORS.champagneGold} />
     </TouchableOpacity>
-  ), [handleSelectPlace, isSmallScreen, isDarkMode, dynamicItemBg, dynamicItemBorder, dynamicTitleColor, dynamicSubtitleColor]);
+  ), [handleSelectPlace]);
 
-  const dynamicMaxHeight = screenHeight * (isSmallScreen ? 0.22 : 0.28);
   const isLoaderActive = isLoading || (isSearching && searchQuery.length >= 2);
 
   return (
-    <GlassModal
-      visible={visible}
-      onClose={onClose}
-      position="center"
-      fullWidth={false}
-      style={[styles.modalStyle, { backgroundColor: dynamicBg, borderColor: dynamicBorder }]}
-    >
-      <View style={[styles.header, isSmallScreen && { marginBottom: 6 }]}>
-        <Text style={[styles.title, { color: dynamicTitleColor }, isSmallScreen && { fontSize: 16 }]}>Où allons-nous ?</Text>
-        <TouchableOpacity 
-          onPress={onClose} 
-          style={[styles.closeButton, { backgroundColor: dynamicCloseBtnBg, borderColor: dynamicCloseBtnBorder }]}
-        >
-          <Ionicons name="close" size={16} color={THEME.COLORS.champagneGold || '#D4AF37'} />
+    <GlassModal visible={visible} onClose={onClose} position="center" fullWidth={false} style={styles.modalStyle}>
+      <View style={styles.header}>
+        <Text style={styles.title}>Où allons-nous ?</Text>
+        <TouchableOpacity onPress={onClose} style={styles.closeButton}>
+          <Ionicons name="close" size={16} color={THEME.COLORS.champagneGold} />
         </TouchableOpacity>
       </View>
 
-      <View style={[styles.inputWrapper, isSmallScreen && { marginBottom: 6 }]}>
+      {/* MODE 1 : Bouton Prioritaire Doré - Position Actuelle */}
+      {currentLocation && (
+        <TouchableOpacity
+          activeOpacity={0.85}
+          style={styles.currentLocationCard}
+          onPress={handleUseCurrentLocation}
+        >
+          <View style={styles.currentLocationIconBadge}>
+            <Ionicons name="navigate" size={16} color="#121418" />
+          </View>
+          <View style={styles.currentLocationTextCol}>
+            <Text style={styles.currentLocationTitle}>Utiliser ma position actuelle</Text>
+            <Text style={styles.currentLocationSub} numberOfLines={1}>{currentAddress}</Text>
+          </View>
+          <Ionicons name="arrow-forward" size={16} color="#121418" />
+        </TouchableOpacity>
+      )}
+
+      {/* MODE 2 : Recherche Textuelle */}
+      <View style={styles.inputWrapper}>
         <GlassInput
-          placeholder="Ex: Marché de Maféré..."
+          placeholder="Rechercher une destination..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          autoFocus={true}
+          autoFocus={!currentLocation}
           icon="search-outline"
         />
       </View>
 
+      {/* MODE 3 : Bouton Choisir sur la carte */}
+      {onPickOnMap && (
+        <TouchableOpacity
+          activeOpacity={0.7}
+          style={styles.pickOnMapBtn}
+          onPress={() => {
+            onClose();
+            onPickOnMap();
+          }}
+        >
+          <Ionicons name="map-outline" size={15} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
+          <Text style={styles.pickOnMapText}>Définir le trajet sur la carte</Text>
+        </TouchableOpacity>
+      )}
+
       <View style={styles.sectionHeader}>
         <View style={styles.sectionHeaderDot} />
-        <Text style={styles.sectionTitle}>
-          {searchQuery ? "Résultats" : "Lieux suggérés"}
-        </Text>
+        <Text style={styles.sectionTitle}>{searchQuery ? "Résultats" : "Lieux suggérés"}</Text>
       </View>
 
       {isLoaderActive ? (
         <View style={styles.centerContainer}>
-          <ActivityIndicator size="large" color={dynamicLoaderColor} />
-          <Text style={styles.loadingText}>Synchronisation de la carte...</Text>
-        </View>
-      ) : isError ? (
-        <View style={styles.centerContainer}>
-          <Text style={[styles.emptyText, { color: dynamicSubtitleColor }]}>Impossible de charger les lieux pour le moment.</Text>
+          <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
+          <Text style={styles.loadingText}>Synchronisation...</Text>
         </View>
       ) : (
         <FlatList
           data={filteredPOIs}
-          keyExtractor={(item) => item._id || item.id} 
+          keyExtractor={(item) => String(item._id || item.id || item.name)}
           renderItem={renderSuggestionItem}
-          contentContainerStyle={styles.listContent}
-          keyboardShouldPersistTaps="handled" 
-          style={[styles.listContainer, { maxHeight: dynamicMaxHeight }]}
+          keyboardShouldPersistTaps="handled"
+          style={{ maxHeight: isSmallScreen ? 160 : 200 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
-            <Text style={[styles.emptyText, { color: dynamicSubtitleColor }]}>Aucun lieu trouvé pour "{searchQuery}"</Text>
+            <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchQuery}"</Text>
           )}
         />
       )}
@@ -202,112 +214,54 @@ const DestinationSearchModal = ({ visible, onClose, onPlaceSelect }) => {
 
 const styles = StyleSheet.create({
   modalStyle: {
-    padding: 14,
-    borderWidth: 1.5,
-    borderRadius: 22,
-    width: '92%',
-    maxWidth: 380,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 16 },
-    shadowOpacity: 0.5,
-    shadowRadius: 24,
-    elevation: 20,
+    padding: 14, borderWidth: 1.5, borderColor: THEME.COLORS.champagneGold,
+    borderRadius: 22, width: '92%', maxWidth: 380, backgroundColor: THEME.COLORS.background,
+    shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.4, shadowRadius: 16, elevation: 20,
   },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 10,
-  },
-  title: {
-    fontSize: 18,
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
+  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 },
+  title: { fontSize: 17, fontWeight: '800', color: THEME.COLORS.textPrimary, letterSpacing: 0.4 },
   closeButton: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    borderWidth: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: THEME.COLORS.border,
+    justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface,
   },
-  inputWrapper: {
-    marginBottom: 10,
+  currentLocationCard: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.champagneGold,
+    borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 10,
+    shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 8,
-    marginTop: 2,
+  currentLocationIconBadge: {
+    width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(18, 20, 24, 0.15)',
+    justifyContent: 'center', alignItems: 'center', marginRight: 10,
   },
-  sectionHeaderDot: {
-    width: 5,
-    height: 5,
-    borderRadius: 2.5,
-    backgroundColor: THEME.COLORS.champagneGold || '#D4AF37',
-    marginRight: 6,
+  currentLocationTextCol: { flex: 1, marginRight: 8 },
+  currentLocationTitle: { color: '#121418', fontSize: 13, fontWeight: '800' },
+  currentLocationSub: { color: '#121418', fontSize: 10.5, fontWeight: '600', opacity: 0.85, marginTop: 1 },
+  inputWrapper: { marginBottom: 8 },
+  pickOnMapBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: THEME.COLORS.glassSurface, borderWidth: 1, borderColor: THEME.COLORS.champagneGold,
+    borderRadius: 12, paddingVertical: 8, marginBottom: 10,
   },
-  sectionTitle: { 
-    fontSize: 10, 
-    fontWeight: '800', 
-    color: THEME.COLORS.champagneGold || '#D4AF37', 
-    letterSpacing: 1.2, 
-    textTransform: 'uppercase',
-  },
-  listContainer: {
-    marginTop: 2,
-  },
-  listContent: {
-    paddingBottom: 4,
-  },
+  pickOnMapText: { color: THEME.COLORS.champagneGold, fontSize: 12, fontWeight: '700' },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
+  sectionHeaderDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: THEME.COLORS.champagneGold, marginRight: 6 },
+  sectionTitle: { fontSize: 10, fontWeight: '800', color: THEME.COLORS.champagneGold, letterSpacing: 1.2, textTransform: 'uppercase' },
   suggestionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 14,
-    borderWidth: 1,
-    marginBottom: 8,
+    flexDirection: 'row', alignItems: 'center', paddingVertical: 8, paddingHorizontal: 10,
+    borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, backgroundColor: THEME.COLORS.glassSurface, marginBottom: 6,
   },
   suggestionIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 10,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.25)',
-    backgroundColor: 'rgba(0, 0, 0, 0.1)',
+    width: 32, height: 32, borderRadius: 16, justifyContent: 'center', alignItems: 'center',
+    marginRight: 8, borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.25)', backgroundColor: 'rgba(0, 0, 0, 0.1)',
   },
-  suggestionTextContainer: {
-    flex: 1,
-  },
-  mainText: {
-    fontSize: 14,
-    fontWeight: '700',
-    marginBottom: 2,
-  },
-  secondaryText: {
-    fontSize: 11,
-  },
-  emptyText: {
-    textAlign: 'center',
-    marginTop: 16,
-    fontStyle: 'italic',
-  },
-  centerContainer: {
-    padding: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loadingText: {
-    color: THEME.COLORS.champagneGold,
-    marginTop: 10,
-    fontSize: 13,
-    fontWeight: '500',
-  }
+  suggestionTextContainer: { flex: 1 },
+  mainText: { fontSize: 13, fontWeight: '700', color: THEME.COLORS.textPrimary },
+  secondaryText: { fontSize: 10.5, color: THEME.COLORS.textSecondary, marginTop: 1 },
+  emptyText: { textAlign: 'center', marginTop: 12, fontStyle: 'italic', color: THEME.COLORS.textSecondary, fontSize: 12 },
+  centerContainer: { padding: 16, alignItems: 'center', justifyContent: 'center' },
+  loadingText: { color: THEME.COLORS.champagneGold, marginTop: 6, fontSize: 12, fontWeight: '600' },
 });
 
 export default DestinationSearchModal;

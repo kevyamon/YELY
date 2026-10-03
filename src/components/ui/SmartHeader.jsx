@@ -1,11 +1,11 @@
 // src/components/ui/SmartHeader.jsx
 // HEADER INTELLIGENT - Design Miroir SmartFooter & Affichage Modulaire
-// CSCSM Level: Bank Grade (Strictement modulaire <= 325 lignes, Sans Emojis)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
 import React, { memo } from 'react';
 import { StyleSheet, Text, TouchableOpacity, View } from 'react-native';
-import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue } from 'react-native-reanimated';
+import Animated, { Extrapolation, interpolate, useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useSelector } from 'react-redux';
 
@@ -20,7 +20,7 @@ import SessionRefreshSkeleton from './SessionRefreshSkeleton';
 const parseAddressParts = (rawAddress) => {
   if (!rawAddress || typeof rawAddress !== 'string') return { city: 'Position GPS', detail: null };
   const match = rawAddress.trim().match(/^(.*?)\s*\((.*?)\)$/);
-  if (match) return { city: match[1].trim() || 'Position GPS', detail: match[2].trim() };
+  if (match) return { city: match[1].trim() || 'Position GPS', detail: `(${match[2].trim()})` };
   return { city: rawAddress.trim(), detail: null };
 };
 
@@ -33,6 +33,7 @@ const SmartHeader = ({
   onSearchPress,
   onShoppingPress,
   hasDestination = false,
+  destinationAddress = null,
   onCancelDestination,
   onRefreshLocation
 }) => {
@@ -44,29 +45,43 @@ const SmartHeader = ({
   const isRider = user?.role === 'rider' || user?.role === 'passenger' || user?.role === 'seller';
   const hasActiveRide = currentRide && currentRide.type !== 'DELIVERY';
 
+  const foldedHeaderHeight = 72 + insets.top;
   const headerMaxHeight = THEME.LAYOUT.HEADER_MAX_HEIGHT + insets.top;
   const headerMinHeight = THEME.LAYOUT.HEADER_HEIGHT + insets.top;
   const scrollDistance = headerMaxHeight - headerMinHeight;
 
   const isFetchingAddress = (address || "").toLowerCase().includes('recherche');
   const { city: primaryCity, detail: locationDetail } = parseAddressParts(address);
+  const destParts = parseAddressParts(destinationAddress);
+  const destDisplayTitle = destParts.city || "Destination choisie";
 
   const defaultScrollY = useSharedValue(0);
   const activeScrollY = scrollY || defaultScrollY;
 
   const headerAnimatedStyle = useAnimatedStyle(() => {
+    if (hasDestination) {
+      return {
+        height: withTiming(foldedHeaderHeight, { duration: 250 }),
+        shadowOpacity: 0.7,
+        elevation: 14,
+      };
+    }
     const height = interpolate(activeScrollY.value, [0, scrollDistance], [headerMaxHeight, headerMinHeight], Extrapolation.CLAMP);
     const shadowOpacity = interpolate(activeScrollY.value, [0, scrollDistance], [0.5, 0.8], Extrapolation.CLAMP);
     return { height, shadowOpacity, elevation: shadowOpacity * 20 };
   });
 
   const ctaAnimatedStyle = useAnimatedStyle(() => {
+    if (hasDestination) {
+      return { opacity: withTiming(0, { duration: 150 }), display: 'none' };
+    }
     const opacity = interpolate(activeScrollY.value, [0, scrollDistance * 0.6], [1, 0], Extrapolation.CLAMP);
     const translateY = interpolate(activeScrollY.value, [0, scrollDistance], [0, -15], Extrapolation.CLAMP);
     return { opacity, transform: [{ translateY }], display: opacity === 0 ? 'none' : 'flex' };
   });
 
   const titleAnimatedStyle = useAnimatedStyle(() => {
+    if (hasDestination) return { opacity: 0, display: 'none' };
     const opacity = interpolate(activeScrollY.value, [scrollDistance * 0.7, scrollDistance], [0, 1], Extrapolation.CLAMP);
     const translateY = interpolate(activeScrollY.value, [scrollDistance * 0.5, scrollDistance], [10, 0], Extrapolation.CLAMP);
     return { opacity, transform: [{ translateY }] };
@@ -75,20 +90,37 @@ const SmartHeader = ({
   return (
     <Animated.View style={[styles.container, headerAnimatedStyle]}>
       <View style={styles.background}>
-        {isRider && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
+        {isRider && !hasDestination && <LocationSyncGauge isFetching={isFetchingAddress} variant="rider" />}
       </View>
 
       <View style={[styles.contentContainer, { paddingTop: insets.top }]}>
         <View style={styles.topRow}>
           <NotificationBell onPress={onNotificationPress} />
 
-          <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
-            <TouchableOpacity onPress={onRefreshLocation} activeOpacity={0.7} style={styles.locationTitleWrapper} disabled={!onRefreshLocation}>
-              <Ionicons name="location" size={14} color={THEME.COLORS.textPrimary} style={styles.locationIcon} />
-              <Text style={styles.locationTitle} numberOfLines={1}>{primaryCity}</Text>
-              {onRefreshLocation && <Ionicons name="sync-outline" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />}
-            </TouchableOpacity>
-          </Animated.View>
+          {hasDestination ? (
+            <View style={styles.foldedCenterContainer}>
+              <View style={styles.foldedTitleBadge}>
+                <Ionicons name="location-sharp" size={13} color={THEME.COLORS.champagneGold} style={{ marginRight: 4 }} />
+                <Text style={styles.foldedDestTitle} numberOfLines={1}>{destDisplayTitle}</Text>
+              </View>
+              <TouchableOpacity 
+                activeOpacity={0.8} 
+                onPress={onCancelDestination} 
+                style={styles.compactCancelButton}
+              >
+                <Ionicons name="close-circle" size={15} color={THEME.COLORS.danger} style={{ marginRight: 5 }} />
+                <Text style={styles.compactCancelText}>Annuler</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Animated.View style={[styles.titleContainer, titleAnimatedStyle]}>
+              <TouchableOpacity onPress={onRefreshLocation} activeOpacity={0.7} style={styles.locationTitleWrapper} disabled={!onRefreshLocation}>
+                <Ionicons name="location" size={14} color={THEME.COLORS.textPrimary} style={styles.locationIcon} />
+                <Text style={styles.locationTitle} numberOfLines={1}>{primaryCity}</Text>
+                {onRefreshLocation && <Ionicons name="sync-outline" size={12} color={THEME.COLORS.textSecondary} style={{ marginLeft: 4 }} />}
+              </TouchableOpacity>
+            </Animated.View>
+          )}
 
           <TouchableOpacity onPress={onMenuPress} style={styles.iconButton}>
             <Ionicons name="menu-outline" size={28} color={THEME.COLORS.champagneGold} />
@@ -138,11 +170,6 @@ const SmartHeader = ({
                     <ActionPill type="taxi" onPress={onSearchPress} disabled={false} activeRideStatus={currentRide?.status} />
                   </View>
                 )}
-                {!hasActiveRide && hasDestination && (
-                  <View style={styles.flexBtn}>
-                    <ActionPill type="cancel_destination" onPress={onCancelDestination} disabled={false} />
-                  </View>
-                )}
                 {!hasActiveRide && (
                   <View style={[styles.flexBtn, { marginLeft: 10 }]}>
                     <ActionPill type="shopping" onPress={onShoppingPress} disabled={false} />
@@ -165,7 +192,7 @@ const styles = StyleSheet.create({
   },
   background: {
     ...StyleSheet.absoluteFillObject, backgroundColor: THEME.COLORS.background,
-    borderBottomLeftRadius: 32, borderBottomRightRadius: 32,
+    borderBottomLeftRadius: 28, borderBottomRightRadius: 28,
     borderWidth: 2, borderTopWidth: 0, borderColor: THEME.COLORS.champagneGold,
   },
   contentContainer: {
@@ -184,6 +211,23 @@ const styles = StyleSheet.create({
     width: 40, height: 40, borderRadius: 20, backgroundColor: THEME.COLORS.glassSurface,
     justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: THEME.COLORS.border,
   },
+  foldedCenterContainer: {
+    flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 8,
+  },
+  foldedTitleBadge: {
+    flexDirection: 'row', alignItems: 'center', marginBottom: 3, maxWidth: '90%',
+  },
+  foldedDestTitle: {
+    color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '700', flexShrink: 1,
+  },
+  compactCancelButton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(231, 76, 60, 0.12)', borderColor: THEME.COLORS.danger,
+    borderWidth: 1.2, borderRadius: 14, paddingHorizontal: 12, paddingVertical: 3,
+  },
+  compactCancelText: {
+    color: THEME.COLORS.danger, fontSize: 12, fontWeight: '700',
+  },
   ctaContainer: { marginTop: 0 },
   greetingHeader: { marginBottom: 4, minHeight: 38, justifyContent: 'flex-start' },
   greetingText: { color: THEME.COLORS.textSecondary, fontSize: 14, marginBottom: 2, marginLeft: 4 },
@@ -192,14 +236,14 @@ const styles = StyleSheet.create({
   addressColumn: { flexShrink: 1 },
   cityRow: { flexDirection: 'row', alignItems: 'center' },
   riderCityText: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '700', lineHeight: 16, flexShrink: 1 },
-  riderDetailText: { color: 'rgba(212, 175, 55, 0.95)', fontSize: 10.5, fontWeight: '600', lineHeight: 13, marginTop: 1, flexShrink: 1 },
+  riderDetailText: { color: THEME.COLORS.champagneGold, fontSize: 10.5, fontWeight: '600', lineHeight: 13, marginTop: 1, flexShrink: 1 },
   driverCtaRow: { flexDirection: 'row', alignItems: 'center', marginTop: 4 },
   driverGpsBadge: {
     flex: 1, flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface,
     paddingVertical: 8, paddingHorizontal: 14, borderRadius: 12, borderWidth: 1, borderColor: THEME.COLORS.border, overflow: 'hidden',
   },
   gpsText: { color: THEME.COLORS.textPrimary, fontSize: 13, fontWeight: '700' },
-  gpsDetailText: { color: 'rgba(212, 175, 55, 0.95)', fontSize: 10.5, fontWeight: '600', marginTop: 1 },
+  gpsDetailText: { color: THEME.COLORS.champagneGold, fontSize: 10.5, fontWeight: '600', marginTop: 1 },
   shoppingBtnSmall: {
     width: 44, height: 44, borderRadius: 12, backgroundColor: THEME.COLORS.primary,
     justifyContent: 'center', alignItems: 'center', marginLeft: 10,
@@ -213,6 +257,7 @@ const styles = StyleSheet.create({
 const arePropsEqual = (prevProps, nextProps) => (
   prevProps.address === nextProps.address &&
   prevProps.hasDestination === nextProps.hasDestination &&
+  prevProps.destinationAddress === nextProps.destinationAddress &&
   prevProps.userName === nextProps.userName &&
   prevProps.onRefreshLocation === nextProps.onRefreshLocation
 );

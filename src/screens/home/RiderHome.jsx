@@ -1,9 +1,8 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER NATIF - Orchestrateur Principal (Aide liee au compte)
-// CSCSM Level: Bank Grade
+// HOME RIDER NATIF - Orchestrateur Principal (3 Modes de sélection & Carte Hybride)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
 import { useSharedValue } from 'react-native-reanimated';
 import { useSelector } from 'react-redux';
@@ -16,6 +15,7 @@ import RiderWaitModal from '../../components/ride/RiderWaitModal';
 import DestinationSearchModal from '../../components/ui/DestinationSearchModal';
 import GlassModal from '../../components/ui/GlassModal';
 import GoldButton from '../../components/ui/GoldButton';
+import MapSelectionBanner from '../../components/ui/MapSelectionBanner';
 import SmartFooter from '../../components/ui/SmartFooter';
 import SmartHeader from '../../components/ui/SmartHeader';
 
@@ -23,35 +23,31 @@ import useGeolocation from '../../hooks/useGeolocation';
 import usePoiSocketEvents from '../../hooks/usePoiSocketEvents';
 import useRiderLifecycle from '../../hooks/useRiderLifecycle';
 import useRiderMapFeatures from '../../hooks/useRiderMapFeatures';
+import MapService from '../../services/mapService';
 
 import { selectCurrentUser } from '../../store/slices/authSlice';
 import { selectCurrentRide, selectRideToRate } from '../../store/slices/rideSlice';
 import THEME from '../../theme/theme';
 import { isLocationInMafereZone } from '../../utils/mafereZone';
 
-const RiderHome = ({ navigation, route }) => {
+const RiderHome = ({ navigation }) => {
   const mapRef = useRef(null);
   const scrollY = useSharedValue(0);
-  
   usePoiSocketEvents();
 
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [showOutOfZoneTaxiModal, setShowOutOfZoneTaxiModal] = useState(false);
-
+  const [mapSelectionStep, setMapSelectionStep] = useState('NONE');
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(240);
 
   const user = useSelector(selectCurrentUser);
   const currentRide = useSelector(selectCurrentRide);
   const rideToRate = useSelector(selectRideToRate);
-  
-  const { location, errorMsg } = useGeolocation(); 
-  
-  const isRideActive = currentRide && 
-    currentRide.type !== 'DELIVERY' &&
+  const { location, errorMsg } = useGeolocation();
+
+  const isRideActive = currentRide && currentRide.type !== 'DELIVERY' &&
     ['accepted', 'arrived', 'in_progress'].includes(currentRide.status);
-
-
 
   const {
     effectiveOrigin,
@@ -70,86 +66,66 @@ const RiderHome = ({ navigation, route }) => {
     handlePlaceSelect,
     handleCancelDestination,
     handleConfirmRide,
-    handleRefreshLocation
-  } = useRiderLifecycle({
-    location,
-    errorMsg,
-    mapRef,
-    currentRide,
-    rideToRate
-  });
+    handleRefreshLocation,
+  } = useRiderLifecycle({ location, errorMsg, mapRef, currentRide, rideToRate });
 
-  const isEffectiveOriginInZone = effectiveOrigin 
-    ? isLocationInMafereZone(effectiveOrigin) 
+  const isEffectiveOriginInZone = effectiveOrigin
+    ? isLocationInMafereZone(effectiveOrigin)
     : (location ? isLocationInMafereZone(location) : false);
 
-  const {
-    mapMarkers,
-    mapTopPadding,
-    mapBottomPadding,
-    driverLatLng,
-    mapTraceOrigin
-  } = useRiderMapFeatures({
+  const { mapMarkers, mapTopPadding, mapBottomPadding, driverLatLng } = useRiderMapFeatures({
     destination,
     isRideActive,
     currentRide,
     location: effectiveOrigin,
     dynamicHeaderHeight: headerHeight,
-    dynamicFooterHeight: footerHeight
+    dynamicFooterHeight: footerHeight,
   });
 
-  let activeDriverLocation = null;
+  const activeDriverLocation = isRideActive ? driverLatLng : null;
 
-  if (isRideActive) {
-    activeDriverLocation = driverLatLng;
-  }
+  const handleMapLongPress = async ({ latitude, longitude }) => {
+    if (isRideActive) return;
+    try {
+      const address = await MapService.getAddressFromCoordinates(latitude, longitude);
+      const place = { latitude, longitude, address };
 
-  const handlePoiSelection = (poi) => {
-    if (!isEffectiveOriginInZone) {
-      setShowOutOfZoneTaxiModal(true);
-      return;
-    }
-    setSelectedPoi(null);
-    handlePlaceSelect({
-      latitude: poi.latitude,
-      longitude: poi.longitude,
-      address: poi.name,
-    });
-  };
-
-  const handleHeaderLayout = (event) => {
-    const height = event.nativeEvent.layout.height;
-    if (height > 0) setHeaderHeight(height);
-  };
-
-  const handleFooterLayout = (event) => {
-    const height = event.nativeEvent.layout.height;
-    if (height > 0) setFooterHeight(height);
+      if (mapSelectionStep === 'SELECTING_ORIGIN') {
+        handlePlaceSelect(place);
+        setMapSelectionStep('SELECTING_DESTINATION');
+      } else {
+        handlePlaceSelect(place);
+        setMapSelectionStep('NONE');
+      }
+    } catch (_) {}
   };
 
   return (
     <View style={styles.screenWrapper}>
-      
+      {mapSelectionStep !== 'NONE' && (
+        <MapSelectionBanner
+          step={mapSelectionStep}
+          onCancel={() => setMapSelectionStep('NONE')}
+        />
+      )}
+
       <View style={styles.mapContainer}>
-        <MapCard 
+        <MapCard
           ref={mapRef}
           isDriver={false}
-          location={location} 
+          location={location}
           driverLocation={activeDriverLocation}
           rideStatus={currentRide?.status}
           showUserMarker={currentRide?.status !== 'in_progress' && !!location}
-          showRecenterButton={true}
+          showRecenterButton={mapSelectionStep === 'NONE'}
           floating={false}
           markers={mapMarkers}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
-          onMarkerPress={(poi) => {
-            if (!isRideActive) {
-              setSelectedPoi(poi);
-            }
-          }}
+          hidePOIs={!!destination || isRideActive || mapSelectionStep !== 'NONE'}
+          onLongPress={handleMapLongPress}
+          onMarkerPress={(poi) => { if (!isRideActive) setSelectedPoi(poi); }}
         />
-        
         {!location && (
           <View style={styles.floatingLoader}>
             <ActivityIndicator size="small" color={THEME.COLORS.champagneGold} />
@@ -158,86 +134,79 @@ const RiderHome = ({ navigation, route }) => {
         )}
       </View>
 
-      <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={handleHeaderLayout}>
-        <SmartHeader 
-          scrollY={scrollY}
-          address={currentAddress || "Recherche..."}
-          userName={user?.name?.split(' ')[0] || "Passager"}
-          onMenuPress={() => {
-            requestAnimationFrame(() => {
-              navigation.navigate('Menu');
-            });
-          }}
-          onNotificationPress={() => {
-            requestAnimationFrame(() => {
-              navigation.navigate('Notifications');
-            });
-          }}
-          onSearchPress={() => {
-            if (!isEffectiveOriginInZone) {
-              setShowOutOfZoneTaxiModal(true);
-              return;
-            }
-            requestAnimationFrame(() => {
+      {mapSelectionStep === 'NONE' && (
+        <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
+          <SmartHeader
+            scrollY={scrollY}
+            address={currentAddress || "Recherche..."}
+            userName={user?.name?.split(' ')[0] || "Passager"}
+            onMenuPress={() => requestAnimationFrame(() => navigation.navigate('Menu'))}
+            onNotificationPress={() => requestAnimationFrame(() => navigation.navigate('Notifications'))}
+            onSearchPress={() => {
+              if (!isEffectiveOriginInZone) {
+                setShowOutOfZoneTaxiModal(true);
+                return;
+              }
               openSearchModal();
-            });
-          }}
-          onShoppingPress={() => {
-            requestAnimationFrame(() => {
-              navigation.navigate('MarketplaceHub');
-            });
-          }}
-          hasDestination={!!destination && !isRideActive} 
-          onCancelDestination={handleCancelDestination}
-          onRefreshLocation={handleRefreshLocation}
-        />
-      </View>
+            }}
+            onShoppingPress={() => requestAnimationFrame(() => navigation.navigate('MarketplaceHub'))}
+            hasDestination={!!destination && !isRideActive}
+            destinationAddress={destination?.address || destination?.name || null}
+            onCancelDestination={() => {
+              setMapSelectionStep('NONE');
+              handleCancelDestination();
+            }}
+            onRefreshLocation={handleRefreshLocation}
+          />
+        </View>
+      )}
 
-      <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={handleFooterLayout}>
+      <View style={styles.footerWrapper} pointerEvents="box-none" onLayout={(e) => setFooterHeight(e.nativeEvent.layout.height)}>
         {isRideActive ? (
           <RiderRideOverlay />
         ) : (
-          <SmartFooter 
+          <SmartFooter
             destination={destination}
             displayVehicles={displayVehicles}
             selectedVehicle={selectedVehicle}
             onSelectVehicle={setSelectedVehicle}
-            isEstimating={isEstimating || isOrdering} 
+            isEstimating={isEstimating || isOrdering}
             estimationData={estimationData}
             estimateError={estimateError}
             onConfirmRide={handleConfirmRide}
-            isUserInZone={isEffectiveOriginInZone} 
+            isUserInZone={isEffectiveOriginInZone}
           />
         )}
       </View>
 
-      <DestinationSearchModal 
+      <DestinationSearchModal
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
         onPlaceSelect={(place) => handlePlaceSelect(place)}
+        currentLocation={location}
+        currentAddress={currentAddress}
+        onPickOnMap={() => setMapSelectionStep('SELECTING_ORIGIN')}
       />
 
       <PoiDetailsModal
         visible={!!selectedPoi}
         poi={selectedPoi}
         onClose={() => setSelectedPoi(null)}
-        onSelect={handlePoiSelection}
+        onSelect={(poi) => {
+          if (!isEffectiveOriginInZone) {
+            setShowOutOfZoneTaxiModal(true);
+            return;
+          }
+          setSelectedPoi(null);
+          handlePlaceSelect({ latitude: poi.latitude, longitude: poi.longitude, address: poi.name });
+        }}
       />
 
-      <GlassModal
-        visible={showOutOfZoneTaxiModal}
-        onClose={() => setShowOutOfZoneTaxiModal(false)}
-        title="Zone non couverte"
-        icon="location-outline"
-      >
+      <GlassModal visible={showOutOfZoneTaxiModal} onClose={() => setShowOutOfZoneTaxiModal(false)} title="Zone non couverte" icon="location-outline">
         <Text style={styles.outOfZoneModalText}>
-          Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély, vous ne pouvez donc pas bénéficier de course
+          Désolé, vous êtes actuellement hors de la zone de prise en charge de Yély.
         </Text>
-        <GoldButton 
-          title="J'ai compris" 
-          onPress={() => setShowOutOfZoneTaxiModal(false)} 
-          style={{ marginTop: 16 }}
-        />
+        <GoldButton title="J'ai compris" onPress={() => setShowOutOfZoneTaxiModal(false)} style={{ marginTop: 16 }} />
       </GlassModal>
 
       <RiderWaitModal />
@@ -252,37 +221,12 @@ const styles = StyleSheet.create({
   headerWrapper: { position: 'absolute', top: 0, left: 0, right: 0, zIndex: 10 },
   footerWrapper: { position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 10 },
   floatingLoader: {
-    position: 'absolute',
-    top: 140,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: THEME.COLORS.glassDark,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(212, 175, 55, 0.3)',
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 3,
-    zIndex: 10,
+    position: 'absolute', top: 140, alignSelf: 'center', flexDirection: 'row', alignItems: 'center',
+    backgroundColor: THEME.COLORS.glassDark, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 20,
+    borderWidth: 1, borderColor: 'rgba(212, 175, 55, 0.3)', elevation: 4, zIndex: 10,
   },
-  floatingLoaderText: { 
-    color: THEME.COLORS.champagneGold, 
-    marginLeft: 8, 
-    fontSize: 12, 
-    fontWeight: '600' 
-  },
-  outOfZoneModalText: {
-    color: THEME.COLORS.textPrimary,
-    fontSize: 14,
-    lineHeight: 22,
-    textAlign: 'center',
-    marginBottom: 8,
-  },
+  floatingLoaderText: { color: THEME.COLORS.champagneGold, marginLeft: 8, fontSize: 12, fontWeight: '600' },
+  outOfZoneModalText: { color: THEME.COLORS.textPrimary, fontSize: 14, lineHeight: 22, textAlign: 'center', marginBottom: 8 },
 });
 
 export default RiderHome;

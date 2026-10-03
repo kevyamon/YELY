@@ -1,6 +1,6 @@
 // src/hooks/useRouteManager.js
 // GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Animation fluide, réactivité instantanée et résilience
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
@@ -12,7 +12,6 @@ import {
   getProjectedPoint,
   haversineMeters,
   ROUTE_DRAW_INTERVAL_MS,
-  SILENT_RETRY_DELAY_MS,
   TRIM_THRESHOLD_METERS,
   DEVIATION_THRESHOLD_METERS,
 } from '../utils/routeGeometry';
@@ -23,12 +22,10 @@ const useRouteManager = (location, driverLocation, markers) => {
 
   const drawIntervalRef = useRef(null);
   const isDrawingRouteRef = useRef(false);
-
   const fullRoutePointsRef = useRef([]);
   const lastRouteOriginRef = useRef(null);
   const lastRouteDestKeyRef = useRef(null);
   const lastPassedIndexRef = useRef(0);
-  
   const lastRouteFetchTimeRef = useRef(0);
   const retryTimeoutRef = useRef(null);
   const isFetchingRef = useRef(false);
@@ -49,7 +46,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     (fullPoints) => {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
-
       if (!fullPoints || fullPoints.length === 0) return;
 
       isDrawingRouteRef.current = true;
@@ -83,7 +79,6 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       if (isFetchingRef.current && !isFastRetry) return;
       isFetchingRef.current = true;
-
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
       lastRouteFetchTimeRef.current = Date.now();
@@ -91,15 +86,12 @@ const useRouteManager = (location, driverLocation, markers) => {
       try {
         const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
         isFetchingRef.current = false;
-        
         if (lastRouteDestKeyRef.current !== destKey) return;
 
         if (!routePoints || !Array.isArray(routePoints) || routePoints.length < 2) {
           clearTimeout(retryTimeoutRef.current);
           retryTimeoutRef.current = setTimeout(() => {
-            if (lastRouteDestKeyRef.current === destKey) {
-              fetchAndStoreRoute(pointA, pointB, destKey, true);
-            }
+            if (lastRouteDestKeyRef.current === destKey) fetchAndStoreRoute(pointA, pointB, destKey, true);
           }, FAST_RETRY_DELAY_MS);
           return;
         }
@@ -113,9 +105,7 @@ const useRouteManager = (location, driverLocation, markers) => {
         isFetchingRef.current = false;
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = setTimeout(() => {
-          if (lastRouteDestKeyRef.current === destKey) {
-            lastRouteFetchTimeRef.current = 0;
-          }
+          if (lastRouteDestKeyRef.current === destKey) lastRouteFetchTimeRef.current = 0;
         }, FAST_RETRY_DELAY_MS);
       }
     },
@@ -130,7 +120,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const startIndex = lastPassedIndexRef.current || 0;
     let closestIdx = startIndex;
     let minDist = Infinity;
-
     const scanLimit = Math.min(full.length, startIndex + 100);
 
     for (let i = startIndex; i < scanLimit; i++) {
@@ -166,15 +155,10 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     if (!bestProj) return;
-
     lastPassedIndexRef.current = Math.max(0, sliceIndex - 1);
-
     const remaining = full.slice(sliceIndex);
     remaining.unshift({ latitude: bestProj.latitude, longitude: bestProj.longitude });
-
-    if (remaining.length > 1) {
-      setVisibleRoutePoints(remaining);
-    }
+    if (remaining.length > 1) setVisibleRoutePoints(remaining);
   }, []);
 
   useEffect(() => {
@@ -183,7 +167,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
     const destinationMarker = markers.find((m) => m.type === 'destination');
     const pickupMarker = markers.find((m) => m.type === 'pickup');
-
     const targetMarker = pickupMarker || destinationMarker;
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
@@ -200,22 +183,10 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
     const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
+    const routeOriginLat = isManualOriginActive ? pickupOriginMarker.latitude : (hasDriverPosition ? driverLocation.latitude : location.latitude);
+    const routeOriginLng = isManualOriginActive ? pickupOriginMarker.longitude : (hasDriverPosition ? driverLocation.longitude : location.longitude);
 
-    const routeOriginLat = isManualOriginActive 
-      ? pickupOriginMarker.latitude 
-      : (hasDriverPosition ? driverLocation.latitude : location.latitude);
-      
-    const routeOriginLng = isManualOriginActive 
-      ? pickupOriginMarker.longitude 
-      : (hasDriverPosition ? driverLocation.longitude : location.longitude);
-
-    const distToTarget = haversineMeters(
-      routeOriginLat,
-      routeOriginLng,
-      activeTarget.latitude,
-      activeTarget.longitude
-    );
-
+    const distToTarget = haversineMeters(routeOriginLat, routeOriginLng, activeTarget.latitude, activeTarget.longitude);
     if (distToTarget <= 25) {
       stopDrawAnimation();
       setVisibleRoutePoints([]);
@@ -230,12 +201,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (destKey !== lastRouteDestKeyRef.current) {
       stopDrawAnimation();
       lastPassedIndexRef.current = 0;
-
-      fetchAndStoreRoute(
-        { latitude: routeOriginLat, longitude: routeOriginLng },
-        { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-        destKey
-      );
+      fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       return;
     }
 
@@ -243,11 +209,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (!full || full.length === 0) {
       const now = Date.now();
       if (now - lastRouteFetchTimeRef.current > FAST_RETRY_DELAY_MS && !isFetchingRef.current) {
-        fetchAndStoreRoute(
-          { latitude: routeOriginLat, longitude: routeOriginLng },
-          { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-          destKey
-        );
+        fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       }
       return;
     }
@@ -256,39 +218,20 @@ const useRouteManager = (location, driverLocation, markers) => {
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
       if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
-        fetchAndStoreRoute(
-          { latitude: routeOriginLat, longitude: routeOriginLng },
-          { latitude: activeTarget.latitude, longitude: activeTarget.longitude },
-          destKey
-        );
+        fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       }
       return;
     }
 
     const lastOrigin = lastRouteOriginRef.current;
-    const movedDist = lastOrigin
-      ? haversineMeters(
-          routeOriginLat,
-          routeOriginLng,
-          lastOrigin.latitude,
-          lastOrigin.longitude
-        )
-      : TRIM_THRESHOLD_METERS + 1;
-
+    const movedDist = lastOrigin ? haversineMeters(routeOriginLat, routeOriginLng, lastOrigin.latitude, lastOrigin.longitude) : TRIM_THRESHOLD_METERS + 1;
     if (movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
       if (!isDrawingRouteRef.current) {
         lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
         trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
       }
     }
-  }, [
-    location,
-    driverLocation,
-    markers,
-    fetchAndStoreRoute,
-    trimRouteFromCurrentPosition,
-    stopDrawAnimation,
-  ]);
+  }, [location, driverLocation, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
 
   useEffect(() => {
     return () => {
