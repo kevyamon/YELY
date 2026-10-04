@@ -16,12 +16,15 @@ const MAX_LANDMARK_DISTANCE_METERS = 500;
 const API_HEADERS = { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' };
 
 const FALLBACK_LANDMARKS = [
-  { name: 'Grand terrain de Maféré', latitude: 5.4192, longitude: -3.0234 },
-  { name: 'Mairie de Maféré', latitude: 5.4205, longitude: -3.0211 },
-  { name: 'Hôpital Général de Maféré', latitude: 5.4218, longitude: -3.0245 },
-  { name: 'Gare routière de Maféré', latitude: 5.4180, longitude: -3.0220 },
-  { name: 'Marché central de Maféré', latitude: 5.4210, longitude: -3.0230 },
-  { name: 'Pharmacie Principale', latitude: 5.4200, longitude: -3.0225 },
+  { name: 'Grand terrain de Maféré', latitude: 5.42132, longitude: -3.03378 },
+  { name: 'Mairie de Maféré', latitude: 5.40611, longitude: -3.03740 },
+  { name: 'Hôpital Général de Maféré', latitude: 5.41387, longitude: -3.03267 },
+  { name: 'Gare routière de Maféré', latitude: 5.41496, longitude: -3.02818 },
+  { name: 'Marché Central', latitude: 5.41589, longitude: -3.02878 },
+  { name: 'Pharmacie Aka Ebah', latitude: 5.41293, longitude: -3.03249 },
+  { name: 'Pharmacie Ste Hélène', latitude: 5.41718, longitude: -3.02811 },
+  { name: 'Sous-Préfecture de Maféré', latitude: 5.41174, longitude: -3.02977 },
+  { name: 'Commissariat de police de Maféré', latitude: 5.41149, longitude: -3.03044 },
 ];
 
 const addressCache = new Map();
