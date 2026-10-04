@@ -324,4 +324,40 @@ const styles = StyleSheet.create({
   },
 });
 
-export default React.memo(MapCard);
+const arePropsEqual = (prevProps, nextProps) => {
+  const isSameLocation = (loc1, loc2) => {
+    if (!loc1 && !loc2) return true;
+    if (!loc1 || !loc2) return false;
+    return loc1.latitude?.toFixed(4) === loc2.latitude?.toFixed(4) && 
+           loc1.longitude?.toFixed(4) === loc2.longitude?.toFixed(4);
+  };
+
+  const areMarkersEqual = (m1 = [], m2 = []) => {
+    if (!m1 && !m2) return true;
+    if (!m1 || !m2 || m1.length !== m2.length) return false;
+    for (let i = 0; i < m1.length; i++) {
+      if (
+        m1[i]?.type !== m2[i]?.type ||
+        m1[i]?.latitude?.toFixed(4) !== m2[i]?.latitude?.toFixed(4) ||
+        m1[i]?.longitude?.toFixed(4) !== m2[i]?.longitude?.toFixed(4)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  };
+
+  return (
+    isSameLocation(prevProps.location, nextProps.location) &&
+    isSameLocation(prevProps.driverLocation, nextProps.driverLocation) &&
+    areMarkersEqual(prevProps.markers, nextProps.markers) &&
+    prevProps.mapBottomPadding === nextProps.mapBottomPadding &&
+    prevProps.mapTopPadding === nextProps.mapTopPadding &&
+    prevProps.showUserMarker === nextProps.showUserMarker &&
+    prevProps.isDriver === nextProps.isDriver &&
+    prevProps.rideStatus === nextProps.rideStatus &&
+    prevProps.hidePOIs === nextProps.hidePOIs
+  );
+};
+
+export default React.memo(MapCard, arePropsEqual);

@@ -135,8 +135,19 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     }
   }, [destination, displayVehicles, selectedVehicle]);
 
+  const prevRideIdRef = useRef(null);
+  const prevRideStatusRef = useRef(null);
+
   useEffect(() => {
-    if (rideToRate || !currentRide || currentRide?.status === 'cancelled' || currentRide?.status === 'timeout') {
+    const currentId = currentRide ? (currentRide._id || currentRide.id || currentRide.rideId) : null;
+    const currentStatus = currentRide?.status;
+    const hadActiveRide = !!(prevRideIdRef.current && prevRideStatusRef.current && ['accepted', 'arrived', 'in_progress', 'searching', 'negotiating'].includes(prevRideStatusRef.current));
+
+    prevRideIdRef.current = currentId;
+    prevRideStatusRef.current = currentStatus;
+
+    // Ne réinitialiser et recentrer que si une course réellement active se termine ou est annulée
+    if (rideToRate || (hadActiveRide && (!currentRide || currentStatus === 'cancelled' || currentStatus === 'timeout' || currentStatus === 'completed'))) {
       setDestination(null);
       setSelectedVehicle(null);
       lastEstimatedOriginRef.current = null;

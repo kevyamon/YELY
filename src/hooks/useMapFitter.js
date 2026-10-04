@@ -56,17 +56,10 @@ const useMapFitter = ({
   const lastFittedDriverLocationRef = useRef(null);
   const lastFittedMarkersRef = useRef([]);
   const lastRideStatusRef = useRef(null);
+  const lastFittedDestKeyRef = useRef(null);
 
   useEffect(() => {
     if (!isMapReady || !cameraRef.current || isUserInteracting) return;
-
-    const isInitial = !isInitialFitDone.current;
-    const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 15);
-    const driverLocChanged = hasMovedSignificantly(driverLocation, lastFittedDriverLocationRef.current, 15);
-    const markersChanged = markersMovedSignificantly(markers, lastFittedMarkersRef.current, 10);
-    const statusChanged = lastRideStatusRef.current !== rideStatus;
-
-    if (!isInitial && !locChanged && !driverLocChanged && !markersChanged && !statusChanged) return;
 
     const hasDriver = driverLocation?.latitude && driverLocation?.longitude;
     const originMarker = hasDriver ? driverLocation : location;
@@ -79,6 +72,25 @@ const useMapFitter = ({
       targetMarker = markers.find((m) => m.type === 'pickup');
     } else {
       targetMarker = markers.find((m) => m.type === 'destination' || m.type === 'pickup');
+    }
+
+    const destMarker = markers.find((m) => m.type === 'destination');
+    const currentDestKey = destMarker ? `${destMarker.latitude?.toFixed(5)},${destMarker.longitude?.toFixed(5)}` : null;
+    const isDestMode = !isOngoingRide && !hasDriver && !!destMarker;
+
+    // Règle d'or : Une fois la destination cadrée et l'itinéraire tracé, la caméra reste totalement immobile
+    if (isDestMode && isInitialFitDone.current && lastFittedDestKeyRef.current === currentDestKey) {
+      return;
+    }
+
+    const isInitial = !isInitialFitDone.current;
+    const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 15);
+    const driverLocChanged = hasMovedSignificantly(driverLocation, lastFittedDriverLocationRef.current, 15);
+    const markersChanged = markersMovedSignificantly(markers, lastFittedMarkersRef.current, 10);
+    const statusChanged = lastRideStatusRef.current !== rideStatus;
+
+    if (!isInitial && !locChanged && !driverLocChanged && !markersChanged && !statusChanged && (lastFittedDestKeyRef.current === currentDestKey)) {
+      return;
     }
 
     let coordsToFit = [];
@@ -100,6 +112,7 @@ const useMapFitter = ({
         });
         isInitialFitDone.current = true;
       }
+      lastFittedDestKeyRef.current = null;
       return;
     }
 
@@ -166,6 +179,7 @@ const useMapFitter = ({
       }, animDuration);
 
       isInitialFitDone.current = true;
+      lastFittedDestKeyRef.current = currentDestKey;
       lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
       lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
       lastFittedMarkersRef.current = markers.map((m) => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
