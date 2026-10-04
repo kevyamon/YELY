@@ -1,5 +1,5 @@
 // src/screens/home/RiderHome.jsx
-// HOME RIDER NATIF - Orchestrateur Principal (3 Modes de sélection & Carte Hybride)
+// HOME RIDER NATIF - Orchestrateur Principal (Sélection Directe & Carte Hybride)
 // CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import React, { useRef, useState } from 'react';
@@ -37,7 +37,7 @@ const RiderHome = ({ navigation }) => {
 
   const [selectedPoi, setSelectedPoi] = useState(null);
   const [showOutOfZoneTaxiModal, setShowOutOfZoneTaxiModal] = useState(false);
-  const [mapSelectionStep, setMapSelectionStep] = useState('NONE');
+  const [isSelectingDestinationOnMap, setIsSelectingDestinationOnMap] = useState(false);
   const [headerHeight, setHeaderHeight] = useState(140);
   const [footerHeight, setFooterHeight] = useState(240);
 
@@ -88,24 +88,16 @@ const RiderHome = ({ navigation }) => {
     if (isRideActive) return;
     try {
       const address = await MapService.getAddressFromCoordinates(latitude, longitude);
-      const place = { latitude, longitude, address };
-
-      if (mapSelectionStep === 'SELECTING_ORIGIN') {
-        handlePlaceSelect(place);
-        setMapSelectionStep('SELECTING_DESTINATION');
-      } else {
-        handlePlaceSelect(place);
-        setMapSelectionStep('NONE');
-      }
+      handlePlaceSelect({ latitude, longitude, address });
+      setIsSelectingDestinationOnMap(false);
     } catch (_) {}
   };
 
   return (
     <View style={styles.screenWrapper}>
-      {mapSelectionStep !== 'NONE' && (
+      {isSelectingDestinationOnMap && (
         <MapSelectionBanner
-          step={mapSelectionStep}
-          onCancel={() => setMapSelectionStep('NONE')}
+          onCancel={() => setIsSelectingDestinationOnMap(false)}
         />
       )}
 
@@ -117,12 +109,12 @@ const RiderHome = ({ navigation }) => {
           driverLocation={activeDriverLocation}
           rideStatus={currentRide?.status}
           showUserMarker={currentRide?.status !== 'in_progress' && !!location}
-          showRecenterButton={mapSelectionStep === 'NONE'}
+          showRecenterButton={!isSelectingDestinationOnMap}
           floating={false}
           markers={mapMarkers}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
-          hidePOIs={!!destination || isRideActive || mapSelectionStep !== 'NONE'}
+          hidePOIs={!!destination || isRideActive || isSelectingDestinationOnMap}
           onLongPress={handleMapLongPress}
           onMarkerPress={(poi) => { if (!isRideActive) setSelectedPoi(poi); }}
         />
@@ -134,7 +126,7 @@ const RiderHome = ({ navigation }) => {
         )}
       </View>
 
-      {mapSelectionStep === 'NONE' && (
+      {!isSelectingDestinationOnMap && (
         <View style={styles.headerWrapper} pointerEvents="box-none" onLayout={(e) => setHeaderHeight(e.nativeEvent.layout.height)}>
           <SmartHeader
             scrollY={scrollY}
@@ -153,7 +145,7 @@ const RiderHome = ({ navigation }) => {
             hasDestination={!!destination && !isRideActive}
             destinationAddress={destination?.address || destination?.name || null}
             onCancelDestination={() => {
-              setMapSelectionStep('NONE');
+              setIsSelectingDestinationOnMap(false);
               handleCancelDestination();
             }}
             onRefreshLocation={handleRefreshLocation}
@@ -183,9 +175,7 @@ const RiderHome = ({ navigation }) => {
         visible={isSearchModalVisible}
         onClose={() => setIsSearchModalVisible(false)}
         onPlaceSelect={(place) => handlePlaceSelect(place)}
-        currentLocation={location}
-        currentAddress={currentAddress}
-        onPickOnMap={() => setMapSelectionStep('SELECTING_ORIGIN')}
+        onPickOnMap={() => setIsSelectingDestinationOnMap(true)}
       />
 
       <PoiDetailsModal

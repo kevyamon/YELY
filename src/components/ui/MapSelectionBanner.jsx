@@ -1,5 +1,5 @@
 // src/components/ui/MapSelectionBanner.jsx
-// BANNIÈRE DE GUIDAGE SÉLECTION CARTE EN 2 TEMPS
+// BANNIÈRE DE GUIDAGE SÉLECTION DE DESTINATION SUR CARTE
 // CSCSM Level: Bank Grade (Strictement modulaire < 120 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
@@ -9,14 +9,8 @@ import Animated, { FadeInUp, FadeOutUp } from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import THEME from '../../theme/theme';
 
-const MapSelectionBanner = ({ step = 'SELECTING_ORIGIN', onCancel }) => {
+const MapSelectionBanner = ({ onCancel }) => {
   const insets = useSafeAreaInsets();
-  const isOrigin = step === 'SELECTING_ORIGIN';
-
-  const stepTitle = isOrigin ? 'Étape 1/2 — Lieu de départ' : 'Étape 2/2 — Destination';
-  const instruction = isOrigin
-    ? 'Maintenez votre doigt 2 secondes sur la carte pour définir votre point de départ.'
-    : 'Parfait ! Maintenez maintenant 2 secondes sur la carte pour définir votre destination.';
 
   return (
     <Animated.View
@@ -27,8 +21,8 @@ const MapSelectionBanner = ({ step = 'SELECTING_ORIGIN', onCancel }) => {
       <View style={styles.card}>
         <View style={styles.headerRow}>
           <View style={styles.badgeRow}>
-            <View style={[styles.stepDot, isOrigin ? styles.stepDotOrigin : styles.stepDotDest]} />
-            <Text style={styles.stepTitle}>{stepTitle}</Text>
+            <View style={styles.stepDot} />
+            <Text style={styles.stepTitle}>Choisir une destination</Text>
           </View>
           <TouchableOpacity
             activeOpacity={0.7}
@@ -42,12 +36,14 @@ const MapSelectionBanner = ({ step = 'SELECTING_ORIGIN', onCancel }) => {
 
         <View style={styles.bodyRow}>
           <Ionicons
-            name={isOrigin ? 'radio-button-on' : 'location'}
+            name="location"
             size={18}
-            color={isOrigin ? THEME.COLORS.champagneGold : THEME.COLORS.danger}
+            color={THEME.COLORS.champagneGold}
             style={styles.bodyIcon}
           />
-          <Text style={styles.instructionText}>{instruction}</Text>
+          <Text style={styles.instructionText}>
+            Maintenez votre doigt 2 secondes sur la carte pour définir votre destination.
+          </Text>
         </View>
       </View>
     </Animated.View>
@@ -89,13 +85,8 @@ const styles = StyleSheet.create({
     width: 8,
     height: 8,
     borderRadius: 4,
-    marginRight: 8,
-  },
-  stepDotOrigin: {
     backgroundColor: THEME.COLORS.champagneGold,
-  },
-  stepDotDest: {
-    backgroundColor: THEME.COLORS.danger,
+    marginRight: 8,
   },
   stepTitle: {
     color: THEME.COLORS.textPrimary,

@@ -1,5 +1,5 @@
 // src/components/ui/DestinationSearchModal.jsx
-// MODALE DE SÉLECTION DE LIEU — 3 MODES : GPS ACTUEL, RECHERCHE & TOUCHER SUR CARTE
+// MODALE DE RECHERCHE DE DESTINATION — RECHERCHE HYBRIDE & TOUCHER SUR CARTE
 // CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import { Ionicons } from '@expo/vector-icons';
@@ -32,8 +32,6 @@ const DestinationSearchModal = ({
   visible,
   onClose,
   onPlaceSelect,
-  currentLocation = null,
-  currentAddress = "Ma position actuelle",
   onPickOnMap = null,
 }) => {
   const dispatch = useDispatch();
@@ -63,7 +61,7 @@ const DestinationSearchModal = ({
   const filteredPOIs = useMemo(() => {
     if (debouncedQuery.length >= 2) return searchResponse?.data || [];
     const normalized = normalizeSearchText(searchQuery);
-    if (!normalized) return pois.slice(0, 5);
+    if (!normalized) return pois.slice(0, 6);
     return pois.filter(p => normalizeSearchText(p.name).includes(normalized)).slice(0, 8);
   }, [pois, searchQuery, debouncedQuery, searchResponse]);
 
@@ -95,17 +93,6 @@ const DestinationSearchModal = ({
     setSearchQuery('');
     onClose();
   }, [onPlaceSelect, onClose, resolveExternal, dispatch]);
-
-  const handleUseCurrentLocation = () => {
-    if (currentLocation?.latitude && currentLocation?.longitude) {
-      onPlaceSelect({
-        address: currentAddress || "Position GPS actuelle",
-        latitude: currentLocation.latitude,
-        longitude: currentLocation.longitude,
-      });
-      onClose();
-    }
-  };
 
   const renderSuggestionItem = useCallback(({ item }) => (
     <TouchableOpacity
@@ -141,36 +128,18 @@ const DestinationSearchModal = ({
         </TouchableOpacity>
       </View>
 
-      {/* MODE 1 : Bouton Prioritaire Doré - Position Actuelle */}
-      {currentLocation && (
-        <TouchableOpacity
-          activeOpacity={0.85}
-          style={styles.currentLocationCard}
-          onPress={handleUseCurrentLocation}
-        >
-          <View style={styles.currentLocationIconBadge}>
-            <Ionicons name="navigate" size={16} color="#121418" />
-          </View>
-          <View style={styles.currentLocationTextCol}>
-            <Text style={styles.currentLocationTitle}>Utiliser ma position actuelle</Text>
-            <Text style={styles.currentLocationSub} numberOfLines={1}>{currentAddress}</Text>
-          </View>
-          <Ionicons name="arrow-forward" size={16} color="#121418" />
-        </TouchableOpacity>
-      )}
-
-      {/* MODE 2 : Recherche Textuelle */}
+      {/* Recherche Textuelle */}
       <View style={styles.inputWrapper}>
         <GlassInput
           placeholder="Rechercher une destination..."
           value={searchQuery}
           onChangeText={setSearchQuery}
-          autoFocus={!currentLocation}
+          autoFocus={true}
           icon="search-outline"
         />
       </View>
 
-      {/* MODE 3 : Bouton Choisir sur la carte */}
+      {/* Définir sur la carte */}
       {onPickOnMap && (
         <TouchableOpacity
           activeOpacity={0.7}
@@ -181,7 +150,7 @@ const DestinationSearchModal = ({
           }}
         >
           <Ionicons name="map-outline" size={15} color={THEME.COLORS.champagneGold} style={{ marginRight: 6 }} />
-          <Text style={styles.pickOnMapText}>Définir le trajet sur la carte</Text>
+          <Text style={styles.pickOnMapText}>Choisir la destination sur la carte</Text>
         </TouchableOpacity>
       )}
 
@@ -201,7 +170,7 @@ const DestinationSearchModal = ({
           keyExtractor={(item) => String(item._id || item.id || item.name)}
           renderItem={renderSuggestionItem}
           keyboardShouldPersistTaps="handled"
-          style={{ maxHeight: isSmallScreen ? 160 : 200 }}
+          style={{ maxHeight: isSmallScreen ? 180 : 220 }}
           showsVerticalScrollIndicator={false}
           ListEmptyComponent={() => (
             <Text style={styles.emptyText}>Aucun lieu trouvé pour "{searchQuery}"</Text>
@@ -225,19 +194,6 @@ const styles = StyleSheet.create({
     width: 28, height: 28, borderRadius: 14, borderWidth: 1, borderColor: THEME.COLORS.border,
     justifyContent: 'center', alignItems: 'center', backgroundColor: THEME.COLORS.glassSurface,
   },
-  currentLocationCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: THEME.COLORS.champagneGold,
-    borderRadius: 14, paddingHorizontal: 12, paddingVertical: 9, marginBottom: 10,
-    shadowColor: THEME.COLORS.champagneGold, shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
-  },
-  currentLocationIconBadge: {
-    width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(18, 20, 24, 0.15)',
-    justifyContent: 'center', alignItems: 'center', marginRight: 10,
-  },
-  currentLocationTextCol: { flex: 1, marginRight: 8 },
-  currentLocationTitle: { color: '#121418', fontSize: 13, fontWeight: '800' },
-  currentLocationSub: { color: '#121418', fontSize: 10.5, fontWeight: '600', opacity: 0.85, marginTop: 1 },
   inputWrapper: { marginBottom: 8 },
   pickOnMapBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
