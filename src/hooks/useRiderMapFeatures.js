@@ -93,11 +93,11 @@ const useRiderMapFeatures = ({
   }, [destination, isRideActive, rideStatus, safeOriginLat, safeOriginLng, safeDestLat, safeDestLng, currentRide?.origin?.address, currentRide?.destination?.address]);
 
   const mapTopPadding = destination 
-    ? Math.min(dynamicHeaderHeight + 15, 110) 
+    ? Math.max(dynamicHeaderHeight + 20, 130) 
     : (dynamicHeaderHeight > 0 ? dynamicHeaderHeight + 20 : 140);
-  const mapBottomPadding = dynamicFooterHeight > 0 
-    ? dynamicFooterHeight + 20 
-    : (isRideActive ? 320 : (destination ? 380 : 240));
+  const mapBottomPadding = isRideActive 
+    ? Math.max(dynamicFooterHeight + 20, 320) 
+    : (destination ? Math.max(dynamicFooterHeight + 20, 370) : (dynamicFooterHeight > 0 ? dynamicFooterHeight + 20 : 240));
 
   const mapTraceOrigin = location;
 

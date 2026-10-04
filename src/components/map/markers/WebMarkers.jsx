@@ -204,15 +204,16 @@ export const MapAutoFitter = ({
 
     let coordsToFit = [];
     const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length > 1;
+    const destMarker = markers.find((m) => m.type === 'destination');
+    const isDestMode = !!destMarker;
 
-    if (hasDetailedRoute) {
-      coordsToFit = routePoints.map(p => [p.latitude, p.longitude]);
+    if (hasDetailedRoute && isDestMode) {
+      coordsToFit = routePoints.map((p) => [Number(p.latitude), Number(p.longitude)]).filter((p) => !isNaN(p[0]) && !isNaN(p[1]));
     } else {
       const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
-      const destinationMarker = markers.find((m) => m.type === 'destination');
       const pickupMarker = markers.find((m) => m.type === 'pickup');
 
-      const targetMarker = pickupMarker || destinationMarker;
+      const targetMarker = pickupMarker || destMarker;
       const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
       const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
 
@@ -222,13 +223,13 @@ export const MapAutoFitter = ({
 
       if (targetMarker && originMarker?.latitude && originMarker?.longitude) {
         coordsToFit = [
-          [originMarker.latitude, originMarker.longitude],
-          [targetMarker.latitude, targetMarker.longitude],
+          [Number(originMarker.latitude), Number(originMarker.longitude)],
+          [Number(targetMarker.latitude), Number(targetMarker.longitude)],
         ];
       } else if (originMarker?.latitude && originMarker?.longitude) {
-        coordsToFit = [[originMarker.latitude, originMarker.longitude]];
-        markers.forEach(m => {
-          if (m?.latitude && m?.longitude) coordsToFit.push([m.latitude, m.longitude]);
+        coordsToFit = [[Number(originMarker.latitude), Number(originMarker.longitude)]];
+        markers.forEach((m) => {
+          if (m?.latitude && m?.longitude) coordsToFit.push([Number(m.latitude), Number(m.longitude)]);
         });
       }
     }
@@ -243,11 +244,19 @@ export const MapAutoFitter = ({
 
     const firstPt = coordsToFit[0];
     const lastPt = coordsToFit[coordsToFit.length - 1];
-    const currentRouteSig = `${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
+    const currentRouteSig = `${coordsToFit.length}_${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
 
     const isRouteChanged = currentRouteSig !== lastRouteSigRef.current;
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
+
+    if (isDestMode && isInitialFitDone.current && !isRouteChanged) {
+      return;
+    }
+
+    if (!isTrackingActive && isInitialFitDone.current) {
+      return;
+    }
 
     const debounceTime = isRouteChanged ? 0 : (isTrackingActive ? 2500 : 9999999);
 
@@ -259,11 +268,12 @@ export const MapAutoFitter = ({
       const mapContainer = map.getContainer();
       const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
       
-      const safeTopPadding = Math.min(mapTopPadding + 20, Math.floor(mapHeight * 0.36));
-      const safeBottomPadding = Math.min(mapBottomPadding + 20, Math.floor(mapHeight * 0.44));
+      const safeTopPadding = isDestMode ? Math.max(mapTopPadding, 130) : Math.min(mapTopPadding + 20, Math.floor(mapHeight * 0.36));
+      const safeBottomPadding = isDestMode ? Math.max(mapBottomPadding, 370) : Math.min(mapBottomPadding + 20, Math.floor(mapHeight * 0.44));
 
       const bounds = L.latLngBounds(coordsToFit);
-      map.flyToBounds(bounds, {
+      const paddedBounds = bounds.pad(0.12);
+      map.flyToBounds(paddedBounds, {
         paddingTopLeft: [35, safeTopPadding],
         paddingBottomRight: [35, safeBottomPadding],
         duration: isRouteChanged ? 0.85 : 1.1,

@@ -201,10 +201,11 @@ const MapCard = forwardRef(({
     location,
     driverLocation,
     markers,
+    routePoints: visibleRoutePoints,
     mapTopPadding,
     mapBottomPadding,
     isUserInteracting,
-    rideStatus 
+    rideStatus,
   });
 
   const handleRecenter = () => {

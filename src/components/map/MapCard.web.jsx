@@ -112,8 +112,8 @@ const MapCard = forwardRef(({
     return () => clearTimeout(buttonSleepTimeout.current);
   }, []);
 
-  // Synchronisation Parallèle : fullRoutePoints pour cadrer la caméra instantanément, visibleRoutePoints pour l'animation
-  const { visibleRoutePoints, fullRoutePoints } = useRouteManager(location, driverLocation, markers);
+  // Synchronisation Continue : visibleRoutePoints pour le tracé et le cadrage dynamique
+  const { visibleRoutePoints } = useRouteManager(location, driverLocation, markers);
 
   usePoiSocketEvents();
   const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
@@ -197,12 +197,12 @@ const MapCard = forwardRef(({
           maxZoom={19}
         />
 
-        {/* Cadrage instantané et synchronisé avec le tracé grâce à fullRoutePoints */}
+        {/* Cadrage instantané et synchronisé avec le tracé grâce à visibleRoutePoints */}
         <MapAutoFitter 
           location={location} 
           driverLocation={driverLocation} 
           markers={markers} 
-          routePoints={fullRoutePoints}
+          routePoints={visibleRoutePoints}
           isUserInteracting={isUserInteracting}
           mapTopPadding={mapTopPadding}
           mapBottomPadding={mapBottomPadding}
