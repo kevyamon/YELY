@@ -11,7 +11,7 @@ const ROUTING_SERVERS = [
   'https://routing.openstreetmap.de/routed-car/route/v1/driving',
 ];
 
-const ROUTE_FETCH_TIMEOUT_MS = 3000;
+const ROUTE_FETCH_TIMEOUT_MS = 5000;
 const MAX_LANDMARK_DISTANCE_METERS = 500;
 const API_HEADERS = { 'User-Agent': 'YelyApp/1.0 (contact@yely.ci)' };
 
@@ -85,7 +85,7 @@ const enrichWithPOI = async (baseAddr, lat, lng) => {
 
 const getCacheKey = (lat, lng) => `${Number(lat).toFixed(4)},${Number(lng).toFixed(4)}`;
 const getRouteCacheKey = (sLat, sLng, eLat, eLng) =>
-  `${Number(sLat).toFixed(3)},${Number(sLng).toFixed(3)}->${Number(eLat).toFixed(3)},${Number(eLng).toFixed(3)}`;
+  `${Number(sLat).toFixed(4)},${Number(sLng).toFixed(4)}->${Number(eLat).toFixed(4)},${Number(eLng).toFixed(4)}`;
 
 let debounceTimer = null;
 const debouncedFetchAddress = (lat, lng, resolve, reject) => {
@@ -179,11 +179,11 @@ class MapService {
   }
 
   static async getRouteCoordinates(startCoords, endCoords) {
-    const sLat = startCoords.latitude || startCoords.lat;
-    const sLng = startCoords.longitude || startCoords.lng;
-    const eLat = endCoords.latitude || endCoords.lat;
-    const eLng = endCoords.longitude || endCoords.lng;
-    if (!sLat || !sLng || !eLat || !eLng) return null;
+    const sLat = Number(startCoords?.latitude ?? startCoords?.lat);
+    const sLng = Number(startCoords?.longitude ?? startCoords?.lng);
+    const eLat = Number(endCoords?.latitude ?? endCoords?.lat);
+    const eLng = Number(endCoords?.longitude ?? endCoords?.lng);
+    if (isNaN(sLat) || isNaN(sLng) || isNaN(eLat) || isNaN(eLng)) return null;
 
     const distance = this.calculateDistance({ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng });
     if (distance < 10) return [{ latitude: sLat, longitude: sLng }, { latitude: eLat, longitude: eLng }];
@@ -193,23 +193,26 @@ class MapService {
 
     for (const baseUrl of ROUTING_SERVERS) {
       try {
-        const url = `${baseUrl}/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson`;
-        const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, 1);
+        const url = `${baseUrl}/${sLng},${sLat};${eLng},${eLat}?overview=full&geometries=geojson&radiuses=1000;1000&continue_straight=default`;
+        const response = await fetchWithRetry(url, { headers: API_HEADERS, timeout: ROUTE_FETCH_TIMEOUT_MS }, 2, 200);
         if (response && response.ok) {
           const data = await response.json();
           if (data.code === 'Ok' && data.routes && data.routes.length > 0) {
-            const points = data.routes[0].geometry.coordinates.map((coord) => ({
-              latitude: coord[1],
-              longitude: coord[0],
-            }));
-            routeCache.set(routeKey, points);
-            return points;
+            const rawCoords = data.routes[0].geometry?.coordinates;
+            if (Array.isArray(rawCoords) && rawCoords.length >= 2) {
+              const points = rawCoords.map((coord) => ({
+                latitude: coord[1],
+                longitude: coord[0],
+              }));
+              routeCache.set(routeKey, points);
+              return points;
+            }
           }
         }
       } catch (_) {}
     }
 
-    // Fallback résilient : corridor routier interpolé en 8 étapes pour zéro blocage
+    // Fallback de secours si serveurs OSRM indisponibles
     const fallbackPoints = [];
     const steps = 8;
     for (let i = 0; i <= steps; i++) {

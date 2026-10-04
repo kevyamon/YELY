@@ -1,17 +1,15 @@
 // src/hooks/useRouteManager.js
-// GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Animation fluide, réactivité instantanée et résilience
+// GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Rendu GPU instantané, réactivité et résilience
 // CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
 import {
-  computeStepSize,
   distanceToRoute,
   distSq,
   FAST_RETRY_DELAY_MS,
   getProjectedPoint,
   haversineMeters,
-  ROUTE_DRAW_INTERVAL_MS,
   TRIM_THRESHOLD_METERS,
   DEVIATION_THRESHOLD_METERS,
 } from '../utils/routeGeometry';
@@ -20,8 +18,6 @@ const useRouteManager = (location, driverLocation, markers) => {
   const [visibleRoutePoints, setVisibleRoutePoints] = useState([]);
   const [fullRoutePoints, setFullRoutePoints] = useState([]);
 
-  const drawIntervalRef = useRef(null);
-  const isDrawingRouteRef = useRef(false);
   const fullRoutePointsRef = useRef([]);
   const lastRouteOriginRef = useRef(null);
   const lastRouteDestKeyRef = useRef(null);
@@ -34,46 +30,19 @@ const useRouteManager = (location, driverLocation, markers) => {
     MapService.preloadRoutingEngine();
   }, []);
 
-  const stopDrawAnimation = useCallback(() => {
-    if (drawIntervalRef.current) {
-      clearInterval(drawIntervalRef.current);
-      drawIntervalRef.current = null;
-    }
-    isDrawingRouteRef.current = false;
+  const clearRoute = useCallback(() => {
+    setVisibleRoutePoints([]);
+    setFullRoutePoints([]);
+    fullRoutePointsRef.current = [];
+    lastRouteOriginRef.current = null;
+    lastRouteDestKeyRef.current = null;
+    lastPassedIndexRef.current = 0;
   }, []);
-
-  const animateRouteDraw = useCallback(
-    (fullPoints) => {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      if (!fullPoints || fullPoints.length === 0) return;
-
-      isDrawingRouteRef.current = true;
-      let revealedCount = 0;
-      const stepSize = computeStepSize(fullPoints.length);
-
-      drawIntervalRef.current = setInterval(() => {
-        revealedCount = Math.min(revealedCount + stepSize, fullPoints.length);
-        setVisibleRoutePoints(fullPoints.slice(0, revealedCount));
-
-        if (revealedCount >= fullPoints.length) {
-          stopDrawAnimation();
-        }
-      }, ROUTE_DRAW_INTERVAL_MS);
-    },
-    [stopDrawAnimation]
-  );
 
   const fetchAndStoreRoute = useCallback(
     async (pointA, pointB, destKey, isFastRetry = false) => {
       if (!pointA || !pointB) {
-        stopDrawAnimation();
-        setVisibleRoutePoints([]);
-        setFullRoutePoints([]);
-        fullRoutePointsRef.current = [];
-        lastRouteOriginRef.current = null;
-        lastRouteDestKeyRef.current = null;
-        lastPassedIndexRef.current = 0;
+        clearRoute();
         return;
       }
 
@@ -99,8 +68,8 @@ const useRouteManager = (location, driverLocation, markers) => {
         clearTimeout(retryTimeoutRef.current);
         fullRoutePointsRef.current = routePoints;
         setFullRoutePoints(routePoints);
+        setVisibleRoutePoints(routePoints);
         lastPassedIndexRef.current = 0;
-        animateRouteDraw(routePoints);
       } catch (_) {
         isFetchingRef.current = false;
         clearTimeout(retryTimeoutRef.current);
@@ -109,7 +78,7 @@ const useRouteManager = (location, driverLocation, markers) => {
         }, FAST_RETRY_DELAY_MS);
       }
     },
-    [animateRouteDraw, stopDrawAnimation]
+    [clearRoute]
   );
 
   const trimRouteFromCurrentPosition = useCallback((currentLat, currentLng) => {
@@ -171,13 +140,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     const activeTarget = pickupOriginMarker ? destinationMarker : targetMarker;
 
     if (!activeTarget || !location) {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      setFullRoutePoints([]);
-      fullRoutePointsRef.current = [];
-      lastRouteOriginRef.current = null;
-      lastRouteDestKeyRef.current = null;
-      lastPassedIndexRef.current = 0;
+      clearRoute();
       return;
     }
 
@@ -188,10 +151,7 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     const distToTarget = haversineMeters(routeOriginLat, routeOriginLng, activeTarget.latitude, activeTarget.longitude);
     if (distToTarget <= 25) {
-      stopDrawAnimation();
-      setVisibleRoutePoints([]);
-      setFullRoutePoints([]);
-      fullRoutePointsRef.current = [];
+      clearRoute();
       return;
     }
 
@@ -199,7 +159,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const destKey = `TARGET_${phaseIdentifier}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
-      stopDrawAnimation();
       lastPassedIndexRef.current = 0;
       fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       return;
@@ -217,7 +176,7 @@ const useRouteManager = (location, driverLocation, markers) => {
     const deviationDist = distanceToRoute(routeOriginLat, routeOriginLng, full);
     if (deviationDist > DEVIATION_THRESHOLD_METERS) {
       const now = Date.now();
-      if (!isDrawingRouteRef.current && (now - lastRouteFetchTimeRef.current > 15000)) {
+      if (now - lastRouteFetchTimeRef.current > 15000) {
         fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       }
       return;
@@ -226,19 +185,16 @@ const useRouteManager = (location, driverLocation, markers) => {
     const lastOrigin = lastRouteOriginRef.current;
     const movedDist = lastOrigin ? haversineMeters(routeOriginLat, routeOriginLng, lastOrigin.latitude, lastOrigin.longitude) : TRIM_THRESHOLD_METERS + 1;
     if (movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
-      if (!isDrawingRouteRef.current) {
-        lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
-        trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
-      }
+      lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
+      trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
     }
-  }, [location, driverLocation, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, stopDrawAnimation]);
+  }, [location, driverLocation, markers, fetchAndStoreRoute, trimRouteFromCurrentPosition, clearRoute]);
 
   useEffect(() => {
     return () => {
-      stopDrawAnimation();
       clearTimeout(retryTimeoutRef.current);
     };
-  }, [stopDrawAnimation]);
+  }, []);
 
   return { visibleRoutePoints, fullRoutePoints };
 };
