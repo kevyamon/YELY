@@ -76,7 +76,7 @@ const enrichWithPOI = async (baseAddr, lat, lng) => {
     }
 
     if (nearestPOI && minDistance <= MAX_LANDMARK_DISTANCE_METERS) {
-      const cleanBase = (baseAddr.toLowerCase().includes('maféré') || baseAddr.toLowerCase().includes('aboisso')) ? 'Maféré' : baseAddr.split(',')[0].trim();
+      const cleanBase = baseAddr.split('(')[0].trim() || (baseAddr.toLowerCase().includes('maféré') ? 'Maféré' : baseAddr);
       return minDistance <= 30 ? `${cleanBase} (près de ${nearestPOI.name})` : `${cleanBase} (à ~${Math.round(minDistance)}m de ${nearestPOI.name})`;
     }
   } catch (_) {}
@@ -97,9 +97,32 @@ const debouncedFetchAddress = (lat, lng, resolve, reject) => {
       if (!response.ok) throw new Error('Échec du géocodage inverse');
       const data = await response.json();
       if (!data.address) throw new Error('Adresse introuvable');
-      const road = data.address.road || data.address.pedestrian || data.address.suburb || data.address.neighbourhood || '';
-      const city = data.address.city || data.address.town || data.address.village || data.address.county || 'Maféré';
-      resolve(road ? `${road}, ${city}` : city);
+      
+      const addr = data.address;
+      const city = addr.city || addr.town || addr.village || addr.municipality || addr.county || '';
+      const suburb = addr.suburb || addr.city_district || addr.district || addr.borough || '';
+      const road = addr.road || addr.pedestrian || addr.footway || addr.path || addr.street || '';
+      const landmark = addr.amenity || addr.shop || addr.building || addr.tourism || addr.historic || addr.leisure || '';
+      const neighbourhood = addr.neighbourhood || addr.quarter || addr.residential || '';
+
+      let primaryCity = '';
+      if (suburb && city && suburb.toLowerCase() !== city.toLowerCase()) {
+        primaryCity = `${suburb}, ${city}`;
+      } else {
+        primaryCity = suburb || city || 'Position actuelle';
+      }
+
+      let detailPart = '';
+      if (landmark) {
+        detailPart = `(près de ${landmark})`;
+      } else if (road) {
+        detailPart = `(${road})`;
+      } else if (neighbourhood && neighbourhood.toLowerCase() !== primaryCity.toLowerCase()) {
+        detailPart = `(Quartier ${neighbourhood})`;
+      }
+
+      const formattedAddress = detailPart ? `${primaryCity} ${detailPart}` : primaryCity;
+      resolve(formattedAddress);
     } catch (error) {
       reject(error);
     }
@@ -116,7 +139,7 @@ class MapService {
     const cacheKey = getCacheKey(lat, lng);
     if (addressCache.has(cacheKey)) return addressCache.get(cacheKey).split('(')[0].trim();
     if (isLocationInMafereZone({ latitude: lat, longitude: lng })) return "Maféré";
-    return "Position GPS";
+    return "Position actuelle";
   }
 
   static async searchPlaces(query) {

@@ -207,6 +207,10 @@ export const MapAutoFitter = ({
     const destMarker = markers.find((m) => m.type === 'destination');
     const isDestMode = !!destMarker;
 
+    if (!destMarker && !driverLocation) {
+      lastRouteSigRef.current = '';
+    }
+
     if (hasDetailedRoute && isDestMode) {
       coordsToFit = routePoints.map((p) => [Number(p.latitude), Number(p.longitude)]).filter((p) => !isNaN(p[0]) && !isNaN(p[1]));
     } else {

@@ -77,10 +77,21 @@ const useMapFitter = ({
     }
 
     const destMarker = markers.find((m) => m.type === 'destination');
+    const isDestMode = !isOngoingRide && !hasDriver && !!destMarker;
+
+    // Réinitialisation propre si la destination a été retirée ou annulée
+    if (!destMarker && !hasDriver && !isOngoingRide) {
+      lastFittedDestKeyRef.current = null;
+      lastFittedRouteKeyRef.current = null;
+      isCameraBusyRef.current = false;
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+    }
+
     const currentDestKey = destMarker ? `${destMarker.latitude?.toFixed(5)},${destMarker.longitude?.toFixed(5)}` : null;
     const hasRouteGeometry = Array.isArray(routePoints) && routePoints.length >= 2;
-    const routeFingerprint = hasRouteGeometry ? `${routePoints.length}_${Number(routePoints[0]?.latitude).toFixed(4)}_${Number(routePoints[routePoints.length - 1]?.latitude).toFixed(4)}` : 'none';
-    const isDestMode = !isOngoingRide && !hasDriver && !!destMarker;
+    const routeFingerprint = hasRouteGeometry
+      ? `${routePoints.length}_${Number(routePoints[0]?.latitude).toFixed(4)}_${Number(routePoints[routePoints.length - 1]?.latitude).toFixed(4)}`
+      : 'none';
 
     // Règle d'or : Une fois la destination ET le tracé complet cadrés, la caméra reste totalement immobile
     if (isDestMode && isInitialFitDone.current && lastFittedDestKeyRef.current === currentDestKey && lastFittedRouteKeyRef.current === routeFingerprint) {
@@ -153,6 +164,11 @@ const useMapFitter = ({
           });
           isInitialFitDone.current = true;
         }
+        lastFittedDestKeyRef.current = null;
+        lastFittedRouteKeyRef.current = null;
+        lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+        lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
+        lastFittedMarkersRef.current = markers.map((m) => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
         return;
       }
 

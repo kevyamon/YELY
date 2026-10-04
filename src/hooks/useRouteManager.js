@@ -25,12 +25,16 @@ const useRouteManager = (location, driverLocation, markers) => {
   const lastRouteFetchTimeRef = useRef(0);
   const retryTimeoutRef = useRef(null);
   const isFetchingRef = useRef(false);
+  const activeFetchIdRef = useRef(0);
 
   useEffect(() => {
     MapService.preloadRoutingEngine();
   }, []);
 
   const clearRoute = useCallback(() => {
+    activeFetchIdRef.current++;
+    isFetchingRef.current = false;
+    clearTimeout(retryTimeoutRef.current);
     setVisibleRoutePoints([]);
     setFullRoutePoints([]);
     fullRoutePointsRef.current = [];
@@ -46,7 +50,10 @@ const useRouteManager = (location, driverLocation, markers) => {
         return;
       }
 
-      if (isFetchingRef.current && !isFastRetry) return;
+      const isSameDest = lastRouteDestKeyRef.current === destKey;
+      if (isFetchingRef.current && isSameDest && !isFastRetry) return;
+
+      const currentFetchId = ++activeFetchIdRef.current;
       isFetchingRef.current = true;
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
@@ -54,13 +61,15 @@ const useRouteManager = (location, driverLocation, markers) => {
 
       try {
         const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
+        if (activeFetchIdRef.current !== currentFetchId) return;
         isFetchingRef.current = false;
-        if (lastRouteDestKeyRef.current !== destKey) return;
 
         if (!routePoints || !Array.isArray(routePoints) || routePoints.length < 2) {
           clearTimeout(retryTimeoutRef.current);
           retryTimeoutRef.current = setTimeout(() => {
-            if (lastRouteDestKeyRef.current === destKey) fetchAndStoreRoute(pointA, pointB, destKey, true);
+            if (activeFetchIdRef.current === currentFetchId && lastRouteDestKeyRef.current === destKey) {
+              fetchAndStoreRoute(pointA, pointB, destKey, true);
+            }
           }, FAST_RETRY_DELAY_MS);
           return;
         }
@@ -71,10 +80,13 @@ const useRouteManager = (location, driverLocation, markers) => {
         setVisibleRoutePoints(routePoints);
         lastPassedIndexRef.current = 0;
       } catch (_) {
+        if (activeFetchIdRef.current !== currentFetchId) return;
         isFetchingRef.current = false;
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = setTimeout(() => {
-          if (lastRouteDestKeyRef.current === destKey) lastRouteFetchTimeRef.current = 0;
+          if (activeFetchIdRef.current === currentFetchId && lastRouteDestKeyRef.current === destKey) {
+            lastRouteFetchTimeRef.current = 0;
+          }
         }, FAST_RETRY_DELAY_MS);
       }
     },
@@ -184,7 +196,7 @@ const useRouteManager = (location, driverLocation, markers) => {
 
     const lastOrigin = lastRouteOriginRef.current;
     const movedDist = lastOrigin ? haversineMeters(routeOriginLat, routeOriginLng, lastOrigin.latitude, lastOrigin.longitude) : TRIM_THRESHOLD_METERS + 1;
-    if (movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
+    if (hasDriverPosition && movedDist >= TRIM_THRESHOLD_METERS && !isManualOriginActive) {
       lastRouteOriginRef.current = { latitude: routeOriginLat, longitude: routeOriginLng };
       trimRouteFromCurrentPosition(routeOriginLat, routeOriginLng);
     }
