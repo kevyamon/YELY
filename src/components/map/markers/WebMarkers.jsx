@@ -198,6 +198,7 @@ export const MapAutoFitter = ({
   const isInitialFitDone = useRef(false);
   const lastUpdateRef = useRef(0);
   const lastRouteSigRef = useRef('');
+  const waitTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (isUserInteracting) return;
@@ -209,6 +210,7 @@ export const MapAutoFitter = ({
 
     if (!destMarker && !driverLocation) {
       lastRouteSigRef.current = '';
+      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
     }
 
     if (hasDetailedRoute && isDestMode) {
@@ -254,6 +256,16 @@ export const MapAutoFitter = ({
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
 
+    // Sas de synchronisation : Si une destination est choisie sans tracé détaillé encore disponible, attendre brièvement
+    if (isDestMode && !hasDetailedRoute && isRouteChanged) {
+      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
+      waitTimeoutRef.current = setTimeout(() => {
+        waitTimeoutRef.current = null;
+      }, 250);
+      return;
+    }
+
+    // Verrouillage absolu : Dès qu'une destination et son tracé sont affichés, ne plus bouger
     if (isDestMode && isInitialFitDone.current && !isRouteChanged) {
       return;
     }
@@ -262,7 +274,7 @@ export const MapAutoFitter = ({
       return;
     }
 
-    const debounceTime = isRouteChanged ? 0 : (isTrackingActive ? 2500 : 9999999);
+    const debounceTime = isRouteChanged ? 0 : (isTrackingActive ? 3500 : 9999999);
 
     if (isRouteChanged || (now - lastUpdateRef.current > debounceTime)) {
       lastUpdateRef.current = now;
@@ -284,6 +296,10 @@ export const MapAutoFitter = ({
         maxZoom: 15.6,
       });
     }
+
+    return () => {
+      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
+    };
   }, [markers, routePoints, map, mapTopPadding, mapBottomPadding, location, driverLocation, isUserInteracting]); 
 
   return null;

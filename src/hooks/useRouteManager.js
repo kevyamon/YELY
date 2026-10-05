@@ -1,6 +1,6 @@
 // src/hooks/useRouteManager.js
 // GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Rendu GPU instantané, réactivité et résilience
-// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
+// CSCSM Level: Bank Grade (Strictement modulaire, Anti-saccade & Zéro conflit)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
@@ -168,9 +168,12 @@ const useRouteManager = (location, driverLocation, markers) => {
     }
 
     const phaseIdentifier = pickupOriginMarker ? 'PHASE2_DROP' : 'PHASE1_PICKUP';
-    const destKey = `TARGET_${phaseIdentifier}_${activeTarget.latitude.toFixed(5)},${activeTarget.longitude.toFixed(5)}`;
+    const destKey = `TARGET_${phaseIdentifier}_${Number(activeTarget.latitude).toFixed(5)},${Number(activeTarget.longitude).toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
+      // Purge immédiate pour éviter de superposer l'ancien tracé avec la nouvelle cible
+      setVisibleRoutePoints([]);
+      fullRoutePointsRef.current = [];
       lastPassedIndexRef.current = 0;
       fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       return;

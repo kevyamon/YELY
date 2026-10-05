@@ -34,6 +34,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   const lastEstimatedDestRef = useRef(null);
   const lastGeocodedLocationRef = useRef(null);
   const debounceTimeoutRef = useRef(null);
+  const resetCenterTimerRef = useRef(null);
 
   const [currentAddress, setCurrentAddress] = useState(lastKnownAddress || 'Recherche GPS...');
   const [destination, setDestination] = useState(null);
@@ -152,7 +153,11 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       setSelectedVehicle(null);
       lastEstimatedOriginRef.current = null;
       lastEstimatedDestRef.current = null;
-      setTimeout(() => { mapRef.current?.centerOnUser?.(); }, 300);
+      if (resetCenterTimerRef.current) clearTimeout(resetCenterTimerRef.current);
+      resetCenterTimerRef.current = setTimeout(() => {
+        mapRef.current?.centerOnUser?.();
+        resetCenterTimerRef.current = null;
+      }, 300);
     }
   }, [rideToRate, currentRide, mapRef]);
 
@@ -177,6 +182,10 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   }, [effectiveOrigin, destination, estimateRide]);
 
   const handlePlaceSelect = (selectedPlace) => {
+    if (resetCenterTimerRef.current) {
+      clearTimeout(resetCenterTimerRef.current);
+      resetCenterTimerRef.current = null;
+    }
     const normalizedPlace = {
       ...selectedPlace,
       latitude: Number(selectedPlace.latitude || selectedPlace.lat),
@@ -196,6 +205,10 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   };
 
   const handleCancelDestination = () => {
+    if (resetCenterTimerRef.current) {
+      clearTimeout(resetCenterTimerRef.current);
+      resetCenterTimerRef.current = null;
+    }
     setDestination(null);
     setSelectedVehicle(null);
     lastEstimatedOriginRef.current = null;
@@ -237,6 +250,13 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
       dispatch(showErrorToast({ title: 'Information', message: err?.data?.message || 'Impossible de lancer la commande.' }));
     }
   };
+
+  useEffect(() => {
+    return () => {
+      if (resetCenterTimerRef.current) clearTimeout(resetCenterTimerRef.current);
+      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
+    };
+  }, []);
 
   return {
     effectiveOrigin,
