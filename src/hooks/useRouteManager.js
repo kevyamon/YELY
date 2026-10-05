@@ -171,9 +171,6 @@ const useRouteManager = (location, driverLocation, markers) => {
     const destKey = `TARGET_${phaseIdentifier}_${Number(activeTarget.latitude).toFixed(5)},${Number(activeTarget.longitude).toFixed(5)}`;
 
     if (destKey !== lastRouteDestKeyRef.current) {
-      // Purge immédiate pour éviter de superposer l'ancien tracé avec la nouvelle cible
-      setVisibleRoutePoints([]);
-      fullRoutePointsRef.current = [];
       lastPassedIndexRef.current = 0;
       fetchAndStoreRoute({ latitude: routeOriginLat, longitude: routeOriginLng }, { latitude: activeTarget.latitude, longitude: activeTarget.longitude }, destKey);
       return;

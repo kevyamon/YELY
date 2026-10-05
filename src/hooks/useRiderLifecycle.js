@@ -213,7 +213,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     setSelectedVehicle(null);
     lastEstimatedOriginRef.current = null;
     lastEstimatedDestRef.current = null;
-    if (effectiveOrigin && mapRef.current) mapRef.current.centerOnUser?.();
   };
 
   const handleConfirmRide = async (passengersCount = 1) => {

@@ -184,14 +184,14 @@ const MapCard = forwardRef(({
   const mapPOIs = hidePOIs ? [] : (poiResponse?.data || []);
 
   const handleMapInteraction = (e) => {
-    const isHumanInteraction = e?.properties?.isUserInteraction || e?.isUserInteraction || e?.type === 'scroll' || e?.type === 'zoom';
+    const isHumanInteraction = e?.properties?.isUserInteraction === true || e?.isUserInteraction === true;
     if (isHumanInteraction) {
       wakeUpButton();
       setIsUserInteracting(true);
       clearTimeout(interactionTimeout.current);
       interactionTimeout.current = setTimeout(() => {
         setIsUserInteracting(false);
-      }, 7000);
+      }, 2500);
     }
   };
 
@@ -506,7 +506,8 @@ const arePropsEqual = (prevProps, nextProps) => {
     prevProps.mapTopPadding === nextProps.mapTopPadding &&
     prevProps.showUserMarker === nextProps.showUserMarker &&
     prevProps.isDriver === nextProps.isDriver &&
-    prevProps.rideStatus === nextProps.rideStatus
+    prevProps.rideStatus === nextProps.rideStatus &&
+    prevProps.hidePOIs === nextProps.hidePOIs
   );
 };
 

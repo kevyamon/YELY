@@ -60,11 +60,12 @@ const useMapFitter = ({
   const lastRideStatusRef = useRef(null);
   const lastFittedDestKeyRef = useRef(null);
   const lastFittedRouteKeyRef = useRef(null);
+  const wasInDestModeRef = useRef(false);
 
   useEffect(() => {
     if (!isMapReady || !cameraRef.current || isUserInteracting) return;
 
-    const hasDriver = driverLocation?.latitude && driverLocation?.longitude;
+    const hasDriver = !!(driverLocation?.latitude && driverLocation?.longitude);
     const originMarker = hasDriver ? driverLocation : location;
     const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
@@ -80,14 +81,30 @@ const useMapFitter = ({
     const destMarker = markers.find((m) => m.type === 'destination');
     const isDestMode = !isOngoingRide && !hasDriver && !!destMarker;
 
-    // Réinitialisation propre si la destination a été retirée ou annulée
-    if (!destMarker && !hasDriver && !isOngoingRide) {
+    // Transition propre : Si on quitte le mode destination vers le mode repos passager
+    if (!destMarker && !hasDriver && !isOngoingRide && wasInDestModeRef.current) {
+      wasInDestModeRef.current = false;
       lastFittedDestKeyRef.current = null;
       lastFittedRouteKeyRef.current = null;
       isCameraBusyRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (busyTimerRef.current) clearTimeout(busyTimerRef.current);
       if (routeWaitTimeoutRef.current) clearTimeout(routeWaitTimeoutRef.current);
+
+      if (originMarker?.latitude && originMarker?.longitude) {
+        cameraRef.current.setCamera({
+          centerCoordinate: [originMarker.longitude, originMarker.latitude],
+          zoomLevel: 15,
+          padding: { paddingTop: mapTopPadding, paddingBottom: mapBottomPadding, paddingLeft: 0, paddingRight: 0 },
+          animationDuration: 550,
+        });
+        lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
+      }
+      return;
+    }
+
+    if (isDestMode) {
+      wasInDestModeRef.current = true;
     }
 
     const currentDestKey = destMarker ? `${destMarker.latitude?.toFixed(5)},${destMarker.longitude?.toFixed(5)}` : null;
@@ -103,31 +120,32 @@ const useMapFitter = ({
     }
 
     const isInitial = !isInitialFitDone.current;
-    const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 15);
+    const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 20);
     const driverLocChanged = hasMovedSignificantly(driverLocation, lastFittedDriverLocationRef.current, 15);
-    const markersChanged = markersMovedSignificantly(markers, lastFittedMarkersRef.current, 10);
+    const markersChanged = markersMovedSignificantly(markers, lastFittedMarkersRef.current, 15);
     const statusChanged = lastRideStatusRef.current !== rideStatus;
     const routeChanged = lastFittedRouteKeyRef.current !== routeFingerprint;
 
-    // Si aucun changement significatif et destination déjà cadrée, ignorer
+    // Si aucun changement significatif et pas initial, ignorer
     if (!isInitial && !destChanged && !locChanged && !driverLocChanged && !markersChanged && !statusChanged && !routeChanged) {
       return;
     }
 
-    // Sas de synchronisation : Si une nouvelle destination vient d'être sélectionnée mais que le tracé
-    // n'a pas encore fini de charger, on attend brièvement (max 280ms) pour faire une seule animation fluide.
+    // Sas de synchronisation : Si nouvelle destination mais tracé OSRM pas encore chargé,
+    // on attend brièvement (max 180ms) pour faire une transition directe avec le tracé complet.
     if (isDestMode && !hasRouteGeometry && destChanged) {
       if (routeWaitTimeoutRef.current) clearTimeout(routeWaitTimeoutRef.current);
       routeWaitTimeoutRef.current = setTimeout(() => {
-        // Déclenchement de secours si le calcul d'itinéraire prend plus de 280ms
         routeWaitTimeoutRef.current = null;
-      }, 280);
+        if (cameraRef.current && originMarker?.latitude && destMarker?.latitude) {
+          lastFittedDestKeyRef.current = currentDestKey;
+        }
+      }, 180);
       return;
     }
 
     let coordsToFit = [];
     if (hasRouteGeometry && !!targetMarker) {
-      // Ingestion complète de tous les virages et points de l'itinéraire OSRM
       coordsToFit = routePoints
         .map((p) => ({ latitude: Number(p.latitude), longitude: Number(p.longitude) }))
         .filter((p) => !isNaN(p.latitude) && !isNaN(p.longitude));
@@ -149,29 +167,28 @@ const useMapFitter = ({
         });
         isInitialFitDone.current = true;
       }
-      lastFittedDestKeyRef.current = null;
-      lastFittedRouteKeyRef.current = null;
       return;
     }
 
-    // Évite d'interrompre une transition de caméra majeure en cours, SAUF si la destination ou le tracé a changé
-    if (isCameraBusyRef.current && !destChanged && !routeChanged && !markersChanged && !statusChanged && !isInitial) {
-      return;
+    // Enregistrement synchrone des clés pour immuniser contre les re-rendus immédiats
+    if (destMarker) {
+      lastFittedDestKeyRef.current = currentDestKey;
+      lastFittedRouteKeyRef.current = routeFingerprint;
     }
 
     const isMultiPoint = coordsToFit.length >= 2;
-    const delay = isMultiPoint || isInitial ? (Platform.OS === 'ios' ? 25 : 50) : 120;
+    const animDuration = isMultiPoint ? 750 : 550;
+    const dynamicTop = isDestMode ? Math.max(Number(mapTopPadding) || 120, 130) : Math.max(Number(mapTopPadding) || 120, 90) + 16;
+    const dynamicBottom = isDestMode ? Math.max(Number(mapBottomPadding) || 240, 370) : Math.max(Number(mapBottomPadding) || 240, 220) + 24;
 
     if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
+    if (busyTimerRef.current) clearTimeout(busyTimerRef.current);
+
+    const executeCameraMove = () => {
       if (!cameraRef.current || isUserInteracting) return;
 
-      const dynamicTop = isDestMode ? Math.max(Number(mapTopPadding) || 120, 130) : Math.max(Number(mapTopPadding) || 120, 90) + 16;
-      const dynamicBottom = isDestMode ? Math.max(Number(mapBottomPadding) || 240, 370) : Math.max(Number(mapBottomPadding) || 240, 220) + 24;
-      const animDuration = isMultiPoint ? 800 : 650;
-
       if (!isMultiPoint) {
-        if (!isInitialFitDone.current) {
+        if (!isInitialFitDone.current || locChanged) {
           cameraRef.current.setCamera({
             centerCoordinate: [coordsToFit[0].longitude, coordsToFit[0].latitude],
             zoomLevel: 15,
@@ -180,8 +197,6 @@ const useMapFitter = ({
           });
           isInitialFitDone.current = true;
         }
-        lastFittedDestKeyRef.current = null;
-        lastFittedRouteKeyRef.current = null;
         lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
         lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
         lastFittedMarkersRef.current = markers.map((m) => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
@@ -195,7 +210,6 @@ const useMapFitter = ({
       let minLat = Math.min(...lats);
       let maxLat = Math.max(...lats);
 
-      // Marge de respiration géographique de 14% autour de l'itinéraire complet pour une visibilité sans coupure
       const latSpan = maxLat - minLat;
       const lngSpan = maxLng - minLng;
       const latMargin = Math.max(latSpan * 0.14, 0.002);
@@ -230,19 +244,19 @@ const useMapFitter = ({
       });
 
       isCameraBusyRef.current = true;
-      if (busyTimerRef.current) clearTimeout(busyTimerRef.current);
       busyTimerRef.current = setTimeout(() => {
         isCameraBusyRef.current = false;
-      }, animDuration + 50);
+      }, animDuration + 40);
 
       isInitialFitDone.current = true;
-      lastFittedDestKeyRef.current = currentDestKey;
-      lastFittedRouteKeyRef.current = routeFingerprint;
       lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
       lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
       lastFittedMarkersRef.current = markers.map((m) => ({ type: m.type, latitude: m.latitude, longitude: m.longitude }));
       lastRideStatusRef.current = rideStatus;
-    }, delay);
+    };
+
+    const delay = Platform.OS === 'ios' ? 20 : 35;
+    timeoutRef.current = setTimeout(executeCameraMove, delay);
 
     return () => {
       if (timeoutRef.current) clearTimeout(timeoutRef.current);

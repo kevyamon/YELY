@@ -125,7 +125,7 @@ const MapCard = forwardRef(({
     clearTimeout(interactionTimeout.current);
     interactionTimeout.current = setTimeout(() => {
       setIsUserInteracting(false);
-    }, 8000); 
+    }, 2500); 
   };
 
   const handleRecenter = () => {

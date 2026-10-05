@@ -199,6 +199,7 @@ export const MapAutoFitter = ({
   const lastUpdateRef = useRef(0);
   const lastRouteSigRef = useRef('');
   const waitTimeoutRef = useRef(null);
+  const wasInDestModeRef = useRef(false);
 
   useEffect(() => {
     if (isUserInteracting) return;
@@ -208,9 +209,18 @@ export const MapAutoFitter = ({
     const destMarker = markers.find((m) => m.type === 'destination');
     const isDestMode = !!destMarker;
 
-    if (!destMarker && !driverLocation) {
+    if (!destMarker && !driverLocation && wasInDestModeRef.current) {
+      wasInDestModeRef.current = false;
       lastRouteSigRef.current = '';
       if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
+      if (location?.latitude && location?.longitude) {
+        map.flyTo([location.latitude, location.longitude], 15, { duration: 0.6 });
+      }
+      return;
+    }
+
+    if (isDestMode) {
+      wasInDestModeRef.current = true;
     }
 
     if (hasDetailedRoute && isDestMode) {
@@ -256,16 +266,14 @@ export const MapAutoFitter = ({
     const now = Date.now();
     const isTrackingActive = coordsToFit.length >= 2;
 
-    // Sas de synchronisation : Si une destination est choisie sans tracé détaillé encore disponible, attendre brièvement
     if (isDestMode && !hasDetailedRoute && isRouteChanged) {
       if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
       waitTimeoutRef.current = setTimeout(() => {
         waitTimeoutRef.current = null;
-      }, 250);
+      }, 180);
       return;
     }
 
-    // Verrouillage absolu : Dès qu'une destination et son tracé sont affichés, ne plus bouger
     if (isDestMode && isInitialFitDone.current && !isRouteChanged) {
       return;
     }
@@ -292,7 +300,7 @@ export const MapAutoFitter = ({
       map.flyToBounds(paddedBounds, {
         paddingTopLeft: [35, safeTopPadding],
         paddingBottomRight: [35, safeBottomPadding],
-        duration: isRouteChanged ? 0.85 : 1.1,
+        duration: isRouteChanged ? 0.75 : 1.0,
         maxZoom: 15.6,
       });
     }
