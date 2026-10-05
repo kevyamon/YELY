@@ -196,25 +196,22 @@ export const MapAutoFitter = ({
 }) => {
   const map = useMap();
   const isInitialFitDone = useRef(false);
-  const lastUpdateRef = useRef(0);
-  const lastRouteSigRef = useRef('');
-  const waitTimeoutRef = useRef(null);
+  const lastTrioKeyRef = useRef(null);
   const wasInDestModeRef = useRef(false);
 
   useEffect(() => {
     if (isUserInteracting) return;
 
-    let coordsToFit = [];
-    const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length > 1;
     const destMarker = markers.find((m) => m.type === 'destination');
     const isDestMode = !!destMarker;
+    const originMarker = driverLocation?.latitude ? driverLocation : location;
 
+    // Transition de sortie : Annulation de la destination -> Retour au repos passager
     if (!destMarker && !driverLocation && wasInDestModeRef.current) {
       wasInDestModeRef.current = false;
-      lastRouteSigRef.current = '';
-      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
+      lastTrioKeyRef.current = null;
       if (location?.latitude && location?.longitude) {
-        map.flyTo([location.latitude, location.longitude], 15, { duration: 0.6 });
+        map.flyTo([Number(location.latitude), Number(location.longitude)], 15, { duration: 0.6 });
       }
       return;
     }
@@ -223,19 +220,44 @@ export const MapAutoFitter = ({
       wasInDestModeRef.current = true;
     }
 
-    if (hasDetailedRoute && isDestMode) {
-      coordsToFit = routePoints.map((p) => [Number(p.latitude), Number(p.longitude)]).filter((p) => !isNaN(p[0]) && !isNaN(p[1]));
+    const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length >= 2;
+    const destKey = destMarker ? `${Number(destMarker.latitude).toFixed(5)},${Number(destMarker.longitude).toFixed(5)}` : 'none';
+    const routeKey = hasDetailedRoute
+      ? `${routePoints.length}_${Number(routePoints[0]?.latitude).toFixed(4)}_${Number(routePoints[routePoints.length - 1]?.latitude).toFixed(4)}`
+      : 'direct';
+    const currentTrioKey = isDestMode ? `TRIO_${destKey}_${routeKey}` : null;
+
+    // INVARIANT DU TRIO SACRÉ : Si le Trio est déjà cadré sur le Web, la caméra reste fixe
+    if (isDestMode && isInitialFitDone.current && lastTrioKeyRef.current === currentTrioKey) {
+      return;
+    }
+
+    let coordsToFit = [];
+
+    if (isDestMode) {
+      if (originMarker?.latitude && originMarker?.longitude) {
+        coordsToFit.push([Number(originMarker.latitude), Number(originMarker.longitude)]);
+      }
+
+      if (hasDetailedRoute) {
+        routePoints.forEach((p) => {
+          const lat = Number(p.latitude);
+          const lng = Number(p.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) {
+            coordsToFit.push([lat, lng]);
+          }
+        });
+      }
+
+      if (destMarker?.latitude && destMarker?.longitude) {
+        coordsToFit.push([Number(destMarker.latitude), Number(destMarker.longitude)]);
+      }
+
+      if (coordsToFit.length < 2) return;
+
     } else {
-      const pickupOriginMarker = markers.find((m) => m.type === 'pickup_origin');
       const pickupMarker = markers.find((m) => m.type === 'pickup');
-
       const targetMarker = pickupMarker || destMarker;
-      const hasDriverPosition = driverLocation?.latitude != null && driverLocation?.longitude != null;
-      const isManualOriginActive = !!pickupOriginMarker && !hasDriverPosition;
-
-      const originMarker = isManualOriginActive
-        ? pickupOriginMarker
-        : (hasDriverPosition ? driverLocation : location);
 
       if (targetMarker && originMarker?.latitude && originMarker?.longitude) {
         coordsToFit = [
@@ -258,56 +280,36 @@ export const MapAutoFitter = ({
       return;
     }
 
-    const firstPt = coordsToFit[0];
-    const lastPt = coordsToFit[coordsToFit.length - 1];
-    const currentRouteSig = `${coordsToFit.length}_${firstPt[0]?.toFixed(4)},${firstPt[1]?.toFixed(4)}->${lastPt[0]?.toFixed(4)},${lastPt[1]?.toFixed(4)}`;
-
-    const isRouteChanged = currentRouteSig !== lastRouteSigRef.current;
-    const now = Date.now();
-    const isTrackingActive = coordsToFit.length >= 2;
-
-    if (isDestMode && !hasDetailedRoute && isRouteChanged) {
-      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
-      waitTimeoutRef.current = setTimeout(() => {
-        waitTimeoutRef.current = null;
-      }, 180);
+    // INTERDICTION FORMELLE : Jamais de cadrage mono-point en mode destination
+    if (coordsToFit.length === 1 && isDestMode) {
       return;
     }
 
-    if (isDestMode && isInitialFitDone.current && !isRouteChanged) {
+    if (coordsToFit.length === 1) {
+      if (!isInitialFitDone.current) {
+        map.setView(coordsToFit[0], 15);
+        isInitialFitDone.current = true;
+      }
       return;
     }
 
-    if (!isTrackingActive && isInitialFitDone.current) {
-      return;
-    }
+    isInitialFitDone.current = true;
+    if (isDestMode) lastTrioKeyRef.current = currentTrioKey;
 
-    const debounceTime = isRouteChanged ? 0 : (isTrackingActive ? 3500 : 9999999);
+    const mapContainer = map.getContainer();
+    const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
+    
+    const safeTopPadding = isDestMode ? Math.max(mapTopPadding, 130) : Math.min(mapTopPadding + 20, Math.floor(mapHeight * 0.36));
+    const safeBottomPadding = isDestMode ? Math.max(mapBottomPadding, 370) : Math.min(mapBottomPadding + 20, Math.floor(mapHeight * 0.44));
 
-    if (isRouteChanged || (now - lastUpdateRef.current > debounceTime)) {
-      lastUpdateRef.current = now;
-      lastRouteSigRef.current = currentRouteSig;
-      isInitialFitDone.current = true;
-
-      const mapContainer = map.getContainer();
-      const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
-      
-      const safeTopPadding = isDestMode ? Math.max(mapTopPadding, 130) : Math.min(mapTopPadding + 20, Math.floor(mapHeight * 0.36));
-      const safeBottomPadding = isDestMode ? Math.max(mapBottomPadding, 370) : Math.min(mapBottomPadding + 20, Math.floor(mapHeight * 0.44));
-
-      const bounds = L.latLngBounds(coordsToFit);
-      const paddedBounds = bounds.pad(0.12);
-      map.flyToBounds(paddedBounds, {
-        paddingTopLeft: [35, safeTopPadding],
-        paddingBottomRight: [35, safeBottomPadding],
-        duration: isRouteChanged ? 0.75 : 1.0,
-        maxZoom: 15.6,
-      });
-    }
-
-    return () => {
-      if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
-    };
+    const bounds = L.latLngBounds(coordsToFit);
+    const paddedBounds = bounds.pad(0.12);
+    map.flyToBounds(paddedBounds, {
+      paddingTopLeft: [35, safeTopPadding],
+      paddingBottomRight: [35, safeBottomPadding],
+      duration: 0.75,
+      maxZoom: 15.6,
+    });
   }, [markers, routePoints, map, mapTopPadding, mapBottomPadding, location, driverLocation, isUserInteracting]); 
 
   return null;

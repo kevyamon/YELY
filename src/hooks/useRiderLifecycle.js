@@ -17,7 +17,7 @@ const MOCK_VEHICLES = [
   { id: '2', type: 'vip', name: 'Privé (Seul)', duration: '8' }
 ];
 
-const getDistance = (lat1, lon1, lat2, lon2) => {
+const getDistMeters = (lat1, lon1, lat2, lon2) => {
   const R = 6371e3;
   const p1 = lat1 * (Math.PI / 180), p2 = lat2 * (Math.PI / 180);
   const dp = (lat2 - lat1) * (Math.PI / 180), dl = (lon2 - lon1) * (Math.PI / 180);
@@ -73,7 +73,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     return () => sub.remove();
   }, [refetchCurrentRide]);
 
-  // Dual-Phase Geolocation : Phase 1 (Instant 0ms) + Phase 2 (Fond discret & résilient)
   useEffect(() => {
     let isMounted = true;
     if (location) {
@@ -82,7 +81,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
         setCurrentAddress(fastBase);
         dispatch(updateAddress(fastBase));
       }
-      const shouldFetch = !lastGeocodedLocationRef.current || getDistance(location.latitude, location.longitude, lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude) > 25;
+      const shouldFetch = !lastGeocodedLocationRef.current || getDistMeters(location.latitude, location.longitude, lastGeocodedLocationRef.current.latitude, lastGeocodedLocationRef.current.longitude) > 25;
       if (shouldFetch) {
         if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
         debounceTimeoutRef.current = setTimeout(async () => {
@@ -94,20 +93,14 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
               lastGeocodedLocationRef.current = location;
             }
           } catch (_) {
-            if (isMounted) {
-              setCurrentAddress(fastBase);
-              dispatch(updateAddress(fastBase));
-            }
+            if (isMounted) { setCurrentAddress(fastBase); dispatch(updateAddress(fastBase)); }
           }
         }, 300);
       }
     } else if (errorMsg && isMounted) {
       setCurrentAddress("Signal GPS faible");
     }
-    return () => {
-      isMounted = false;
-      if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current);
-    };
+    return () => { isMounted = false; if (debounceTimeoutRef.current) clearTimeout(debounceTimeoutRef.current); };
   }, [location, errorMsg, dispatch]);
 
   const handleRefreshLocation = async () => {
@@ -147,7 +140,6 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     prevRideIdRef.current = currentId;
     prevRideStatusRef.current = currentStatus;
 
-    // Ne réinitialiser et recentrer que si une course réellement active se termine ou est annulée
     if (rideToRate || (hadActiveRide && (!currentRide || currentStatus === 'cancelled' || currentStatus === 'timeout' || currentStatus === 'completed'))) {
       setDestination(null);
       setSelectedVehicle(null);
@@ -169,8 +161,8 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
 
     let shouldEstimate = !lastEstimatedOriginRef.current || !lastEstimatedDestRef.current;
     if (!shouldEstimate) {
-      const distO = getDistance(oLat, oLng, lastEstimatedOriginRef.current.latitude, lastEstimatedOriginRef.current.longitude);
-      const distD = getDistance(dLat, dLng, lastEstimatedDestRef.current.latitude, lastEstimatedDestRef.current.longitude);
+      const distO = getDistMeters(oLat, oLng, lastEstimatedOriginRef.current.latitude, lastEstimatedOriginRef.current.longitude);
+      const distD = getDistMeters(dLat, dLng, lastEstimatedDestRef.current.latitude, lastEstimatedDestRef.current.longitude);
       if (distO > 15 || distD > 5) shouldEstimate = true;
     }
 
@@ -182,10 +174,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   }, [effectiveOrigin, destination, estimateRide]);
 
   const handlePlaceSelect = (selectedPlace) => {
-    if (resetCenterTimerRef.current) {
-      clearTimeout(resetCenterTimerRef.current);
-      resetCenterTimerRef.current = null;
-    }
+    if (resetCenterTimerRef.current) { clearTimeout(resetCenterTimerRef.current); resetCenterTimerRef.current = null; }
     const normalizedPlace = {
       ...selectedPlace,
       latitude: Number(selectedPlace.latitude || selectedPlace.lat),
@@ -205,10 +194,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
   };
 
   const handleCancelDestination = () => {
-    if (resetCenterTimerRef.current) {
-      clearTimeout(resetCenterTimerRef.current);
-      resetCenterTimerRef.current = null;
-    }
+    if (resetCenterTimerRef.current) { clearTimeout(resetCenterTimerRef.current); resetCenterTimerRef.current = null; }
     setDestination(null);
     setSelectedVehicle(null);
     lastEstimatedOriginRef.current = null;
@@ -223,7 +209,7 @@ const useRiderLifecycle = ({ location, errorMsg, mapRef, currentRide, rideToRate
     const origLat = Number(effectiveOrigin.latitude || 0), origLng = Number(effectiveOrigin.longitude || 0);
     const destLat = Number(destination.latitude || 0), destLng = Number(destination.longitude || 0);
 
-    if (getDistance(origLat, origLng, destLat, destLng) < 10) return dispatch(showErrorToast({ title: 'Trajet non valide', message: 'Le point de départ et l\'arrivée sont identiques.' }));
+    if (getDistMeters(origLat, origLng, destLat, destLng) < 10) return dispatch(showErrorToast({ title: 'Trajet non valide', message: 'Le point de départ et l\'arrivée sont identiques.' }));
     if (!selectedVehicle) return dispatch(showErrorToast({ title: 'Véhicule', message: 'Veuillez sélectionner un forfait.' }));
 
     try {

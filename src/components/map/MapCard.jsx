@@ -208,20 +208,49 @@ const MapCard = forwardRef(({
     rideStatus,
   });
 
+  const destMarker = markers.find((m) => m.type === 'destination');
+  const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
+
   const handleRecenter = () => {
     wakeUpButton();
     setIsUserInteracting(false);
-    if (isMapReady && location && location.latitude) {
-      cameraRef.current?.setCamera({
+    if (!isMapReady || !cameraRef.current) return;
+
+    if (isDestMode && destMarker?.latitude && destMarker?.longitude && safeLocation?.latitude) {
+      const coords = visibleRoutePoints.length >= 2
+        ? visibleRoutePoints
+        : [safeLocation, { latitude: Number(destMarker.latitude), longitude: Number(destMarker.longitude) }];
+      
+      const lats = coords.map((c) => Number(c.latitude)).filter((n) => !isNaN(n));
+      const lngs = coords.map((c) => Number(c.longitude)).filter((n) => !isNaN(n));
+      if (lats.length >= 2 && lngs.length >= 2) {
+        cameraRef.current.setCamera({
+          bounds: {
+            ne: [Math.max(...lngs) + 0.003, Math.max(...lats) + 0.003],
+            sw: [Math.min(...lngs) - 0.003, Math.min(...lats) - 0.003],
+            paddingTop: Math.max(Number(mapTopPadding) || 120, 130),
+            paddingBottom: Math.max(Number(mapBottomPadding) || 240, 370),
+            paddingLeft: 35,
+            paddingRight: 35,
+          },
+          pitch: 0,
+          animationDuration: 600,
+        });
+        return;
+      }
+    }
+
+    if (safeLocation?.latitude && safeLocation?.longitude) {
+      cameraRef.current.setCamera({
         centerCoordinate: [safeLocation.longitude, safeLocation.latitude],
         zoomLevel: 15,
         padding: {
           paddingTop: mapTopPadding + 20,
           paddingBottom: mapBottomPadding + 20,
           paddingLeft: 0,
-          paddingRight: 0
+          paddingRight: 0,
         },
-        animationDuration: 600
+        animationDuration: 600,
       });
     }
   };
@@ -231,7 +260,7 @@ const MapCard = forwardRef(({
       if (isMapReady && cameraRef.current) {
         cameraRef.current.setCamera({
           centerCoordinate: [region.longitude, region.latitude],
-          animationDuration: duration
+          animationDuration: duration,
         });
       }
     },

@@ -128,18 +128,41 @@ const MapCard = forwardRef(({
     }, 2500); 
   };
 
+  const destMarker = markers.find((m) => m.type === 'destination');
+  const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
+
   const handleRecenter = () => {
     wakeUpButton();
     setIsUserInteracting(false); 
-    if (location && mapInstanceRef.current) {
-      mapInstanceRef.current.flyTo([location.latitude, location.longitude], 15, { duration: 0.8 });
+    if (!mapInstanceRef.current) return;
+
+    if (isDestMode && destMarker?.latitude && destMarker?.longitude && location?.latitude) {
+      const coords = (visibleRoutePoints && visibleRoutePoints.length >= 2)
+        ? visibleRoutePoints.map(p => [Number(p.latitude), Number(p.longitude)]).filter(p => !isNaN(p[0]) && !isNaN(p[1]))
+        : [[Number(location.latitude), Number(location.longitude)], [Number(destMarker.latitude), Number(destMarker.longitude)]];
+
+      if (coords.length >= 2) {
+        const bounds = L.latLngBounds(coords);
+        const paddedBounds = bounds.pad(0.12);
+        mapInstanceRef.current.flyToBounds(paddedBounds, {
+          paddingTopLeft: [35, Math.max(mapTopPadding, 130)],
+          paddingBottomRight: [35, Math.max(mapBottomPadding, 370)],
+          duration: 0.75,
+          maxZoom: 15.6,
+        });
+        return;
+      }
+    }
+
+    if (location && location.latitude) {
+      mapInstanceRef.current.flyTo([Number(location.latitude), Number(location.longitude)], 15, { duration: 0.8 });
     }
   };
 
   useImperativeHandle(ref, () => ({
     animateToRegion: (region) => {
       if (mapInstanceRef.current && region?.latitude && region?.longitude) {
-        mapInstanceRef.current.flyTo([region.latitude, region.longitude], 15, { duration: 0.8 });
+        mapInstanceRef.current.flyTo([Number(region.latitude), Number(region.longitude)], 15, { duration: 0.8 });
       }
     },
     fitToCoordinates: () => {}, 

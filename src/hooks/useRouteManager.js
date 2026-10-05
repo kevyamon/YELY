@@ -1,6 +1,6 @@
 // src/hooks/useRouteManager.js
 // GESTIONNAIRE DE TRACÉ D'ITINÉRAIRE - Rendu GPU instantané, réactivité et résilience
-// CSCSM Level: Bank Grade (Strictement modulaire, Anti-saccade & Zéro conflit)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Zéro tracé résiduel)
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import MapService from '../services/mapService';
@@ -58,6 +58,15 @@ const useRouteManager = (location, driverLocation, markers) => {
       lastRouteDestKeyRef.current = destKey;
       lastRouteOriginRef.current = { latitude: pointA.latitude, longitude: pointA.longitude };
       lastRouteFetchTimeRef.current = Date.now();
+
+      // Transition atomique : réinitialisation immédiate sur le duo direct pour éliminer l'ancien tracé
+      const initialDirect = [
+        { latitude: pointA.latitude, longitude: pointA.longitude },
+        { latitude: pointB.latitude, longitude: pointB.longitude },
+      ];
+      fullRoutePointsRef.current = initialDirect;
+      setVisibleRoutePoints(initialDirect);
+      setFullRoutePoints(initialDirect);
 
       try {
         const routePoints = await MapService.getRouteCoordinates(pointA, pointB);
