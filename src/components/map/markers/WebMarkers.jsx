@@ -1,6 +1,6 @@
 // src/components/map/markers/WebMarkers.jsx
 // COMPOSANTS VISUELS & CADRAGE CARTE WEB - Support Multi-Boutiques / Immeubles
-// CSCSM Level: Bank Grade (Modularisé < 325 lignes, Sans Emojis, 100% Gratuit)
+// CSCSM Level: Bank Grade (Strictement modulaire < 270 lignes, Sans Emojis)
 
 import L from 'leaflet';
 import { useEffect, useRef } from 'react';
@@ -20,37 +20,24 @@ const poiIconCache = new Map();
 
 export const resolvePoiCollisions = (pois, zoom) => {
   if (!pois || pois.length === 0) return [];
-  
-  let threshold = 0.0004;
-  if (zoom >= 18) threshold = 0.0001;
-  else if (zoom === 17) threshold = 0.0002;
-  else if (zoom === 16) threshold = 0.0004;
-  else if (zoom === 15) threshold = 0.0007;
-  else if (zoom === 14) threshold = 0.0015;
-  else threshold = 0.0030;
+  const thresholds = { 18: 0.0001, 17: 0.0002, 16: 0.0004, 15: 0.0007, 14: 0.0015 };
+  const threshold = thresholds[zoom] || (zoom > 18 ? 0.0001 : 0.0030);
 
-  // 1. Détection des doublons géographiques stricts (Immeubles / Centres commerciaux multi-boutiques)
-  const exactLocationBuckets = new Map();
+  const buckets = new Map();
   for (const poi of pois) {
-    const lat = Number(poi.latitude);
-    const lng = Number(poi.longitude);
+    const lat = Number(poi.latitude), lng = Number(poi.longitude);
     if (isNaN(lat) || isNaN(lng)) continue;
-
     const locKey = `${lat.toFixed(5)}_${lng.toFixed(5)}`;
-    if (!exactLocationBuckets.has(locKey)) {
-      exactLocationBuckets.set(locKey, []);
-    }
-    exactLocationBuckets.get(locKey).push({ ...poi });
+    if (!buckets.has(locKey)) buckets.set(locKey, []);
+    buckets.get(locKey).push({ ...poi });
   }
 
   const dispersedPois = [];
-  exactLocationBuckets.forEach((bucket) => {
+  buckets.forEach((bucket) => {
     if (bucket.length === 1) {
       dispersedPois.push(bucket[0]);
     } else {
-      // Micro-dispersion en rosace (Spiderfy) pour rendre chaque boutique d'un même immeuble cliquable
-      const count = bucket.length;
-      const radiusDeg = 0.00012; // ~12 mètres de dispersion
+      const count = bucket.length, radiusDeg = 0.00012;
       bucket.forEach((item, index) => {
         const angle = (2 * Math.PI * index) / count;
         item.latitude = Number(item.latitude) + radiusDeg * Math.sin(angle);
@@ -60,25 +47,17 @@ export const resolvePoiCollisions = (pois, zoom) => {
     }
   });
 
-  // 2. Gestion intelligente des labels sans JAMAIS supprimer un marqueur
   const processed = [];
-  for (let i = 0; i < dispersedPois.length; i++) {
-    const current = dispersedPois[i];
-    const curLat = Number(current.latitude);
-    const curLng = Number(current.longitude);
-
+  for (const current of dispersedPois) {
+    const curLat = Number(current.latitude), curLng = Number(current.longitude);
     let hasCollision = false;
     for (const p of processed) {
       if (p.showLabel === false) continue;
-      const pLat = Number(p.latitude);
-      const pLng = Number(p.longitude);
-
-      if (Math.abs(curLat - pLat) < threshold && Math.abs(curLng - pLng) < threshold) {
+      if (Math.abs(curLat - Number(p.latitude)) < threshold && Math.abs(curLng - Number(p.longitude)) < threshold) {
         hasCollision = true;
         break;
       }
     }
-    
     current.showLabel = !hasCollision;
     processed.push(current);
   }
@@ -87,58 +66,36 @@ export const resolvePoiCollisions = (pois, zoom) => {
 
 export const createPoiIcon = (poi) => {
   const cacheKey = `${poi._id || poi.id || poi.name}_${poi.iconColor || ''}_${poi.showLabel !== false}`;
-  if (poiIconCache.has(cacheKey)) {
-    return poiIconCache.get(cacheKey);
-  }
+  if (poiIconCache.has(cacheKey)) return poiIconCache.get(cacheKey);
 
   const color = poi.iconColor || THEME.COLORS.champagneGold;
   const fullName = poi.name || '';
-  
-  const iconHtml = renderToString(
-    <UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />
-  );
-
-  const htmlContent = `
-    <div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;">
-      <div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">
-        ${iconHtml}
-      </div>
-      ${poi.showLabel !== false ? `
-      <div style="margin-top: 2px; font-size: 12px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">
-        ${fullName}
-      </div>
-      ` : ''}
-    </div>
-  `;
+  const iconHtml = renderToString(<UniversalIcon iconString={poi.icon || 'Ionicons/location'} size={14} color="#FFFFFF" />);
+  const labelHtml = poi.showLabel !== false
+    ? `<div style="margin-top: 2px; font-size: 12px; font-weight: 800; color: #121418; text-shadow: 0px 0px 4px rgba(255,255,255,0.9), 0px 0px 2px rgba(255,255,255,1); text-align: center; white-space: nowrap;">${fullName}</div>`
+    : '';
 
   const icon = L.divIcon({
-    className: '', 
-    html: htmlContent,
+    className: '',
+    html: `<div style="display: flex; flex-direction: column; align-items: center; width: 26px; overflow: visible;"><div style="width: 26px; height: 26px; border-radius: 13px; background: ${color}; border: 2px solid #FFFFFF; box-shadow: 0 1px 3px rgba(0,0,0,0.3); display: flex; justify-content: center; align-items: center;">${iconHtml}</div>${labelHtml}</div>`,
     iconSize: [26, 26],
-    iconAnchor: [13, 26], 
+    iconAnchor: [13, 26],
   });
-
   poiIconCache.set(cacheKey, icon);
   return icon;
 };
 
 export const createDynamicPoiIcon = (iconString, color) => {
   const cacheKey = `${iconString}_${color}`;
-  if (dynamicIconCache.has(cacheKey)) {
-    return dynamicIconCache.get(cacheKey);
-  }
+  if (dynamicIconCache.has(cacheKey)) return dynamicIconCache.get(cacheKey);
 
-  const iconHtml = renderToString(
-    <UniversalIcon iconString={iconString || 'Ionicons/location'} size={18} color="#FFFFFF" />
-  );
-
+  const iconHtml = renderToString(<UniversalIcon iconString={iconString || 'Ionicons/location'} size={18} color="#FFFFFF" />);
   const icon = L.divIcon({
     className: 'yely-dynamic-marker',
     html: `<div style="width: 32px; height: 32px; border-radius: 50%; background: ${color || '#D4AF37'}; border: 2px solid #FFFFFF; display: flex; justify-content: center; align-items: center; box-shadow: 0 2px 4px rgba(0,0,0,0.3);">${iconHtml}</div>`,
     iconSize: [32, 32],
     iconAnchor: [16, 16],
   });
-
   dynamicIconCache.set(cacheKey, icon);
   return icon;
 };
@@ -196,7 +153,8 @@ export const MapAutoFitter = ({
 }) => {
   const map = useMap();
   const isInitialFitDone = useRef(false);
-  const lastTrioKeyRef = useRef(null);
+  const lastFittedDestKeyRef = useRef(null);
+  const lastFittedRouteKeyRef = useRef(null);
   const wasInDestModeRef = useRef(false);
 
   useEffect(() => {
@@ -209,27 +167,25 @@ export const MapAutoFitter = ({
     // Transition de sortie : Annulation de la destination -> Retour au repos passager
     if (!destMarker && !driverLocation && wasInDestModeRef.current) {
       wasInDestModeRef.current = false;
-      lastTrioKeyRef.current = null;
+      lastFittedDestKeyRef.current = null;
+      lastFittedRouteKeyRef.current = null;
       if (location?.latitude && location?.longitude) {
         map.flyTo([Number(location.latitude), Number(location.longitude)], 15, { duration: 0.6 });
       }
       return;
     }
 
-    if (isDestMode) {
-      wasInDestModeRef.current = true;
-    }
+    if (isDestMode) wasInDestModeRef.current = true;
 
+    const destKey = destMarker ? `${Number(destMarker.latitude).toFixed(5)},${Number(destMarker.longitude).toFixed(5)}` : null;
     const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length >= 2;
-    const destKey = destMarker ? `${Number(destMarker.latitude).toFixed(5)},${Number(destMarker.longitude).toFixed(5)}` : 'none';
     const routeKey = hasDetailedRoute
       ? `${routePoints.length}_${Number(routePoints[0]?.latitude).toFixed(4)}_${Number(routePoints[routePoints.length - 1]?.latitude).toFixed(4)}`
       : 'direct';
-    const currentTrioKey = isDestMode ? `TRIO_${destKey}_${routeKey}` : null;
 
-    // INVARIANT DU TRIO SACRÉ : Si le Trio est déjà cadré sur le Web, la caméra reste fixe
-    if (isDestMode && isInitialFitDone.current && lastTrioKeyRef.current === currentTrioKey) {
-      return;
+    // INVARIANT DU TRIO SACRÉ (Web) : Pas de ré-animation si destination et tracé sont déjà cadrés
+    if (isDestMode && isInitialFitDone.current && lastFittedDestKeyRef.current === destKey) {
+      if (lastFittedRouteKeyRef.current === routeKey || (lastFittedRouteKeyRef.current && routeKey === 'direct')) return;
     }
 
     let coordsToFit = [];
@@ -238,23 +194,22 @@ export const MapAutoFitter = ({
       if (originMarker?.latitude && originMarker?.longitude) {
         coordsToFit.push([Number(originMarker.latitude), Number(originMarker.longitude)]);
       }
-
       if (hasDetailedRoute) {
         routePoints.forEach((p) => {
-          const lat = Number(p.latitude);
-          const lng = Number(p.longitude);
-          if (!isNaN(lat) && !isNaN(lng)) {
-            coordsToFit.push([lat, lng]);
-          }
+          const lat = Number(p.latitude), lng = Number(p.longitude);
+          if (!isNaN(lat) && !isNaN(lng)) coordsToFit.push([lat, lng]);
         });
       }
-
       if (destMarker?.latitude && destMarker?.longitude) {
         coordsToFit.push([Number(destMarker.latitude), Number(destMarker.longitude)]);
       }
-
+      if (coordsToFit.length < 2 && originMarker?.latitude && destMarker?.latitude) {
+        coordsToFit = [
+          [Number(originMarker.latitude), Number(originMarker.longitude)],
+          [Number(destMarker.latitude), Number(destMarker.longitude)],
+        ];
+      }
       if (coordsToFit.length < 2) return;
-
     } else {
       const pickupMarker = markers.find((m) => m.type === 'pickup');
       const targetMarker = pickupMarker || destMarker;
@@ -280,10 +235,7 @@ export const MapAutoFitter = ({
       return;
     }
 
-    // INTERDICTION FORMELLE : Jamais de cadrage mono-point en mode destination
-    if (coordsToFit.length === 1 && isDestMode) {
-      return;
-    }
+    if (coordsToFit.length === 1 && isDestMode) return;
 
     if (coordsToFit.length === 1) {
       if (!isInitialFitDone.current) {
@@ -294,11 +246,13 @@ export const MapAutoFitter = ({
     }
 
     isInitialFitDone.current = true;
-    if (isDestMode) lastTrioKeyRef.current = currentTrioKey;
+    if (isDestMode) {
+      lastFittedDestKeyRef.current = destKey;
+      lastFittedRouteKeyRef.current = routeKey;
+    }
 
     const mapContainer = map.getContainer();
     const mapHeight = mapContainer ? mapContainer.clientHeight : 800;
-    
     const safeTopPadding = isDestMode ? Math.max(mapTopPadding, 130) : Math.min(mapTopPadding + 20, Math.floor(mapHeight * 0.36));
     const safeBottomPadding = isDestMode ? Math.max(mapBottomPadding, 370) : Math.min(mapBottomPadding + 20, Math.floor(mapHeight * 0.44));
 

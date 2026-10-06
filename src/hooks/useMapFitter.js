@@ -1,6 +1,6 @@
 // src/hooks/useMapFitter.js
 // HOOK CARTE NATIF - Caméra Intelligente & Cadrage Synchronisé Point A - Point B
-// CSCSM Level: Bank Grade (Invariant du Trio Sacré, Anti-saccade & Zéro conflit)
+// CSCSM Level: Bank Grade (Invariant Absolu du Trio Sacré, Anti-saccade & Zéro Conflit)
 
 import { useEffect, useRef } from 'react';
 import { Dimensions, Platform } from 'react-native';
@@ -19,7 +19,7 @@ const getDistance = (lat1, lon1, lat2, lon2) => {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-const hasMovedSignificantly = (loc1, loc2, threshold = 20) => {
+const hasMovedSignificantly = (loc1, loc2, threshold = 25) => {
   if (!loc1 && !loc2) return false;
   if (!loc1 || !loc2) return true;
   return getDistance(loc1.latitude, loc1.longitude, loc2.latitude, loc2.longitude) > threshold;
@@ -38,12 +38,13 @@ const useMapFitter = ({
   rideStatus = null,
 }) => {
   const isInitialFitDone = useRef(false);
-  const isCameraBusyRef = useRef(false);
-  const busyTimerRef = useRef(null);
   const timeoutRef = useRef(null);
+  const busyTimerRef = useRef(null);
+  const isCameraBusyRef = useRef(false);
   const lastFittedLocationRef = useRef(null);
   const lastFittedDriverLocationRef = useRef(null);
-  const lastFittedTrioKeyRef = useRef(null);
+  const lastFittedDestKeyRef = useRef(null);
+  const lastFittedRouteKeyRef = useRef(null);
   const wasInDestModeRef = useRef(false);
 
   useEffect(() => {
@@ -57,10 +58,11 @@ const useMapFitter = ({
     const pickupMarker = markers.find((m) => m.type === 'pickup');
     const isDestMode = !isOngoingRide && !hasDriver && !!destMarker;
 
-    // Transition de sortie : Annulation explicite de la destination -> Retour au repos passager
+    // 1. Transition de sortie : Annulation explicite de la destination -> Retour au repos passager
     if (!destMarker && !hasDriver && !isOngoingRide && wasInDestModeRef.current) {
       wasInDestModeRef.current = false;
-      lastFittedTrioKeyRef.current = null;
+      lastFittedDestKeyRef.current = null;
+      lastFittedRouteKeyRef.current = null;
       isCameraBusyRef.current = false;
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
       if (busyTimerRef.current) clearTimeout(busyTimerRef.current);
@@ -81,20 +83,24 @@ const useMapFitter = ({
       wasInDestModeRef.current = true;
     }
 
-    // Calcul de l'empreinte unique du Trio [Départ + Tracé + Arrivée]
-    const hasRouteGeometry = Array.isArray(routePoints) && routePoints.length >= 2;
-    const destKey = destMarker ? `${Number(destMarker.latitude).toFixed(5)},${Number(destMarker.longitude).toFixed(5)}` : 'none';
-    const routeKey = hasRouteGeometry
+    // 2. Calcul des clés d'empreinte pour le mode destination
+    const destKey = destMarker
+      ? `${Number(destMarker.latitude).toFixed(5)},${Number(destMarker.longitude).toFixed(5)}`
+      : null;
+    const hasDetailedRoute = Array.isArray(routePoints) && routePoints.length >= 2;
+    const routeKey = hasDetailedRoute
       ? `${routePoints.length}_${Number(routePoints[0]?.latitude).toFixed(4)}_${Number(routePoints[routePoints.length - 1]?.latitude).toFixed(4)}`
       : 'direct';
-    const currentTrioKey = isDestMode ? `TRIO_${destKey}_${routeKey}` : null;
 
-    // INVARIANT DU TRIO SACRÉ : Si le Trio actuel est déjà parfaitement cadré, la caméra reste figée
-    if (isDestMode && isInitialFitDone.current && lastFittedTrioKeyRef.current === currentTrioKey) {
-      return;
+    // 3. INVARIANT DU TRIO SACRÉ : Si la même destination et le même tracé sont déjà cadrés,
+    // on interdit formellement toute ré-animation pour ignorer le micro-bruit GPS.
+    if (isDestMode && isInitialFitDone.current && lastFittedDestKeyRef.current === destKey) {
+      if (lastFittedRouteKeyRef.current === routeKey || (lastFittedRouteKeyRef.current && routeKey === 'direct')) {
+        return;
+      }
     }
 
-    // Détection des mouvements significatifs hors mode destination
+    // 4. Détection des mouvements significatifs hors mode destination
     const locChanged = hasMovedSignificantly(location, lastFittedLocationRef.current, 25);
     const driverLocChanged = hasMovedSignificantly(driverLocation, lastFittedDriverLocationRef.current, 15);
 
@@ -102,7 +108,7 @@ const useMapFitter = ({
       return;
     }
 
-    // Construction stricte de la liste des coordonnées à cadrer
+    // 5. Construction stricte du tableau des coordonnées à cadrer
     let coordsToFit = [];
 
     if (isDestMode) {
@@ -111,7 +117,7 @@ const useMapFitter = ({
         coordsToFit.push({ latitude: Number(originMarker.latitude), longitude: Number(originMarker.longitude) });
       }
 
-      if (hasRouteGeometry) {
+      if (hasDetailedRoute) {
         routePoints.forEach((p) => {
           const pLat = Number(p.latitude);
           const pLng = Number(p.longitude);
@@ -125,7 +131,15 @@ const useMapFitter = ({
         coordsToFit.push({ latitude: Number(destMarker.latitude), longitude: Number(destMarker.longitude) });
       }
 
-      // Protection mathématique : Si moins de 2 points alors qu'on est en mode destination, on attend
+      // Filet de sécurité mathématique : Si moins de 2 points alors qu'on est en mode destination,
+      // on force le couple [Origine, Destination] pour interdire tout cadrage mono-point
+      if (coordsToFit.length < 2 && originMarker?.latitude && destMarker?.latitude) {
+        coordsToFit = [
+          { latitude: Number(originMarker.latitude), longitude: Number(originMarker.longitude) },
+          { latitude: Number(destMarker.latitude), longitude: Number(destMarker.longitude) },
+        ];
+      }
+
       if (coordsToFit.length < 2) return;
 
     } else if (isOngoingRide && destMarker?.latitude && originMarker?.latitude) {
@@ -142,7 +156,7 @@ const useMapFitter = ({
       coordsToFit.push({ latitude: Number(originMarker.latitude), longitude: Number(originMarker.longitude) });
     }
 
-    // Gestion du cas initial vide (centrage Maféré)
+    // 6. Gestion du démarrage initial à vide
     if (coordsToFit.length === 0) {
       if (!isInitialFitDone.current) {
         cameraRef.current?.setCamera({
@@ -156,7 +170,7 @@ const useMapFitter = ({
     }
 
     const isMultiPoint = coordsToFit.length >= 2;
-    const animDuration = isMultiPoint ? 700 : 500;
+    const animDuration = isMultiPoint ? 650 : 500;
     const dynamicTop = isDestMode ? Math.max(Number(mapTopPadding) || 120, 130) : Math.max(Number(mapTopPadding) || 120, 90) + 16;
     const dynamicBottom = isDestMode ? Math.max(Number(mapBottomPadding) || 240, 370) : Math.max(Number(mapBottomPadding) || 240, 220) + 24;
 
@@ -165,7 +179,7 @@ const useMapFitter = ({
     const executeCameraMove = () => {
       if (!cameraRef.current || isUserInteracting) return;
 
-      // INTERDICTION FORMELLE : Jamais de cadrage mono-point si destination active
+      // INTERDICTION FORMELLE : Jamais de cadrage mono-point en mode destination
       if (!isMultiPoint) {
         if (isDestMode) return;
         cameraRef.current.setCamera({
@@ -225,15 +239,18 @@ const useMapFitter = ({
       if (busyTimerRef.current) clearTimeout(busyTimerRef.current);
       busyTimerRef.current = setTimeout(() => {
         isCameraBusyRef.current = false;
-      }, animDuration + 60);
+      }, animDuration + 50);
 
       isInitialFitDone.current = true;
-      if (isDestMode) lastFittedTrioKeyRef.current = currentTrioKey;
+      if (isDestMode) {
+        lastFittedDestKeyRef.current = destKey;
+        lastFittedRouteKeyRef.current = routeKey;
+      }
       lastFittedLocationRef.current = location ? { latitude: location.latitude, longitude: location.longitude } : null;
       lastFittedDriverLocationRef.current = driverLocation ? { latitude: driverLocation.latitude, longitude: driverLocation.longitude } : null;
     };
 
-    const delay = Platform.OS === 'ios' ? 20 : 30;
+    const delay = Platform.OS === 'ios' ? 15 : 25;
     timeoutRef.current = setTimeout(executeCameraMove, delay);
 
     return () => {
