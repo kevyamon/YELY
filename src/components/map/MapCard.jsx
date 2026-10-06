@@ -208,15 +208,6 @@ const MapCard = forwardRef(({
     rideStatus,
   });
 
-  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
-  const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
-  // Décluttering : Seules les vraies boutiques marchandes ont un marqueur superposé
-  const partnerShops = mapPOIs.filter(poi => poi && (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true));
-  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(partnerShops);
-  
-  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
-  const actualDriverLocation = isDriver ? safeLocation : driverLocation;
-
   const destMarker = markers.find((m) => m.type === 'destination');
   const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
 
@@ -233,14 +224,12 @@ const MapCard = forwardRef(({
       const lats = coords.map((c) => Number(c.latitude)).filter((n) => !isNaN(n));
       const lngs = coords.map((c) => Number(c.longitude)).filter((n) => !isNaN(n));
       if (lats.length >= 2 && lngs.length >= 2) {
-        const dynamicTop = Math.max(Number(mapTopPadding) || 120, 130);
-        const dynamicBottom = Math.max(Number(mapBottomPadding) || 240, 370);
         cameraRef.current.setCamera({
           bounds: {
             ne: [Math.max(...lngs) + 0.003, Math.max(...lats) + 0.003],
             sw: [Math.min(...lngs) - 0.003, Math.min(...lats) - 0.003],
-            paddingTop: dynamicTop,
-            paddingBottom: dynamicBottom,
+            paddingTop: Math.max(Number(mapTopPadding) || 120, 130),
+            paddingBottom: Math.max(Number(mapBottomPadding) || 240, 370),
             paddingLeft: 35,
             paddingRight: 35,
           },
@@ -278,6 +267,15 @@ const MapCard = forwardRef(({
     fitToCoordinates: () => {},
     centerOnUser: handleRecenter,
   }));
+
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+  const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
+  // Décluttering : Seules les vraies boutiques marchandes ont un marqueur superposé
+  const partnerShops = mapPOIs.filter(poi => poi && (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true));
+  const visiblePOIs = isCinematicMode ? [] : resolvePoiCollisions(partnerShops);
+  
+  const displayUserMarker = showUserMarker && !isOngoingRide && location && location.latitude && !isDriver;
+  const actualDriverLocation = isDriver ? safeLocation : driverLocation;
 
   const handleMapReady = () => {
     setIsMapReady(true);

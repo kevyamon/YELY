@@ -128,27 +128,6 @@ const MapCard = forwardRef(({
     }, 2500); 
   };
 
-  const polylinePositions = (visibleRoutePoints || [])
-    .map(p => [p?.latitude, p?.longitude])
-    .filter(p => p && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number' && !isNaN(p[0]) && !isNaN(p[1]))
-    .reduce((acc, current) => {
-       if (acc.length === 0) return [current];
-       const prev = acc[acc.length - 1];
-       if (prev[0] !== current[0] || prev[1] !== current[1]) {
-           acc.push(current);
-       }
-       return acc;
-    }, []);
-
-  const isRouteValid = polylinePositions.length > 1;
-  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
-
-  useEffect(() => {
-    if (isRouteValid) {
-      setIsUserInteracting(false);
-    }
-  }, [isRouteValid]);
-
   const destMarker = markers.find((m) => m.type === 'destination');
   const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
 
@@ -194,6 +173,27 @@ const MapCard = forwardRef(({
     location?.latitude || MAFERE_CENTER.latitude,
     location?.longitude || MAFERE_CENTER.longitude,
   ];
+
+  const polylinePositions = (visibleRoutePoints || [])
+    .map(p => [p?.latitude, p?.longitude])
+    .filter(p => p && p.length === 2 && typeof p[0] === 'number' && typeof p[1] === 'number' && !isNaN(p[0]) && !isNaN(p[1]))
+    .reduce((acc, current) => {
+       if (acc.length === 0) return [current];
+       const prev = acc[acc.length - 1];
+       if (prev[0] !== current[0] || prev[1] !== current[1]) {
+           acc.push(current);
+       }
+       return acc;
+    }, []);
+
+  const isRouteValid = polylinePositions.length > 1;
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+
+  useEffect(() => {
+    if (isRouteValid) {
+      setIsUserInteracting(false);
+    }
+  }, [isRouteValid]);
 
   const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
   // Décluttering : Seules les vraies boutiques marchandes sont affichées en marqueur superposé
