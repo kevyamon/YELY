@@ -3,14 +3,7 @@
 // CSCSM Level: Bank Grade / Conforme règle < 270 lignes
 
 import React from 'react';
-import {
-  ActivityIndicator,
-  Image,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
+import { ActivityIndicator, Image, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import GlassCard from '../ui/GlassCard';
 import GlassInput from '../ui/GlassInput';
@@ -58,9 +51,7 @@ const ProfileForm = ({
             <Ionicons name="alert-circle" size={20} color={THEME.COLORS.danger} />
             <View style={styles.flexOne}>
               <Text style={styles.bannerText}>Vérification rejetée</Text>
-              {rejectionReason ? (
-                <Text style={styles.bannerSubtext}>Motif : {rejectionReason}</Text>
-              ) : null}
+              {rejectionReason ? <Text style={styles.bannerSubtext}>Motif : {rejectionReason}</Text> : null}
             </View>
           </View>
         );
@@ -68,9 +59,7 @@ const ProfileForm = ({
         return (
           <View style={[styles.banner, styles.bannerNone]}>
             <Ionicons name="help-circle" size={20} color={THEME.COLORS.primary} />
-            <Text style={[styles.bannerText, { color: THEME.COLORS.textPrimary }]}>
-              Identité non vérifiée
-            </Text>
+            <Text style={[styles.bannerText, { color: THEME.COLORS.textPrimary }]}>Identité non vérifiée</Text>
           </View>
         );
     }
@@ -80,7 +69,6 @@ const ProfileForm = ({
     <>
       <GlassCard style={styles.card}>
         <Text style={styles.sectionTitle}>Informations Personnelles</Text>
-
         <Text style={styles.label}>{isSeller ? 'Nom de la boutique' : 'Nom complet'}</Text>
         <GlassInput
           value={form.name}
@@ -127,36 +115,24 @@ const ProfileForm = ({
           <Text style={styles.label}>Type de Tricycle</Text>
           <View style={styles.typeSelectorContainer}>
             <TouchableOpacity
-              style={[
-                styles.typeOption,
-                form.vehicleType === 'tvs' && styles.typeOptionActive,
-                isLocked && styles.typeOptionDisabled,
-              ]}
+              style={[styles.typeOption, form.vehicleType === 'tvs' && styles.typeOptionActive, isLocked && styles.typeOptionDisabled]}
               onPress={() => !isLocked && setForm({ ...form, vehicleType: 'tvs' })}
               disabled={isLocked}
               activeOpacity={0.8}
             >
               <Image source={{ uri: TVS_IMAGE }} style={styles.typeOptionImage} />
-              <Text style={[styles.typeTitle, form.vehicleType === 'tvs' && styles.typeTitleActive]}>
-                TVS
-              </Text>
+              <Text style={[styles.typeTitle, form.vehicleType === 'tvs' && styles.typeTitleActive]}>TVS</Text>
               <Text style={styles.typeDesc}>4 places max. Confort supérieur.</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[
-                styles.typeOption,
-                form.vehicleType === 'apsonic' && styles.typeOptionActive,
-                isLocked && styles.typeOptionDisabled,
-              ]}
+              style={[styles.typeOption, form.vehicleType === 'apsonic' && styles.typeOptionActive, isLocked && styles.typeOptionDisabled]}
               onPress={() => !isLocked && setForm({ ...form, vehicleType: 'apsonic' })}
               disabled={isLocked}
               activeOpacity={0.8}
             >
               <Image source={{ uri: APSONIC_IMAGE }} style={styles.typeOptionImage} />
-              <Text style={[styles.typeTitle, form.vehicleType === 'apsonic' && styles.typeTitleActive]}>
-                Apsonic
-              </Text>
+              <Text style={[styles.typeTitle, form.vehicleType === 'apsonic' && styles.typeTitleActive]}>Apsonic</Text>
               <Text style={styles.typeDesc}>6 places max. Transport de groupe.</Text>
             </TouchableOpacity>
           </View>
@@ -165,7 +141,7 @@ const ProfileForm = ({
             <View style={styles.rgpdInfoContainer}>
               <Ionicons name="shield-checkmark" size={24} color={THEME.COLORS.success} />
               <Text style={styles.rgpdInfoText}>
-                Vos pièces d'identité ont été validées puis supprimées définitivement de l'espace de stockage temporaire conformément aux exigences de confidentialité.
+                Vos pièces d'identité ont été validées puis supprimées définitivement conformément aux exigences RGPD.
               </Text>
             </View>
           ) : verificationStatus === 'pending' ? (
@@ -231,10 +207,7 @@ const ProfileForm = ({
               </View>
 
               <TouchableOpacity
-                style={[
-                  styles.submitVerifBtn,
-                  (!form.idCardFront || !form.idCardBack || !form.vehicleType) && styles.submitVerifBtnDisabled,
-                ]}
+                style={[styles.submitVerifBtn, (!form.idCardFront || !form.idCardBack || !form.vehicleType) && styles.submitVerifBtnDisabled]}
                 onPress={onSubmitVerification}
                 disabled={isSubmittingVerification || !form.idCardFront || !form.idCardBack || !form.vehicleType}
                 activeOpacity={0.85}
