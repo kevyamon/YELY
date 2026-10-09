@@ -119,6 +119,10 @@ const MapCard = forwardRef(({
   const { data: poiResponse } = useGetAllPOIsQuery(undefined, { skip: hidePOIs });
   const mapPOIs = hidePOIs ? [] : (poiResponse?.data || []);
 
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
+  const destMarker = markers.find((m) => m.type === 'destination');
+  const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
+
   const handleMapInteraction = () => {
     wakeUpButton();
     setIsUserInteracting(true);
@@ -127,9 +131,6 @@ const MapCard = forwardRef(({
       setIsUserInteracting(false);
     }, 2500); 
   };
-
-  const destMarker = markers.find((m) => m.type === 'destination');
-  const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
 
   const handleRecenter = () => {
     wakeUpButton();
@@ -187,7 +188,6 @@ const MapCard = forwardRef(({
     }, []);
 
   const isRouteValid = polylinePositions.length > 1;
-  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
 
   useEffect(() => {
     if (isRouteValid) {

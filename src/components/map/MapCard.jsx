@@ -208,6 +208,7 @@ const MapCard = forwardRef(({
     rideStatus,
   });
 
+  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
   const destMarker = markers.find((m) => m.type === 'destination');
   const isDestMode = !isOngoingRide && !isDriver && !!destMarker;
 
@@ -268,7 +269,6 @@ const MapCard = forwardRef(({
     centerOnUser: handleRecenter,
   }));
 
-  const isOngoingRide = rideStatus === 'in_progress' || rideStatus === 'ongoing';
   const isCinematicMode = hidePOIs || isRouteValid || rideStatus !== null;
   // Décluttering : Seules les vraies boutiques marchandes ont un marqueur superposé
   const partnerShops = mapPOIs.filter(poi => poi && (poi.type === 'SHOP' || poi.sellerId || poi.isShop === true));
